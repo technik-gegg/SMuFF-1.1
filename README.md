@@ -11,5 +11,4 @@ This firmware might also run on other boards equipped with an AT-Mega 2560, a LC
 
 The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Hence, changing parameters dosn't require recompiling the firmware. Just edit the configuration JSON file and reboot.
 
-For further information head over to the Wiki pages:
-https://github.com/technik-gegg/SMuFF/wiki
+For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
