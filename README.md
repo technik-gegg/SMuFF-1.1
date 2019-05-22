@@ -1,5 +1,5 @@
 # SMuFF-1.1
-Latest version of the SMuFF firmware to be compiled with PlatformIO
+Latest version of the SMuFF firmware to be compiled in PlatformIO
 
 This is the software package for the Smart Multi Filament Feeder (SMuFF) project as published on Thingiverse (https://www.thingiverse.com/thing:3431438).
 
