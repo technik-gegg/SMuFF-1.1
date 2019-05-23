@@ -89,9 +89,14 @@ const char P_Feed[] PROGMEM           = {"Feed    " };
 const char P_NoTool [] PROGMEM        = { "No tool set.\n" };
 const char P_Aborting [] PROGMEM      = { "Aborting..."};
 const char P_FeederJamed [] PROGMEM   = { "Feeder is jamed.\n" };
-const char P_ToolAlreadySet [] PROGMEM  = { "Tool already set." };
+const char P_ToolAlreadySet [] PROGMEM= { "Tool already set." };
 
 const char P_WrongFormat [] PROGMEM   = { "Wrong format. Use Bdd:dd:dd...\n" };
+
+const char P_NoPrusa [] PROGMEM       = { "Prusa MMU2 mode was not configured." };
+const char P_PMMU_Title [] PROGMEM    = { "Waiting..." };
+const char P_PMMU_Wait [] PROGMEM     = { "Please click the" };
+const char P_PMMU_WaitAdd [] PROGMEM  = { "encoder button" };
 
 const char P_GCmds[] PROGMEM = { 
   "G0\t-\tMove\n" \

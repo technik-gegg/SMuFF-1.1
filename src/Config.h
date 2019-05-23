@@ -20,7 +20,9 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V1.1"
+#define VERSION_STRING    "V1.2"
+#define VERSION_MAJOR     1
+#define VERSION_MINOR     2  
 #define VERSION_DATE      "2019-05-12"
 #define CONFIG_FILE       "SMUFF.CFG"
 

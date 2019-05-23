@@ -90,6 +90,7 @@ typedef struct {
   long  powerSaveTimeout    = 300;
   char  unloadCommand[80]   = {{ 0 }};
   int   wipeSequence[20]    = { 150,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,110,-1 };
+  bool  prusaMMU2           = true;
 } SMuFFConfig;
 
 extern U8G2_ST7565_64128N_F_4W_HW_SPI   display;
@@ -176,6 +177,7 @@ extern void parseGcode(String serialBuffer, int serial);
 extern bool parse_G(String buf, int serial);
 extern bool parse_M(String buf, int serial);
 extern bool parse_T(String buf, int serial);
+extern bool parse_PMMU2(char cmd, String buf, int serial);
 extern int  getParam(String buf, char* token);
 extern bool getParamString(String buf, char* token, char* dest, int bufLen);
 extern void prepStepping(int index, long param, bool Millimeter = true, bool ignoreEndstop = false);

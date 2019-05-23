@@ -57,7 +57,7 @@ void ZStepper::resetStepper() {
   _endstopHit = false;
 }
 
-void ZStepper::prepareMovement(long steps, boolean ignoreEndstop = false) {
+void ZStepper::prepareMovement(long steps, boolean ignoreEndstop /*= false */) {
   setDirection(steps < 0 ? CCW : CW);
   _totalSteps = abs(steps);
   _accelDistance = _totalSteps >> 5;

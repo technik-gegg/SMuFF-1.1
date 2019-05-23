@@ -89,6 +89,21 @@ void parseGcode(String serialBuffer, int serial) {
       parserBusy = false;
       return;
     }
+    else if(line.startsWith("S") || // GCodes for Prusa MMU2 emulation
+            line.startsWith("P") ||
+            line.startsWith("C") ||
+            line.startsWith("L") ||
+            line.startsWith("U") ||
+            line.startsWith("E") ||
+            line.startsWith("K") ||
+            line.startsWith("X") ||
+            line.startsWith("F") ||
+            line.startsWith("R") ||
+            line.startsWith("W")) {
+      parse_PMMU2(line.charAt(0), line.substring(1), serial);
+      parserBusy = false;
+      return;
+    }
     else {
       char tmp[256];
       sprintf(tmp, "%s '%s'\n", P_UnknownCmd, line.c_str());
@@ -185,6 +200,94 @@ bool parse_M(String buf, int serial) {
   char tmp[256];
   sprintf_P(tmp, P_UnknownCmd, buf.c_str());
   return false;
+}
+
+/**
+ *  Parse pseudo GCodes to emulate a Prusa MMU2 
+ **/
+bool parse_PMMU2(char cmd, String buf, int serial) {
+
+  char  tmp[80];
+
+  if(!smuffConfig.prusaMMU2) {
+    sprintf_P(tmp, P_NoPrusa);
+    sendErrorResponseP(serial, tmp);
+    return false;
+  }
+
+  bool  stat = true;
+  int   type = buf.toInt();
+  switch(cmd) {
+    case 'S':     // Init (S0 | S1 | S2 | S3)
+      switch(type) {
+        case 0:
+          sprintf(tmp,"ok\n");
+          break;
+        case 1:
+          sprintf(tmp,"%dok\n", VERSION_MAJOR*100+VERSION_MINOR);
+          break;
+        case 2:
+          sprintf(tmp,"%dok\n", 126);
+          break;
+        case 3:
+          sprintf(tmp,"%dok\n", 0);
+          break;
+      }
+      printResponse(tmp,serial);
+      break;
+
+    case 'P':     // FINDA status (Feeder endstop)
+        sprintf(tmp,"%dok\n", feederEndstop() ? 1 : 0);
+        printResponse(tmp,serial);
+      break;
+
+    case 'C':     // Push filament 
+      if(smuffConfig.reinforceLength > 0) {
+        prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
+        runAndWait(FEEDER);
+      }
+      sendOkResponse(serial);
+      break;
+
+    case 'L':     // Load filament
+      loadFilament();
+      sendOkResponse(serial);
+      break;
+
+    case 'U':     // Unload filament
+      unloadFilament();
+      sendOkResponse(serial);
+      break;
+
+    case 'E':     // Eject filament
+      unloadFilament();
+      sendOkResponse(serial);
+      break;
+
+    case 'K':     // Cut filament
+    case 'F':     // Set filament
+    case 'R':     // Recover after eject
+      sendOkResponse(serial);
+      break;
+
+    case 'W': {    // Wait for user click
+      userBeep();
+      int button = 999;
+      do {
+        button = showDialog(P_PMMU_Title, P_PMMU_Wait, P_PMMU_WaitAdd, P_OkButtonOnly);
+      } while (button != 1);
+      sendOkResponse(serial);
+      break;
+     }
+    case 'X':     // Reset MMU
+      M999("", tmp, serial);
+      break;
+
+    default:
+      sendErrorResponse(serial);
+      break;
+  }
+  return stat;
 }
 
 int getParam(String buf, char* token) {

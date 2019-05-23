@@ -67,11 +67,11 @@ void readConfig()
     return;
   }
 
-  __debug("Trying to open config file '%s'", CONFIG_FILE);
+  //__debug("Trying to open config file '%s'", CONFIG_FILE);
   File cfg = SD.open(CONFIG_FILE);
   if (cfg) {
     size_t fsize = cfg.size();
-    __debug("File size: %u", fsize);
+    //__debug("File size: %u", fsize);
     
     if(fsize > capacity) {
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail3, P_OkButtonOnly);
@@ -81,7 +81,7 @@ void readConfig()
     
     auto error = deserializeJson(jsonDoc, cfg);
     if (error) {
-        __debug("deserializeJson() failed with code %s", error.c_str());
+      //__debug("deserializeJson() failed with code %s", error.c_str());
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail2, P_OkButtonOnly);
     }
     else {
@@ -137,6 +137,7 @@ void readConfig()
       char* p =                         jsonDoc["UnloadCommand"];
       if(p != NULL && strlen(p) > 0)
         strlcpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
+      smuffConfig.prusaMMU2 =          jsonDoc["EmulatePrusa"];
 
       for(int i=0; i < smuffConfig.toolCount; i++) {
         char tmp[10];
