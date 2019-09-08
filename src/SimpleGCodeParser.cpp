@@ -224,10 +224,10 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
           sprintf(tmp,"ok\n");
           break;
         case 1:
-          sprintf(tmp,"%dok\n", VERSION_MAJOR*100+VERSION_MINOR);
+          sprintf(tmp,"%dok\n", PMMU_VERSION);
           break;
         case 2:
-          sprintf(tmp,"%dok\n", 126);
+          sprintf(tmp,"%dok\n", PMMU_BUILD);
           break;
         case 3:
           sprintf(tmp,"%dok\n", 0);
@@ -241,16 +241,19 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
         printResponse(tmp,serial);
       break;
 
-    case 'C':     // Push filament 
+    case 'C':     // Push filament to nozzle
+      loadFilament(); 
+      /*
       if(smuffConfig.reinforceLength > 0) {
         prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
         runAndWait(FEEDER);
       }
+      */
       sendOkResponse(serial);
       break;
 
     case 'L':     // Load filament
-      loadFilament();
+      loadFilamentPemu();
       sendOkResponse(serial);
       break;
 

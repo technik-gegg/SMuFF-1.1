@@ -85,7 +85,7 @@ void drawStatus() {
   display.setFont(SMALL_FONT);
   display.setDrawColor(2);
   display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, display.getDisplayWidth(), display.getMaxCharHeight());
-  sprintf_P(_wait, parserBusy ? P_Busy : P_Ready);
+  sprintf_P(_wait, parserBusy ? P_Busy : (smuffConfig.prusaMMU2) ? P_Pemu : P_Ready);
   sprintf(tmp, "M:%d | %-4s | %-5s ", freeMemory(), traceSerial2.c_str(), _wait);
   display.drawStr(1, display.getDisplayHeight(), tmp);
   display.setFontMode(0);
@@ -395,6 +395,68 @@ bool loadFilament(bool showMessage) {
   runAndWait(FEEDER);
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.05, true);
+  runAndWait(FEEDER);
+  
+  if(smuffConfig.reinforceLength > 0) {
+    resetRevolver();
+    prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
+    runAndWait(FEEDER);
+  }
+  
+  steppers[FEEDER].setMaxSpeed(curSpeed);
+  EEPROM.put(EEPROM_FEEDER_POS, steppers[FEEDER].getStepPosition());
+  if(smuffConfig.homeAfterFeed)
+    steppers[REVOLVER].home();
+  parserBusy = false;
+  return true;
+}
+
+/*
+  This method is used to feed the filament Prusa style (L command on MMU2).
+  If first feeds the filament until the endstop is hit, then 
+  it pulls it back again.
+*/
+bool loadFilamentPemu(bool showMessage) {
+  if (toolSelected == 255) {
+    signalNoTool();
+    return false;
+  }
+  if(smuffConfig.externalControl_Z) {
+    resetRevolver();
+    signalLoadFilament();
+    return true;
+  }
+  parserBusy = true;
+  if(!steppers[FEEDER].getEnabled())
+    steppers[FEEDER].setEnabled(true);
+  if(smuffConfig.resetBeforeFeed_Y)
+    resetRevolver();
+  int n = 100;
+  unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
+  steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+  // move filament until it hits the feeder endstop
+  while (!feederEndstop()) {
+    prepSteppingRelMillimeter(FEEDER, 2.5, true);
+    runAndWait(FEEDER);
+    if (n == 50) {
+      resetRevolver();
+      prepSteppingRelMillimeter(FEEDER, -15.0, true);
+      runAndWait(FEEDER);
+    }
+    if (n <= 0) {
+      if (showMessage)
+        showFeederFailedMessage(1);
+      steppers[FEEDER].setMaxSpeed(curSpeed);
+      feederJamed = true;
+      parserBusy = false;
+      return false;
+    }
+    n--;
+  }
+  feederJamed = false;
+  steppers[FEEDER].setMaxSpeed(curSpeed);
+  // now pull it back again
+  prepSteppingRelMillimeter(FEEDER, -15.0, true);
   runAndWait(FEEDER);
   
   if(smuffConfig.reinforceLength > 0) {

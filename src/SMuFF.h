@@ -131,6 +131,7 @@ extern bool showFeederFailedMessage(int state);
 extern int  showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons);
 extern bool moveHome(int index, bool showMessage = true, bool checkFeeder = true);
 extern bool loadFilament(bool showMessage = true);
+extern bool loadFilamentPemu(bool showMessage = true);
 extern bool unloadFilament();
 extern void runAndWait(int index);
 extern void runNoWait(int index);

@@ -46,6 +46,8 @@ char* K_Param = (char*)"K";
 char* R_Param = (char*)"R";
 
 GCodeFunctions gCodeFuncsM[] = {
+  {   0, dummy },     // used in Prusa Emulation mode to switch to normal mode
+  {   1, dummy },     // used in Prusa Emulation mode to switch to stealth mode
   {  80, dummy },
   {  81, dummy },
   { 104, dummy },
@@ -98,7 +100,7 @@ int param;
 extern char tmp[128];
 
 /*========================================================
- * Class G
+ * Class M
  ========================================================*/
 bool dummy(const char* msg, String buf, int serial) {
   int code = buf.toInt();

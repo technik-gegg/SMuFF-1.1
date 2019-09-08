@@ -59,6 +59,7 @@ const char P_TitleOffsetsMenu [] PROGMEM    = { "Offsets calibration" };
 const char P_TitleSwapMenu [] PROGMEM       = { "Swap tools" };
 const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
+const char P_Pemu[] PROGMEM                 = { "PEMU" };
 
 const char P_SD_ReadingConfig[] PROGMEM = { "Reading config..." };
 const char P_SD_InitError[] PROGMEM     = { "SD-Card not ready!" };

@@ -162,7 +162,8 @@ void setup() {
   
   //servo.setServoPos(0);
   sendStartResponse(0);
-  //sendStartResponse(2);
+  if(smuffConfig.prusaMMU2)
+    sendStartResponse(2);
   pwrSaveTime = millis();
 }
 
