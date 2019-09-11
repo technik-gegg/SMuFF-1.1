@@ -13,3 +13,9 @@ This firmware might also run on other boards equipped with an AT-Mega 2560, a LC
 The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Hence, changing parameters doesn't require recompiling the firmware. Just edit the configuration JSON file and reboot.
 
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
+
+## Recent changes
+1.4 - Heavy changes to gain better compatibility in Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet.
+The SMUFF.CFG has got a setting which defines the distance from the filament guide to the Selector.
+1.3 - Some modifications to gain Prusa MMU2 compatibility
+1.2 - Initial version
