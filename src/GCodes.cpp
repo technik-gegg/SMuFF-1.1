@@ -144,12 +144,15 @@ bool M20(const char* msg, String buf, int serial) {
   if(!getParamString(buf, S_Param, tmp, sizeof(tmp))){
     sprintf(tmp,"/");
   }
+  SdFs SD;
   if (SD.begin(SD_SS_PIN)) {
-    File root = SD.open(tmp);
-    listDir(root, 1, serial);
-    root.close();
+    if(serial==2)
+      SD.ls(&Serial2, LS_DATE | LS_SIZE | LS_R);
+    else if(serial==0)
+      SD.ls(&Serial, LS_DATE | LS_SIZE | LS_R);
     return true;
   }
+  
   sprintf_P(tmp, P_SD_InitError);
   printResponse(tmp, serial); 
   return false;

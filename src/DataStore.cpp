@@ -36,16 +36,18 @@ void saveStore() {
     positions["Revolver"] = dataStore.stepperPos[REVOLVER];
     positions["Feeder"] = dataStore.stepperPos[FEEDER];
 
-    File cfg = SD.open(DATASTORE_FILE, O_WRITE | O_CREAT | O_TRUNC);
-    serializeJsonPretty(jsonDoc, cfg);
+    FsFile cfg;
+    if(cfg.open(DATASTORE_FILE, O_WRITE | O_CREAT | O_TRUNC)) {
+        serializeJsonPretty(jsonDoc, cfg);
+    }
     cfg.close();  
 }
 
 void recoverStore() {
     StaticJsonDocument<256> jsonDoc;
     
-    File cfg = SD.open(DATASTORE_FILE);
-    if (!cfg){
+    FsFile cfg;
+    if (!cfg.open(DATASTORE_FILE)){
       __debug(PSTR("Data store file not found!\n"));
     } 
     else {

@@ -84,7 +84,7 @@ void drawStatus() {
   display.setDrawColor(2);
   display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, display.getDisplayWidth(), display.getMaxCharHeight());
   sprintf_P(_wait, parserBusy ? P_Busy : (smuffConfig.prusaMMU2) ? P_Pemu : P_Ready);
-  sprintf(tmp, "M:%d | %-4s | %-5s ", freeMemory(), traceSerial2.c_str(), _wait);
+  sprintf_P(tmp, PSTR("M:%d | %-4s | %-5s "), freeMemory(), traceSerial2.c_str(), _wait);
   display.drawStr(1, display.getDisplayHeight(), tmp);
   display.setFontMode(0);
   display.setDrawColor(1);
@@ -210,14 +210,8 @@ bool feederEndstop() {
   return steppers[FEEDER].getEndstopHit();
 }
 
-bool forceAbort() {
-  return isAbortRequested;
-}
-
 void setAbortRequested(bool state) {
-  if(state)
-    remainingSteppersFlag = 0;  // stop any ongoing stepper movements
-  isAbortRequested = state;
+  steppers[FEEDER].setAbort(state);  // stop any ongoing stepper movements
 }
 
 
@@ -380,13 +374,6 @@ bool loadFilament(bool showMessage) {
   while (!feederEndstop()) {
     prepSteppingRelMillimeter(FEEDER, 2.5, true);
     runAndWait(FEEDER);
-    if(forceAbort()) {
-      steppers[FEEDER].setMaxSpeed(curSpeed);
-      setAbortRequested(false);
-      parserBusy = false;
-      return false;
-    }
-
     if (n == 50) {
       resetRevolver();
       prepSteppingRelMillimeter(FEEDER, -15.0, true);
@@ -401,32 +388,15 @@ bool loadFilament(bool showMessage) {
       return false;
     }
     n--;
-    if(forceAbort()) {
-      steppers[FEEDER].setMaxSpeed(curSpeed);
-      setAbortRequested(false);
-      parserBusy = false;
-      return false;
-    }
   }
   feederJamed = false;
   steppers[FEEDER].setMaxSpeed(curSpeed);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.95, true);
   runAndWait(FEEDER);
-  if(forceAbort()) {
-    steppers[FEEDER].setMaxSpeed(curSpeed);
-    setAbortRequested(false);
-    parserBusy = false;
-    return false;
-  }
+
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.05, true);
   runAndWait(FEEDER);
-  if(forceAbort()) {
-    steppers[FEEDER].setMaxSpeed(curSpeed);
-    setAbortRequested(false);
-    parserBusy = false;
-    return false;
-  }
   
   if(smuffConfig.reinforceLength > 0) {
     resetRevolver();
@@ -485,13 +455,6 @@ bool loadFilamentPMMU2(bool showMessage) {
       return false;
     }
     n--;
-    if(forceAbort()) {
-      steppers[FEEDER].setMaxSpeed(curSpeed);
-      setAbortRequested(false);
-      parserBusy = false;
-      return false;
-    }
-    
   }
   feederJamed = false;
   steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -544,10 +507,6 @@ bool unloadFilament() {
   }
   prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength*3));
   runAndWait(FEEDER);
-  if(forceAbort()) {
-    setAbortRequested(false);
-    return false;
-  }
 
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
   int n = 200;
@@ -569,12 +528,6 @@ bool unloadFilament() {
       }
     }
     n--;
-    if(forceAbort()) {
-      steppers[FEEDER].setMaxSpeed(curSpeed);
-      setAbortRequested(false);
-      parserBusy = false;
-      return false;
-    }
   } while (!feederEndstop());
   feederJamed = false;
   steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -623,10 +576,6 @@ bool selectTool(int ndx, bool showMessage) {
   else {
     if (!smuffConfig.externalControl_Z && feederEndstop()) {
       unloadFilament();
-      if(forceAbort()) {
-        setAbortRequested(false);
-        return false;
-      }
     }
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
       // TODO: Signal Duet3D to retract 2mm
@@ -653,11 +602,6 @@ bool selectTool(int ndx, bool showMessage) {
     remainingSteppersFlag |= _BV(REVOLVER);
   }
   runAndWait(-1);
-  if(forceAbort()) {
-    setAbortRequested(false);
-    parserBusy = false;
-    return false;
-  }
   toolSelected = ndx;
 
   dataStore.tool = toolSelected;

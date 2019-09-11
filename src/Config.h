@@ -44,7 +44,7 @@
 #define BEEPER_UDURATION    90
 
 #define ENCODER_DELAY       1
-#define ENCODER_DELAY_MENU  2
+#define ENCODER_DELAY_MENU  1
 #define ENCODER_DELAY_OFS   1
 
 #define DSP_CONTRAST        200

@@ -22,6 +22,10 @@
 
 #define DEBUG 1
 
+#ifdef __STM32F1__
+//typedef volatile uint32_t RwReg;
+#endif
+
 #include <Arduino.h>
 #include "Config.h"
 #include "Strings.h"
@@ -29,7 +33,7 @@
 #include "RotaryEncoder.h"
 #include <Wire.h>
 #include <SPI.H>
-#include <SD.h>
+#include <SdFs.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
@@ -37,6 +41,7 @@
 #ifdef __STM32F1__
 #define sprintf_P     sprintf
 #define strncmp_P     strncmp
+#define vsnprintf_P   vsnprintf
 #endif
 
 #define FEEDER_SIGNAL     1
@@ -123,7 +128,6 @@ extern bool           testMode;
 extern bool           feederJamed;
 extern bool           parserBusy;
 extern bool           isPwrSave;
-extern bool           isAbortRequested;
 
 extern void setupDisplay();
 extern void drawLogo();
@@ -172,7 +176,6 @@ extern void resetAutoClose();
 extern void listDir(File root, int numTabs, int serial);
 extern void setPwrSave(int state);
 extern void __debug(const char* fmt, ...);
-extern bool forceAbort();
 extern void setAbortRequested(bool state);
 extern void resetSerialBuffer(int serial);
 

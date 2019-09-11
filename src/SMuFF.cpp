@@ -162,8 +162,11 @@ void setup() {
 
   if(smuffConfig.i2cAddress != 0) {
     Wire.begin(smuffConfig.i2cAddress);
+#ifdef __STM32F1__
     // TDB: replace for STM32
+#else
     Wire.onReceive(wireReceiveEvent);
+#endif
   }
   //__debug(PSTR("DONE I2C init"));
   
@@ -211,8 +214,6 @@ void setupSwapMenu() {
 
 void setNextInterruptInterval() {
 
-  if(forceAbort())
-    return;
   unsigned int minDuration = 65535;
   for(int i = 0; i < NUM_STEPPERS; i++) {
     if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration ) {

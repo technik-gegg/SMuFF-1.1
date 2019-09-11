@@ -100,6 +100,8 @@ public:
 
   bool          getAllowAccel() { return _allowAcceleration; }
   void          setAllowAccel(bool state) { _allowAcceleration = state; }
+  bool          getAbort() { return _abort; }
+  void          setAbort(bool state) { _abort = state; }
   
 private:
   int             _number = 0;                  // index of this stepper
@@ -125,6 +127,7 @@ private:
   float           _stepPositionMM = 0;          // current position of stepper in millimeter
   bool            _invertDir = false;           // stepper direction inversion
   bool            _allowAcceleration = true;    // allow / disallow acceleration
+  bool            _abort = false;               // flag signals abortion of operation  
 
   // per iteration variables (potentially changed every interrupt)
   volatile float          _duration;            // current interval length

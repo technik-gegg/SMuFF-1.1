@@ -68,7 +68,7 @@ void parseGcode(String serialBuffer, int serial) {
     if(smuffConfig.prusaMMU2 && line.startsWith("A")) {
       setAbortRequested(true);
       __debug(PSTR("*ABORT* received"));
-      delay(250);
+      delay(150);
     }
 
     parserBusy = true;

@@ -55,6 +55,9 @@ void ZStepper::resetStepper() {
   _stepCount = 0;
   _movementDone = false;
   _endstopHit = false;
+  if(_abort) {
+    __debug(PSTR("Still aborted"));
+  }
 }
 
 void ZStepper::prepareMovement(long steps, boolean ignoreEndstop /*= false */) {
@@ -112,7 +115,10 @@ void ZStepper::handleISR() {
 
   //if(_endstopType == ORBITAL)
   //  __debug(PSTR("O: %d %d "), _stepCount, _dir);
-  
+  if(_abort) {
+    setMovementDone(true);
+    return;
+  }
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
      (_endstopType == ORBITAL && _dir == CCW)) {

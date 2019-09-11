@@ -24,9 +24,13 @@
 #include "SMuFF.h"
 #include <ArduinoJson.h>
 
+/*
 Sd2Card card;
 SdVolume volume;
 SdFile root;
+*/
+
+SdFs SD;
 
 const size_t capacity = 1300;
 
@@ -68,12 +72,13 @@ void readConfig()
   }
 
   //__debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
-  File cfg = SD.open(CONFIG_FILE);
-  if (cfg) {
-    size_t fsize = cfg.size();
+  FsFile cfg;
+  if(cfg.open(CONFIG_FILE))
+  {
+//  if (cfg) {
     //__debug(PSTR("File size: %u"), fsize);
     
-    if(fsize > capacity) {
+    if(cfg.fileSize() > capacity) {
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail3, P_OkButtonOnly);
       cfg.close();
       return;
