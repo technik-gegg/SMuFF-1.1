@@ -15,7 +15,8 @@ The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Hence, cha
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
 
 ## Recent changes
-1.4 - Heavy changes to gain better compatibility in Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet.
-The SMUFF.CFG has got a setting which defines the distance from the filament guide to the Selector.
+1.4 - Heavy changes to gain better compatibility in Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet. The configuration file (SMUFF.CFG) has got a new setting which defines the distance from the filament guide to the Selector.
+
 1.3 - Some modifications to gain Prusa MMU2 compatibility
+
 1.2 - Initial version
