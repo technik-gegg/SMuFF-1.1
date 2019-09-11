@@ -97,6 +97,9 @@ public:
   void          setDuration(unsigned int value) { _durationInt = value; }
   unsigned int  getStepsPerMM() { return _stepsPerMM; }
   void          setStepsPerMM(int steps) { _stepsPerMM = steps; }
+
+  bool          getAllowAccel() { return _allowAcceleration; }
+  void          setAllowAccel(bool state) { _allowAcceleration = state; }
   
 private:
   int             _number = 0;                  // index of this stepper
@@ -121,6 +124,7 @@ private:
   unsigned int    _stepsPerMM = 0;              // steps needed for one millimeter 
   float           _stepPositionMM = 0;          // current position of stepper in millimeter
   bool            _invertDir = false;           // stepper direction inversion
+  bool            _allowAcceleration = true;    // allow / disallow acceleration
 
   // per iteration variables (potentially changed every interrupt)
   volatile float          _duration;            // current interval length

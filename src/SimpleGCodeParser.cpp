@@ -33,10 +33,6 @@ unsigned int currentLine = 0;
 
 void parseGcode(String serialBuffer, int serial) {
 
-    if(parserBusy) {
-      sendErrorResponseP(serial, P_Busy);
-      return;
-    }
     serialBuffer.replace(" ","");
     serialBuffer.replace("\r","");
     serialBuffer.replace("\n","");
@@ -45,18 +41,37 @@ void parseGcode(String serialBuffer, int serial) {
       return;
 
     String line = String(serialBuffer);
-    parserBusy = true;
+    setAbortRequested(false);
+    if(smuffConfig.prusaMMU2)
+      resetSerialBuffer(serial);
+
     int pos;
     if((pos = line.lastIndexOf("*")) > -1) {
       line = line.substring(0, pos);
     }
     if((pos = line.lastIndexOf(";")) > -1) {
       if(pos==0) {
-        parserBusy = false;
         return;
       }
       line = line.substring(0, pos);
     }
+
+    if(parserBusy) {
+      if(!smuffConfig.prusaMMU2) {
+        sendErrorResponseP(serial, P_Busy);
+        return;
+      }
+      else if(!line.startsWith("A")) { // only Abort command is being processed while parser is busy 
+        return;
+      }
+    }
+    if(smuffConfig.prusaMMU2 && line.startsWith("A")) {
+      setAbortRequested(true);
+      __debug(PSTR("*ABORT* received"));
+      delay(250);
+    }
+
+    parserBusy = true;
     if(line.startsWith("N")) {
       char ln[15];
       if((int)(currentLine = getParam(line, (char*)"N")) != -1) {
@@ -64,7 +79,7 @@ void parseGcode(String serialBuffer, int serial) {
         line = line.substring(strlen(ln)+1);
       }
     }
-    //__debug("Line: %s %d", line.c_str(), line.length());
+    //__debug(PSTR("Line: %s %d"), line.c_str(), line.length());
     if(line.startsWith("G")) {
       if(parse_G(line.substring(1), serial))
         sendOkResponse(serial);  
@@ -99,7 +114,9 @@ void parseGcode(String serialBuffer, int serial) {
             line.startsWith("X") ||
             line.startsWith("F") ||
             line.startsWith("R") ||
-            line.startsWith("W")) {
+            line.startsWith("W") ||
+            line.startsWith("A")) {
+      __debug(PSTR("From Prusa: '%s'"), line.c_str());
       parse_PMMU2(line.charAt(0), line.substring(1), serial);
       parserBusy = false;
       return;
@@ -107,8 +124,10 @@ void parseGcode(String serialBuffer, int serial) {
     else {
       char tmp[256];
       sprintf(tmp, "%s '%s'\n", P_UnknownCmd, line.c_str());
-      //__debug("Err: %s", tmp);
-      sendErrorResponse(serial, tmp);
+      __debug(PSTR("ParseGcode err: %s"), tmp);
+      if(!smuffConfig.prusaMMU2) {
+        sendErrorResponse(serial, tmp);
+      }
     }
     parserBusy = false;
 }
@@ -124,8 +143,13 @@ bool parse_T(String buf, int serial) {
   int param;
 
   char msg[10];
-  sprintf_P(msg, P_TResponse, tool);
-  int ofs = String(msg).length()-2;
+  int ofs = 0;
+  if(smuffConfig.prusaMMU2)
+    sprintf_P(msg, P_Ok);     // this is what the Prusa expects ("ok\n")
+  else {
+    sprintf_P(msg, P_TResponse, tool);
+    ofs = String(msg).length()-2;
+  }
 
   if(tool == -1 || tool == 255) {
     parse_G(String("28"), serial);
@@ -143,7 +167,7 @@ bool parse_T(String buf, int serial) {
     printResponse(msg, serial);
   }
   else {
-    sendErrorResponse(serial, "Wrong tool selected.");
+    sendErrorResponseP(serial, PSTR("Wrong tool selected."));
     stat = false;
   }
 
@@ -158,7 +182,7 @@ bool parse_G(String buf, int serial) {
     return stat;
   }
   int code = buf.toInt();
-  //__debug("G[%s]: >%d< %d", buf.c_str(), code, buf.length());
+  //__debug(PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
  
   char msg[10];
   sprintf_P(msg, P_GResponse, code);
@@ -193,7 +217,7 @@ bool parse_M(String buf, int serial) {
     if(gCodeFuncsM[i].code == -1)
       break;
     if(gCodeFuncsM[i].code == code) {
-      //__debug("Calling: M", gCodeFuncsM[i].code);
+      //__debug(PSTR("Calling: M"), gCodeFuncsM[i].code);
       return gCodeFuncsM[i].func(msg, buf.substring(ofs), serial);
     }
   }
@@ -212,12 +236,19 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
   if(!smuffConfig.prusaMMU2) {
     sprintf_P(tmp, P_NoPrusa);
     sendErrorResponseP(serial, tmp);
+    //__debug(PSTR("No Prusa Emulation configured!"));
     return false;
   }
 
   bool  stat = true;
-  int   type = buf.toInt();
+  int   type = -1;
+  if(buf.length()>0)
+    type = buf.toInt();
   switch(cmd) {
+    case 'A':
+      // Aborted - just reset the flag
+      sendOkResponse(serial);
+      break;
     case 'S':     // Init (S0 | S1 | S2 | S3)
       switch(type) {
         case 0:
@@ -234,43 +265,48 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
           break;
       }
       printResponse(tmp,serial);
+      //__debug(("To Prusa (S%d): '%s'"), type, tmp);
       break;
 
     case 'P':     // FINDA status (Feeder endstop)
         sprintf(tmp,"%dok\n", feederEndstop() ? 1 : 0);
         printResponse(tmp,serial);
+        //__debug(PSTR("To Prusa (P%d): '%s'"), type, tmp);
       break;
 
     case 'C':     // Push filament to nozzle
-      loadFilament(); 
-      /*
-      if(smuffConfig.reinforceLength > 0) {
-        prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
-        runAndWait(FEEDER);
+      if(loadFilament()) {
+        sendOkResponse(serial);
+        //__debug(PSTR("To Prusa (C%d): ok<CR>"), type);
       }
-      */
-      sendOkResponse(serial);
       break;
 
     case 'L':     // Load filament
-      loadFilamentPemu();
+      if(toolSelected != type)
+        selectTool(type, false);
+      loadFilamentPMMU2();
       sendOkResponse(serial);
+      //__debug(PSTR("To Prusa (L%d): ok<CR>"), type);
       break;
 
     case 'U':     // Unload filament
-      unloadFilament();
-      sendOkResponse(serial);
+      if(unloadFilament()) {
+        sendOkResponse(serial);
+        //__debug(PSTR("To Prusa (U%d): ok<CR>"), type);
+      }
       break;
 
     case 'E':     // Eject filament
       unloadFilament();
       sendOkResponse(serial);
+      //__debug(PSTR("To Prusa (E%d): ok<CR>"), type);
       break;
 
     case 'K':     // Cut filament
     case 'F':     // Set filament
     case 'R':     // Recover after eject
       sendOkResponse(serial);
+      //__debug(PSTR("To Prusa (%c%d): ok<CR>"), cmd, type);
       break;
 
     case 'W': {    // Wait for user click
@@ -280,14 +316,18 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
         button = showDialog(P_PMMU_Title, P_PMMU_Wait, P_PMMU_WaitAdd, P_OkButtonOnly);
       } while (button != 1);
       sendOkResponse(serial);
+      //__debug(PSTR("To Prusa (W%d): ok<CR>"), type);
       break;
      }
     case 'X':     // Reset MMU
+      sendOkResponse(serial);
+      //__debug(PSTR("To Prusa (X%d): ok<CR>"), type);
       M999("", tmp, serial);
       break;
 
     default:
-      sendErrorResponse(serial);
+      sendErrorResponseP(serial);
+      //__debug(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
       break;
   }
   return stat;
@@ -295,12 +335,12 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
 
 int getParam(String buf, char* token) {
   int pos = buf.indexOf(token);
-  //__debug("getParam: %s\n",buf.c_str());
+  //__debug(PSTR("getParam: %s\n"),buf.c_str());
   if(pos != -1) {
-    //__debug("getParam:pos: %d",pos);
+    //__debug(PSTR("getParam:pos: %d"),pos);
     if(buf.charAt(pos+1)=='-') {
       int val = buf.substring(pos+2).toInt();
-      //__debug("Negative: %d", 0-val);
+      //__debug(PSTR("Negative: %d"), 0-val);
       return 0-val;
     }
     return buf.substring(pos+1).toInt();
@@ -311,17 +351,17 @@ int getParam(String buf, char* token) {
 
 bool getParamString(String buf, char* token, char* dest, int bufLen) {
   int pos = buf.indexOf(token);
-  //__debug("getParamString: %s\n",buf.c_str());
+  //__debug(PSTR("getParamString: %s\n"),buf.c_str());
   if(pos != -1) {
     if(buf.substring(pos+1).startsWith("\"")) {
       int endPos = buf.substring(pos+2).indexOf("\"");
-      //__debug("End of string: %d\n", endPos);
+      //__debug(PSTR("End of string: %d\n"), endPos);
       if(endPos != -1) {
         memset(dest, 0, bufLen);
         if(endPos+1 < bufLen) {
           if(dest != NULL) {
             buf.substring(pos+2, endPos+3).toCharArray(dest, endPos+1);
-            //__debug("ptmp: >%s< (%d)\n", dest, strlen(dest));
+            //__debug(PSTR("ptmp: >%s< (%d)\n"), dest, strlen(dest));
           }
           return true;
         }
@@ -360,7 +400,8 @@ void sendToolResponse(int serial) {
 }
 
 void sendErrorResponse(int serial, const char* msg /* = NULL */) {
-  printResponse(msg, serial);
+  if(msg != NULL)
+    printResponse(msg, serial);
   sendOkResponse(serial);
 }
 
@@ -385,15 +426,13 @@ void saveSettings(int serial) {
 
 void reportSettings(int serial) {
   char tmp[128];
-  long ldummy;
-  byte bdummy;
   
-  EEPROM.get(EEPROM_SELECTOR_POS, ldummy);  sprintf_P(tmp, P_SelectorPos,   EEPROM_SELECTOR_POS,    ldummy); printResponse(tmp, serial);
-  EEPROM.get(EEPROM_REVOLVER_POS, ldummy);  sprintf_P(tmp, P_RevolverPos,   EEPROM_REVOLVER_POS,    ldummy); printResponse(tmp, serial);
-  EEPROM.get(EEPROM_FEEDER_POS, ldummy);    sprintf_P(tmp, P_FeederPos,     EEPROM_FEEDER_POS,      ldummy); printResponse(tmp, serial);
-  EEPROM.get(EEPROM_TOOL, bdummy);          sprintf_P(tmp, P_ToolSelected,  EEPROM_TOOL,            bdummy); printResponse(tmp, serial);
-  EEPROM.get(EEPROM_CONTRAST, bdummy);      sprintf_P(tmp, P_Contrast,      EEPROM_CONTRAST,        bdummy); printResponse(tmp, serial);
-  EEPROM.get(EEPROM_TOOL_COUNT, bdummy);    sprintf_P(tmp, P_ToolsConfig,   EEPROM_TOOL_COUNT,      bdummy); printResponse(tmp, serial);
+  sprintf_P(tmp, P_SelectorPos,   dataStore.stepperPos[SELECTOR]); printResponse(tmp, serial);
+  sprintf_P(tmp, P_RevolverPos,   dataStore.stepperPos[REVOLVER]); printResponse(tmp, serial);
+  sprintf_P(tmp, P_FeederPos,     dataStore.stepperPos[FEEDER]); printResponse(tmp, serial);
+  sprintf_P(tmp, P_ToolSelected,  dataStore.tool); printResponse(tmp, serial);
+  sprintf_P(tmp, P_Contrast,      smuffConfig.lcdContrast); printResponse(tmp, serial);
+  sprintf_P(tmp, P_ToolsConfig,   smuffConfig.toolCount); printResponse(tmp, serial);
 }
 
 void printResponse(const char* response, int serial) {

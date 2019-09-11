@@ -50,7 +50,7 @@ void ZStepper::defaultStepFunc(void) {
 }
 
 void ZStepper::resetStepper() {
-  _duration = _acceleration;
+  _duration = _allowAcceleration ? _acceleration : _minStepInterval;
   _durationInt = _duration;
   _stepCount = 0;
   _movementDone = false;
@@ -89,11 +89,16 @@ void ZStepper::setEnabled(boolean state) {
 }
 
 void ZStepper::updateAcceleration() {
+  
+  if(!_allowAcceleration) {
+    _durationInt = _duration = _minStepInterval;
+    return;
+  }
   if(_stepCount <= _accelDistance) {
     _duration -= _stepsAcceleration;    // accelerate
     if(_duration <= _minStepInterval)
       _duration = _minStepInterval;
-    //__debug("durInt: %d, %s", _durationInt,  String(_duration).c_str());
+    //__debug(PSTR("durInt: %d, %s"), _durationInt,  String(_duration).c_str());
   }
   else if (_stepCount >= _totalSteps - _accelDistance ) {
     _duration += _stepsAcceleration;    // decelerate
@@ -106,7 +111,7 @@ void ZStepper::updateAcceleration() {
 void ZStepper::handleISR() {
 
   //if(_endstopType == ORBITAL)
-  //  __debug("O: %d %d ", _stepCount, _dir);
+  //  __debug(PSTR("O: %d %d "), _stepCount, _dir);
   
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
@@ -143,7 +148,7 @@ void ZStepper::handleISR() {
     setStepPosition(_stepPosition + _dir);
     if(_stepCount >= _totalSteps) {
       setMovementDone(true);
-      //__debug("handleISR(): %ld / %ld", _stepCount, _totalSteps);
+      //__debug(PSTR("handleISR(): %ld / %ld"), _stepCount, _totalSteps);
     }
   }
   updateAcceleration();
@@ -164,12 +169,12 @@ void ZStepper::home() {
   if(_endstopPin != -1) {
     distance = -(_maxStepCount*2);
   }
-  //__debug("[ZStepper::home] Distance: %d -  max: %d", distance, _maxStepCount);
+  //__debug(PSTR("[ZStepper::home] Distance: %d -  max: %d"), distance, _maxStepCount);
   prepareMovement(distance);
-  //__debug("[ZStepper::home] DONE prepareMovement");
+  //__debug(PSTR("[ZStepper::home] DONE prepareMovement"));
   if(runAndWaitFunc != NULL)
     runAndWaitFunc(_number);
-  //__debug("[ZStepper::home] DONE runAndWait");
+  //__debug(PSTR("[ZStepper::home] DONE runAndWait"));
   do {
     prepareMovement(_maxStepCount/30);
     if(runAndWaitFunc != NULL)

@@ -22,15 +22,22 @@
 
 #define DEBUG 1
 
+#include <Arduino.h>
 #include "Config.h"
 #include "Strings.h"
 #include "GCodes.h"
-#include "Encoder.h"
-#include <EEPROM.h>
+#include "RotaryEncoder.h"
 #include <Wire.h>
+#include <SPI.H>
 #include <SD.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
+#include "DataStore.h"
+
+#ifdef __STM32F1__
+#define sprintf_P     sprintf
+#define strncmp_P     strncmp
+#endif
 
 #define FEEDER_SIGNAL     1
 #define SELECTOR_SIGNAL   2
@@ -77,6 +84,7 @@ typedef struct {
   float reinforceLength     = 3.0f;
   bool  homeAfterFeed       = true;
   float bowdenLength        = 400.0f;
+  float selectorDistance    = 23.0f;
   int   i2cAddress          = 0x58;
   int   lcdContrast         = DSP_CONTRAST;
   int   menuAutoClose       = 20;
@@ -88,17 +96,18 @@ typedef struct {
   int   fanSpeed            = 0;
   char  materials[MAX_TOOLS][20];
   long  powerSaveTimeout    = 300;
-  char  unloadCommand[80]   = {{ 0 }};
+  char  unloadCommand[80]   = { 0 };
   int   wipeSequence[20]    = { 150,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,110,-1 };
   bool  prusaMMU2           = true;
 } SMuFFConfig;
 
 extern U8G2_ST7565_64128N_F_4W_HW_SPI   display;
-extern Encoder                          encoder;
+extern RotaryEncoder                    encoder;
 
 extern SMuFFConfig    smuffConfig;
 extern GCodeFunctions gCodeFuncsM[];
 extern GCodeFunctions gCodeFuncsG[];
+
 
 extern const char     brand[];
 extern volatile byte  nextStepperFlag;
@@ -114,6 +123,7 @@ extern bool           testMode;
 extern bool           feederJamed;
 extern bool           parserBusy;
 extern bool           isPwrSave;
+extern bool           isAbortRequested;
 
 extern void setupDisplay();
 extern void drawLogo();
@@ -131,7 +141,7 @@ extern bool showFeederFailedMessage(int state);
 extern int  showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons);
 extern bool moveHome(int index, bool showMessage = true, bool checkFeeder = true);
 extern bool loadFilament(bool showMessage = true);
-extern bool loadFilamentPemu(bool showMessage = true);
+extern bool loadFilamentPMMU2(bool showMessage = true);
 extern bool unloadFilament();
 extern void runAndWait(int index);
 extern void runNoWait(int index);
@@ -155,13 +165,16 @@ extern void signalUnloadFilament();
 extern void signalSelectorBusy();
 extern void signalSelectorReady();
 extern bool setServoPos(int degree);
-extern void getEepromData();
+extern void getStoredData();
 extern void readConfig();
 extern bool checkAutoClose();
 extern void resetAutoClose();
 extern void listDir(File root, int numTabs, int serial);
 extern void setPwrSave(int state);
 extern void __debug(const char* fmt, ...);
+extern bool forceAbort();
+extern void setAbortRequested(bool state);
+extern void resetSerialBuffer(int serial);
 
 extern void printEndstopState(int serial);
 extern void printPos(int index, int serial);

@@ -30,7 +30,7 @@ bool ZServo::setServoPos(int degree) {
   if(_pin > 0) {
     _pulseLen = map(degree, 0, 180, US_PER_PULSE_0DEG, US_PER_PULSE_180DEG);
     instance = this;
-    //__debug("Pulse length set to: %dms", _pulseLen);
+    //__debug(PSTR("Pulse length set to: %dms"), _pulseLen);
     servoTimer.setNextInterruptInterval(TIMER_INTERVAL);
     stat = true;
     _degree = degree;

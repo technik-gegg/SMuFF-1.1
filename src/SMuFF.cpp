@@ -26,7 +26,7 @@ ZStepper                        steppers[NUM_STEPPERS];
 ZTimer                          stepperTimer;
 ZServo                          servo;
 U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
-Encoder                         encoder(ENCODER1_PIN, ENCODER2_PIN);
+RotaryEncoder                   encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN);
 
 volatile byte           nextStepperFlag = 0;
 volatile byte           remainingSteppersFlag = 0;
@@ -78,11 +78,16 @@ void overrideStepZ() {
 }
 
 void endstopYevent() {
-  //__debug("Endstop Revolver: %d", steppers[REVOLVER].getStepPosition());
+  //__debug(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
 }
 
 void endstopZevent() {
-  //__debug("Endstop Revolver: %d", steppers[REVOLVER].getStepPosition());
+  //__debug(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
+}
+
+void encoderISR()
+{
+  encoder.readAB();
 }
 
 void setup() {
@@ -94,6 +99,9 @@ void setup() {
   Serial.begin(57600);        // set fixed baudrate until config file was read
   setupDisplay(); 
   readConfig();
+  encoder.begin();
+
+  attachInterrupt(digitalPinToInterrupt(ENCODER1_PIN), encoderISR, CHANGE);
 
   Serial.begin(smuffConfig.serial1Baudrate);
   Serial2.begin(smuffConfig.serial2Baudrate);
@@ -118,18 +126,19 @@ void setup() {
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM_Z);
   steppers[FEEDER].endstopFunc = endstopZevent;
   steppers[FEEDER].setInvertDir(smuffConfig.invertDir_Z);
+  steppers[FEEDER].setAllowAccel(false);
 
   stepperTimer.setupTimer(ZTimer::TIMER4, ZTimer::PRESCALER1);
   stepperTimer.setupTimerHook(isrTimerHandler);
 
-  getEepromData();
-  //__debug("DONE reading EEPROM");
+  getStoredData();
+  //__debug(PSTR("DONE reading EEPROM"));
 
   char menu[256];
   sprintf_P(menu, P_MenuItemBack);
   strcat_P(menu, P_MenuItems);
   mainList = String(menu);
-  //__debug("DONE setting Main menu");
+  //__debug(PSTR("DONE setting Main menu"));
   sprintf_P(menu, P_MenuItemBack);
   strcat_P(menu, P_OfsMenuItems);
   offsetsList = String(menu);
@@ -140,7 +149,7 @@ void setup() {
       steppers[i].runNoWaitFunc = runNoWait;
       steppers[i].setEnabled(true);
   }
-  //__debug("DONE enabling steppers");
+  //__debug(PSTR("DONE enabling steppers"));
 
   for(int i=0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
@@ -153,12 +162,13 @@ void setup() {
 
   if(smuffConfig.i2cAddress != 0) {
     Wire.begin(smuffConfig.i2cAddress);
+    // TDB: replace for STM32
     Wire.onReceive(wireReceiveEvent);
   }
-  //__debug("DONE I2C init");
+  //__debug(PSTR("DONE I2C init"));
   
   resetRevolver();
-  //__debug("DONE reset Revolver");
+  //__debug(PSTR("DONE reset Revolver"));
   
   //servo.setServoPos(0);
   sendStartResponse(0);
@@ -201,6 +211,8 @@ void setupSwapMenu() {
 
 void setNextInterruptInterval() {
 
+  if(forceAbort())
+    return;
   unsigned int minDuration = 65535;
   for(int i = 0; i < NUM_STEPPERS; i++) {
     if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration ) {
@@ -218,7 +230,7 @@ void setNextInterruptInterval() {
   if (remainingSteppersFlag == 0) {
     stepperTimer.setOCRxA(65500);
   }
-  //__debug("minDuration: %d", minDuration);
+  //__debug(PSTR("minDuration: %d"), minDuration);
   stepperTimer.setNextInterruptInterval(minDuration);
 }
 
@@ -240,7 +252,7 @@ void isrTimerHandler() {
     if(steppers[i].getMovementDone())
       remainingSteppersFlag &= ~_BV(i); 
   }
-  //__debug("ISR(): %d", remainingSteppersFlag);
+  //__debug(PSTR("ISR(): %d"), remainingSteppersFlag);
   setNextInterruptInterval();
 }
 
@@ -252,7 +264,11 @@ void runNoWait(int index) {
 
 void runAndWait(int index) {
   runNoWait(index);
-  while(remainingSteppersFlag);
+  while(remainingSteppersFlag) {
+    //yield();
+    serialEvent();    // not a really nice solution but need to check serials
+    serialEvent2();   // for Abort command
+  }
 }
 
 static int lastTurn;
@@ -271,7 +287,7 @@ void loop() {
     delay(200);
     setSignalPort(FEEDER_SIGNAL, state);
   }
-  //__debug("Mem: %d", freeMemory());
+  //__debug(PSTR("Mem: %d"), freeMemory());
 
   if(!checkUserMessage()) {
     if(!isPwrSave) {
@@ -292,11 +308,11 @@ void loop() {
   }
 
   int button = digitalRead(ENCODER_BUTTON_PIN);
-  if(button == LOW && isPwrSave) {
+  if(button==LOW && isPwrSave) {
     setPwrSave(0);
   }
   else {
-    int turn = encoder.read();
+    int turn = encoder.getPosition();
     if(turn % ENCODER_DELAY_MENU == 0) {
       if(!showMenu && turn != lastTurn) {
         if(isPwrSave) {
@@ -311,7 +327,7 @@ void loop() {
           else {
             showToolsMenu();
           }
-          turn = encoder.read();
+          turn = encoder.getPosition();
           showMenu = false;
         }
       }
@@ -320,7 +336,7 @@ void loop() {
   }
   delay(10);
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
-    //__debug("Power save mode after %d seconds (%d)", (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
+    //PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
     setPwrSave(1);
   }
 }
@@ -342,7 +358,7 @@ bool checkUserMessage() {
   }
   if(millis()-userMessageTime > USER_MESSAGE_RESET*1000) {
     displayingUserMessage = false;
-    //__debug("%ld", (millis()-userMessageTime)/1000);
+    //__debug(PSTR("%ld"), (millis()-userMessageTime)/1000);
   }
   return displayingUserMessage;
 }
@@ -411,7 +427,7 @@ void drawSwapTool(int from, int with) {
 }
 
 uint8_t swapTool(uint8_t index) {
-  int turn = encoder.read();
+  int turn = encoder.getPosition();
   int lastTurn = 0;
   int lastButton = HIGH;
   int button;
@@ -426,9 +442,9 @@ uint8_t swapTool(uint8_t index) {
     
     lastButton = button;
     button = digitalRead(ENCODER_BUTTON_PIN);
-    if(button == LOW && lastButton == HIGH)
+    if(button==LOW && lastButton==HIGH)
       break;
-    turn = encoder.read();
+    turn = encoder.getPosition();
     if(turn % ENCODER_DELAY_MENU == 0) {
       if(turn == lastTurn)
         continue;
@@ -517,7 +533,7 @@ void showOffsetsMenu() {
 }
 
 void changeOffset(int index) {
-  int turn = encoder.read();
+  int turn = encoder.getPosition();
   int lastTurn = 0;
   int lastButton = HIGH;
   int button;
@@ -530,7 +546,9 @@ void changeOffset(int index) {
   moveHome(index);
   long pos = steppers[index].getStepPosition();
   float posF = steppers[index].getStepPositionMM();
-
+  unsigned int curSpeed = steppers[index].getMaxSpeed();
+  steppers[FEEDER].setMaxSpeed(500);
+  
   drawOffsetPosition(index);
 
   while(1) {
@@ -538,7 +556,7 @@ void changeOffset(int index) {
     button = digitalRead(ENCODER_BUTTON_PIN);
     if(button == LOW && lastButton == HIGH)
       break;
-    turn = encoder.read();
+    turn = encoder.getPosition();
     if(turn == lastTurn)
       continue;
     if(turn < lastTurn) {
@@ -551,7 +569,7 @@ void changeOffset(int index) {
     }
     lastTurn = turn;
     if(index == REVOLVER) {
-      prepSteppingRel(index, pos, true);
+      prepSteppingRel(REVOLVER, pos, true);
     }
     if(index == SELECTOR) {
       prepSteppingRelMillimeter(SELECTOR, posF, true);
@@ -559,6 +577,7 @@ void changeOffset(int index) {
     runAndWait(index);
     drawOffsetPosition(index);
   }
+  steppers[index].setMaxSpeed(curSpeed);
 }
 
 void drawOffsetPosition(int index) {
@@ -613,20 +632,27 @@ void resetAutoClose() {
 }
 
 bool checkAutoClose() {
-  //__debug("Home: %ld", millis()-lastEncoderButtonTime);
+  //__debug(PSTR("Home: %ld"), millis()-lastEncoderButtonTime);
   if (millis() - lastEncoderButtonTime >= (unsigned long)smuffConfig.menuAutoClose*1000) {
     return true;
   }
   return false;
 }
 
+void resetSerialBuffer(int serial) {
+  if(serial == 0)
+    serialBuffer0 = "";
+  else if(serial == 2)
+    serialBuffer2 = "";
+}
+
 void serialEvent() {
   while (Serial.available()) {
     char in = (char)Serial.read();
     if (in == '\n') {
-      //__debug("Received: %s", serialBuffer0.c_str());
+      //__debug(PSTR("Received: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 0);
-      serialBuffer0 = "";
+      resetSerialBuffer(0);
     }
     else
       serialBuffer0 += in;
@@ -638,9 +664,9 @@ void serialEvent2() {
     char in = (char)Serial2.read();
     Serial.write(in);
     if (in == '\n') {
-      parseGcode(serialBuffer2, 2);
       traceSerial2 = String(serialBuffer2);
-      serialBuffer2 = "";
+      parseGcode(serialBuffer2, 2);
+      resetSerialBuffer(2);
     }
     else
       serialBuffer2 += in;

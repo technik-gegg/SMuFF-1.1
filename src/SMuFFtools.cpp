@@ -21,6 +21,7 @@
  * Module containing helper functions
  */
 
+#include <Arduino.h>
 #include "SMuFF.h"
 #include "SMuFFBitmaps.h"
 #include "Config.h"
@@ -38,6 +39,7 @@ byte                  toolSelected = -1;
 bool                  feederJamed = false;
 PositionMode          positionMode = RELATIVE;
 bool                  displayingUserMessage = false;
+bool                  isAbortRequested = false;
 unsigned int          userMessageTime = 0;
 char                  _sel[128];
 char                  _wait[128];
@@ -54,10 +56,6 @@ void setupDisplay() {
   display.begin(/*Select=*/ ENCODER_BUTTON_PIN,  /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
   display.enableUTF8Print();
   resetDisplay();
-  if (smuffConfig.lcdContrast < MIN_CONTRAST || smuffConfig.lcdContrast > MAX_CONTRAST) {
-    smuffConfig.lcdContrast = DSP_CONTRAST;
-    EEPROM.put(EEPROM_CONTRAST, smuffConfig.lcdContrast);
-  }
   display.setContrast(smuffConfig.lcdContrast);
 }
 
@@ -209,19 +207,25 @@ bool revolverEndstop() {
 }
 
 bool feederEndstop() {
-  /*
-  if(smuffConfig.externalControl_Z) {
-    return steppers[FEEDER].getEndstopHitAlt();
-  }
-  */
   return steppers[FEEDER].getEndstopHit();
 }
+
+bool forceAbort() {
+  return isAbortRequested;
+}
+
+void setAbortRequested(bool state) {
+  if(state)
+    remainingSteppersFlag = 0;  // stop any ongoing stepper movements
+  isAbortRequested = state;
+}
+
 
 uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
 {
   int stat = 0;
   int button = digitalRead(ENCODER_BUTTON_PIN);
-  int turn = encoder.read();
+  int turn = encoder.getPosition();
 
   if (button == LOW) {
     delay(20);
@@ -229,13 +233,13 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
     if (button == LOW && u8x8->debounce_state == HIGH) {
       stat = U8X8_MSG_GPIO_MENU_SELECT;
       resetAutoClose();
-      turn = encoder.read();
+      turn = encoder.getPosition(); 
       lastEncoderTurn = turn;
     }
   }
   else {
     if (turn != lastEncoderTurn) {
-      if (turn % ENCODER_DELAY == 0) {
+      //if (turn % ENCODER_DELAY == 0) {
         int delta = turn < lastEncoderTurn ? -1 : 1;
         lastEncoderTurn = turn;
         resetAutoClose();
@@ -249,7 +253,7 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
             stat =  U8X8_MSG_GPIO_MENU_PREV;
             break;
         }
-      }
+      //}
     }
   }
   u8x8->debounce_state = button;
@@ -284,17 +288,19 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
       }
     }
   }
-  //__debug("Stepper home");
+  //__debug(PSTR("Stepper home"));
   steppers[index].home();
-  //__debug("DONE Stepper home");
+  //__debug(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
     toolSelected = -1;
   }
   long pos = steppers[index].getStepPosition();
   if (index == SELECTOR || index == REVOLVER) {
-    EEPROM.update(EEPROM_TOOL, toolSelected);
+    dataStore.tool = toolSelected;
   }
-  EEPROM.put(index * sizeof(long), pos);
+  dataStore.stepperPos[index] = pos;
+  saveStore();
+
   parserBusy = false;
   return true;
 }
@@ -374,6 +380,13 @@ bool loadFilament(bool showMessage) {
   while (!feederEndstop()) {
     prepSteppingRelMillimeter(FEEDER, 2.5, true);
     runAndWait(FEEDER);
+    if(forceAbort()) {
+      steppers[FEEDER].setMaxSpeed(curSpeed);
+      setAbortRequested(false);
+      parserBusy = false;
+      return false;
+    }
+
     if (n == 50) {
       resetRevolver();
       prepSteppingRelMillimeter(FEEDER, -15.0, true);
@@ -388,14 +401,32 @@ bool loadFilament(bool showMessage) {
       return false;
     }
     n--;
+    if(forceAbort()) {
+      steppers[FEEDER].setMaxSpeed(curSpeed);
+      setAbortRequested(false);
+      parserBusy = false;
+      return false;
+    }
   }
   feederJamed = false;
   steppers[FEEDER].setMaxSpeed(curSpeed);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.95, true);
   runAndWait(FEEDER);
+  if(forceAbort()) {
+    steppers[FEEDER].setMaxSpeed(curSpeed);
+    setAbortRequested(false);
+    parserBusy = false;
+    return false;
+  }
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.05, true);
   runAndWait(FEEDER);
+  if(forceAbort()) {
+    steppers[FEEDER].setMaxSpeed(curSpeed);
+    setAbortRequested(false);
+    parserBusy = false;
+    return false;
+  }
   
   if(smuffConfig.reinforceLength > 0) {
     resetRevolver();
@@ -404,7 +435,9 @@ bool loadFilament(bool showMessage) {
   }
   
   steppers[FEEDER].setMaxSpeed(curSpeed);
-  EEPROM.put(EEPROM_FEEDER_POS, steppers[FEEDER].getStepPosition());
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition(); 
+  saveStore();
+
   if(smuffConfig.homeAfterFeed)
     steppers[REVOLVER].home();
   parserBusy = false;
@@ -416,7 +449,7 @@ bool loadFilament(bool showMessage) {
   If first feeds the filament until the endstop is hit, then 
   it pulls it back again.
 */
-bool loadFilamentPemu(bool showMessage) {
+bool loadFilamentPMMU2(bool showMessage) {
   if (toolSelected == 255) {
     signalNoTool();
     return false;
@@ -440,7 +473,7 @@ bool loadFilamentPemu(bool showMessage) {
     runAndWait(FEEDER);
     if (n == 50) {
       resetRevolver();
-      prepSteppingRelMillimeter(FEEDER, -15.0, true);
+      prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
       runAndWait(FEEDER);
     }
     if (n <= 0) {
@@ -452,11 +485,18 @@ bool loadFilamentPemu(bool showMessage) {
       return false;
     }
     n--;
+    if(forceAbort()) {
+      steppers[FEEDER].setMaxSpeed(curSpeed);
+      setAbortRequested(false);
+      parserBusy = false;
+      return false;
+    }
+    
   }
   feederJamed = false;
   steppers[FEEDER].setMaxSpeed(curSpeed);
   // now pull it back again
-  prepSteppingRelMillimeter(FEEDER, -15.0, true);
+  prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
   runAndWait(FEEDER);
   
   if(smuffConfig.reinforceLength > 0) {
@@ -466,7 +506,9 @@ bool loadFilamentPemu(bool showMessage) {
   }
   
   steppers[FEEDER].setMaxSpeed(curSpeed);
-  EEPROM.put(EEPROM_FEEDER_POS, steppers[FEEDER].getStepPosition());
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
+  saveStore(); 
+
   if(smuffConfig.homeAfterFeed)
     steppers[REVOLVER].home();
   parserBusy = false;
@@ -502,10 +544,15 @@ bool unloadFilament() {
   }
   prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength*3));
   runAndWait(FEEDER);
+  if(forceAbort()) {
+    setAbortRequested(false);
+    return false;
+  }
+
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
   int n = 200;
   do {
-    prepSteppingRelMillimeter(FEEDER, -20.0, true);
+    prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
     runAndWait(FEEDER);
     if(!feederEndstop()) {
       if((n > 0 && n < 200) && n % 50 == 0) {
@@ -522,12 +569,21 @@ bool unloadFilament() {
       }
     }
     n--;
+    if(forceAbort()) {
+      steppers[FEEDER].setMaxSpeed(curSpeed);
+      setAbortRequested(false);
+      parserBusy = false;
+      return false;
+    }
   } while (!feederEndstop());
   feederJamed = false;
   steppers[FEEDER].setMaxSpeed(curSpeed);
   steppers[FEEDER].setEndstopState(!steppers[FEEDER].getEndstopState());
   steppers[FEEDER].setStepPosition(0);
-  EEPROM.put(EEPROM_FEEDER_POS, steppers[FEEDER].getStepPosition());
+
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
+  saveStore();
+
   parserBusy = false;
   return true;
 }
@@ -553,7 +609,7 @@ bool selectTool(int ndx, bool showMessage) {
       //resetRevolver();
       signalSelectorReady();
     }
-    return false;
+    return true;
   }
   if(!steppers[SELECTOR].getEnabled())
     steppers[SELECTOR].setEnabled(true);
@@ -567,6 +623,10 @@ bool selectTool(int ndx, bool showMessage) {
   else {
     if (!smuffConfig.externalControl_Z && feederEndstop()) {
       unloadFilament();
+      if(forceAbort()) {
+        setAbortRequested(false);
+        return false;
+      }
     }
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
       // TODO: Signal Duet3D to retract 2mm
@@ -578,12 +638,12 @@ bool selectTool(int ndx, bool showMessage) {
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
           Serial2.print(smuffConfig.unloadCommand);
           Serial2.print("\n");
-          __debug("Feeder jamed, sent unload command '%s'\n", smuffConfig.unloadCommand);
+          __debug(PSTR("Feeder jamed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
         }
       }
     }
   }
-  //__debug("Selecting tool: %d", ndx);
+  //__debug(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
   drawSelectingMessage(ndx);
   prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
@@ -593,11 +653,19 @@ bool selectTool(int ndx, bool showMessage) {
     remainingSteppersFlag |= _BV(REVOLVER);
   }
   runAndWait(-1);
-  toolSelected = ndx;
-  EEPROM.put(EEPROM_TOOL, toolSelected);
-  for (int i = 0; i < NUM_STEPPERS; i++) {
-    EEPROM.put(i * sizeof(long), steppers[i].getStepPosition());
+  if(forceAbort()) {
+    setAbortRequested(false);
+    parserBusy = false;
+    return false;
   }
+  toolSelected = ndx;
+
+  dataStore.tool = toolSelected;
+  dataStore.stepperPos[SELECTOR] = steppers[SELECTOR].getStepPosition();
+  dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
+  saveStore();
+
   if (!smuffConfig.externalControl_Z && showMessage) {
     showFeederLoadMessage();
   }
@@ -605,16 +673,18 @@ bool selectTool(int ndx, bool showMessage) {
     resetRevolver();
     signalSelectorReady();
   }
-  if(testMode)
-    Serial2.print("T"); Serial2.println(ndx);
+  if(testMode) {
+    Serial2.print("T");
+    Serial2.println(ndx); 
+  }
   parserBusy = false;
   return true;
 }
 
 void resetRevolver() {
-  //__debug("resetting revolver");
+  //__debug(PSTR("resetting revolver"));
   moveHome(REVOLVER, false, false);
-  //__debug("DONE resetting revolver");
+  //__debug(PSTR("DONE resetting revolver"));
   if (toolSelected > -1) {
     prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected*smuffConfig.revolverSpacing), true);
     runAndWait(REVOLVER);
@@ -650,10 +720,12 @@ void prepSteppingRelMillimeter(int index, float millimeter, bool ignoreEndstop) 
 }
 
 void printEndstopState(int serial) {
-  sprintf(tmp, "Selector: %s\tRevolver: %s\tFeeder: %s\n",
-          selectorEndstop()  ? "triggered" : "open",
-          revolverEndstop()  ? "triggered" : "open",
-          feederEndstop()    ? "triggered" : "open");
+  const char* _triggered = "triggered";
+  const char* _open      = "open";
+  sprintf_P(tmp, PSTR("Selector: %s\tRevolver: %s\tFeeder: %s\n"),
+          selectorEndstop()  ? _triggered : _open,
+          revolverEndstop()  ? _triggered : _open,
+          feederEndstop()    ? _triggered : _open);
   printResponse(tmp, serial);
 }
 
@@ -712,25 +784,12 @@ bool setServoPos(int degree) {
   return servo.setServoPos(degree);
 }
 
-void getEepromData() {
-  long pos;
-
-  EEPROM.get(EEPROM_SELECTOR_POS, pos);
-  steppers[SELECTOR].setStepPosition(pos);
-  EEPROM.get(EEPROM_REVOLVER_POS, pos);
-  steppers[REVOLVER].setStepPosition(pos);
-  EEPROM.get(EEPROM_FEEDER_POS, pos);
-  steppers[FEEDER].setStepPosition(pos);
-
-  EEPROM.get(EEPROM_TOOL, toolSelected);
-  EEPROM.get(EEPROM_CONTRAST, smuffConfig.lcdContrast);
-
-  EEPROM.get(EEPROM_TOOL_COUNT, smuffConfig.toolCount);
-  if (smuffConfig.toolCount < MIN_TOOLS || smuffConfig.toolCount > MAX_TOOLS) {
-    smuffConfig.toolCount = 5;
-    EEPROM.put(EEPROM_TOOL_COUNT, smuffConfig.toolCount);
-  }
-
+void getStoredData() {
+  recoverStore();
+  steppers[SELECTOR].setStepPosition(dataStore.stepperPos[SELECTOR]);
+  steppers[REVOLVER].setStepPosition(dataStore.stepperPos[REVOLVER]);
+  steppers[FEEDER].setStepPosition(dataStore.stepperPos[FEEDER]);
+  toolSelected = dataStore.tool;
 }
 
 void setSignalPort(int port, bool state) {
@@ -740,22 +799,22 @@ void setSignalPort(int port, bool state) {
 
 void signalSelectorReady() {
   setSignalPort(SELECTOR_SIGNAL, false);
-  //__debug("Signalling Selector ready");
+  //__debug(PSTR("Signalling Selector ready"));
 }
 
 void signalSelectorBusy() {
   setSignalPort(SELECTOR_SIGNAL, true);
-  //__debug("Signalling Selector busy");
+  //__debug(PSTR("Signalling Selector busy"));
 }
 
 void signalLoadFilament() {
   setSignalPort(FEEDER_SIGNAL, true);
-  //__debug("Signalling load filament");
+  //__debug(PSTR("Signalling load filament"));
 }
 
 void signalUnloadFilament() {
   setSignalPort(FEEDER_SIGNAL, false);
-  //__debug("Signalling unload filament");
+  //__debug(PSTR("Signalling unload filament"));
 }
 
 void listDir(File root, int numTabs, int serial) {
@@ -785,8 +844,9 @@ void __debug(const char* fmt, ...) {
   char _tmp[1024];
   va_list arguments;
   va_start(arguments, fmt); 
-  vsnprintf(_tmp, 1024, fmt, arguments);
+  vsnprintf_P(_tmp, 1024, fmt, arguments);
   va_end (arguments); 
   Serial.println(_tmp);
 #endif
 }
+

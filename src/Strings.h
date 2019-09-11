@@ -59,7 +59,7 @@ const char P_TitleOffsetsMenu [] PROGMEM    = { "Offsets calibration" };
 const char P_TitleSwapMenu [] PROGMEM       = { "Swap tools" };
 const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
-const char P_Pemu[] PROGMEM                 = { "PEMU" };
+const char P_Pemu[] PROGMEM                 = { "PMMU2" };
 
 const char P_SD_ReadingConfig[] PROGMEM = { "Reading config..." };
 const char P_SD_InitError[] PROGMEM     = { "SD-Card not ready!" };
@@ -76,12 +76,12 @@ const char P_GResponse[] PROGMEM      = { "G%d\n" };
 const char P_MResponse[] PROGMEM      = { "M%d\n" };
 const char P_M250Response[] PROGMEM   = { "M250 C%d\n" };
 
-const char P_SelectorPos[] PROGMEM    = { "%3d: Selector position = %ld\n" };
-const char P_RevolverPos[] PROGMEM    = { "%3d: Revolver position = %ld\n" };
-const char P_FeederPos[] PROGMEM      = { "%3d: Feeder position = %ld\n" };
-const char P_ToolSelected[] PROGMEM   = { "%3d: Tool selected = %d\n" };
-const char P_Contrast[] PROGMEM       = { "%3d: Display contrast = %d\n" };
-const char P_ToolsConfig[] PROGMEM    = { "%3d: Tools configured = %d\n" };
+const char P_SelectorPos[] PROGMEM    = { "Selector position = %ld\n" };
+const char P_RevolverPos[] PROGMEM    = { "Revolver position = %ld\n" };
+const char P_FeederPos[] PROGMEM      = { "Feeder position = %ld\n" };
+const char P_ToolSelected[] PROGMEM   = { "Tool selected = %d\n" };
+const char P_Contrast[] PROGMEM       = { "Display contrast = %d\n" };
+const char P_ToolsConfig[] PROGMEM    = { "Tools configured = %d\n" };
 const char P_AccelSpeed[] PROGMEM     = { "X (Selector):\t%s\nY (Revolver):\t%s\nZ (Feeder):\t%s\n" };
 
 const char P_CurrentTool[] PROGMEM    = {"Tool    " };
@@ -121,7 +121,6 @@ const char P_MCmds[] PROGMEM = {
   "M119\t-\tReport endstop status\n" \
   "M120\t-\tEnable endstops\n" \
   "M121\t-\tDisable endstops\n" \
-  "M122\t-\tReport Diagnostics\n" \
   "M201\t-\tSet max acceleration\n" \
   "M203\t-\tSet max feedrate\n" \
   "M206\t-\tSet offsets\n" \

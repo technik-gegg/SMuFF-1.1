@@ -28,7 +28,7 @@ Sd2Card card;
 SdVolume volume;
 SdFile root;
 
-const size_t capacity = 1200;
+const size_t capacity = 1300;
 
 void readConfig()
 {
@@ -41,19 +41,19 @@ void readConfig()
   /*
   if (card.init(SPI_FULL_SPEED, SD_SS_PIN)) {  
     uint32_t cardSize = card.cardSize();
-    __debug("Card type: "); 
+    __debug(PSTR("Card type: ")); 
     switch (card.type()) {
-      case SD_CARD_TYPE_SD1: __debug("SD"); break;
-      case SD_CARD_TYPE_SD2: __debug("SD2"); break;
-      case SD_CARD_TYPE_SDHC: __debug("SD%SC", cardSize < 70000000 ? "H" : "X"); break;
+      case SD_CARD_TYPE_SD1: __debug(PSTR("SD")); break;
+      case SD_CARD_TYPE_SD2: __debug(PSTR("SD2")); break;
+      case SD_CARD_TYPE_SDHC: __debug(PSTR("SD%SC"), cardSize < 70000000 ? "H" : "X"); break;
       default: __debug("Unknown");
     }  
-    __debug("Card size: %u MB", cardSize);
+    __debug(PSTR("Card size: %u MB"), cardSize);
     if (volume.init(card)) {
-      __debug("Volume is FAT%d", volume.fatType());
+      __debug(PSTR("Volume is FAT%d"), volume.fatType());
       root.openRoot(volume);
       if(!root.isOpen()) {
-        __debug("Can't open root.");
+        __debug(PSTR("Can't open root."));
       }
       else 
         root.ls(LS_R | LS_DATE | LS_SIZE);
@@ -67,11 +67,11 @@ void readConfig()
     return;
   }
 
-  //__debug("Trying to open config file '%s'", CONFIG_FILE);
+  //__debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
   File cfg = SD.open(CONFIG_FILE);
   if (cfg) {
     size_t fsize = cfg.size();
-    //__debug("File size: %u", fsize);
+    //__debug(PSTR("File size: %u"), fsize);
     
     if(fsize > capacity) {
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail3, P_OkButtonOnly);
@@ -81,7 +81,7 @@ void readConfig()
     
     auto error = deserializeJson(jsonDoc, cfg);
     if (error) {
-      //__debug("deserializeJson() failed with code %s", error.c_str());
+      //__debug(PSTR("deserializeJson() failed with code %s"), error.c_str());
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail2, P_OkButtonOnly);
     }
     else {
@@ -91,7 +91,7 @@ void readConfig()
       const char* maxSpeed = "MaxSpeed";
       const char* invertDir = "InvertDir";
       drawSDStatus(SD_READING_CONFIG);
-      int toolCnt =                     jsonDoc["ToolCount"];
+      int toolCnt =                     jsonDoc[PSTR("ToolCount")];
       smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt < MAX_TOOLS) ? toolCnt : 5;
       smuffConfig.firstToolOffset =     jsonDoc[selector]["Offset"];
       smuffConfig.toolSpacing =         jsonDoc[selector]["Spacing"];
@@ -124,6 +124,7 @@ void readConfig()
       int contrast =                    jsonDoc["LCDContrast"];
       smuffConfig.lcdContrast = (contrast > MIN_CONTRAST && contrast < MAX_CONTRAST) ? contrast : DSP_CONTRAST;
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];
+      smuffConfig.selectorDistance =    jsonDoc["SelectorDist"];
       int i2cAdr =                      jsonDoc["I2CAddress"];
       smuffConfig.i2cAddress = (i2cAdr > 0 && i2cAdr < 255) ? i2cAdr : I2C_SLAVE_ADDRESS;
       smuffConfig.menuAutoClose =       jsonDoc["MenuAutoClose"];
@@ -134,23 +135,32 @@ void readConfig()
       smuffConfig.fanSpeed =            jsonDoc["FanSpeed"];
       smuffConfig.powerSaveTimeout =    jsonDoc["PowerSaveTimeout"];
       smuffConfig.duetDirect =          jsonDoc["Duet3DDirect"];
-      char* p =                         jsonDoc["UnloadCommand"];
-      if(p != NULL && strlen(p) > 0)
+      const char* p =                   jsonDoc["UnloadCommand"];
+      if(p != NULL && strlen(p) > 0) {
+#ifdef __STM32F1__
+        strncpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
+#else
         strlcpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
-      smuffConfig.prusaMMU2 =          jsonDoc["EmulatePrusa"];
+#endif
+      }
+      smuffConfig.prusaMMU2 =           jsonDoc["EmulatePrusa"];
 
       for(int i=0; i < smuffConfig.toolCount; i++) {
-        char tmp[10];
+        char tmp[16];
         sprintf(tmp,"Tool%d", i);
         memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
+#ifdef __STM32F1__
+        strncpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i])); 
+#else
         strlcpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i])); 
+#endif
       }
-      //__debug("DONE reading config");
+      //__debug(PSTR("DONE reading config"));
     }
     cfg.close();
   }
   else {
-    __debug("Open config file failed: handle = %s", !cfg ? "FALSE" : "TRUE");
+    __debug(PSTR("Open config file failed: handle = %s"), !cfg ? "FALSE" : "TRUE");
     drawSDStatus(SD_ERR_NOCONFIG);
     delay(5000);
   } 

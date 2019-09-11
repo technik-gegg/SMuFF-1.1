@@ -21,11 +21,15 @@
  * Module for handling all the G-Codes supported
  */
  
+#include <Arduino.h>
 #include "SMuFF.h"
 #include "ZTimerLib.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
 #include "GCodes.h"
+#ifdef __STM32F1__
+#include "libmaple/nvic.h"
+#endif
 
 extern ZStepper steppers[NUM_STEPPERS];
 extern ZServo   servo;
@@ -103,8 +107,10 @@ extern char tmp[128];
  * Class M
  ========================================================*/
 bool dummy(const char* msg, String buf, int serial) {
-  int code = buf.toInt();
-  __debug("Ignored M-Code: M%d", code);
+  if(!smuffConfig.prusaMMU2) {
+    int code = buf.toInt();
+    __debug(PSTR("Ignored M-Code: M%d"), code);
+  }
   return true;
 }
 
@@ -266,7 +272,7 @@ bool M203(const char* msg, String buf, int serial) {
   if((param = getParam(buf, Y_Param))  != -1) {
     if(param > 0 && param <= 10000) {
       steppers[REVOLVER].setMaxSpeed(param);
-      //__debug("Revolver max speed: %d", steppers[REVOLVER].getMaxSpeed());
+      //__debug(PSTR("Revolver max speed: %d"), steppers[REVOLVER].getMaxSpeed());
     }
     else stat = false;
   }
@@ -304,7 +310,7 @@ bool M250(const char* msg, String buf, int serial) {
   if((param = getParam(buf, C_Param)) != -1) {
     if(param >= 60 && param < 256) {
       display.setContrast(param);
-      EEPROM.put(EEPROM_CONTRAST, param);
+      smuffConfig.lcdContrast = param;
       printResponse(msg, serial); 
     }
     else
@@ -363,7 +369,7 @@ bool M700(const char* msg, String buf, int serial) {
   printResponse(msg, serial);
   if(toolSelected > 0 && toolSelected <= MAX_TOOLS) {
     getParamString(buf, S_Param, smuffConfig.materials[toolSelected], sizeof(smuffConfig.materials[0]));
-    //__debug("Material: %s\n",smuffConfig.materials[toolSelected]);
+    //__debug(PSTR("Material: %s\n"),smuffConfig.materials[toolSelected]);
     return loadFilament();
   }
   else 
@@ -379,7 +385,11 @@ bool M701(const char* msg, String buf, int serial) {
 bool M999(const char* msg, String buf, int serial) {
   printResponse(msg, serial); 
   delay(500); 
+#ifndef __STM32F1__
   __asm__ volatile ("jmp 0x0000"); 
+#else
+  nvic_sys_reset();
+#endif
   return true;
 }
 
@@ -388,12 +398,12 @@ bool M2000(const char* msg, String buf, int serial) {
   printResponse(msg, serial); 
   getParamString(buf, S_Param, tmp, sizeof(tmp));
   if(strlen(tmp)>0) {
-    printResponse("B", serial);
+    printResponseP(PSTR("B"), serial);
     for(unsigned i=0; i< strlen(tmp); i++) {
       sprintf(s,"%d:", (char)tmp[i]);
       printResponse(s, serial); 
     }
-    printResponse("10\n", serial);
+    printResponseP(PSTR("10\n"), serial);
   }
   return true;
 }
@@ -407,7 +417,7 @@ bool M2001(const char* msg, String buf, int serial) {
     int ndx = 0;
     int pos = 0;
     if(data.startsWith("B")) {
-      printResponse(">>", serial); 
+      printResponseP(PSTR(">>"), serial); 
       ndx++;
       do {
         pos = data.indexOf(":", ndx);
@@ -419,7 +429,7 @@ bool M2001(const char* msg, String buf, int serial) {
           c = data.substring(ndx).toInt();
         }
         if(c == 10) {
-          printResponse("\\n", serial); 
+          printResponseP(PSTR("\\n"), serial); 
         }
         else {
           sprintf(tmp, "%c", c);
@@ -427,7 +437,7 @@ bool M2001(const char* msg, String buf, int serial) {
         }
         ndx = pos + 1;
       } while(pos != -1);
-      printResponse("<<\n", serial); 
+      printResponseP(PSTR("<<\n"), serial); 
     }
     else {
       printResponseP(P_WrongFormat, serial);
@@ -464,17 +474,17 @@ bool G1(const char* msg, String buf, int serial) {
     isMill = (param == 1);
   }
   if((param = getParam(buf, Y_Param)) != -1) {
-    //__debug("G1 moving Y: %d", param);
+    //__debug(PSTR("G1 moving Y: %d"), param);
     steppers[REVOLVER].setEnabled(true);
     prepStepping(REVOLVER, (long)param, isMill);
   }
   if((param = getParam(buf, X_Param)) != -1) {
-    //__debug("G1 moving X: %d", param);
+    //__debug(PSTR("G1 moving X: %d"), param);
     steppers[SELECTOR].setEnabled(true);
     prepStepping(SELECTOR, (long)param, isMill, true);
   }
   if((param = getParam(buf, Z_Param)) != -1) {
-    //__debug("G1 moving Z: %d", param);
+    //__debug(PSTR("G1 moving Z: %d"), param);
     steppers[FEEDER].setEnabled(true);
     prepStepping(FEEDER, (long)param, isMill);
   }
