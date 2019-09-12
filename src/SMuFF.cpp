@@ -134,10 +134,8 @@ void setup() {
   getStoredData();
   //__debug(PSTR("DONE reading EEPROM"));
 
+  setupMainMenu();
   char menu[256];
-  sprintf_P(menu, P_MenuItemBack);
-  strcat_P(menu, P_MenuItems);
-  mainList = String(menu);
   //__debug(PSTR("DONE setting Main menu"));
   sprintf_P(menu, P_MenuItemBack);
   strcat_P(menu, P_OfsMenuItems);
@@ -196,6 +194,15 @@ void setupToolsMenu() {
   }
   menu[strlen(menu)-1] = '\0';
   toolsList = String(menu);
+}
+
+void setupMainMenu() {
+  char menu[256];
+  sprintf_P(menu, P_MenuItemBack);
+  strcat_P(menu, P_MenuItems);
+  if(smuffConfig.prusaMMU2)
+    strcat_P(menu, P_MenuItemsPMMU);
+  mainList = String(menu);
 }
 
 void setupSwapMenu() {
@@ -266,9 +273,7 @@ void runNoWait(int index) {
 void runAndWait(int index) {
   runNoWait(index);
   while(remainingSteppersFlag) {
-    //yield();
-    serialEvent();    // not a really nice solution but need to check serials
-    serialEvent2();   // for Abort command
+    checkSerialPending(); // not a really nice solution but need to check serials for Abort command
   }
 }
 
@@ -402,7 +407,10 @@ void showMainMenu() {
           break;
           
         case 5:
-          loadFilament();
+          if(smuffConfig.prusaMMU2)
+            loadFilamentPMMU2();
+          else
+            loadFilament();
           startTime = millis();
           break;
         
@@ -413,6 +421,10 @@ void showMainMenu() {
 
         case 7:
           showSwapMenu();
+          break;
+        
+        case 8:
+          loadFilament();
           break;
       }
     }
@@ -638,6 +650,13 @@ bool checkAutoClose() {
     return true;
   }
   return false;
+}
+
+void checkSerialPending() {
+  if(Serial.available())
+    serialEvent();
+  if(Serial2.available())
+    serialEvent2();
 }
 
 void resetSerialBuffer(int serial) {

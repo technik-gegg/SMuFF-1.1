@@ -20,12 +20,12 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V1.4"
+#define VERSION_STRING    "V1.41"
 #define VERSION_MAJOR     1
 #define VERSION_MINOR     2  
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2019-09-11"
+#define VERSION_DATE      "2019-09-12"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 

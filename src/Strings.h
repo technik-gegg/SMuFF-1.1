@@ -28,6 +28,7 @@
 
 const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
 const char P_MenuItems [] PROGMEM           = { "Home\nMotors off\nOffsets\nLoad feeder\nUnload feeder\nSwap tools" };
+const char P_MenuItemsPMMU [] PROGMEM       = { "\nLoad to Nozzle" };
 const char P_OfsMenuItems [] PROGMEM        = { "Selector\nRevolver" };
 const char P_OkButtonOnly [] PROGMEM        = { " Ok " };
 const char P_CancelButtonOnly [] PROGMEM    = { " Cancel " };

@@ -178,6 +178,8 @@ extern void setPwrSave(int state);
 extern void __debug(const char* fmt, ...);
 extern void setAbortRequested(bool state);
 extern void resetSerialBuffer(int serial);
+extern void checkSerialPending();
+extern void setupMainMenu();
 
 extern void printEndstopState(int serial);
 extern void printPos(int index, int serial);

@@ -7,3 +7,4 @@
 *.workspace
 *SMuFF.code-workspace
 .vscode/arduino.json
+.vscode/settings.json

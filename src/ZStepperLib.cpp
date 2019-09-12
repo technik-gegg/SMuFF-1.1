@@ -55,9 +55,7 @@ void ZStepper::resetStepper() {
   _stepCount = 0;
   _movementDone = false;
   _endstopHit = false;
-  if(_abort) {
-    __debug(PSTR("Still aborted"));
-  }
+  //if(_abort) __debug(PSTR("Still aborted"));
 }
 
 void ZStepper::prepareMovement(long steps, boolean ignoreEndstop /*= false */) {

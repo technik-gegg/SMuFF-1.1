@@ -41,7 +41,7 @@ void parseGcode(String serialBuffer, int serial) {
       return;
 
     String line = String(serialBuffer);
-    setAbortRequested(false);
+    //setAbortRequested(false);
     if(smuffConfig.prusaMMU2)
       resetSerialBuffer(serial);
 

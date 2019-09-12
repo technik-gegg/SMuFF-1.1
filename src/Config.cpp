@@ -24,12 +24,6 @@
 #include "SMuFF.h"
 #include <ArduinoJson.h>
 
-/*
-Sd2Card card;
-SdVolume volume;
-SdFile root;
-*/
-
 SdFs SD;
 
 const size_t capacity = 1300;
@@ -41,29 +35,6 @@ void readConfig()
 
   pinMode(SD_SS_PIN, OUTPUT);
   digitalWrite(SD_SS_PIN, HIGH);
-
-  /*
-  if (card.init(SPI_FULL_SPEED, SD_SS_PIN)) {  
-    uint32_t cardSize = card.cardSize();
-    __debug(PSTR("Card type: ")); 
-    switch (card.type()) {
-      case SD_CARD_TYPE_SD1: __debug(PSTR("SD")); break;
-      case SD_CARD_TYPE_SD2: __debug(PSTR("SD2")); break;
-      case SD_CARD_TYPE_SDHC: __debug(PSTR("SD%SC"), cardSize < 70000000 ? "H" : "X"); break;
-      default: __debug("Unknown");
-    }  
-    __debug(PSTR("Card size: %u MB"), cardSize);
-    if (volume.init(card)) {
-      __debug(PSTR("Volume is FAT%d"), volume.fatType());
-      root.openRoot(volume);
-      if(!root.isOpen()) {
-        __debug(PSTR("Can't open root."));
-      }
-      else 
-        root.ls(LS_R | LS_DATE | LS_SIZE);
-    }
-  }
-  */
 
   if (!SD.begin(SD_SS_PIN)) {
     drawSDStatus(SD_ERR_INIT);

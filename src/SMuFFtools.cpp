@@ -233,7 +233,7 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
   }
   else {
     if (turn != lastEncoderTurn) {
-      //if (turn % ENCODER_DELAY == 0) {
+      if (turn % ENCODER_DELAY == 0) {
         int delta = turn < lastEncoderTurn ? -1 : 1;
         lastEncoderTurn = turn;
         resetAutoClose();
@@ -247,13 +247,11 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
             stat =  U8X8_MSG_GPIO_MENU_PREV;
             break;
         }
-      //}
+      }
     }
   }
   u8x8->debounce_state = button;
-  serialEvent();
-  serialEvent2();
-  //wireReceiveEvent(0);
+  checkSerialPending();
   if(checkAutoClose()) {
     stat = U8X8_MSG_GPIO_MENU_HOME;
   }
@@ -320,7 +318,10 @@ bool showFeederLoadMessage() {
   int button = showDialog(P_TitleSelected, P_SelectedTool, P_AskLoad, P_YesNoButtons);
   if (button == 1) {
     drawStatus();
-    loadFilament();
+    if(smuffConfig.prusaMMU2)
+      loadFilamentPMMU2();
+    else
+      loadFilament();
     state = true;
   }
   display.clearDisplay();
@@ -398,7 +399,7 @@ bool loadFilament(bool showMessage) {
   prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.05, true);
   runAndWait(FEEDER);
   
-  if(smuffConfig.reinforceLength > 0) {
+  if(smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort()) {
     resetRevolver();
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
@@ -410,6 +411,8 @@ bool loadFilament(bool showMessage) {
 
   if(smuffConfig.homeAfterFeed)
     steppers[REVOLVER].home();
+  steppers[FEEDER].setAbort(false);
+
   parserBusy = false;
   return true;
 }
@@ -462,7 +465,7 @@ bool loadFilamentPMMU2(bool showMessage) {
   prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
   runAndWait(FEEDER);
   
-  if(smuffConfig.reinforceLength > 0) {
+  if(smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort()) {
     resetRevolver();
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
@@ -474,6 +477,8 @@ bool loadFilamentPMMU2(bool showMessage) {
 
   if(smuffConfig.homeAfterFeed)
     steppers[REVOLVER].home();
+  steppers[FEEDER].setAbort(false);
+
   parserBusy = false;
   return true;
 }
@@ -490,8 +495,17 @@ bool unloadFilament() {
   parserBusy = true;
   if(!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
+  
   if(smuffConfig.resetBeforeFeed_Y)
     resetRevolver();
+  else {
+    if(smuffConfig.homeAfterFeed) {
+      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected *smuffConfig.revolverSpacing), true);
+      remainingSteppersFlag |= _BV(REVOLVER);
+    }
+    runAndWait(-1);
+  }
+
   unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
   steppers[FEEDER].setEndstopState(!steppers[FEEDER].getEndstopState());
   if(smuffConfig.unloadRetract != 0) {
@@ -533,6 +547,7 @@ bool unloadFilament() {
   steppers[FEEDER].setMaxSpeed(curSpeed);
   steppers[FEEDER].setEndstopState(!steppers[FEEDER].getEndstopState());
   steppers[FEEDER].setStepPosition(0);
+  steppers[FEEDER].setAbort(false);
 
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
