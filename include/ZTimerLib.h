@@ -22,17 +22,18 @@
 #include "Config.h"
 
 #ifndef _ZTIMER_H
-#define _ZTIMER_H
+#define _ZTIMER_H 1
 
 extern void __debug(const char* fmt, ...);
 
 class ZTimer {
 public:
     typedef enum {
-      TIMER1 = 1,
-      TIMER3 = 3,
-      TIMER4 = 4,
-      TIMER5 = 5
+      ZTIMER1 = 1,
+      ZTIMER2 = 2,
+      ZTIMER3 = 3,
+      ZTIMER4 = 4,
+      ZTIMER5 = 5
     } IsrTimer;
 
     typedef enum {
@@ -44,13 +45,18 @@ public:
     } TimerPrescaler;
 
     ZTimer() { };
-    
+
+#ifdef __AVR__    
     void           setupTimer(IsrTimer timer, TimerPrescaler prescaler);
+#endif
+#if defined(__STM32F1__)
+    void           setupTimer(IsrTimer timer, unsigned int prescaler);
+#endif
     void           setupTimerHook(void (*function)(void));
     void           setNextInterruptInterval(unsigned int interval);
-    unsigned int   getOCRxA();
-    void           setOCRxA(unsigned int value);
-    void           setTCNTx(unsigned int value);
+    unsigned int   getOverflow();
+    void           setOverflow(unsigned int value);
+    void           setCounter(unsigned int value);
     void           startTimer();
     void           stopTimer();
 

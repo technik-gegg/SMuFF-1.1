@@ -26,17 +26,18 @@
 
 SdFs SD;
 
+#ifdef __STM32F1__
+const size_t capacity = 2400;
+#else
 const size_t capacity = 1300;
+#endif
 
 void readConfig()
 {
   
   DynamicJsonDocument jsonDoc(capacity);
 
-  pinMode(SD_SS_PIN, OUTPUT);
-  digitalWrite(SD_SS_PIN, HIGH);
-
-  if (!SD.begin(SD_SS_PIN)) {
+  if (!SD.begin()) {
     drawSDStatus(SD_ERR_INIT);
     delay(5000);
     return;
@@ -46,10 +47,8 @@ void readConfig()
   FsFile cfg;
   if(cfg.open(CONFIG_FILE))
   {
-//  if (cfg) {
-    //__debug(PSTR("File size: %u"), fsize);
-    
     if(cfg.fileSize() > capacity) {
+      longBeep(2);
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail3, P_OkButtonOnly);
       cfg.close();
       return;
@@ -57,7 +56,8 @@ void readConfig()
     
     auto error = deserializeJson(jsonDoc, cfg);
     if (error) {
-      //__debug(PSTR("deserializeJson() failed with code %s"), error.c_str());
+      longBeep(2);
+      __debug(PSTR("deserializeJson() failed with code %s"), error.c_str());
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail2, P_OkButtonOnly);
     }
     else {
@@ -68,7 +68,7 @@ void readConfig()
       const char* invertDir = "InvertDir";
       drawSDStatus(SD_READING_CONFIG);
       int toolCnt =                     jsonDoc[PSTR("ToolCount")];
-      smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt < MAX_TOOLS) ? toolCnt : 5;
+      smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
       smuffConfig.firstToolOffset =     jsonDoc[selector]["Offset"];
       smuffConfig.toolSpacing =         jsonDoc[selector]["Spacing"];
       smuffConfig.stepsPerMM_X =        jsonDoc[selector]["StepsPerMillimeter"];
@@ -77,6 +77,7 @@ void readConfig()
       smuffConfig.acceleration_X =      jsonDoc[selector]["Acceleration"];
       smuffConfig.invertDir_X =         jsonDoc[selector][invertDir];
       smuffConfig.endstopTrigger_X =    jsonDoc[selector]["EndstopTrigger"];
+      smuffConfig.stepDelay_X =         jsonDoc[selector]["StepDelay"];
       smuffConfig.stepsPerRevolution_Y= jsonDoc[revolver]["StepsPerRevolution"];
       smuffConfig.firstRevolverOffset = jsonDoc[revolver]["Offset"];
       smuffConfig.revolverSpacing =     smuffConfig.stepsPerRevolution_Y / 10;
@@ -86,6 +87,7 @@ void readConfig()
       smuffConfig.homeAfterFeed =       jsonDoc[revolver]["HomeAfterFeed"];
       smuffConfig.invertDir_Y =         jsonDoc[revolver][invertDir];
       smuffConfig.endstopTrigger_Y =    jsonDoc[revolver]["EndstopTrigger"];
+      smuffConfig.stepDelay_Y =         jsonDoc[revolver]["StepDelay"];
       smuffConfig.externalControl_Z =   jsonDoc[feeder]["ExternalControl"];
       smuffConfig.stepsPerMM_Z =        jsonDoc[feeder]["StepsPerMillimeter"];
       smuffConfig.acceleration_Z =      jsonDoc[feeder]["Acceleration"];
@@ -93,10 +95,15 @@ void readConfig()
       smuffConfig.insertSpeed_Z =       jsonDoc[feeder]["InsertSpeed"];
       smuffConfig.invertDir_Z =         jsonDoc[feeder][invertDir];
       smuffConfig.endstopTrigger_Z =    jsonDoc[feeder]["EndstopTrigger"];
+      smuffConfig.stepDelay_Z =         jsonDoc[feeder]["StepDelay"];
       smuffConfig.reinforceLength =     jsonDoc[feeder]["ReinforceLength"];
       smuffConfig.unloadRetract =       jsonDoc[feeder]["UnloadRetract"];
       smuffConfig.unloadPushback =      jsonDoc[feeder]["UnloadPushback"];
       smuffConfig.pushbackDelay =       jsonDoc[feeder]["PushbackDelay"];
+      smuffConfig.enableChunks =        jsonDoc[feeder]["EnableChunks"];
+      smuffConfig.feedChunks =          jsonDoc[feeder]["FeedChunks"];
+      if(smuffConfig.feedChunks == 0)
+        smuffConfig.feedChunks = 20;
       int contrast =                    jsonDoc["LCDContrast"];
       smuffConfig.lcdContrast = (contrast > MIN_CONTRAST && contrast < MAX_CONTRAST) ? contrast : DSP_CONTRAST;
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];
@@ -123,7 +130,9 @@ void readConfig()
 
       for(int i=0; i < smuffConfig.toolCount; i++) {
         char tmp[16];
-        sprintf(tmp,"Tool%d", i);
+        sprintf(tmp,"T%d", i);
+        if(jsonDoc["Material"][tmp] == NULL)
+          sprintf(tmp,"Tool%d", i);
         memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
 #ifdef __STM32F1__
         strncpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i])); 

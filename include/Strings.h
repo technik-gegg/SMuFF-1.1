@@ -71,7 +71,7 @@ const char P_Start[] PROGMEM          = { "start\n" };
 const char P_Error[] PROGMEM          = { "Error: %s\n" };
 const char P_UnknownCmd[] PROGMEM     = { "Unknown command:" };
 const char P_AlreadySaved[] PROGMEM   = { "Already saved.\n" };
-const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: Wanhao i3-Mini DATE: %s\n" };
+const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s\n" };
 const char P_TResponse[] PROGMEM      = { "T%d\n" };
 const char P_GResponse[] PROGMEM      = { "G%d\n" };
 const char P_MResponse[] PROGMEM      = { "M%d\n" };
@@ -90,7 +90,7 @@ const char P_Feed[] PROGMEM           = {"Feed    " };
 
 const char P_NoTool [] PROGMEM        = { "No tool set.\n" };
 const char P_Aborting [] PROGMEM      = { "Aborting..."};
-const char P_FeederJamed [] PROGMEM   = { "Feeder is jamed.\n" };
+const char P_FeederJammed [] PROGMEM  = { "Feeder is jammed.\n" };
 const char P_ToolAlreadySet [] PROGMEM= { "Tool already set." };
 
 const char P_WrongFormat [] PROGMEM   = { "Wrong format. Use Bdd:dd:dd...\n" };

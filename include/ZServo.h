@@ -27,7 +27,12 @@
 
 #define US_PER_PULSE_0DEG       500       // 0 degrees
 #define US_PER_PULSE_180DEG     2400      // 180 degrees
-#define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50)-1 =  16000000 / (1024 * 50) - 1 = 311,5
+#ifdef __STM32F1__
+#define TIMER_INTERVAL          1406      // CPU-Clock / (Prescaler * 50)-1 =  72000000 / (1024 * 50) - 1 = 1406.3
+#endif
+#ifdef __AVR__
+#define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50)-1 =  16000000 / (1024 * 50) - 1 = 311.5
+#endif
 
 
 void isrServoTimerHandler();
@@ -41,7 +46,7 @@ public:
     _pin = pin; 
     pinMode(_pin, OUTPUT); 
     digitalWrite(_pin, 0);
-    servoTimer.setupTimer(ZTimer::TIMER5, ZTimer::PRESCALER1024);
+    servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
     servoTimer.setupTimerHook(isrServoTimerHandler);
   }
   void write(int degree);

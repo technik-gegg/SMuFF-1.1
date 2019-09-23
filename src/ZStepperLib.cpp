@@ -55,7 +55,6 @@ void ZStepper::resetStepper() {
   _stepCount = 0;
   _movementDone = false;
   _endstopHit = false;
-  //if(_abort) __debug(PSTR("Still aborted"));
 }
 
 void ZStepper::prepareMovement(long steps, boolean ignoreEndstop /*= false */) {
@@ -71,7 +70,7 @@ void ZStepper::setEndstop(int pin, int triggerState, EndstopType type) {
   _endstopPin = pin;
   _endstopState = triggerState;
   _endstopType = type;
-  pinMode(_endstopPin, _endstopType == LOW ? INPUT_PULLUP : INPUT);
+  pinMode(_endstopPin, ((triggerState == 0) ? INPUT_PULLUP : INPUT));
   _endstopHit = digitalRead(_endstopPin) == _endstopState;
 }
 
@@ -113,15 +112,15 @@ void ZStepper::handleISR() {
 
   //if(_endstopType == ORBITAL)
   //  __debug(PSTR("O: %d %d "), _stepCount, _dir);
-  if(_abort) {
-    setMovementDone(true);
-    return;
-  }
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
      (_endstopType == ORBITAL && _dir == CCW)) {
-     bool hit = digitalRead(_endstopPin)==_endstopState;
+     bool hit = (int)digitalRead(_endstopPin)==_endstopState;
     setEndstopHit(hit);
+  }
+  if(!_ignoreAbort && _abort) {
+    setMovementDone(true);
+    return;
   }
   if(!_ignoreEndstop && _endstopHit && !_movementDone){
       setMovementDone(true);
@@ -149,6 +148,7 @@ void ZStepper::handleISR() {
      else
       defaultStepFunc();
     _stepCount++;
+    _stepsTaken += _dir;    
     setStepPosition(_stepPosition + _dir);
     if(_stepCount >= _totalSteps) {
       setMovementDone(true);
@@ -178,14 +178,14 @@ void ZStepper::home() {
   //__debug(PSTR("[ZStepper::home] DONE prepareMovement"));
   if(runAndWaitFunc != NULL)
     runAndWaitFunc(_number);
-  //__debug(PSTR("[ZStepper::home] DONE runAndWait"));
+    //__debug(PSTR("[ZStepper::home] DONE runAndWait"));
   do {
     prepareMovement(_maxStepCount/30);
     if(runAndWaitFunc != NULL)
       runAndWaitFunc(_number);
   } while(_endstopHit);
   prepareMovement(-(_maxStepCount));
-  setMaxSpeed(curSpeed*5);
+  setMaxSpeed(curSpeed*25);
   if(runAndWaitFunc != NULL)
     runAndWaitFunc(_number);
   setMaxSpeed(curSpeed);

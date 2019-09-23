@@ -28,111 +28,153 @@
 
 extern ZStepper steppers[NUM_STEPPERS];
 char ptmp[80];
-bool parserBusy = false;
+volatile bool parserBusy = false;
 unsigned int currentLine = 0;
 
-void parseGcode(String serialBuffer, int serial) {
+void parseGcode(const String& serialBuffer, int serial) {
 
-    serialBuffer.replace(" ","");
-    serialBuffer.replace("\r","");
-    serialBuffer.replace("\n","");
-    
-    if(serialBuffer.length()==0)
+  String line;
+  line.reserve(80);
+  line = String(serialBuffer);
+  resetSerialBuffer(serial);
+
+  /*
+  line.replace(" ","");
+  line.replace("\r","");
+  line.replace("\n","");
+  */
+  
+  if(line.length()==0)
+    return;
+
+  if(serial == 2)
+    traceSerial2 = String(line);
+  //__debug(PSTR("Line: %s %d"), line.c_str(), line.length());
+
+  int pos;
+  if((pos = line.lastIndexOf("*")) > -1) {
+    line = line.substring(0, pos);
+  }
+  if((pos = line.lastIndexOf(";")) > -1) {
+    if(pos==0) {
       return;
-
-    String line = String(serialBuffer);
-    //setAbortRequested(false);
-    if(smuffConfig.prusaMMU2)
-      resetSerialBuffer(serial);
-
-    int pos;
-    if((pos = line.lastIndexOf("*")) > -1) {
-      line = line.substring(0, pos);
     }
-    if((pos = line.lastIndexOf(";")) > -1) {
-      if(pos==0) {
+    line = line.substring(0, pos);
+  }
+  currentLine = 0;
+  if(line.startsWith("N")) {
+    char ln[15];
+    if((int)(currentLine = getParam(line, (char*)"N")) != -1) {
+      sprintf_P(ln, PSTR("%d"), currentLine);
+      line = line.substring(strlen(ln)+1);
+    }
+  }
+
+  if(parserBusy || !steppers[FEEDER].getMovementDone()) {
+    if(!smuffConfig.prusaMMU2) {
+      sendErrorResponseP(serial, P_Busy);
+      return;
+    }
+    else if(!line.startsWith("A") && 
+            !line.startsWith("P") && 
+            !line.startsWith("T") && 
+            !line.startsWith("C") && 
+            !line.startsWith("U") ) { // only Abort or FINDA command is being processed while parser is busy 
+            //__debug(PSTR("NO valid PMMU GCode"));
+      return;
+    }
+    //__debug(PSTR("Error: parserBusy: %d feederBusy: %d"), parserBusy, steppers[FEEDER].getMovementDone());
+  }
+  if(smuffConfig.prusaMMU2) {
+    if(line.startsWith("T")) {
+      // If a tool change command is pending while the feeder is still active,
+      // request a resend of the last command, so we don't ignore and loose the command
+      // as we do with the 'U' and 'A' commands.
+      // The printer is supposed to send another 'T' command after a while.
+      if(!steppers[FEEDER].getMovementDone()) { 
+        //__debug(PSTR("Wait after 'T' 500ms")); 
+        delay(500);
+        if(currentLine > 0)
+          sprintf_P(ptmp, PSTR("M998 %d\n"), currentLine);
+        else
+          sprintf_P(ptmp, PSTR("M998\n"), NULL);
+        printResponseP(ptmp, serial);
+        //__debug(PSTR("Resend 'T' sent"));  
         return;
       }
-      line = line.substring(0, pos);
     }
-
-    if(parserBusy) {
-      if(!smuffConfig.prusaMMU2) {
-        sendErrorResponseP(serial, P_Busy);
-        return;
-      }
-      else if(!line.startsWith("A")) { // only Abort command is being processed while parser is busy 
+    if(line.startsWith("U") || line.startsWith("C")) {
+      if(!steppers[FEEDER].getMovementDone()) {
+        sendOkResponse(serial);  
+        //__debug(PSTR("Cancelling U/C"));  
         return;
       }
     }
-    if(smuffConfig.prusaMMU2 && line.startsWith("A")) {
-      setAbortRequested(true);
-      __debug(PSTR("*ABORT* received"));
-      delay(150);
+    else if(line.startsWith("A")) {
+      //__debug(PSTR("*ABORT* received"));
+      if(!steppers[FEEDER].getMovementDone()) {
+        setAbortRequested(true);
+        //__debug(PSTR("Abort set"));
+      }
+      delay(50);
     }
+  }
 
-    parserBusy = true;
-    if(line.startsWith("N")) {
-      char ln[15];
-      if((int)(currentLine = getParam(line, (char*)"N")) != -1) {
-        sprintf(ln, "%d", currentLine);
-        line = line.substring(strlen(ln)+1);
-      }
-    }
-    //__debug(PSTR("Line: %s %d"), line.c_str(), line.length());
-    if(line.startsWith("G")) {
-      if(parse_G(line.substring(1), serial))
-        sendOkResponse(serial);  
-      else
-        sendErrorResponseP(serial);
-      parserBusy = false;
-      return;
-    }
-    else if(line.startsWith("M")) {
-      if(parse_M(line.substring(1), serial))
-        sendOkResponse(serial);  
-      else
-        sendErrorResponseP(serial);
-      parserBusy = false;
-      return;
-    }
-    else if(line.startsWith("T")) {
-      if(parse_T(line.substring(1), serial))
-        sendOkResponse(serial);  
-      else
-        sendErrorResponseP(serial);  
-      parserBusy = false;
-      return;
-    }
-    else if(line.startsWith("S") || // GCodes for Prusa MMU2 emulation
-            line.startsWith("P") ||
-            line.startsWith("C") ||
-            line.startsWith("L") ||
-            line.startsWith("U") ||
-            line.startsWith("E") ||
-            line.startsWith("K") ||
-            line.startsWith("X") ||
-            line.startsWith("F") ||
-            line.startsWith("R") ||
-            line.startsWith("W") ||
-            line.startsWith("A")) {
-      __debug(PSTR("From Prusa: '%s'"), line.c_str());
-      parse_PMMU2(line.charAt(0), line.substring(1), serial);
-      parserBusy = false;
-      return;
-    }
-    else {
-      char tmp[256];
-      sprintf(tmp, "%s '%s'\n", P_UnknownCmd, line.c_str());
-      __debug(PSTR("ParseGcode err: %s"), tmp);
-      if(!smuffConfig.prusaMMU2) {
-        sendErrorResponse(serial, tmp);
-      }
-    }
+  parserBusy = true;
+  
+  if(line.startsWith("G")) {
+    if(parse_G(line.substring(1), serial))
+      sendOkResponse(serial);  
+    else
+      sendErrorResponseP(serial);
     parserBusy = false;
+    return;
+  }
+  else if(line.startsWith("M")) {
+    if(parse_M(line.substring(1), serial))
+      sendOkResponse(serial);  
+    else
+      sendErrorResponseP(serial);
+    parserBusy = false;
+    return;
+  }
+  else if(line.startsWith("T")) {
+    if(parse_T(line.substring(1), serial))
+      sendOkResponse(serial);  
+    else
+      sendErrorResponseP(serial);  
+    parserBusy = false;
+    return;
+  }
+  else if(line.startsWith("S") || // GCodes for Prusa MMU2 emulation
+          line.startsWith("P") ||
+          line.startsWith("C") ||
+          line.startsWith("L") ||
+          line.startsWith("U") ||
+          line.startsWith("E") ||
+          line.startsWith("K") ||
+          line.startsWith("X") ||
+          line.startsWith("F") ||
+          line.startsWith("R") ||
+          line.startsWith("W") ||
+          line.startsWith("A")) {
+    //if(!line.startsWith("P")) __debug(PSTR("From Prusa: '%s'"), line.c_str());
+    parse_PMMU2(line.charAt(0), line.substring(1), serial);
+    parserBusy = false;
+    return;
+  }
+  else {
+    char tmp[256];
+    sprintf_P(tmp, PSTR("%S '%s'\n"), P_UnknownCmd, line.c_str());
+    __debug(PSTR("ParseGcode err: %s"), tmp);
+    if(!smuffConfig.prusaMMU2) {
+      sendErrorResponseP(serial, tmp);
+    }
+  }
+  parserBusy = false;
 }
 
-bool parse_T(String buf, int serial) {
+bool parse_T(const String& buf, int serial) {
   bool stat = true;
 
   if(buf.length()==0) {
@@ -144,8 +186,9 @@ bool parse_T(String buf, int serial) {
 
   char msg[10];
   int ofs = 0;
-  if(smuffConfig.prusaMMU2)
+  if(smuffConfig.prusaMMU2) {
     sprintf_P(msg, P_Ok);     // this is what the Prusa expects ("ok\n")
+  }
   else {
     sprintf_P(msg, P_TResponse, tool);
     ofs = String(msg).length()-2;
@@ -155,13 +198,20 @@ bool parse_T(String buf, int serial) {
     parse_G(String("28"), serial);
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
+    __debug(PSTR("Tool change requested: T%d"), tool);
+    if(smuffConfig.prusaMMU2 && feederEndstop()) { // Prusa expects the MMU to unload filament on its own before tool change
+      __debug(PSTR("must unload first!"));
+      unloadFilament();
+    }
     stat = selectTool(tool, false);
     if(stat) {
-      if((param = getParam(buf.substring(ofs), (char*)"S")) != -1) {
-        if(param == 1)
-          loadFilament(false);
-        else if(param == 0)
-          unloadFilament();
+      if(!smuffConfig.prusaMMU2) {
+        if((param = getParam(buf.substring(ofs), (char*)"S")) != -1) {
+          if(param == 1)
+            loadFilament(false);
+          else if(param == 0)
+            unloadFilament();
+        }
       }
     }
     printResponse(msg, serial);
@@ -174,7 +224,7 @@ bool parse_T(String buf, int serial) {
   return stat;
 }
 
-bool parse_G(String buf, int serial) {
+bool parse_G(const String& buf, int serial) {
   bool stat = true;
 
   if(buf.length()==0) {
@@ -200,7 +250,7 @@ bool parse_G(String buf, int serial) {
   return false;
 }
 
-bool parse_M(String buf, int serial) {
+bool parse_M(const String& buf, int serial) {
   bool stat = true;
   
   if(buf.length()==0) {
@@ -229,12 +279,12 @@ bool parse_M(String buf, int serial) {
 /**
  *  Parse pseudo GCodes to emulate a Prusa MMU2 
  **/
-bool parse_PMMU2(char cmd, String buf, int serial) {
+bool parse_PMMU2(char cmd, const String& buf, int serial) {
 
   char  tmp[80];
 
   if(!smuffConfig.prusaMMU2) {
-    sprintf_P(tmp, P_NoPrusa);
+    sprintf_P(tmp, P_NoPrusa, NULL);
     sendErrorResponseP(serial, tmp);
     //__debug(PSTR("No Prusa Emulation configured!"));
     return false;
@@ -246,22 +296,22 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
     type = buf.toInt();
   switch(cmd) {
     case 'A':
-      // Aborted - just reset the flag
+      // Aborted - we've already handeled that
       sendOkResponse(serial);
       break;
     case 'S':     // Init (S0 | S1 | S2 | S3)
       switch(type) {
         case 0:
-          sprintf(tmp,"ok\n");
+          sprintf_P(tmp,PSTR("ok\n"), NULL);
           break;
         case 1:
-          sprintf(tmp,"%dok\n", PMMU_VERSION);
+          sprintf_P(tmp,PSTR("%dok\n"), PMMU_VERSION);
           break;
         case 2:
-          sprintf(tmp,"%dok\n", PMMU_BUILD);
+          sprintf_P(tmp,PSTR("%dok\n"), PMMU_BUILD);
           break;
         case 3:
-          sprintf(tmp,"%dok\n", 0);
+          sprintf_P(tmp,PSTR("%dok\n"), 0);
           break;
       }
       printResponse(tmp,serial);
@@ -269,7 +319,7 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
       break;
 
     case 'P':     // FINDA status (Feeder endstop)
-        sprintf(tmp,"%dok\n", feederEndstop() ? 1 : 0);
+        sprintf_P(tmp,PSTR("%dok\n"), feederEndstop() ? 1 : 0);
         printResponse(tmp,serial);
         //__debug(PSTR("To Prusa (P%d): '%s'"), type, tmp);
       break;
@@ -327,7 +377,7 @@ bool parse_PMMU2(char cmd, String buf, int serial) {
 
     default:
       sendErrorResponseP(serial);
-      //__debug(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
+      __debug(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
       break;
   }
   return stat;

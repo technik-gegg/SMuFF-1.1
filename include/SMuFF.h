@@ -16,32 +16,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 #ifndef _SMUFF_H
-#define _SMUFF_H
+#define _SMUFF_H 1
 
 #define DEBUG 1
 
-#ifdef __STM32F1__
-//typedef volatile uint32_t RwReg;
-#endif
-
+#include <avr/pgmspace.h>
 #include <Arduino.h>
 #include "Config.h"
 #include "Strings.h"
 #include "GCodes.h"
-#include "RotaryEncoder.h"
+#include "ClickEncoder.h"
 #include <Wire.h>
 #include <SPI.H>
 #include <SdFs.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
-
+//#include <FastLED.h>
 #ifdef __STM32F1__
-#define sprintf_P     sprintf
-#define strncmp_P     strncmp
-#define vsnprintf_P   vsnprintf
+#include <libmaple/adc.h>
+#include <libmaple/iwdg.h>
+#include <libmaple/gpio.h>
+#include <libmaple/usart.h>
+#include <libmaple/i2c.h>
+
+#undef  sprintf_P
+#define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
+#define vsnprintf_P           vsnprintf
 #endif
 
 #define FEEDER_SIGNAL     1
@@ -60,12 +64,13 @@ typedef struct {
   float toolSpacing         = TOOL_SPACING;
   int   firstRevolverOffset = FIRST_REVOLVER_OFFSET;
   int   revolverSpacing     = REVOLVER_SPACING;
-  long  stepsPerMM_X        = X_STEPS_PER_MM;
+  long  stepsPerMM_X        = 800;
   long  maxSteps_X          = 68000;
   int   maxSpeed_X          = 10;
   int   acceleration_X      = 510;
   bool  invertDir_X         = false;
   int   endstopTrigger_X    = HIGH;
+  int   stepDelay_X         = 10;
   
   long  stepsPerRevolution_Y= 9600;
   long  maxSteps_Y          = 9600;
@@ -74,14 +79,18 @@ typedef struct {
   bool  resetBeforeFeed_Y   = true;
   bool  invertDir_Y         = false;
   int   endstopTrigger_Y    = HIGH;
+  int   stepDelay_Y         = 10;
   
   bool  externalControl_Z   = false;
-  long  stepsPerMM_Z        = Z_STEPS_PER_MM;
+  long  stepsPerMM_Z        = 136;
   int   maxSpeed_Z          = 10;
   int   insertSpeed_Z       = 1000;
   int   acceleration_Z      = 300;
   bool  invertDir_Z         = false;
   int   endstopTrigger_Z    = LOW;
+  int   stepDelay_Z         = 10;
+  int   feedChunks          = 20;
+  bool  enableChunks        = false;      
   
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
@@ -106,13 +115,23 @@ typedef struct {
   bool  prusaMMU2           = true;
 } SMuFFConfig;
 
-extern U8G2_ST7565_64128N_F_4W_HW_SPI   display;
-extern RotaryEncoder                    encoder;
+
+#ifdef __BRD_I3_MINI
+extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
+#endif
+#ifdef __BRD_SKR_MINI
+  #ifdef USE_TWI_DISPLAY
+  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
+  #else
+  extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  #endif
+#endif
+
+extern ClickEncoder   encoder;
 
 extern SMuFFConfig    smuffConfig;
 extern GCodeFunctions gCodeFuncsM[];
 extern GCodeFunctions gCodeFuncsG[];
-
 
 extern const char     brand[];
 extern volatile byte  nextStepperFlag;
@@ -126,8 +145,9 @@ extern bool           displayingUserMessage;
 extern unsigned int   userMessageTime;
 extern bool           testMode;
 extern bool           feederJamed;
-extern bool           parserBusy;
+extern volatile bool  parserBusy;
 extern bool           isPwrSave;
+//extern CRGB           leds[];
 
 extern void setupDisplay();
 extern void drawLogo();
@@ -135,6 +155,7 @@ extern void drawStatus();
 extern void drawSelectingMessage();
 extern void drawUserMessage(String message);
 extern void drawSDStatus(int stat);
+extern void drawFeed();
 extern void resetDisplay();
 extern bool selectorEndstop();
 extern bool revolverEndstop();
@@ -158,10 +179,15 @@ extern void prepSteppingRelMillimeter(int index, float millimeter, bool ignoreEn
 extern void resetRevolver();
 extern void serialEvent();
 extern void serialEvent2();
+#ifdef __STM32F1__
+extern void serialEvent1();
+extern void serialEvent3();
+#endif
 extern void wireReceiveEvent(int numBytes);
 extern void beep(int count);
 extern void longBeep(int count);
 extern void userBeep();
+extern void initBeep();
 extern void setSignalPort(int port, bool state);
 extern void signalNoTool();
 extern void signalLoadFilament();
@@ -180,6 +206,23 @@ extern void setAbortRequested(bool state);
 extern void resetSerialBuffer(int serial);
 extern void checkSerialPending();
 extern void setupMainMenu();
+extern void setupOffsetMenu();
+extern void setupTimers();
+extern void setupSteppers();
+extern void setPwrSave(int state);
+extern bool checkUserMessage();
+extern void showMainMenu();
+extern void showToolsMenu();
+extern void showOffsetsMenu();
+extern void showSwapMenu();
+extern void changeOffset(int index);
+extern void drawOffsetPosition(int index);
+extern void drawSwapTool(int from, int with);
+extern uint8_t swapTool(uint8_t index);
+extern void positionRevolver();
+extern bool feedToEndstop(bool showMessage);
+extern void feedToNozzle();
+extern void unloadFromNozzle();
 
 extern void printEndstopState(int serial);
 extern void printPos(int index, int serial);
@@ -192,11 +235,11 @@ extern void sendStartResponse(int serial);
 extern void sendOkResponse(int serial);
 extern void sendErrorResponse(int serial, const char* msg = NULL);
 extern void sendErrorResponseP(int serial, const char* msg = NULL);
-extern void parseGcode(String serialBuffer, int serial);
-extern bool parse_G(String buf, int serial);
-extern bool parse_M(String buf, int serial);
-extern bool parse_T(String buf, int serial);
-extern bool parse_PMMU2(char cmd, String buf, int serial);
+extern void parseGcode(const String& serialBuffer, int serial);
+extern bool parse_G(const String& buf, int serial);
+extern bool parse_M(const String& buf, int serial);
+extern bool parse_T(const String& buf, int serial);
+extern bool parse_PMMU2(char cmd, const String& buf, int serial);
 extern int  getParam(String buf, char* token);
 extern bool getParamString(String buf, char* token, char* dest, int bufLen);
 extern void prepStepping(int index, long param, bool Millimeter = true, bool ignoreEndstop = false);

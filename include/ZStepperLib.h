@@ -22,7 +22,7 @@
 #include "Config.h"
 
 #ifndef _ZSTEPPER_H
-#define _ZSTEPPER_H
+#define _ZSTEPPER_H 1
 
 extern void __debug(const char* fmt, ...);
 
@@ -102,6 +102,11 @@ public:
   void          setAllowAccel(bool state) { _allowAcceleration = state; }
   bool          getAbort() { return _abort; }
   void          setAbort(bool state) { _abort = state; }
+  bool          getIgnoreAbort() { return _ignoreAbort; }
+  void          setIgnoreAbort(bool state) { _ignoreAbort = state; }
+  bool          getStepsTaken() { return _stepsTaken; }
+  float         getStepsTakenMM() { return _stepsTaken / _stepsPerMM; }
+  void          setStepsTaken(long count) { _stepsTaken = count; }
   
 private:
   int             _number = 0;                  // index of this stepper
@@ -118,7 +123,7 @@ private:
   volatile long   _stepPosition = 0;            // current position of stepper (total of all movements taken so far)
   volatile MoveDirection _dir = CW;             // current direction of movement, used to keep track of position
   volatile long   _totalSteps = 0;              // number of steps requested for current movement
-  volatile bool   _movementDone = false;        // true if the current movement has been completed (used by main program to wait for completion)
+  volatile bool   _movementDone = true;         // true if the current movement has been completed (used by main program to wait for completion)
   float           _acceleration = 1000;         // acceleration value 
   unsigned int    _minStepInterval = 100;       // ie. max speed, smaller is faster
   long            _stepCount = 0;               // number of steps completed in current movement
@@ -128,6 +133,8 @@ private:
   bool            _invertDir = false;           // stepper direction inversion
   bool            _allowAcceleration = true;    // allow / disallow acceleration
   bool            _abort = false;               // flag signals abortion of operation  
+  bool            _ignoreAbort = false;         // flag signals abort not possible
+  long            _stepsTaken = 0;              // counter for steps currently taken
 
   // per iteration variables (potentially changed every interrupt)
   volatile float          _duration;            // current interval length

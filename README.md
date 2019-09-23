@@ -15,8 +15,32 @@ The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Hence, cha
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
 
 ## Recent changes
-1.4 - Heavy changes to gain better compatibility in Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet. The configuration file (SMUFF.CFG) has got a new setting which defines the distance from the filament guide to the Selector.
+**1.53** - This version has got some major changes:
++ Full integration of the SKR mini V1.1 controller board (STM32) completed
++ Prusa MMU2 Emulation mode improved even more
++ Heavy refactoring to make the code better readable
++ Optimized memory usage (all strings are now located in PROGMEM)
++ Header files are now located in the include folder
++ Pins header file separated into subfolders for different devices (uses the  -I compiler directive)
++ Added Configs folder containing different configuration samples for the modes/controllers
++ Platformio.ini modified to allow different build environments
++ Moved datastore from EEPROM to SD-Card (mainly because of the STM32)
++ Indexer for Materials in SMUFF.CFG renamed from Tool0..x to T0..x (because of memory issues)
++ Added *FeedChunks* and *EnableChunks* settings to SMUFF.CFG. Those are needed since the communcation on the 2nd serial port tends to hand in long operations (such as feeding the filament to nozzle) and Prusa won't be able to abort the feed.
++ Added *StepDelay* setting to SMUFF.CFG for the SKR Mini. This is needed because of the speed of an 32 bit board to keep the steppers from stalling.
++ Addes schematics of the SKR Mini LCD board
 
-1.3 - Some modifications to gain Prusa MMU2 compatibility
+**1.52** - Not been published
 
-1.2 - Initial version
+**1.51** - Not been published
+
+**1.50**  - Not been published
+
+**1.4x** - Not been published
+
+**1.4**  - Major changes to gain better compatibility for Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet. 
+The configuration file (SMUFF.CFG) has got a new setting which defines the distance from the filament guide to the Selector (see *SelectorDist* setting).
+
+**1.3**  - Some modifications to gain Prusa MMU2 compatibility
+
+**1.2**  - Initial published version
