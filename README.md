@@ -20,6 +20,7 @@ For further information head over to the [Wiki pages](https://github.com/technik
 + Prusa MMU2 Emulation mode improved even more
 + Heavy refactoring to make the code better readable
 + Optimized memory usage (all strings are now located in PROGMEM)
++ replaced the Rotary Encoder library
 + Header files are now located in the include folder
 + Pins header file separated into subfolders for different devices (uses the  -I compiler directive)
 + Added Configs folder containing different configuration samples for the modes/controllers
@@ -28,7 +29,7 @@ For further information head over to the [Wiki pages](https://github.com/technik
 + Indexer for Materials in SMUFF.CFG renamed from Tool0..x to T0..x (because of memory issues)
 + Added *FeedChunks* and *EnableChunks* settings to SMUFF.CFG. Those are needed since the communcation on the 2nd serial port tends to hand in long operations (such as feeding the filament to nozzle) and Prusa won't be able to abort the feed.
 + Added *StepDelay* setting to SMUFF.CFG for the SKR Mini. This is needed because of the speed of an 32 bit board to keep the steppers from stalling.
-+ Addes schematics of the SKR Mini LCD board
++ Added schematics of the SKR Mini LCD board
 
 **1.52** - Not been published
 
