@@ -38,7 +38,11 @@ public:
     _pin = pin; 
     pinMode(_pin, OUTPUT); 
     digitalWrite(_pin, 0);
+#ifdef __STM32F1__
     pwmTimer.setupTimer(ZTimer::ZTIMER1, 7200);
+#else
+    pwmTimer.setupTimer(ZTimer::ZTIMER1, ZTimer::PRESCALER1024);
+#endif  
     pwmTimer.setupTimerHook(isrPwmTimerHandler);
   }
   void write(int speed) { writePwm(speed); }
