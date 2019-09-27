@@ -468,8 +468,15 @@ bool G0(const char* msg, String buf, int serial) {
   printResponse(msg, serial);
   if((param = getParam(buf, Y_Param)) != -1) {
     steppers[REVOLVER].setEnabled(true);
-    prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + ((param)*smuffConfig.revolverSpacing), true);
-    runAndWait(REVOLVER);
+    if(getParam(buf, S_Param)) {
+      // for testing only 
+      toolSelected = param;
+      positionRevolver();
+    }
+    else {
+      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + ((param)*smuffConfig.revolverSpacing), true);
+      runAndWait(REVOLVER);
+    }
   }
   if((param = getParam(buf, X_Param)) != -1) {
     steppers[SELECTOR].setEnabled(true);

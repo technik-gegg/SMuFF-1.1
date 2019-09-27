@@ -61,13 +61,13 @@ char                  _msg1[256];
 char                  _msg2[128];
 char                  _btn[128];
 int                   swapTools[MAX_TOOLS];
-
+bool                  isWarning;
 
 const char brand[] = VERSION_STRING;
 
 void setupDisplay() {
 #ifdef __STM32F1__
-  setToneTimerChannel(4, 1);      // force TIMER4 / CH1 on STM32F1x for tone library
+  setToneTimerChannel(4, 3);      // force TIMER4 / CH3 on STM32F1x for tone library
 #endif
   display.begin(/*Select=*/ ENCODER_BUTTON_PIN,  /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
   display.enableUTF8Print();
@@ -260,8 +260,6 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
   int button = digitalRead(ENCODER_BUTTON_PIN);
   int turn = encoder.getValue();
   
-  //if(turn != 0) __debug(PSTR("Encoder: %d"), turn);
-
   if (button == LOW) {
     delay(20);
     button = digitalRead(ENCODER_BUTTON_PIN);
@@ -286,9 +284,11 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
     }
   }
   u8x8->debounce_state = button;
-  checkSerialPending();
-  if(checkAutoClose()) {
-    stat = U8X8_MSG_GPIO_MENU_HOME;
+  if(!isWarning) {
+    checkSerialPending();
+    if(checkAutoClose()) {
+      stat = U8X8_MSG_GPIO_MENU_HOME;
+    }
   }
   return stat;
 }
@@ -482,9 +482,14 @@ bool showFeederLoadMessage() {
 bool showFeederFailedMessage(int state) {
   lastEncoderButtonTime = millis();
   beep(3);
-  showDialog(P_TitleWarning, state == 1 ? P_CantLoad : P_CantUnload, P_CheckUnit, P_OkButtonOnly);
+  int button = 999;
+  isWarning = true;
+  do {
+    button = showDialog(P_TitleWarning, state == 1 ? P_CantLoad : P_CantUnload, P_CheckUnit, P_CancelRetryButtons);
+  } while(button != 1 && button != 2);
+  isWarning = false;
   display.clearDisplay();
-  return false;
+  return button == 1 ? false : true;
 }
 
 int showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
@@ -506,24 +511,27 @@ void signalNoTool() {
 }
 
 void positionRevolver() {
-  if(smuffConfig.resetBeforeFeed_Y)
-    resetRevolver();
-  else {
-    long newPos = 0;
-    if(smuffConfig.homeAfterFeed) {
-      newPos = smuffConfig.firstRevolverOffset + (toolSelected *smuffConfig.revolverSpacing);
-    }
-    else {
-      newPos = steppers[REVOLVER].getStepPosition() - (smuffConfig.firstRevolverOffset + (toolSelected *smuffConfig.revolverSpacing));
-      if(newPos < 0)
-        newPos = smuffConfig.stepsPerRevolution_Y + newPos;
-      else if(newPos > smuffConfig.stepsPerRevolution_Y)
-        newPos = smuffConfig.stepsPerRevolution_Y + newPos;
-    }
-    prepSteppingAbs(REVOLVER, newPos, true);
-    remainingSteppersFlag |= _BV(REVOLVER);
-    runAndWait(-1);
+  if(smuffConfig.resetBeforeFeed_Y) {
+    moveHome(REVOLVER, false, false);
   }
+
+  long pos = steppers[REVOLVER].getStepPosition();
+  long newPos = smuffConfig.firstRevolverOffset + (toolSelected *smuffConfig.revolverSpacing);
+  //__debug(PSTR("PositionRevolver: pos: %d - newPos: %d"), pos, newPos);
+  long delta1 = newPos - (smuffConfig.stepsPerRevolution_Y + pos);  // number of steps if moved backward
+  long delta2 = newPos - pos;                                       // number of steps if moved forward
+  //__debug(PSTR("PositionRevolver: D1: %ld D2: %ld"), delta1, delta2);
+  if(abs(delta1) < abs(delta2))
+    newPos = delta1;
+  else 
+    newPos = delta2;
+  //__debug(PSTR("PositionRevolver: newPos: %d"), newPos);
+
+  prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
+  remainingSteppersFlag |= _BV(REVOLVER);
+  runAndWait(-1);
+
+  //__debug(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
 
 bool feedToEndstop(bool showMessage) {   
@@ -539,18 +547,29 @@ bool feedToEndstop(bool showMessage) {
   unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
 
-  int n = 100;
+  int l = (int)(smuffConfig.selectorDistance*2);
+  int n = l;
+  int n2 = (n/2)+1;
   while (!feederEndstop()) {
-    prepSteppingRelMillimeter(FEEDER, 2.5, true);
+    prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength, false);
     runAndWait(FEEDER);
-    if (n == 50) {
+    if (n == n2) {
       resetRevolver();
       prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
       runAndWait(FEEDER);
     }
     if (n <= 0) {
-      if (showMessage)
-        showFeederFailedMessage(1);
+      if (showMessage) {
+        moveHome(REVOLVER, false, false);   // home Revolver
+        char buf[] = {"XY"};
+        M18("M18", buf, 0);   // motors off
+        if(showFeederFailedMessage(1) == true) {
+          steppers[FEEDER].setEnabled(true);
+          positionRevolver();
+          n = l;
+          continue;
+        }
+      }
       steppers[FEEDER].setMaxSpeed(curSpeed);
       feederJammed = true;
       parserBusy = false;
@@ -619,8 +638,9 @@ bool loadFilament(bool showMessage) {
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition(); 
   saveStore();
 
-  if(smuffConfig.homeAfterFeed)
+  if(smuffConfig.homeAfterFeed) {
     steppers[REVOLVER].home();
+  }
   steppers[FEEDER].setAbort(false);
 
   parserBusy = false;
@@ -687,6 +707,7 @@ void unloadFromNozzle() {
     prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength*3));
     runAndWait(FEEDER);
   }
+  delay(500);
 }
 
 bool unloadFilament() {
@@ -733,7 +754,7 @@ bool unloadFilament() {
       if(!feederEndstop()) {
         if((n > 0 && n < 200) && n % 50 == 0) {
           resetRevolver();
-          prepSteppingRelMillimeter(FEEDER, 15.0, true);
+          prepSteppingRelMillimeter(FEEDER, smuffConfig.selectorDistance, true);
           runAndWait(FEEDER);
         }
         if (n <= 0) {
@@ -805,10 +826,10 @@ bool selectTool(int ndx, bool showMessage) {
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
       // TODO: Signal Duet3D to retract 2mm
       beep(4);
-      char buf[] = {'Y'};
+      char buf[] = {"XY"};
       while(feederEndstop()) {
-        M18("M18", buf, 0);   // motors off
         moveHome(REVOLVER, false, false);   // home Revolver
+        M18("M18", buf, 0);   // motors off
         showFeederFailedMessage(0);
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
           Serial2.print(smuffConfig.unloadCommand);
@@ -954,12 +975,16 @@ void showLed(int mode, int count) {
 #ifdef __STM32F1__
 /*
   Special function since the tone() function from the 
-  libmaple library crashes the I2C Display somehow.
+  libmaple library crashes the I2C Display if the
+  timer and channel are not set correctly (see initDisplay).
 
+  In such case, use the commented out solution below.
 */
 void playTone(int pin, int freq, int duration) {
   
-  //tone(pin, freq, duration);  return;
+  tone(pin, freq, duration);
+  return;
+  /*
   pinMode(pin, OUTPUT);
   for (long i = 0; i < duration * 500L; i += freq) {
     digitalWrite(pin, HIGH);
@@ -967,6 +992,7 @@ void playTone(int pin, int freq, int duration) {
     digitalWrite(pin, LOW);
     delayMicroseconds(freq/10);
   }
+  */
 }
 
 void muteTone(int pin) {
@@ -1032,7 +1058,7 @@ void getStoredData() {
   steppers[REVOLVER].setStepPosition(dataStore.stepperPos[REVOLVER]);
   steppers[FEEDER].setStepPosition(dataStore.stepperPos[FEEDER]);
   toolSelected = dataStore.tool;
-  __debug(PSTR("Recovered tool: %d"), toolSelected);
+  //__debug(PSTR("Recovered tool: %d"), toolSelected);
 }
 
 void setSignalPort(int port, bool state) {
@@ -1086,13 +1112,16 @@ void listDir(File root, int numTabs, int serial) {
 
 void __debug(const char* fmt, ...) {
 #ifdef DEBUG
-  char _tmp[1024];
+  char _tmp[512];
   va_list arguments;
   va_start(arguments, fmt); 
-  vsnprintf_P(_tmp, 1024, fmt, arguments);
+  vsnprintf_P(_tmp, 511, fmt, arguments);
   va_end (arguments); 
-  Serial.println(_tmp);
-  //Serial1.println(_tmp);
+#ifdef __AVR__
+  Serial.print(F("echo: dbg: "));  Serial.println(_tmp);
+#else
+  Serial1.print(F("echo: dbg: "));  Serial1.println(_tmp);
+#endif
 #endif
 }
 

@@ -25,9 +25,10 @@
 #include "ArduinoJson.h"
 
 DataStore dataStore;
+extern int  swapTools[MAX_TOOLS];
 
 void saveStore() {
-    StaticJsonDocument<256> jsonDoc;
+    StaticJsonDocument<512> jsonDoc;
     JsonObject jsonObj = jsonDoc.to<JsonObject>();
 
     jsonDoc["Tool"] = dataStore.tool;
@@ -35,6 +36,12 @@ void saveStore() {
     positions["Selector"] = dataStore.stepperPos[SELECTOR];
     positions["Revolver"] = dataStore.stepperPos[REVOLVER];
     positions["Feeder"] = dataStore.stepperPos[FEEDER];
+    JsonObject swaps = jsonObj.createNestedObject("SwapTools");
+    char tmp[16];
+    for(int i=0; i < MAX_TOOLS; i++) {
+      sprintf(tmp,"T%d", i);
+      swaps[tmp] = swapTools[i];
+    }
 
     FsFile cfg;
     if(cfg.open(DATASTORE_FILE, O_WRITE | O_CREAT | O_TRUNC)) {
@@ -44,7 +51,7 @@ void saveStore() {
 }
 
 void recoverStore() {
-    StaticJsonDocument<256> jsonDoc;
+    StaticJsonDocument<512> jsonDoc;
     
     FsFile cfg;
     if (!cfg.open(DATASTORE_FILE)){
@@ -53,7 +60,7 @@ void recoverStore() {
     else {
       auto error = deserializeJson(jsonDoc, cfg);
       if (error) {
-        __debug(PSTR("Data store file possibly corrupted!\n"));
+        __debug(PSTR("Data store file possibly corrupted or too large!\n"));
       } 
       else {
         //__debug(PSTR("Data store recovered\n"));
@@ -61,6 +68,13 @@ void recoverStore() {
         dataStore.stepperPos[REVOLVER]  = jsonDoc["Positions"]["Revolver"];
         dataStore.stepperPos[FEEDER]    = jsonDoc["Positions"]["Feeder"];
         dataStore.tool = jsonDoc["Tool"];
+        char tmp[16];
+        for(int i=0; i< MAX_TOOLS; i++) {
+          sprintf(tmp,"T%d", i);
+          if(jsonDoc["SwapTools"][tmp] != NULL) {
+            swapTools[i] = jsonDoc["SwapTools"][tmp];
+          }
+        }
       }
       cfg.close();
     }

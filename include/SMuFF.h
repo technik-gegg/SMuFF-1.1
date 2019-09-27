@@ -37,11 +37,7 @@
 #include "DataStore.h"
 //#include <FastLED.h>
 #ifdef __STM32F1__
-#include <libmaple/adc.h>
-#include <libmaple/iwdg.h>
-#include <libmaple/gpio.h>
-#include <libmaple/usart.h>
-#include <libmaple/i2c.h>
+#include <wirish.h>
 
 #undef  sprintf_P
 #define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
@@ -90,7 +86,8 @@ typedef struct {
   int   endstopTrigger_Z    = LOW;
   int   stepDelay_Z         = 10;
   int   feedChunks          = 20;
-  bool  enableChunks        = false;      
+  bool  enableChunks        = false;
+  float insertLength      = 5.0;
   
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;

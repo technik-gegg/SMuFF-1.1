@@ -79,7 +79,8 @@ uint32_t pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit);
 void overrideStepX() {
 #ifdef __STM32F1__
   *stepper_reg_X = pinMask_X;
-  delayMicroseconds(smuffConfig.stepDelay_X);
+  if(smuffConfig.stepDelay_X > 0)
+    delayMicroseconds(smuffConfig.stepDelay_X);
   *stepper_reg_X = pinMask_X << 16;
 #else
   STEP_HIGH_X
@@ -91,7 +92,8 @@ void overrideStepX() {
 void overrideStepY() {
 #ifdef __STM32F1__
   *stepper_reg_Y = pinMask_Y;
-  delayMicroseconds(smuffConfig.stepDelay_Y);
+  if(smuffConfig.stepDelay_Y > 0)
+    delayMicroseconds(smuffConfig.stepDelay_Y);
   *stepper_reg_Y = pinMask_Y << 16;
 #else
   STEP_HIGH_Y
@@ -103,7 +105,8 @@ void overrideStepY() {
 void overrideStepZ() {
 #ifdef __STM32F1__
   *stepper_reg_Z = pinMask_Z;
-  delayMicroseconds(smuffConfig.stepDelay_Z);
+  if(smuffConfig.stepDelay_Z > 0)
+    delayMicroseconds(smuffConfig.stepDelay_Z);
   *stepper_reg_Z = pinMask_Z << 16;
 #else
   STEP_HIGH_Z
@@ -176,15 +179,28 @@ void setup() {
   setupMainMenu();
   setupOffsetMenu();
   servo.attach(SERVO1_PIN);
-  //__debug(PSTR("Servo attached"));
+  
+  // must happen after setupSteppers()
   getStoredData();
   
-  if(HEATER0_PIN != -1) 
-    pinMode(HEATER0_PIN, OUTPUT);
+  if(HEATER0_PIN != -1) {
+    pinMode(HEATER0_PIN, OUTPUT); 
+  }
+#ifdef __STM32F1__
+  if(HEATBED_PIN != -1) {
+    pinMode(HEATBED_PIN, OUTPUT); 
+  }
+#endif
+  
   if(FAN_PIN != -1){
+#ifdef __STM32F1__
+    pinMode(FAN_PIN, PWM);
+#else
     pinMode(FAN_PIN, OUTPUT);
-    if(smuffConfig.fanSpeed > 0 && smuffConfig.fanSpeed <= 255)
+#endif      
+    if(smuffConfig.fanSpeed > 0 && smuffConfig.fanSpeed <= 255) {
       analogWrite(FAN_PIN, smuffConfig.fanSpeed);
+    }
   }
 
 #ifndef __STM32F1__
@@ -195,10 +211,12 @@ void setup() {
   //__debug(PSTR("DONE I2C init"));
  #endif
   
-  resetRevolver();
   //__debug(PSTR("DONE reset Revolver"));
   if(smuffConfig.homeAfterFeed) {
     moveHome(REVOLVER, false, false);
+  }
+  else {
+    resetRevolver();
   }
   
   sendStartResponse(0);
@@ -261,8 +279,8 @@ void setupTimers() {
   encoderTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1024);
   encoderTimer.setNextInterruptInterval(16);    // equals to 1ms on 16MHz CPU
 #else
-  stepperTimer.setupTimer(ZTimer::ZTIMER1, 2);
-  encoderTimer.setupTimer(ZTimer::ZTIMER2, 5);
+  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);
+  encoderTimer.setupTimer(ZTimer::ZTIMER1, 5);
   encoderTimer.setNextInterruptInterval(16);    // equals to 1ms on 72MHz CPU
 #endif
 
@@ -596,6 +614,7 @@ void showSwapMenu() {
       swapTools[tool] = tmp;
     }
   } while(!stopMenu);
+  saveStore();
 }
 
 

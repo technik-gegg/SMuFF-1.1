@@ -104,6 +104,9 @@ void readConfig()
       smuffConfig.feedChunks =          jsonDoc[feeder]["FeedChunks"];
       if(smuffConfig.feedChunks == 0)
         smuffConfig.feedChunks = 20;
+      smuffConfig.insertLength =        jsonDoc[feeder]["InsertLength"];
+      if(smuffConfig.insertLength == 0)
+        smuffConfig.insertLength = 5;
       int contrast =                    jsonDoc["LCDContrast"];
       smuffConfig.lcdContrast = (contrast > MIN_CONTRAST && contrast < MAX_CONTRAST) ? contrast : DSP_CONTRAST;
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];

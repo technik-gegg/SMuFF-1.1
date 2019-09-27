@@ -31,6 +31,7 @@ static void (*__timer2Hook)(void) = NULL;
 static void (*__timer3Hook)(void) = NULL;
 static void (*__timer4Hook)(void) = NULL;
 static void (*__timer5Hook)(void) = NULL;
+static void (*__timer6Hook)(void) = NULL;
 
 #if defined(__AVR__)
 ISR(TIMER1_COMPA_vect) {
@@ -60,6 +61,7 @@ HardwareTimer hwTimer2(2);
 HardwareTimer hwTimer3(3);
 HardwareTimer hwTimer4(4);
 HardwareTimer hwTimer5(5);
+HardwareTimer hwTimer6(8);
 
 void ISR1() {
   if(__timer1Hook != NULL)
@@ -85,6 +87,11 @@ void ISR4() {
 void ISR5() {
   if(__timer5Hook != NULL)
     __timer5Hook();
+}
+
+void ISR6() {
+  if(__timer6Hook != NULL)
+    __timer6Hook();
 }
 #endif
 
@@ -117,6 +124,8 @@ void ZTimer::setupTimer(IsrTimer timer, TimerPrescaler prescaler) {
       TCCR5B = prescaler;
       TCCR5B |= _BV(WGM52);        // CTC mode
       break;
+    case ZTIMER6:                 // not available on AVR
+      break;
   }
   //setNextInterruptInterval(1000);
   interrupts();
@@ -125,6 +134,10 @@ void ZTimer::setupTimer(IsrTimer timer, TimerPrescaler prescaler) {
 
 #if defined(__STM32F1__)
 void ZTimer::setupTimer(IsrTimer timer, unsigned int prescaler) {
+    setupTimer(timer, 1, prescaler);
+}
+
+void ZTimer::setupTimer(IsrTimer timer, int channel, unsigned int prescaler) {
   _timer = timer;
 
   stopTimer();
@@ -132,34 +145,40 @@ void ZTimer::setupTimer(IsrTimer timer, unsigned int prescaler) {
   switch(_timer) {
 
     case ZTIMER1:
-      hwTimer1.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
+      hwTimer1.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer1.setPrescaleFactor(prescaler);
-      hwTimer1.setCompare(TIMER_CH1, 1);
-      hwTimer1.attachCompare1Interrupt(ISR1);
+      hwTimer1.setCompare(channel, 1);
+      hwTimer1.attachInterrupt(channel, ISR1);
       break;
     case ZTIMER2:
-      hwTimer2.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
+      hwTimer2.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer2.setPrescaleFactor(prescaler);
-      hwTimer2.setCompare(TIMER_CH1, 1);
-      hwTimer2.attachCompare1Interrupt(ISR2);
+      hwTimer2.setCompare(channel, 1);
+      hwTimer2.attachInterrupt(channel, ISR2);
       break;
     case ZTIMER3:
-      hwTimer3.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
+      hwTimer3.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer3.setPrescaleFactor(prescaler);
-      hwTimer3.setCompare(TIMER_CH1, 1);
-      hwTimer3.attachCompare1Interrupt(ISR3);
+      hwTimer3.setCompare(channel, 1);
+      hwTimer3.attachInterrupt(channel, ISR3);
       break;
     case ZTIMER4:
-      hwTimer4.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
+      hwTimer4.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer4.setPrescaleFactor(prescaler);
-      hwTimer4.setCompare(TIMER_CH1, 1);
-      hwTimer4.attachCompare1Interrupt(ISR4);
+      hwTimer4.setCompare(channel, 1);
+      hwTimer4.attachInterrupt(channel, ISR4);
       break;
     case ZTIMER5:
-      hwTimer5.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
+      hwTimer5.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer5.setPrescaleFactor(prescaler);
-      hwTimer5.setCompare(TIMER_CH1, 1);
-      hwTimer5.attachCompare1Interrupt(ISR5);
+      hwTimer5.setCompare(channel, 1);
+      hwTimer5.attachInterrupt(channel, ISR5);
+      break;
+    case ZTIMER6:
+      hwTimer6.setMode(channel, TIMER_OUTPUT_COMPARE);
+      hwTimer6.setPrescaleFactor(prescaler);
+      hwTimer6.setCompare(channel, 1);
+      hwTimer6.attachInterrupt(channel, ISR6);
       break;
   }
   //setNextInterruptInterval(1000);
@@ -175,6 +194,7 @@ void ZTimer::setupTimerHook(void (*function)(void))
     case ZTIMER3: __timer3Hook = function; break;
     case ZTIMER4: __timer4Hook = function; break;
     case ZTIMER5: __timer5Hook = function; break;
+    case ZTIMER6: __timer6Hook = function; break;
   }
 }
 
@@ -193,6 +213,7 @@ unsigned int ZTimer::getOverflow() {
     case ZTIMER3: return OCR3A;
     case ZTIMER4: return OCR4A;
     case ZTIMER5: return OCR5A;
+    case ZTIMER6: return 0;
 #endif
 #if defined(__STM32F1__)
     case ZTIMER1: return hwTimer1.getOverflow(); 
@@ -200,6 +221,7 @@ unsigned int ZTimer::getOverflow() {
     case ZTIMER3: return hwTimer3.getOverflow();
     case ZTIMER4: return hwTimer4.getOverflow();
     case ZTIMER5: return hwTimer5.getOverflow();
+    case ZTIMER6: return hwTimer6.getOverflow();
 #endif
   }
   return 0;
@@ -213,6 +235,7 @@ void ZTimer::setOverflow(unsigned int value) {
     case ZTIMER3: OCR3A = value; break;
     case ZTIMER4: OCR4A = value; break;
     case ZTIMER5: OCR5A = value; break;
+    case ZTIMER6: break;
 #endif
 #if defined(__STM32F1__)
     case ZTIMER1: hwTimer1.setOverflow(value); break;
@@ -220,6 +243,7 @@ void ZTimer::setOverflow(unsigned int value) {
     case ZTIMER3: hwTimer3.setOverflow(value); break;
     case ZTIMER4: hwTimer4.setOverflow(value); break;
     case ZTIMER5: hwTimer5.setOverflow(value); break;
+    case ZTIMER6: hwTimer6.setOverflow(value); break;
 #endif
   }
 }
@@ -232,6 +256,7 @@ void ZTimer::setCounter(unsigned int value) {
     case ZTIMER3: TCNT3 = value; break;
     case ZTIMER4: TCNT4 = value; break;
     case ZTIMER5: TCNT5 = value; break;
+    case ZTIMER6: break;
 #endif
 #if defined(__STM32F1__)
     case ZTIMER1: hwTimer1.setCount(value); break;
@@ -239,6 +264,7 @@ void ZTimer::setCounter(unsigned int value) {
     case ZTIMER3: hwTimer3.setCount(value); break;
     case ZTIMER4: hwTimer4.setCount(value); break;
     case ZTIMER5: hwTimer5.setCount(value); break;
+    case ZTIMER6: hwTimer6.setCount(value); break;
 #endif
   }
 }
@@ -251,6 +277,7 @@ void ZTimer::startTimer() {
     case ZTIMER3: TIMSK3 |= _BV(OCIE3A); break;
     case ZTIMER4: TIMSK4 |= _BV(OCIE4A); break;
     case ZTIMER5: TIMSK5 |= _BV(OCIE5A); break;
+    case ZTIMER6: break;
 #endif
 #if defined(__STM32F1__)
     case ZTIMER1: hwTimer1.refresh(); hwTimer1.resume(); break;
@@ -258,6 +285,7 @@ void ZTimer::startTimer() {
     case ZTIMER3: hwTimer3.refresh(); hwTimer3.resume(); break;
     case ZTIMER4: hwTimer4.refresh(); hwTimer4.resume(); break;
     case ZTIMER5: hwTimer5.refresh(); hwTimer5.resume(); break;
+    case ZTIMER6: hwTimer6.refresh(); hwTimer6.resume(); break;
 #endif
   }
 }
@@ -270,6 +298,7 @@ void ZTimer::stopTimer() {
     case ZTIMER3: TIMSK3 &= ~_BV(OCIE3A); break;
     case ZTIMER4: TIMSK4 &= ~_BV(OCIE4A); break;
     case ZTIMER5: TIMSK5 &= ~_BV(OCIE5A); break;
+    case ZTIMER6: break;
 #endif
 #if defined(__STM32F1__)
     case ZTIMER1: hwTimer1.pause(); break;
@@ -277,6 +306,7 @@ void ZTimer::stopTimer() {
     case ZTIMER3: hwTimer3.pause(); break;
     case ZTIMER4: hwTimer4.pause(); break;
     case ZTIMER5: hwTimer5.pause(); break;
+    case ZTIMER6: hwTimer6.pause(); break;
 #endif
   }
 }

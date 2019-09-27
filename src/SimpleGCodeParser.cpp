@@ -198,9 +198,9 @@ bool parse_T(const String& buf, int serial) {
     parse_G(String("28"), serial);
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
-    __debug(PSTR("Tool change requested: T%d"), tool);
+    //__debug(PSTR("Tool change requested: T%d"), tool);
     if(smuffConfig.prusaMMU2 && feederEndstop()) { // Prusa expects the MMU to unload filament on its own before tool change
-      __debug(PSTR("must unload first!"));
+      //__debug(PSTR("must unload first!"));
       unloadFilament();
     }
     stat = selectTool(tool, false);

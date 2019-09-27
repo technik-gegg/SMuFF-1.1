@@ -51,6 +51,7 @@
 #define SERVO2_PIN          PA0     // TH0
 #define FAN_PIN             PC8
 #define HEATER0_PIN         PA8
+#define HEATBED_PIN         PC9
 
 #define NEOPIXEL_PIN        PC10
 

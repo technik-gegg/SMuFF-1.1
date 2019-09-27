@@ -33,7 +33,8 @@ public:
       ZTIMER2 = 2,
       ZTIMER3 = 3,
       ZTIMER4 = 4,
-      ZTIMER5 = 5
+      ZTIMER5 = 5,
+      ZTIMER6 = 6
     } IsrTimer;
 
     typedef enum {
@@ -51,6 +52,7 @@ public:
 #endif
 #if defined(__STM32F1__)
     void           setupTimer(IsrTimer timer, unsigned int prescaler);
+    void           setupTimer(IsrTimer timer, int channel, unsigned int prescaler);
 #endif
     void           setupTimerHook(void (*function)(void));
     void           setNextInterruptInterval(unsigned int interval);

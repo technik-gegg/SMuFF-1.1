@@ -15,6 +15,14 @@ The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Hence, cha
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
 
 ## Recent changes
+**1.55** - Optimization
++ reworked Revolver movement - much smoother now
++ optimized stepper motor speeds for SKR in configuration file
++ Tools swapping is now being stored in the EEPROM.DAT file so that it'll survive a reset
++ added Cancel / Retry option when loading fails
++ sound (beeper) now working flawlessly on SKR (STM32)
++ SKR still has issues with the fan (it's either full speed or no speed)
+**1.54** - Not been published
 **1.53** - This version has got some major changes:
 + Full integration of the SKR mini V1.1 controller board (STM32) completed
 + Prusa MMU2 Emulation mode improved even more

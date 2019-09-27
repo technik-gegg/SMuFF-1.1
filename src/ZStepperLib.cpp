@@ -94,27 +94,30 @@ void ZStepper::updateAcceleration() {
     _durationInt = _duration = _minStepInterval;
     return;
   }
-  if(_stepCount <= _accelDistance) {
-    _duration -= _stepsAcceleration;    // accelerate
-    if(_duration <= _minStepInterval)
-      _duration = _minStepInterval;
-    //__debug(PSTR("durInt: %d, %s"), _durationInt,  String(_duration).c_str());
+  if(_accelDistance < (long)_stepsPerMM*3) {
+    _duration = _stepsAcceleration;
   }
-  else if (_stepCount >= _totalSteps - _accelDistance ) {
-    _duration += _stepsAcceleration;    // decelerate
-    if(_duration >= _acceleration)
-      _duration = _acceleration;
+  else {
+    if(_stepCount <= _accelDistance) {
+      _duration -= _stepsAcceleration;    // accelerate
+      //__debug(PSTR("durInt: %d, %s"), _durationInt,  String(_duration).c_str());
+    }
+    else if (_stepCount >= _totalSteps - _accelDistance ) {
+      _duration += _stepsAcceleration;    // decelerate
+    }
   }
+  if(_duration <= _minStepInterval)
+    _duration = _minStepInterval;
+  if(_duration >= _acceleration)
+    _duration = _acceleration;
   _durationInt = _duration;
 }
 
 void ZStepper::handleISR() {
 
-  //if(_endstopType == ORBITAL)
-  //  __debug(PSTR("O: %d %d "), _stepCount, _dir);
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
-     (_endstopType == ORBITAL && _dir == CCW)) {
+     (_endstopType == ORBITAL)) {
      bool hit = (int)digitalRead(_endstopPin)==_endstopState;
     setEndstopHit(hit);
   }
@@ -123,36 +126,52 @@ void ZStepper::handleISR() {
     return;
   }
   if(!_ignoreEndstop && _endstopHit && !_movementDone){
-      setMovementDone(true);
-      if(_endstopType == MIN || _endstopType == ORBITAL) {
+    switch(_endstopType) {
+      case MIN:
         setStepPosition(0);
-      }
-      else if(_endstopType == MAX)
+        break;
+      case MAX:
         setStepPosition(_maxStepCount);
-
+        break;
+      case ORBITAL:
+        setStepPosition(0);
+        break;
+      default: 
+        break;
+    }
+    setMovementDone(true);
     if(endstopFunc != NULL)
       endstopFunc();
     return;
   }
   
-  if(_ignoreEndstop && _endstopHit && _endstopType == ORBITAL){
-    setStepPosition(0);
-  }
-  
   if(_maxStepCount != 0 && _dir == CW && _stepCount >= _maxStepCount) {
     setMovementDone(true);
+    //__debug(PSTR("Movement done: steps: %d - max: %d"), _stepCount, _maxStepCount);
   }
   else if(_stepCount < _totalSteps) {
     if(stepFunc != NULL)
       stepFunc();
-     else
+    else
       defaultStepFunc();
+    
     _stepCount++;
     _stepsTaken += _dir;    
-    setStepPosition(_stepPosition + _dir);
+    setStepPosition(getStepPosition() + _dir);
+    
+    if(_endstopType == ORBITAL) {
+      if(getStepPosition() >= _maxStepCount) {
+        //__debug(PSTR("Pos > Max: %d"), getStepPosition());
+        setStepPosition(0);
+      }
+      else if(getStepPosition() < 0) {
+        //__debug(PSTR("Pos < 0: %d"), getStepPosition());
+        setStepPosition(_maxStepCount-1);
+      }
+    }
     if(_stepCount >= _totalSteps) {
       setMovementDone(true);
-      //__debug(PSTR("handleISR(): %ld / %ld"), _stepCount, _totalSteps);
+      //__debug(PSTR("handleISR() done: %ld / %ld / %ld"), _stepCount, _totalSteps, getStepPosition());
     }
   }
   updateAcceleration();
@@ -167,26 +186,39 @@ bool ZStepper::getEndstopHit() {
 }
 
 void ZStepper::home() {
-
-  unsigned int curSpeed = getMaxSpeed();
-  long distance = -_maxStepCount;
-  if(_endstopPin != -1) {
-    distance = -(_maxStepCount*2);
+  
+  // calculate the movement distances: if an endstop is set, go 20% beyond max.
+  long distance = (_endstopPin != -1) ? -((long)((float)_maxStepCount*1.2)) : -_maxStepCount;
+  long distanceF = 0;
+  long back = -(distance/36);
+  // if the endstop type is ORBITAL (Revolver) and the current position is beyond the middle, turn inverse
+  if(_endstopType == ORBITAL && (getStepPosition() >= _maxStepCount/2 && getStepPosition() <= _maxStepCount)) {
+    distanceF = abs(distance);
   }
-  //__debug(PSTR("[ZStepper::home] Distance: %d -  max: %d"), distance, _maxStepCount);
-  prepareMovement(distance);
-  //__debug(PSTR("[ZStepper::home] DONE prepareMovement"));
-  if(runAndWaitFunc != NULL)
-    runAndWaitFunc(_number);
-    //__debug(PSTR("[ZStepper::home] DONE runAndWait"));
+  //__debug(PSTR("[ZStepper::home] Distance: %d - max: %d - back: %d"), distance, _maxStepCount, back);
+
+  // only if the endstop is not being hit already, move to endstop position
+  if(!_endstopHit) {
+    prepareMovement(distanceF == 0 ? distance : distanceF);
+    if(runAndWaitFunc != NULL)
+      runAndWaitFunc(_number);
+  }
+  //else __debug(PSTR("[ZStepper::home] Endstop already hit"));
+
+  // turn down the speed for more precision
+  unsigned int curSpeed = getMaxSpeed();
+  setMaxSpeed(curSpeed*100);
+  // go out of the endstop
   do {
-    prepareMovement(_maxStepCount/30);
+    prepareMovement(back, true); // move forward by ignoring the endstop
     if(runAndWaitFunc != NULL)
       runAndWaitFunc(_number);
   } while(_endstopHit);
-  prepareMovement(-(_maxStepCount));
-  setMaxSpeed(curSpeed*25);
+  // and back to home position
+  prepareMovement(distance); 
   if(runAndWaitFunc != NULL)
     runAndWaitFunc(_number);
+  
+  // reset the speed
   setMaxSpeed(curSpeed);
 }

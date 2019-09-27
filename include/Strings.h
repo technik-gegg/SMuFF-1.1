@@ -33,6 +33,7 @@ const char P_OfsMenuItems [] PROGMEM        = { "Selector\nRevolver" };
 const char P_OkButtonOnly [] PROGMEM        = { " Ok " };
 const char P_CancelButtonOnly [] PROGMEM    = { " Cancel " };
 const char P_OkCancelButtons [] PROGMEM     = { " Ok \n Cancel " };
+const char P_CancelRetryButtons [] PROGMEM  = { " Cancel \n Retry " };
 const char P_YesNoButtons [] PROGMEM        = { " Yes \n No " };
 const char P_TitleWarning [] PROGMEM        = { "WARNING" };
 const char P_TitleSelected [] PROGMEM       = { "TOOL SELECTED" };
