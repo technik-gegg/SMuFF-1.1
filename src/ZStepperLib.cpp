@@ -207,7 +207,7 @@ void ZStepper::home() {
 
   // turn down the speed for more precision
   unsigned int curSpeed = getMaxSpeed();
-  setMaxSpeed(curSpeed*100);
+  setMaxSpeed(65534);
   // go out of the endstop
   do {
     prepareMovement(back, true); // move forward by ignoring the endstop

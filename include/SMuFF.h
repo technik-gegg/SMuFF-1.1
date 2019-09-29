@@ -38,6 +38,7 @@
 //#include <FastLED.h>
 #ifdef __STM32F1__
 #include <wirish.h>
+#include <pwm.h>
 
 #undef  sprintf_P
 #define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
@@ -141,7 +142,7 @@ extern String         serialBuffer0, serialBuffer2, serialBuffer3, serialBuffer9
 extern bool           displayingUserMessage;
 extern unsigned int   userMessageTime;
 extern bool           testMode;
-extern bool           feederJamed;
+extern bool           feederJammed;
 extern volatile bool  parserBusy;
 extern bool           isPwrSave;
 //extern CRGB           leds[];

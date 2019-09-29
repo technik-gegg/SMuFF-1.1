@@ -92,6 +92,7 @@ const char P_Feed[] PROGMEM           = {"Feed    " };
 const char P_NoTool [] PROGMEM        = { "No tool set.\n" };
 const char P_Aborting [] PROGMEM      = { "Aborting..."};
 const char P_FeederJammed [] PROGMEM  = { "Feeder is jammed.\n" };
+const char P_JamCleared [] PROGMEM    = { "Feeder Jam has\nbeen reset." };
 const char P_ToolAlreadySet [] PROGMEM= { "Tool already set." };
 
 const char P_WrongFormat [] PROGMEM   = { "Wrong format. Use Bdd:dd:dd...\n" };

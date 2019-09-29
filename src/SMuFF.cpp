@@ -184,11 +184,13 @@ void setup() {
   getStoredData();
   
   if(HEATER0_PIN != -1) {
-    pinMode(HEATER0_PIN, OUTPUT); 
+    pinMode(HEATER0_PIN, OUTPUT);
+    //pwmWrite(HEATER0_PIN, 32000); 
   }
 #ifdef __STM32F1__
   if(HEATBED_PIN != -1) {
     pinMode(HEATBED_PIN, OUTPUT); 
+    //pwmWrite(HEATBED_PIN, 48000); 
   }
 #endif
   
@@ -197,10 +199,10 @@ void setup() {
     pinMode(FAN_PIN, PWM);
 #else
     pinMode(FAN_PIN, OUTPUT);
-#endif      
     if(smuffConfig.fanSpeed > 0 && smuffConfig.fanSpeed <= 255) {
       analogWrite(FAN_PIN, smuffConfig.fanSpeed);
     }
+#endif      
   }
 
 #ifndef __STM32F1__
@@ -286,6 +288,7 @@ void setupTimers() {
 
   stepperTimer.setupTimerHook(isrStepperHandler);
   encoderTimer.setupTimerHook(isrEncoderHandler);
+  encoder.setDoubleClickEnabled(true);
 }
 
 void setupToolsMenu() {
@@ -435,6 +438,12 @@ void loop() {
   }
 
   int button = encoder.getButton();
+  if(button == ClickEncoder::DoubleClicked) {
+    feederJammed = false;
+    beep(2);
+    sprintf_P(tmp, P_JamCleared);
+    drawUserMessage(tmp);
+  }
   if(button == ClickEncoder::Button_e::Pressed && isPwrSave) {
     setPwrSave(0);
   }

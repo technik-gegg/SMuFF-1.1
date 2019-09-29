@@ -15,6 +15,9 @@ The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Hence, cha
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
 
 ## Recent changes
+**1.56** - Optimization
++ added resetting the "Feder Jammed" state by double clicking the encoder button
++ removed the ZPwm.cpp / ZPwm.h since it's not needed 
 **1.55** - Optimization
 + reworked Revolver movement - much smoother now
 + optimized stepper motor speeds for SKR in configuration file
