@@ -49,6 +49,7 @@ public:
 
   void          (*stepFunc)() = NULL;
   void          (*endstopFunc)() = NULL;
+  bool          (*endstopCheck)() = NULL;
   void          (*runAndWaitFunc)(int number) = NULL;
   void          (*runNoWaitFunc)(int number) = NULL;
   void          defaultStepFunc();                    // default step method, uses digitalWrite on _stepPin
@@ -90,6 +91,8 @@ public:
   void          setAcceleration(float value) { _acceleration = value; }
   unsigned int  getMaxSpeed() { return _minStepInterval; }
   void          setMaxSpeed(unsigned int value) { _minStepInterval = value; }
+  unsigned int  getMaxHSpeed() { return _minStepIntervalHS; }
+  void          setMaxHSpeed(unsigned int value) { _minStepIntervalHS = value; }
   bool          getInvertDir() { return _invertDir; }
   void          setInvertDir(bool state) { _invertDir = state; }
 
@@ -105,7 +108,7 @@ public:
   bool          getIgnoreAbort() { return _ignoreAbort; }
   void          setIgnoreAbort(bool state) { _ignoreAbort = state; }
   bool          getStepsTaken() { return _stepsTaken; }
-  float         getStepsTakenMM() { return _stepsTaken / _stepsPerMM; }
+  float         getStepsTakenMM() { return (float)_stepsTaken / _stepsPerMM; }
   void          setStepsTaken(long count) { _stepsTaken = count; }
   
 private:
@@ -126,6 +129,7 @@ private:
   volatile bool   _movementDone = true;         // true if the current movement has been completed (used by main program to wait for completion)
   float           _acceleration = 1000;         // acceleration value 
   unsigned int    _minStepInterval = 100;       // ie. max speed, smaller is faster
+  unsigned int    _minStepIntervalHS = 10;      // ie. max speed (HighSpeed mode), smaller is faster
   long            _stepCount = 0;               // number of steps completed in current movement
   long            _maxStepCount = 0;            // maximum number of steps
   unsigned int    _stepsPerMM = 0;              // steps needed for one millimeter 
@@ -134,7 +138,7 @@ private:
   bool            _allowAcceleration = true;    // allow / disallow acceleration
   bool            _abort = false;               // flag signals abortion of operation  
   bool            _ignoreAbort = false;         // flag signals abort not possible
-  long            _stepsTaken = 0;              // counter for steps currently taken
+  long int        _stepsTaken = 0;              // counter for steps currently taken
 
   // per iteration variables (potentially changed every interrupt)
   volatile float          _duration;            // current interval length

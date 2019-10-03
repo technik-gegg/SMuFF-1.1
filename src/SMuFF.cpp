@@ -21,6 +21,7 @@
 #include "ZTimerLib.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
+#include "DuetLaserSensor.h"
 
 #ifdef __BRD_I3_MINI
 U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
@@ -37,6 +38,7 @@ ZStepper                steppers[NUM_STEPPERS];
 ZTimer                  stepperTimer;
 ZTimer                  encoderTimer;
 ZServo                  servo;
+DuetLaserSensor         duetLS;
 #define ENC_HALFSTEP 1
 ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
 //CRGB                    leds[NUM_LEDS];
@@ -65,6 +67,7 @@ extern int  swapTools[MAX_TOOLS];
 
 void isrStepperHandler();       // forward declarations ... makes every compiler happy
 void isrEncoderHandler();
+void refreshStatus(bool withLogo);
 
 #ifdef __STM32F1__
 volatile uint32_t *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
@@ -123,8 +126,20 @@ void endstopZevent() {
   //__debug(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
 }
 
+void duetLSHandler() {
+  duetLS.service();
+}
+
 void isrEncoderHandler() {
   encoder.service();
+  duetLSHandler();
+}
+
+bool checkDuetEndstop() {
+  if(smuffConfig.useDuetLaser) {
+    return duetLS.getSwitch();
+  }
+  return false;
 }
 
 void setup() {
@@ -173,15 +188,19 @@ void setup() {
 #else
   Serial2.begin(smuffConfig.serial2Baudrate);
 #endif
-  
+
   setupSteppers();
   setupTimers();
   setupMainMenu();
   setupOffsetMenu();
   servo.attach(SERVO1_PIN);
-  
+
   // must happen after setupSteppers()
   getStoredData();
+
+  if(smuffConfig.useDuetLaser) {
+    duetLS.attach(Z_END_PIN);
+  }
   
   if(HEATER0_PIN != -1) {
     pinMode(HEATER0_PIN, OUTPUT);
@@ -245,6 +264,7 @@ void setupSteppers() {
   steppers[SELECTOR].setMaxStepCount(smuffConfig.maxSteps_X);
   steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM_X);
   steppers[SELECTOR].setInvertDir(smuffConfig.invertDir_X);
+  steppers[SELECTOR].setMaxHSpeed(smuffConfig.maxSpeedHS_X);
 
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, smuffConfig.acceleration_Y, smuffConfig.maxSpeed_Y);
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrigger_Y, ZStepper::ORBITAL);
@@ -252,13 +272,20 @@ void setupSteppers() {
   steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerRevolution_Y);
   steppers[REVOLVER].endstopFunc = endstopYevent;
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir_Y);
+  steppers[REVOLVER].setMaxHSpeed(smuffConfig.maxSpeedHS_Y);
   
   steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, smuffConfig.acceleration_Z, smuffConfig.maxSpeed_Z);
-  steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
+  if(smuffConfig.useDuetLaser) {
+    steppers[FEEDER].setEndstop(-1, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
+    steppers[FEEDER].endstopCheck = checkDuetEndstop;
+  }
+  else
+    steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
   steppers[FEEDER].stepFunc = overrideStepZ;
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM_Z);
   steppers[FEEDER].endstopFunc = endstopZevent;
   steppers[FEEDER].setInvertDir(smuffConfig.invertDir_Z);
+  steppers[FEEDER].setMaxHSpeed(smuffConfig.maxSpeedHS_Z);
 
   for(int i=0; i < NUM_STEPPERS; i++) {
       steppers[i].runAndWaitFunc = runAndWait;
@@ -278,11 +305,11 @@ void setupTimers() {
   // *****
 #ifdef __BRD_I3_MINI
   stepperTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1024);
-  encoderTimer.setNextInterruptInterval(16);    // equals to 1ms on 16MHz CPU
+  encoderTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER256);
+  encoderTimer.setNextInterruptInterval(63);    // round about 1ms on 16MHz CPU
 #else
   stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER1, 5);
+  encoderTimer.setupTimer(ZTimer::ZTIMER1, 4500);
   encoderTimer.setNextInterruptInterval(16);    // equals to 1ms on 72MHz CPU
 #endif
 
@@ -398,10 +425,27 @@ void runAndWait(int index) {
   runNoWait(index);
   while(remainingSteppersFlag) {
     checkSerialPending(); // not a really nice solution but needed to check serials for Abort command
-    delayMicroseconds(1000);
+    //delayMicroseconds(1000);
+#ifdef __STM32F1__
+    refreshStatus(true);
+    lastDisplayRefresh = millis()+1500; // keep the last status for 1.5 seconds
+#endif
   }
   //if(index==FEEDER) __debug(PSTR("Fed: %smm"), String(steppers[index].getStepsTakenMM()).c_str());
 }
+
+void refreshStatus(bool withLogo) {
+  display.firstPage();
+  do {
+    if(withLogo) 
+      drawLogo();
+    drawStatus();
+  } while(display.nextPage());
+  lastDisplayRefresh = millis();
+}
+
+unsigned long lastMsg = millis();
+unsigned lastState = duetLS.getState();
 
 void loop() {
 #ifdef __STM32F1__
@@ -421,13 +465,12 @@ void loop() {
 
   if(!checkUserMessage()) {
     if(!isPwrSave) {
+#ifdef __STM32F1__
+      if(millis()-lastDisplayRefresh > 100) { // refresh display every 100ms
+#else
       if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
-        display.firstPage();
-        do {
-          drawLogo();
-          drawStatus();
-        } while(display.nextPage());
-        lastDisplayRefresh = millis();
+#endif  
+        refreshStatus(true);
       }
     }
   }
@@ -468,11 +511,32 @@ void loop() {
     }
   }
   
-  delay(10);
+  //delay(10);
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
     //PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
     setPwrSave(1);
   }
+  /*
+  unsigned duetState = duetLS.getState();
+  String s = duetLS.getBits();
+  String s1 = duetLS.getStuffBits();
+  if(s != "") {
+    lastState = duetState;
+    //__debug(PSTR("DuetLS S:%x E:%x %s"), duetState, duetLS.getError(), s.c_str()); 
+    //__debug(PSTR("DuetLS S:%x E:%x %s"), duetState, duetLS.getError(), s1.c_str()); 
+    duetLS.resetBits();
+    __debug(PSTR("V: %d SW: %d P:%d E:%x (ST:%x) Q: %d B: %d S: %d"), 
+      duetLS.getVersion(), 
+      duetLS.getSwitch(), 
+      duetLS.getPosition(), 
+      duetLS.getError(), 
+      duetState, 
+      duetLS.getQuality(), 
+      duetLS.getBrightness(),
+      duetLS.getShutter());
+    lastMsg = millis();
+  }
+  */
 }
 
 

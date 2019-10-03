@@ -43,6 +43,7 @@
 #define Z_DIR_PIN           39
 #define Z_ENABLE_PIN        28
 #define Z_END_PIN           38
+#define Z_END_DUET_PIN      -1
 
 #define BEEPER_PIN          37
 

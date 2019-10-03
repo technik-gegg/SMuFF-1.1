@@ -84,7 +84,8 @@ const char P_FeederPos[] PROGMEM      = { "Feeder position = %ld\n" };
 const char P_ToolSelected[] PROGMEM   = { "Tool selected = %d\n" };
 const char P_Contrast[] PROGMEM       = { "Display contrast = %d\n" };
 const char P_ToolsConfig[] PROGMEM    = { "Tools configured = %d\n" };
-const char P_AccelSpeed[] PROGMEM     = { "X (Selector):\t%s\nY (Revolver):\t%s\nZ (Feeder):\t%s\n" };
+const char P_AccelSpeed[] PROGMEM     = { "X (Selector):\t%s, D:%s\nY (Revolver):\t%s, D:%s\nZ (Feeder):\t%s, D:%s\n" };
+const char P_Positions[] PROGMEM      = { "X (Selector): %s, Y (Revolver): %s, Z (Feeder): %s\n" };
 
 const char P_CurrentTool[] PROGMEM    = {"Tool    " };
 const char P_Feed[] PROGMEM           = {"Feed    " };
@@ -126,6 +127,7 @@ const char P_MCmds[] PROGMEM = {
   "M121\t-\tDisable endstops\n" \
   "M201\t-\tSet max acceleration\n" \
   "M203\t-\tSet max feedrate\n" \
+  "M205\t-\tSet advanced options\n" \
   "M206\t-\tSet offsets\n" \
   "M250\t-\tLCD contrast\n" \
   "M300\t-\tBeep\n" \

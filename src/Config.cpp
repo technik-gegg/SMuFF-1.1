@@ -65,7 +65,9 @@ void readConfig()
       const char* revolver = "Revolver";
       const char* feeder   = "Feeder";
       const char* maxSpeed = "MaxSpeed";
+      const char* maxSpeedHS = "MaxSpeedHS";
       const char* invertDir = "InvertDir";
+      const char* stepDelay = "StepDelay";
       drawSDStatus(SD_READING_CONFIG);
       int toolCnt =                     jsonDoc[PSTR("ToolCount")];
       smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
@@ -77,7 +79,8 @@ void readConfig()
       smuffConfig.acceleration_X =      jsonDoc[selector]["Acceleration"];
       smuffConfig.invertDir_X =         jsonDoc[selector][invertDir];
       smuffConfig.endstopTrigger_X =    jsonDoc[selector]["EndstopTrigger"];
-      smuffConfig.stepDelay_X =         jsonDoc[selector]["StepDelay"];
+      smuffConfig.stepDelay_X =         jsonDoc[selector][stepDelay];
+      smuffConfig.maxSpeedHS_X =        jsonDoc[selector][maxSpeedHS];
       smuffConfig.stepsPerRevolution_Y= jsonDoc[revolver]["StepsPerRevolution"];
       smuffConfig.firstRevolverOffset = jsonDoc[revolver]["Offset"];
       smuffConfig.revolverSpacing =     smuffConfig.stepsPerRevolution_Y / 10;
@@ -87,7 +90,8 @@ void readConfig()
       smuffConfig.homeAfterFeed =       jsonDoc[revolver]["HomeAfterFeed"];
       smuffConfig.invertDir_Y =         jsonDoc[revolver][invertDir];
       smuffConfig.endstopTrigger_Y =    jsonDoc[revolver]["EndstopTrigger"];
-      smuffConfig.stepDelay_Y =         jsonDoc[revolver]["StepDelay"];
+      smuffConfig.stepDelay_Y =         jsonDoc[revolver][stepDelay];
+      smuffConfig.maxSpeedHS_Y =        jsonDoc[revolver][maxSpeedHS];
       smuffConfig.externalControl_Z =   jsonDoc[feeder]["ExternalControl"];
       smuffConfig.stepsPerMM_Z =        jsonDoc[feeder]["StepsPerMillimeter"];
       smuffConfig.acceleration_Z =      jsonDoc[feeder]["Acceleration"];
@@ -95,7 +99,7 @@ void readConfig()
       smuffConfig.insertSpeed_Z =       jsonDoc[feeder]["InsertSpeed"];
       smuffConfig.invertDir_Z =         jsonDoc[feeder][invertDir];
       smuffConfig.endstopTrigger_Z =    jsonDoc[feeder]["EndstopTrigger"];
-      smuffConfig.stepDelay_Z =         jsonDoc[feeder]["StepDelay"];
+      smuffConfig.stepDelay_Z =         jsonDoc[feeder][stepDelay];
       smuffConfig.reinforceLength =     jsonDoc[feeder]["ReinforceLength"];
       smuffConfig.unloadRetract =       jsonDoc[feeder]["UnloadRetract"];
       smuffConfig.unloadPushback =      jsonDoc[feeder]["UnloadPushback"];
@@ -107,6 +111,8 @@ void readConfig()
       smuffConfig.insertLength =        jsonDoc[feeder]["InsertLength"];
       if(smuffConfig.insertLength == 0)
         smuffConfig.insertLength = 5;
+      smuffConfig.maxSpeedHS_Z =        jsonDoc[feeder][maxSpeedHS];
+      smuffConfig.useDuetLaser =        jsonDoc[feeder]["DuetLaser"];
       int contrast =                    jsonDoc["LCDContrast"];
       smuffConfig.lcdContrast = (contrast > MIN_CONTRAST && contrast < MAX_CONTRAST) ? contrast : DSP_CONTRAST;
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];
@@ -145,6 +151,12 @@ void readConfig()
       }
       //__debug(PSTR("DONE reading config"));
     }
+    if(smuffConfig.maxSpeedHS_X == 0)
+      smuffConfig.maxSpeedHS_X = smuffConfig.maxSpeed_X;
+    if(smuffConfig.maxSpeedHS_Y == 0)
+      smuffConfig.maxSpeedHS_Y = smuffConfig.maxSpeed_Y;
+    if(smuffConfig.maxSpeedHS_Z == 0)
+      smuffConfig.maxSpeedHS_Z = smuffConfig.maxSpeed_Z;
     cfg.close();
   }
   else {

@@ -75,6 +75,7 @@ GCodeFunctions gCodeFuncsM[] = {
   { 119, M119 },
   { 201, M201 },
   { 203, M203 },
+  { 205, M205 },
   { 206, M206 },
   { 250, M250 },
   { 280, M280 },
@@ -204,7 +205,7 @@ bool M111(const char* msg, String buf, int serial) {
 
 bool M114(const char* msg, String buf, int serial) {
   printResponse(msg, serial); 
-  sprintf_P(tmp, P_AccelSpeed, 
+  sprintf_P(tmp, P_Positions, 
   String(steppers[SELECTOR].getStepPositionMM()).c_str(),
   String(steppers[REVOLVER].getStepPosition()).c_str(),
   String(steppers[FEEDER].getStepPositionMM()).c_str());
@@ -274,6 +275,9 @@ bool M203(const char* msg, String buf, int serial) {
     if((param = getParam(buf, S_Param))  != -1) {
       smuffConfig.stepDelay_X = (int)param;
     }
+    if((param = getParam(buf, P_Param))  != -1) {
+      steppers[SELECTOR].setMaxHSpeed(param);
+    }
   }
   if((param = getParam(buf, Y_Param))  != -1) {
     if(param > 0 && param <= 10000) {
@@ -284,6 +288,9 @@ bool M203(const char* msg, String buf, int serial) {
     if((param = getParam(buf, S_Param))  != -1) {
       smuffConfig.stepDelay_Y = (int)param;
     }
+    if((param = getParam(buf, P_Param))  != -1) {
+      steppers[REVOLVER].setMaxHSpeed(param);
+    }
   }
   if((param = getParam(buf, Z_Param))  != -1) {
     if(param > 0 && param <= 10000)
@@ -291,6 +298,42 @@ bool M203(const char* msg, String buf, int serial) {
     else stat = false;
     if((param = getParam(buf, S_Param))  != -1) {
       smuffConfig.stepDelay_Z = (int)param;
+    }
+    if((param = getParam(buf, P_Param))  != -1) {
+      steppers[FEEDER].setMaxHSpeed(param);
+    }
+    if((param = getParam(buf, F_Param))  != -1) {
+      smuffConfig.insertSpeed_Z = param;
+    }
+  }
+  return stat;
+}
+
+bool M205(const char* msg, String buf, int serial) {
+  bool stat = true;
+  printResponse(msg, serial); 
+  if(buf.length()==0) {
+    //printAdvancedSettings(serial);
+    return stat;
+  }
+  char cmd[80];
+  if((param = getParamString(buf, P_Param, cmd, sizeof(cmd)))  != -1) {
+    if((param = getParam(buf, S_Param)) != -1) {
+      if(strcmp(cmd, "BowdenLength")==0) {
+        smuffConfig.bowdenLength = param;
+      }
+      if(strcmp(cmd, "InsertLength")==0) {
+        smuffConfig.insertLength = param;
+      }
+      if(strcmp(cmd, "InsertLength")==0) {
+        smuffConfig.insertLength = param;
+      }
+      if(strcmp(cmd, "ReinforceLength")==0) {
+        smuffConfig.reinforceLength = param;
+      }
+      if(strcmp(cmd, "SelectorDist")==0) {
+        smuffConfig.selectorDistance = param;
+      }
     }
   }
   return stat;
@@ -493,19 +536,19 @@ bool G1(const char* msg, String buf, int serial) {
     isMill = (param == 1);
   }
   if((param = getParam(buf, Y_Param)) != -1) {
-    //__debug(PSTR("G1 moving Y: %d"), param);
+    //__debug(PSTR("G1 moving Y: %d %S"), param, isMill ? PSTR("mm") : PSTR("steps"));
     steppers[REVOLVER].setEnabled(true);
-    prepStepping(REVOLVER, (long)param, isMill);
+    prepStepping(REVOLVER, param, isMill);
   }
   if((param = getParam(buf, X_Param)) != -1) {
-    //__debug(PSTR("G1 moving X: %d"), param);
+    //__debug(PSTR("G1 moving X: %d %S"), param, isMill ? PSTR("mm") : PSTR("steps"));
     steppers[SELECTOR].setEnabled(true);
-    prepStepping(SELECTOR, (long)param, isMill, true);
+    prepStepping(SELECTOR, param, isMill, true);
   }
   if((param = getParam(buf, Z_Param)) != -1) {
-    //__debug(PSTR("G1 moving Z: %d"), param);
+    //__debug(PSTR("G1 moving Z: %d %S"), param, isMill ? PSTR("mm") : PSTR("steps"));
     steppers[FEEDER].setEnabled(true);
-    prepStepping(FEEDER, (long)param, isMill);
+    prepStepping(FEEDER, param, isMill);
   }
   runAndWait(-1);
   return true;

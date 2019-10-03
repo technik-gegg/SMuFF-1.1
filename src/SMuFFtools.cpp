@@ -94,10 +94,10 @@ void drawStatus() {
   display.setFontMode(0);
   display.setDrawColor(1);
   sprintf_P(tmp, P_CurrentTool);
-  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 5, 14, tmp);
-  display.drawStr(display.getDisplayWidth() - display.getStrWidth("X") - 5, 14, (toolSelected >= 0 && toolSelected < smuffConfig.toolCount) ? String(toolSelected).c_str() : "-");
+  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 14, tmp);
+  display.drawStr(display.getDisplayWidth() - display.getStrWidth("X") - 10, 14, (toolSelected >= 0 && toolSelected < smuffConfig.toolCount) ? String(toolSelected).c_str() : "-");
   sprintf_P(tmp, P_Feed);
-  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 5, 34, tmp);
+  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 34, tmp);
   display.setFontMode(1);
   display.setFont(SMALL_FONT);
   display.setDrawColor(2);
@@ -125,9 +125,11 @@ void drawStatus() {
 void drawFeed() {
   display.setFont(STATUS_FONT);
   display.setFontMode(0);
+  display.setDrawColor(0);
+  display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight()-2);
   display.setDrawColor(1);
-  sprintf_P(tmp, PSTR("%smm"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
-  display.drawStr(95, 38, tmp);
+  sprintf_P(tmp, PSTR("%-10s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
+  display.drawStr(62, 34, tmp);
 }
 
 void resetDisplay() {
@@ -546,6 +548,7 @@ bool feedToEndstop(bool showMessage) {
 
   unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
   steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+  steppers[FEEDER].setAllowAccel(false);
 
   int l = (int)(smuffConfig.selectorDistance*2);
   int n = l;
@@ -575,13 +578,16 @@ bool feedToEndstop(bool showMessage) {
       parserBusy = false;
       //__debug(PSTR("Load status: Abort: %d IgnoreAbort: %d Jammed:%d"), steppers[FEEDER].getAbort(), steppers[FEEDER].getIgnoreAbort(), feederJammed);
       steppers[FEEDER].setIgnoreAbort(false);
+      steppers[FEEDER].setAllowAccel(true);
       return false;
     }
     n--;
   }
   steppers[FEEDER].setIgnoreAbort(false);
+  steppers[FEEDER].setAllowAccel(true);
   steppers[FEEDER].setMaxSpeed(curSpeed);
   feederJammed = false;
+  delay(300);
   return true;
 }
 
@@ -704,7 +710,7 @@ void unloadFromNozzle() {
     }
   }
   else {
-    prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength*3));
+    prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength/*3*/));
     runAndWait(FEEDER);
   }
   delay(500);
@@ -842,6 +848,9 @@ bool selectTool(int ndx, bool showMessage) {
   //__debug(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
   drawSelectingMessage(ndx);
+  unsigned speed = steppers[SELECTOR].getMaxSpeed();
+  if(abs(toolSelected-ndx) >=3)
+    steppers[SELECTOR].setMaxSpeed(steppers[SELECTOR].getMaxHSpeed());
   prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
   remainingSteppersFlag |= _BV(SELECTOR);
   if(!smuffConfig.resetBeforeFeed_Y) {
@@ -849,6 +858,7 @@ bool selectTool(int ndx, bool showMessage) {
     remainingSteppersFlag |= _BV(REVOLVER);
   }
   runAndWait(-1);
+  steppers[SELECTOR].setMaxSpeed(speed);
   toolSelected = ndx;
 
   dataStore.tool = toolSelected;
@@ -923,21 +933,27 @@ void printEndstopState(int serial) {
 void printSpeeds(int serial) {
   sprintf_P(tmp, P_AccelSpeed,
           String(steppers[SELECTOR].getMaxSpeed()).c_str(),
+          String(smuffConfig.stepDelay_X).c_str(),
           String(steppers[REVOLVER].getMaxSpeed()).c_str(),
-          smuffConfig.externalControl_Z ? "external" : String(steppers[FEEDER].getMaxSpeed()).c_str());
+          String(smuffConfig.stepDelay_Y).c_str(),
+          smuffConfig.externalControl_Z ? "external" : String(steppers[FEEDER].getMaxSpeed()).c_str(),
+          String(smuffConfig.stepDelay_Z).c_str());
   printResponse(tmp, serial);
 }
 
 void printAcceleration(int serial) {
   sprintf_P(tmp, P_AccelSpeed,
           String(steppers[SELECTOR].getAcceleration()).c_str(),
+          String(smuffConfig.stepDelay_X).c_str(),
           String(steppers[REVOLVER].getAcceleration()).c_str(),
-          smuffConfig.externalControl_Z ? "external" : String(steppers[FEEDER].getAcceleration()).c_str());
+          String(smuffConfig.stepDelay_Y).c_str(),
+          smuffConfig.externalControl_Z ? "external" : String(steppers[FEEDER].getAcceleration()).c_str(),
+          String(smuffConfig.stepDelay_Z).c_str());
   printResponse(tmp, serial);
 }
 
 void printOffsets(int serial) {
-  sprintf_P(tmp, P_AccelSpeed,
+  sprintf_P(tmp, P_Positions,
           String((int)(smuffConfig.firstToolOffset*10)).c_str(),
           String(smuffConfig.firstRevolverOffset).c_str(),
           "--");

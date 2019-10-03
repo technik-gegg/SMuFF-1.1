@@ -44,6 +44,7 @@
 #define Z_DIR_PIN           PB0
 #define Z_ENABLE_PIN        PC4
 #define Z_END_PIN           PC0
+#define Z_END_DUET_PIN      PC3 // for testing only
 
 #define BEEPER_PIN          PC10 
 

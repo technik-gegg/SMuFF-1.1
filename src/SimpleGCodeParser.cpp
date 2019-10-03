@@ -116,7 +116,8 @@ void parseGcode(const String& serialBuffer, int serial) {
         setAbortRequested(true);
         //__debug(PSTR("Abort set"));
       }
-      delay(50);
+      sendOkResponse(serial);  
+      return;
     }
   }
 
@@ -186,20 +187,16 @@ bool parse_T(const String& buf, int serial) {
 
   char msg[10];
   int ofs = 0;
-  if(smuffConfig.prusaMMU2) {
-    sprintf_P(msg, P_Ok);     // this is what the Prusa expects ("ok\n")
-  }
-  else {
-    sprintf_P(msg, P_TResponse, tool);
-    ofs = String(msg).length()-2;
-  }
+  sprintf_P(msg, P_TResponse, tool);
+  ofs = String(msg).length()-2;
 
   if(tool == -1 || tool == 255) {
     parse_G(String("28"), serial);
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
     //__debug(PSTR("Tool change requested: T%d"), tool);
-    if(smuffConfig.prusaMMU2 && feederEndstop()) { // Prusa expects the MMU to unload filament on its own before tool change
+    // Prusa expects the MMU to unload filament on its own before tool change
+    if(smuffConfig.prusaMMU2 && feederEndstop()) { 
       //__debug(PSTR("must unload first!"));
       unloadFilament();
     }
@@ -214,7 +211,8 @@ bool parse_T(const String& buf, int serial) {
         }
       }
     }
-    printResponse(msg, serial);
+    if(!smuffConfig.prusaMMU2)  // Prusa expects not Tx as response
+      printResponse(msg, serial);
   }
   else {
     sendErrorResponseP(serial, PSTR("Wrong tool selected."));
@@ -297,7 +295,7 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
   switch(cmd) {
     case 'A':
       // Aborted - we've already handeled that
-      sendOkResponse(serial);
+      
       break;
     case 'S':     // Init (S0 | S1 | S2 | S3)
       switch(type) {
@@ -381,6 +379,12 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
       break;
   }
   return stat;
+}
+
+int hasParam(String buf, char* token) {
+  int pos = buf.indexOf(token);
+  //__debug(PSTR("hasParam: %s\n"),buf.c_str());
+  return pos;
 }
 
 int getParam(String buf, char* token) {

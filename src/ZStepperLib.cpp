@@ -53,6 +53,7 @@ void ZStepper::resetStepper() {
   _duration = _allowAcceleration ? _acceleration : _minStepInterval;
   _durationInt = _duration;
   _stepCount = 0;
+  //_stepsTaken = 0;
   _movementDone = false;
   _endstopHit = false;
 }
@@ -70,8 +71,10 @@ void ZStepper::setEndstop(int pin, int triggerState, EndstopType type) {
   _endstopPin = pin;
   _endstopState = triggerState;
   _endstopType = type;
-  pinMode(_endstopPin, ((triggerState == 0) ? INPUT_PULLUP : INPUT));
-  _endstopHit = digitalRead(_endstopPin) == _endstopState;
+  if(pin != -1) {
+    pinMode(_endstopPin, ((triggerState == 0) ? INPUT_PULLUP : INPUT));
+    _endstopHit = digitalRead(_endstopPin) == _endstopState;
+  }
 }
 
 void ZStepper::setDirection(ZStepper::MoveDirection direction) {
@@ -118,7 +121,13 @@ void ZStepper::handleISR() {
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
      (_endstopType == ORBITAL)) {
-     bool hit = (int)digitalRead(_endstopPin)==_endstopState;
+     bool hit;
+     if(_endstopPin != -1)
+      hit = (int)digitalRead(_endstopPin)==_endstopState;
+    else {
+      if(endstopCheck != NULL)
+        hit = endstopCheck();
+    }
     setEndstopHit(hit);
   }
   if(!_ignoreAbort && _abort) {
@@ -179,9 +188,17 @@ void ZStepper::handleISR() {
 
 bool ZStepper::getEndstopHit() {
   int stat = 0;
-  for(int i=0; i < 5;  i++)
-    stat = digitalRead(_endstopPin);
-  setEndstopHit(stat==_endstopState);
+  if(_endstopPin != -1) {
+    for(int i=0; i < 5;  i++)
+      stat = digitalRead(_endstopPin);
+    setEndstopHit(stat==_endstopState);
+  }
+  else {
+    if(endstopCheck != NULL)
+      setEndstopHit(endstopCheck());
+    else
+      setEndstopHit(false);
+  }
   return _endstopHit; 
 }
 

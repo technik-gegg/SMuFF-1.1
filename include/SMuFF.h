@@ -68,6 +68,7 @@ typedef struct {
   bool  invertDir_X         = false;
   int   endstopTrigger_X    = HIGH;
   int   stepDelay_X         = 10;
+  int   maxSpeedHS_X        = 10;          
   
   long  stepsPerRevolution_Y= 9600;
   long  maxSteps_Y          = 9600;
@@ -77,6 +78,7 @@ typedef struct {
   bool  invertDir_Y         = false;
   int   endstopTrigger_Y    = HIGH;
   int   stepDelay_Y         = 10;
+  int   maxSpeedHS_Y        = 10;          
   
   bool  externalControl_Z   = false;
   long  stepsPerMM_Z        = 136;
@@ -88,7 +90,8 @@ typedef struct {
   int   stepDelay_Z         = 10;
   int   feedChunks          = 20;
   bool  enableChunks        = false;
-  float insertLength      = 5.0;
+  float insertLength        = 5.0;
+  int   maxSpeedHS_Z        = 10;          
   
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
@@ -111,6 +114,7 @@ typedef struct {
   char  unloadCommand[80]   = { 0 };
   int   wipeSequence[20]    = { 150,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,110,-1 };
   bool  prusaMMU2           = true;
+  bool  useDuetLaser        = false;
 } SMuFFConfig;
 
 
@@ -239,6 +243,7 @@ extern bool parse_M(const String& buf, int serial);
 extern bool parse_T(const String& buf, int serial);
 extern bool parse_PMMU2(char cmd, const String& buf, int serial);
 extern int  getParam(String buf, char* token);
+extern int  hasParam(String buf, char* token);
 extern bool getParamString(String buf, char* token, char* dest, int bufLen);
 extern void prepStepping(int index, long param, bool Millimeter = true, bool ignoreEndstop = false);
 extern void saveSettings(int serial);
