@@ -26,7 +26,7 @@
 #include "ZTimerLib.h"
 #include "ZStepperLib.h"
 
-extern ZStepper steppers[NUM_STEPPERS];
+extern ZStepper steppers[];
 char ptmp[80];
 volatile bool parserBusy = false;
 unsigned int currentLine = 0;
@@ -167,7 +167,7 @@ void parseGcode(const String& serialBuffer, int serial) {
   else {
     char tmp[256];
     sprintf_P(tmp, PSTR("%S '%s'\n"), P_UnknownCmd, line.c_str());
-    __debug(PSTR("ParseGcode err: %s"), tmp);
+    //__debug(PSTR("ParseGcode err: %s"), tmp);
     if(!smuffConfig.prusaMMU2) {
       sendErrorResponseP(serial, tmp);
     }
@@ -375,7 +375,7 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
 
     default:
       sendErrorResponseP(serial);
-      __debug(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
+      //__debug(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
       break;
   }
   return stat;
@@ -394,6 +394,22 @@ int getParam(String buf, char* token) {
     //__debug(PSTR("getParam:pos: %d"),pos);
     if(buf.charAt(pos+1)=='-') {
       int val = buf.substring(pos+2).toInt();
+      //__debug(PSTR("Negative: %d"), 0-val);
+      return 0-val;
+    }
+    return buf.substring(pos+1).toInt();
+  }
+  else 
+    return -1; 
+}
+
+long getParamL(String buf, char* token) {
+  int pos = buf.indexOf(token);
+  //__debug(PSTR("getParam: %s\n"),buf.c_str());
+  if(pos != -1) {
+    //__debug(PSTR("getParam:pos: %d"),pos);
+    if(buf.charAt(pos+1)=='-') {
+      long val = buf.substring(pos+2).toInt();
       //__debug(PSTR("Negative: %d"), 0-val);
       return 0-val;
     }

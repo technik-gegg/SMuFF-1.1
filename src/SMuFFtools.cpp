@@ -44,7 +44,7 @@ extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);    // in tone 
 
 extern ZStepper       steppers[];
 extern ZServo         servo;
-extern char           tmp[128];
+extern char           tmp[];
 
 SMuFFConfig           smuffConfig;
 int                   lastEncoderTurn = 0;
@@ -54,12 +54,6 @@ PositionMode          positionMode = RELATIVE;
 bool                  displayingUserMessage = false;
 bool                  isAbortRequested = false;
 unsigned int          userMessageTime = 0;
-char                  _sel[128];
-char                  _wait[128];
-char                  _title[128];
-char                  _msg1[256];
-char                  _msg2[128];
-char                  _btn[128];
 int                   swapTools[MAX_TOOLS];
 bool                  isWarning;
 
@@ -89,6 +83,7 @@ void drawLogo() {
 }
 
 void drawStatus() {
+  char _wait[128];
   //__debug(PSTR("drawStatus start..."));
   display.setFont(STATUS_FONT);
   display.setFontMode(0);
@@ -106,7 +101,7 @@ void drawStatus() {
 #ifdef __AVR__
   sprintf_P(tmp, PSTR("M:%d | %-4s | %-5s "), freeMemory(), traceSerial2.c_str(), _wait);
 #else
-  sprintf_P(tmp, PSTR("M:---- | %-4s | %-5s "), traceSerial2.c_str(), _wait);
+  sprintf_P(tmp, PSTR("%-4s| %-4s | %-5s "), String(steppers[FEEDER].getStepsTakenMM()).c_str(), traceSerial2.c_str(), _wait);
 #endif
   display.drawStr(1, display.getDisplayHeight(), tmp);
   display.setFontMode(0);
@@ -123,13 +118,21 @@ void drawStatus() {
 }
 
 void drawFeed() {
+  sprintf_P(tmp, PSTR("%-7s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
+#ifdef __STM32F1__
+  display.setFont(SMALL_FONT);
+  display.setFontMode(0);
+  display.setDrawColor(0);
+  display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, 40, display.getMaxCharHeight());
+  display.drawStr(1, display.getDisplayHeight(), tmp);
+#else
   display.setFont(STATUS_FONT);
   display.setFontMode(0);
   display.setDrawColor(0);
   display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight()-2);
   display.setDrawColor(1);
-  sprintf_P(tmp, PSTR("%-10s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
   display.drawStr(62, 34, tmp);
+#endif
 }
 
 void resetDisplay() {
@@ -137,10 +140,11 @@ void resetDisplay() {
   display.setFont(BASE_FONT);
   display.setFontMode(0);
   display.setDrawColor(1);
-  //delay(1);
 }
 
 void drawSelectingMessage(int tool) {
+  char _sel[128];
+  char _wait[128];
   display.firstPage();
   do {
     resetDisplay();
@@ -150,7 +154,7 @@ void drawSelectingMessage(int tool) {
       sprintf(tmp,"%s", smuffConfig.materials[tool]);
     }
     else {
-      sprintf_P(tmp, "%s%d", P_Tool, tool);
+      sprintf_P(tmp, P_ToolMenu, tool);
     }
     display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2-10, _sel);
     display.setFont(BASE_FONT_BIG);
@@ -160,38 +164,49 @@ void drawSelectingMessage(int tool) {
   } while(display.nextPage());
 }
 
-int splitStringLines(char lines[][MAX_LINE_LENGTH], String message) {
-
-  for(int i=0; i < MAX_LINES; i++) {
-    memset(&lines[i], 0, MAX_LINE_LENGTH);
-  }
-
-  int pos2 = (message.indexOf('\n') == -1) ? message.length() : message.indexOf('\n');
-  int ln = 0;
-  
+void drawTestrunMessage(unsigned long loop, char* msg) {
+  char _sel[128];
+  char _wait[128];
+  display.firstPage();
   do {
-    int len = (pos2 > MAX_LINE_LENGTH-1) ? MAX_LINE_LENGTH-1 : pos2+1;
-    message.substring(0, pos2).toCharArray(lines[ln], len);
-    if(ln >= MAX_LINES)
-      break;
-    ln++;
-    message = message.substring(len);
-    pos2 = message.indexOf('\n');
-    if(pos2 == -1)
-      break;
-  } while(1);
+    resetDisplay();
+    sprintf_P(_sel, P_RunningCmd, loop);
+    sprintf_P(_wait, P_ButtonToStop);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2-10, _sel);
+    display.setFont(BASE_FONT_BIG);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(msg))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+12, msg);
+    display.setFont(BASE_FONT);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2 + display.getMaxCharHeight()+15, _wait);
+  } while(display.nextPage());
+}
+
+int splitStringLines(char* lines[], int maxLines, const char* message) {
+
+  char* tok = strtok((char*)message, "\n");
+  char* lastTok = NULL;
+  int cnt = -1;
   
-  if(message.length()>0 && ln < MAX_LINES) {
-    int len = message.length()+1;
-    message.substring(0).toCharArray(lines[ln++], len);
+  while(tok != NULL) {
+    lines[++cnt] = tok;
+    lastTok = tok;
+    //__debug(PSTR("Line: %s"), lines[cnt]);
+    if(cnt >= maxLines-1)
+      break;
+    tok = strtok(NULL, "\n");
   }
-  return ln;
+  if(lastTok != NULL && *lastTok != 0 && cnt <= maxLines-1) {
+    lines[cnt] = lastTok;   // copy the last line as well 
+    cnt++;
+  }
+
+  return cnt;
 }
 
 void drawUserMessage(String message) {
 
-  char lines[MAX_LINES][MAX_LINE_LENGTH];
-  int lineCnt = splitStringLines(lines, message);
+  char* lines[6];
+  int lineCnt = splitStringLines(lines, 6, message.c_str());
+  
   if(isPwrSave) {
     setPwrSave(0);
   }
@@ -207,6 +222,10 @@ void drawUserMessage(String message) {
     do {
       for(int i=0; i< lineCnt; i++) {
         display.drawStr((display.getDisplayWidth() - display.getStrWidth(lines[i]))/2, y, lines[i]);
+        if(i==0) {
+          if(strcmp(lines[1]," ")==0)
+            display.drawHLine(0, y+3, display.getDisplayWidth());
+        }
         y += display.getMaxCharHeight();
       }
     } while(display.nextPage());
@@ -445,7 +464,7 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
   }
   dataStore.stepperPos[index] = pos;
   saveStore();
-
+  //__debug(PSTR("DONE save store"));
   parserBusy = false;
   return true;
 }
@@ -491,6 +510,7 @@ bool showFeederFailedMessage(int state) {
   } while(button != 1 && button != 2);
   isWarning = false;
   display.clearDisplay();
+  debounceButton();
   return button == 1 ? false : true;
 }
 
@@ -498,14 +518,19 @@ int showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
   if(isPwrSave) {
     setPwrSave(0);
   }
+  char _title[80];
+  char msg1[256];
+  char msg2[80];
+  char btn[60];
   sprintf_P(_title, title);
-  sprintf_P(_msg1, message);
-  sprintf_P(_msg2, addMessage);
-  sprintf_P(_btn, buttons);
-  return display.userInterfaceMessage(_title, _msg1, _msg2, _btn);
+  sprintf_P(msg1, message);
+  sprintf_P(msg2, addMessage);
+  sprintf_P(btn, buttons);
+  return display.userInterfaceMessage(_title, msg1, msg2, btn);
 }
 
 void signalNoTool() {
+  char _msg1[256];
   userBeep();
   sprintf_P(_msg1, P_NoTool);
   strcat_P(_msg1, P_Aborting);
@@ -532,7 +557,7 @@ void positionRevolver() {
   prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
   remainingSteppersFlag |= _BV(REVOLVER);
   runAndWait(-1);
-
+  delay(150);
   //__debug(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
 
@@ -556,17 +581,21 @@ bool feedToEndstop(bool showMessage) {
   while (!feederEndstop()) {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength, false);
     runAndWait(FEEDER);
-    if (n == n2) {
-      resetRevolver();
-      prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
+    if (n == n2) { // endstop hasn't triggered yet, something went wrong
+      // retract the same amount that was fed and reset the Revolver
+      delay(250);
+      steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z/2);
+      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength*n), true);
       runAndWait(FEEDER);
+      steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+      resetRevolver();
     }
-    if (n <= 0) {
+    if (n <= 0) { // still no endstop trigger, abort action
+      
       if (showMessage) {
         moveHome(REVOLVER, false, false);   // home Revolver
-        char buf[] = {"XY"};
-        M18("M18", buf, 0);   // motors off
-        if(showFeederFailedMessage(1) == true) {
+        M18("M18", "XY", 0);   // turn motors off
+        if(showFeederFailedMessage(1) == true) { // user wants to retry...
           steppers[FEEDER].setEnabled(true);
           positionRevolver();
           n = l;
@@ -710,9 +739,14 @@ void unloadFromNozzle() {
     }
   }
   else {
-    prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength/*3*/));
+    prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength*1.1));
     runAndWait(FEEDER);
   }
+  steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+  // retract another .insertLength millimeter
+  prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true);
+  runAndWait(FEEDER);
+  steppers[FEEDER].setMaxSpeed(smuffConfig.maxSpeed_Z);
   delay(500);
 }
 
@@ -748,7 +782,13 @@ bool unloadFilament() {
   }
 
   unloadFromNozzle();
-
+  // move forward until the feeder endstop gets hit
+  //while(!feederEndstop()) {
+    steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+    prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
+    runAndWait(FEEDER);
+  //}
+  
   // only if the unload hasn't been aborted yet, unload from Selector as well
   if(steppers[FEEDER].getAbort() == false) {
     steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
@@ -795,6 +835,7 @@ bool unloadFilament() {
 
 bool selectTool(int ndx, bool showMessage) {
 
+  char _msg1[256];
   ndx = swapTools[ndx];
   if(feederJammed) {
     beep(4);
@@ -805,6 +846,7 @@ bool selectTool(int ndx, bool showMessage) {
     return false;
   }
   signalSelectorBusy();
+
   if(toolSelected == ndx) { // tool is the one we already have selected, do nothing
     if(!smuffConfig.externalControl_Z) {
       userBeep();
@@ -832,15 +874,14 @@ bool selectTool(int ndx, bool showMessage) {
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
       // TODO: Signal Duet3D to retract 2mm
       beep(4);
-      char buf[] = {"XY"};
       while(feederEndstop()) {
         moveHome(REVOLVER, false, false);   // home Revolver
-        M18("M18", buf, 0);   // motors off
+        M18("M18", "XY", 0);   // motors off
         showFeederFailedMessage(0);
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
           Serial2.print(smuffConfig.unloadCommand);
           Serial2.print("\n");
-          __debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
+          //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
         }
       }
     }
@@ -961,6 +1002,7 @@ void printOffsets(int serial) {
 }
 
 void printPos(int index, int serial) {
+  char buf[128];
   sprintf_P(buf, PSTR("Pos. '%s': %ld\n"), steppers[index].getDescriptor(), steppers[index].getStepPosition());
   printResponseP(buf, serial);
 }
@@ -1126,6 +1168,142 @@ void listDir(File root, int numTabs, int serial) {
   }
 }
 
+bool getFiles(const char* rootFolder, const char* pattern, int maxFiles, bool cutExtension, char* files) {
+  char fname[40];
+  char tmp[40];
+  int cnt = 0;
+  FsFile file;
+  FsFile root;
+  SdFat SD;
+
+  if(SD.begin()) {
+    root.open(rootFolder, O_READ);
+    while (file.openNext(&root, O_READ)) {
+      if (!file.isHidden()) {
+        file.getName(fname, sizeof(fname));
+        //__debug(PSTR("File: %s"), fname);
+        String lfn = String(fname);
+        if(pattern != NULL && !lfn.endsWith(pattern)) {
+          continue;
+        }
+        if(pattern != NULL && cutExtension)
+          lfn.replace(pattern,"");
+        sprintf(tmp,"%-20s\n", lfn.c_str());
+        strcat(files, tmp);
+      }
+      file.close();
+      if(cnt >= maxFiles)
+        break;
+    }
+    root.close();
+    files[strlen(files)-1] = '\0';
+    return true;
+  }
+  return false;
+}
+
+void testRun(String fname) {
+  char line[80];
+  char msg[256];
+  char delimiter[] = { "\n" };
+  SdFat SD;
+  FsFile file;
+  String gCode;
+  unsigned long loopCnt = 1L, cmdCnt = 1L;
+  long tool = 0, lastTool = 0;
+  int mode = 1, toolChanges = 0;
+  unsigned long startTime = millis();
+  
+  debounceButton();
+
+  if(SD.begin()) {
+    steppers[REVOLVER].setEnabled(true);
+    steppers[SELECTOR].setEnabled(true);
+    steppers[FEEDER].setEnabled(true);
+    randomSeed(millis());
+    sprintf_P(msg, P_RunningTest, fname.c_str());
+    drawUserMessage(msg);
+    delay(1750);
+    fname += ".gcode";      
+
+    gCode.reserve(128);
+    if(file.open(fname.c_str(), O_READ)) {
+      file.rewind();
+
+      while(1) {
+        if(encoder.getButton() == ClickEncoder::Clicked)
+          break;
+        int turn = encoder.getValue();
+        if(turn < 0) { 
+          mode--;
+          if(mode < 0)
+            mode = 2; 
+        }
+        else if(turn > 0) {
+          mode++;
+          if(mode > 2)
+            mode = 0;
+        }
+        unsigned long secs = (millis()-startTime)/1000;
+        if(file.fgets(line, sizeof(line)-1, delimiter) > 0) {
+          gCode = line;
+          if(gCode.startsWith(";"))
+              continue;
+          if(gCode.startsWith("T")) {
+            const char* p = gCode.c_str()+1;
+            tool = strtol(p, NULL, 10);
+            toolChanges++;
+          }
+          gCode.replace(" ", "");
+          gCode.replace("\r","");
+          gCode.replace(delimiter,"");
+          if(gCode.indexOf("{RNDT}") >-1) {
+            lastTool = tool;
+            int retry = 5;
+            do {
+              tool = random(0, smuffConfig.toolCount);
+              if(--retry == 0)
+                break;
+            } while(tool == lastTool);
+            gCode.replace("{RNDT}", String(tool));
+          }
+          __debug(PSTR("GCode: %-40s\t[ Loops: %ld  Cmds: %ld  ToolChanges: %ld  Elapsed: %d:%02d:%02d ]"), gCode.c_str(), loopCnt, cmdCnt, toolChanges, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
+          parseGcode(gCode, 0);
+          cmdCnt++;
+          if(cmdCnt %10 == 0) {
+            mode++;
+            if(mode > 2)
+              mode = 0;
+          }
+        }
+        else {
+          // restart from begin and increment loop count
+          file.rewind();
+          loopCnt++;
+        }
+        switch(mode) {
+          case 2:
+            sprintf_P(msg, P_ToolChanges, toolChanges);
+            break;
+          case 1:
+            sprintf_P(msg, P_CmdLoop, cmdCnt, tool);
+            break;
+          case 0:
+            sprintf_P(msg, P_TestTime, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
+            break;
+        }
+        drawTestrunMessage(loopCnt, msg);
+      }
+      file.close();
+    }
+    else {
+      sprintf_P(msg, P_TestFailed, fname);
+      drawUserMessage(msg);
+      delay(3000);
+    }
+  }
+}
+
 void __debug(const char* fmt, ...) {
 #ifdef DEBUG
   char _tmp[512];
@@ -1134,7 +1312,7 @@ void __debug(const char* fmt, ...) {
   vsnprintf_P(_tmp, 511, fmt, arguments);
   va_end (arguments); 
 #ifdef __AVR__
-  Serial.print(F("echo: dbg: "));  Serial.println(_tmp);
+  Serial.print(F("echo: dbg: "));  Serial.print(_tmp); Serial.print(" - Mem: "); Serial.println(freeMemory());
 #else
   Serial1.print(F("echo: dbg: "));  Serial1.println(_tmp);
 #endif

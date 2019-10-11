@@ -122,9 +122,10 @@ void ZStepper::handleISR() {
      (_endstopType == MAX && _dir == CW) ||
      (_endstopType == ORBITAL)) {
      bool hit;
-     if(_endstopPin != -1)
+     if(_endstopPin != -1) {
       hit = (int)digitalRead(_endstopPin)==_endstopState;
-    else {
+     }
+     else {
       if(endstopCheck != NULL)
         hit = endstopCheck();
     }
@@ -224,7 +225,7 @@ void ZStepper::home() {
 
   // turn down the speed for more precision
   unsigned int curSpeed = getMaxSpeed();
-  setMaxSpeed(65534);
+  setMaxSpeed(getAcceleration());
   // go out of the endstop
   do {
     prepareMovement(back, true); // move forward by ignoring the endstop

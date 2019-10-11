@@ -25,7 +25,7 @@
 #include "ArduinoJson.h"
 
 DataStore dataStore;
-extern int  swapTools[MAX_TOOLS];
+extern int  swapTools[];
 
 void saveStore() {
     StaticJsonDocument<512> jsonDoc;
@@ -55,12 +55,12 @@ void recoverStore() {
     
     FsFile cfg;
     if (!cfg.open(DATASTORE_FILE)){
-      __debug(PSTR("Data store file not found!\n"));
+      //__debug(PSTR("Data store file not found!\n"));
     } 
     else {
       auto error = deserializeJson(jsonDoc, cfg);
       if (error) {
-        __debug(PSTR("Data store file possibly corrupted or too large!\n"));
+        //__debug(PSTR("Data store file possibly corrupted or too large!\n"));
       } 
       else {
         //__debug(PSTR("Data store recovered\n"));

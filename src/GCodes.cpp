@@ -31,7 +31,7 @@
 #include "libmaple/nvic.h"
 #endif
 
-extern ZStepper steppers[NUM_STEPPERS];
+extern ZStepper steppers[];
 extern ZServo   servo;
 
 char* S_Param = (char*)"S";
@@ -82,6 +82,7 @@ GCodeFunctions gCodeFuncsM[] = {
   { 300, M300 },
   { 500, M500 },
   { 503, M503 },
+  { 575, M575 },
   { 700, M700 },
   { 701, M701 },
   { 999, M999 },
@@ -102,7 +103,7 @@ GCodeFunctions gCodeFuncsG[] = {
 };
 
 int param;
-extern char tmp[128];
+char tmp[128];
 
 /*========================================================
  * Class M
@@ -110,7 +111,7 @@ extern char tmp[128];
 bool dummy(const char* msg, String buf, int serial) {
   if(!smuffConfig.prusaMMU2) {
     int code = buf.toInt();
-    __debug(PSTR("Ignored M-Code: M%d"), code);
+    //__debug(PSTR("Ignored M-Code: M%d"), code);
   }
   return true;
 }
@@ -146,17 +147,22 @@ bool M20(const char* msg, String buf, int serial) {
     sprintf(tmp,"/");
   }
   SdFs SD;
+  Print* out;
   if (SD.begin()) {
-    if(serial==2)
-      SD.ls(&Serial2, LS_DATE | LS_SIZE | LS_R);
-    else if(serial==0)
-      SD.ls(&Serial, LS_DATE | LS_SIZE | LS_R);
-    return true;
+    switch(serial) {
+      case 0: out = &Serial; break;
+      case 1: out = &Serial1; break;
+      case 2: out = &Serial2; break;
+      default: break;
+    }
+    SD.ls(out, LS_DATE | LS_SIZE | LS_R);
   }
-  
-  sprintf_P(tmp, P_SD_InitError);
-  printResponse(tmp, serial); 
-  return false;
+  else {
+    sprintf_P(tmp, P_SD_InitError);
+    printResponse(tmp, serial); 
+    return false;
+  }
+  return true;
 }
 
 bool M42(const char* msg, String buf, int serial) {
@@ -214,7 +220,7 @@ bool M114(const char* msg, String buf, int serial) {
 }
 
 bool M115(const char* msg, String buf, int serial) {
-  sprintf_P(tmp, P_GVersion, VERSION_STRING, BOARD_INFO, VERSION_DATE);
+  sprintf_P(tmp, P_GVersion, VERSION_STRING, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "Duet");
   printResponse(tmp, serial); 
   return true;
 }
@@ -319,20 +325,26 @@ bool M205(const char* msg, String buf, int serial) {
   char cmd[80];
   if((param = getParamString(buf, P_Param, cmd, sizeof(cmd)))  != -1) {
     if((param = getParam(buf, S_Param)) != -1) {
-      if(strcmp(cmd, "BowdenLength")==0) {
+      if(strcmp_P(cmd, PSTR("BowdenLength"))==0) {
         smuffConfig.bowdenLength = param;
       }
-      if(strcmp(cmd, "InsertLength")==0) {
+      else if(strcmp_P(cmd, PSTR("InsertLength"))==0) {
         smuffConfig.insertLength = param;
       }
-      if(strcmp(cmd, "InsertLength")==0) {
-        smuffConfig.insertLength = param;
-      }
-      if(strcmp(cmd, "ReinforceLength")==0) {
+      else if(strcmp_P(cmd, PSTR("ReinforceLength"))==0) {
         smuffConfig.reinforceLength = param;
       }
-      if(strcmp(cmd, "SelectorDist")==0) {
+      else if(strcmp_P(cmd, PSTR("SelectorDist"))==0) {
         smuffConfig.selectorDistance = param;
+      }
+      else if(strcmp_P(cmd, PSTR("HomeAfterFeed"))==0) {
+        smuffConfig.homeAfterFeed = (param > 0);
+      }
+      else if(strcmp_P(cmd, PSTR("ResetBeforeFeed"))==0) {
+        smuffConfig.resetBeforeFeed_Y = (param > 0);
+      }
+      else if(strcmp_P(cmd, PSTR("EmulatePrusa"))==0) {
+        smuffConfig.prusaMMU2 = (param > 0);
       }
     }
   }
@@ -409,14 +421,52 @@ bool M300(const char* msg, String buf, int serial) {
 
 bool M500(const char* msg, String buf, int serial) {
   printResponse(msg, serial);
-  saveSettings(serial);
-  return true;
+  return writeConfig();
 }
 
 bool M503(const char* msg, String buf, int serial) {
   printResponse(msg, serial);
-  reportSettings(serial);
-  return true;
+  Print *_print;
+  switch (serial)
+  {
+      case 0:
+        _print = &Serial;
+        break;
+      case 1:
+        _print = &Serial1;
+        break;
+      case 2:
+        _print = &Serial2;
+        break;
+      default:
+        break;
+    }
+  return writeConfig(_print);
+}
+
+bool M575(const char* msg, String buf, int serial) {
+  bool stat = true;
+  long paramL;
+  int port = -1;
+  printResponse(msg, serial);
+  if((param = getParam(buf, P_Param)) != -1) {
+    port = param;
+  }
+  if((paramL = getParamL(buf, S_Param)) != -1) {
+    if(port != -1) {
+      switch(port) {
+        case 1: smuffConfig.serial1Baudrate = paramL; break;
+        case 2: smuffConfig.serial2Baudrate = paramL; break;
+      }
+    }
+    else {
+      smuffConfig.serial1Baudrate = paramL;
+      smuffConfig.serial2Baudrate = paramL;
+    }
+  }
+  else 
+    stat = false;
+  return stat;
 }
 
 bool M700(const char* msg, String buf, int serial) {

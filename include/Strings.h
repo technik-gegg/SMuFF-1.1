@@ -26,10 +26,21 @@
 #define SD_ERR_NOCONFIG       2
 #define SD_READING_CONFIG     0
 
+#ifdef __STM32F1__
 const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
-const char P_MenuItems [] PROGMEM           = { "Home\nMotors off\nOffsets\nLoad feeder\nUnload feeder\nSwap tools" };
-const char P_MenuItemsPMMU [] PROGMEM       = { "\nLoad to Nozzle" };
-const char P_OfsMenuItems [] PROGMEM        = { "Selector\nRevolver" };
+const char P_MenuItemSeparator [] PROGMEM   = { "\u25ab\u25ab\u25ab\u25ab\u25ab\n"};
+const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
+const char P_MenuItemsDefault[] PROGMEM     = { "Settings \u25b8\n%sTestrun \u25b8" };
+const char P_OfsMenuItems [] PROGMEM        = { "Selector         %4s\nRevolver        %5s" };
+#else
+const char P_MenuItemBack [] PROGMEM        = { "< BACK\n" };
+const char P_MenuItemSeparator [] PROGMEM   = { "-----\n"};
+const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\nOffsets >" };
+//const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\n%s%S%S" };
+const char P_MenuItemsDefault[] PROGMEM     = { "Settings >" };
+const char P_OfsMenuItems [] PROGMEM        = { "Selector         %4s\nRevolver        %5s" };
+#endif
+const char P_MenuItemsPMMU [] PROGMEM       = { "Load To Nozzle\n" };
 const char P_OkButtonOnly [] PROGMEM        = { " Ok " };
 const char P_CancelButtonOnly [] PROGMEM    = { " Cancel " };
 const char P_OkCancelButtons [] PROGMEM     = { " Ok \n Cancel " };
@@ -48,20 +59,66 @@ const char P_TitleConfigError [] PROGMEM    = { "CONFIG FAILURE" };
 const char P_ConfigFail1 [] PROGMEM         = { "Your config file is" };
 const char P_ConfigFail2 [] PROGMEM         = { "possibly corrupted,\nplease check!" };
 const char P_ConfigFail3 [] PROGMEM         = { "too big,\nplease reduce content!" };
-const char P_Tool [] PROGMEM                = { "Tool " };
+const char P_ConfigFail4 [] PROGMEM         = { "data inconsistent\nor memory failure!" };
 const char P_ToolMenu [] PROGMEM            = { "Tool %d" };
 const char P_SwapMenu [] PROGMEM            = { "Slot %d: T%d" };
 const char P_SwapReset [] PROGMEM           = { "Reset swaps\n" };
 const char P_SwapToolDialog [] PROGMEM      = { "Swap Tool %d\nwith Tool %d" };
 const char P_Selecting [] PROGMEM           = { "Selecting" };
 const char P_Wait [] PROGMEM                = { "please wait..." };
-const char P_TitleMainMenu [] PROGMEM       = { "Main menu" };
+const char P_TitleMainMenu [] PROGMEM       = { "Main Menu" };
 const char P_TitleToolsMenu [] PROGMEM      = { "Tool Selection" };
-const char P_TitleOffsetsMenu [] PROGMEM    = { "Offsets calibration" };
-const char P_TitleSwapMenu [] PROGMEM       = { "Swap tools" };
 const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
+#ifdef __STM32F1__
+const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers           %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
+#else
+const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
+#endif
+const char P_Off[] PROGMEM                  = { "OFF" };
+const char P_On[] PROGMEM                   = { "ON" };
+const char P_Yes[] PROGMEM                  = { "Yes" };
+const char P_No[] PROGMEM                   = { "No" };
+const char P_High[] PROGMEM                 = { "HI" };
+const char P_Low[] PROGMEM                  = { "LO" };
+
+const char P_ToolCount[] PROGMEM            = { "# of tools:" };
+const char P_InMillimeter[] PROGMEM         = { "in mm:" };
+const char P_InSeconds[] PROGMEM            = { "in seconds:" };
+const char P_InPercent[] PROGMEM            = { "in percent:" };
+const char P_YesNo[] PROGMEM                = { "yes / no:" };
+const char P_Baud[] PROGMEM                 = { "Baudrate:" };
+const char P_InMicroseconds[] PROGMEM       = { "in uS:" };
+const char P_InTicks[] PROGMEM              = { "in ticks:" };
+const char P_InSteps[] PROGMEM              = { "in steps:" };
+const char P_TriggerOn[] PROGMEM            = { "on:" };
+const char P_NoOfChunks[] PROGMEM           = { "# of chunks:" };
+const char P_BaudMenuItems[] PROGMEM        = { "USB-Serial     %6s\n2nd Serial     %6s" };
+const char P_Baudrates[] PROGMEM            = { "4800\n9600\n19200\n38400\n56700\n115200\n230400" };
+#ifdef __STM32F1__
+const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nRevolver            %2s\nFeeder              %2s" };
+const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
+const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps Per Rev.   %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s" };
+const char P_FeederMenuItems[] PROGMEM      = { "\nSteps Per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
+const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps Per MM    %5s" };
+#else
+const char P_SteppersMenuItems[] PROGMEM    = { "Selector            >\nRevolver            >\nFeeder              >" };
+const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4S\nEndstop Trigger  %4S\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
+const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps Per Rev.   %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s" };
+const char P_FeederMenuItems[] PROGMEM      = { "\nSteps Per MM    %5s\nEnable Chunks    %4S\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
+const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps Per MM    %5s" };
+#endif
+const char P_ConfigWriteSuccess[] PROGMEM   = { "Config success-\nfully written." };
+const char P_ConfigWriteFail[] PROGMEM      = { "Config write failed!\nPlease check SD-Card." };
+
+const char P_RunningTest[] PROGMEM          = { "Starting\n\n%s" };
+const char P_TestFailed[] PROGMEM           = { "Failed to open\n\n%s" };
+const char P_RunningCmd[] PROGMEM           = { "Running loop %ld" };
+const char P_CmdLoop[] PROGMEM              = { "CMD: %-7ld T%d" };
+const char P_ToolChanges[] PROGMEM          = { "Tool change: %5ld" };
+const char P_TestTime[] PROGMEM             = { "Elapsed: %3d:%02d:%02d" };
+const char P_ButtonToStop[] PROGMEM         = { "Press Button To Stop" };
 
 const char P_SD_ReadingConfig[] PROGMEM = { "Reading config..." };
 const char P_SD_InitError[] PROGMEM     = { "SD-Card not ready!" };
@@ -72,7 +129,7 @@ const char P_Start[] PROGMEM          = { "start\n" };
 const char P_Error[] PROGMEM          = { "Error: %s\n" };
 const char P_UnknownCmd[] PROGMEM     = { "Unknown command:" };
 const char P_AlreadySaved[] PROGMEM   = { "Already saved.\n" };
-const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s\n" };
+const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s\n" };
 const char P_TResponse[] PROGMEM      = { "T%d\n" };
 const char P_GResponse[] PROGMEM      = { "G%d\n" };
 const char P_MResponse[] PROGMEM      = { "M%d\n" };
@@ -133,6 +190,7 @@ const char P_MCmds[] PROGMEM = {
   "M300\t-\tBeep\n" \
   "M500\t-\tSave settings\n" \
   "M503\t-\tReport settings\n" \
+  "M575\t-\tSet serial port baudrate\n" \
   "M700\t-\tLoad filament\n" \
   "M701\t-\tUnload filament\n" \
   "M999\t-\tReset\n" \

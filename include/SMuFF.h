@@ -28,6 +28,7 @@
 #include "Config.h"
 #include "Strings.h"
 #include "GCodes.h"
+#include "Menus.h"
 #include "ClickEncoder.h"
 #include <Wire.h>
 #include <SPI.H>
@@ -139,19 +140,20 @@ extern const char     brand[];
 extern volatile byte  nextStepperFlag;
 extern volatile byte  remainingSteppersFlag;
 extern volatile unsigned long lastEncoderButtonTime;
-extern char           buf[];
 extern byte           toolSelected;
 extern PositionMode   positionMode;
-extern String         serialBuffer0, serialBuffer2, serialBuffer3, serialBuffer9, traceSerial2; 
+extern String         serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2; 
 extern bool           displayingUserMessage;
 extern unsigned int   userMessageTime;
 extern bool           testMode;
 extern bool           feederJammed;
 extern volatile bool  parserBusy;
-extern bool           isPwrSave;
+extern volatile bool  isPwrSave;
 //extern CRGB           leds[];
 
 extern void setupDisplay();
+extern void setupTimers();
+extern void setupSteppers();
 extern void drawLogo();
 extern void drawStatus();
 extern void drawSelectingMessage();
@@ -199,32 +201,29 @@ extern void signalSelectorReady();
 extern bool setServoPos(int degree);
 extern void getStoredData();
 extern void readConfig();
+extern bool writeConfig(Print* dumpTo = NULL);
 extern bool checkAutoClose();
 extern void resetAutoClose();
+extern bool checkUserMessage();
 extern void listDir(File root, int numTabs, int serial);
 extern void setPwrSave(int state);
 extern void __debug(const char* fmt, ...);
 extern void setAbortRequested(bool state);
 extern void resetSerialBuffer(int serial);
 extern void checkSerialPending();
-extern void setupMainMenu();
-extern void setupOffsetMenu();
-extern void setupTimers();
-extern void setupSteppers();
 extern void setPwrSave(int state);
-extern bool checkUserMessage();
-extern void showMainMenu();
-extern void showToolsMenu();
-extern void showOffsetsMenu();
-extern void showSwapMenu();
-extern void changeOffset(int index);
-extern void drawOffsetPosition(int index);
 extern void drawSwapTool(int from, int with);
 extern uint8_t swapTool(uint8_t index);
 extern void positionRevolver();
 extern bool feedToEndstop(bool showMessage);
 extern void feedToNozzle();
 extern void unloadFromNozzle();
+extern int splitStringLines(char* lines[], int maxLines, const char* message);
+extern void debounceButton();
+extern bool checkStopMenu(unsigned startTime);
+extern void drawTestrunMessage(unsigned long loop, char* msg);
+extern bool getFiles(const char* rootFolder, const char* pattern, int maxFiles, bool cutExtension, char* files);
+extern void testRun(String fname);
 
 extern void printEndstopState(int serial);
 extern void printPos(int index, int serial);
@@ -243,6 +242,7 @@ extern bool parse_M(const String& buf, int serial);
 extern bool parse_T(const String& buf, int serial);
 extern bool parse_PMMU2(char cmd, const String& buf, int serial);
 extern int  getParam(String buf, char* token);
+extern long getParamL(String buf, char* token);
 extern int  hasParam(String buf, char* token);
 extern bool getParamString(String buf, char* token, char* dest, int bufLen);
 extern void prepStepping(int index, long param, bool Millimeter = true, bool ignoreEndstop = false);

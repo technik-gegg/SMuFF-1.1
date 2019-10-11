@@ -39,7 +39,6 @@ ZTimer                  stepperTimer;
 ZTimer                  encoderTimer;
 ZServo                  servo;
 DuetLaserSensor         duetLS;
-#define ENC_HALFSTEP 1
 ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
 //CRGB                    leds[NUM_LEDS];
 
@@ -48,21 +47,15 @@ volatile byte           remainingSteppersFlag = 0;
 volatile unsigned long  lastEncoderButtonTime = 0;
 bool                    testMode = false;
 int                     toolSelections[MAX_TOOLS]; 
-unsigned long           pwrSaveTime;
-bool                    isPwrSave = false;
-static bool             showMenu = false; 
-static bool             lastZEndstopState = 0;
+volatile unsigned long  pwrSaveTime;
+volatile bool           isPwrSave = false;
+volatile bool           showMenu = false; 
+volatile bool           lastZEndstopState = 0;
 static unsigned long    lastDisplayRefresh = 0;
 
 String serialBuffer0, serialBuffer2, serialBuffer9; 
-String mainList;
-String toolsList;
-String offsetsList;
-String swapList;
 String traceSerial2;
-char   tmp[128];
 
-extern char _title[128];
 extern int  swapTools[MAX_TOOLS];
 
 void isrStepperHandler();       // forward declarations ... makes every compiler happy
@@ -132,7 +125,7 @@ void duetLSHandler() {
 
 void isrEncoderHandler() {
   encoder.service();
-  duetLSHandler();
+  //duetLSHandler();
 }
 
 bool checkDuetEndstop() {
@@ -164,11 +157,10 @@ void setup() {
 #endif
 
   delay(1000);
-
-  serialBuffer0.reserve(80);
-  serialBuffer2.reserve(80);
-  serialBuffer9.reserve(80);
-  traceSerial2.reserve(80);
+  
+  serialBuffer0.reserve(40);
+  serialBuffer2.reserve(40);
+  traceSerial2.reserve(40);
   
   /* No go. Maybe at a later stage
   FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
@@ -178,38 +170,53 @@ void setup() {
   Serial.begin(57600);        // set fixed baudrate until config file was read
   setupDisplay(); 
   readConfig();
-  //__debug(PSTR("DONE reading CONFIG"));
-  Serial.end();
-
-  Serial.begin(smuffConfig.serial1Baudrate);
+  // special case: 
+  // if the baudrate is set to 0, the board is running out of working memory
+  if(smuffConfig.serial1Baudrate != 0) { 
+    if(smuffConfig.serial1Baudrate != 57600) {
+      Serial.end();
+      Serial.begin(smuffConfig.serial1Baudrate);
+    }
+  }
+  else {
+    writeConfig(&Serial);
+    longBeep(3);
+    showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail4, P_OkButtonOnly);
+  }
 #ifdef __STM32F1__
   Serial1.begin(smuffConfig.serial2Baudrate);
   Serial3.begin(smuffConfig.serial2Baudrate);
 #else
   Serial2.begin(smuffConfig.serial2Baudrate);
 #endif
+  //__debug(PSTR("DONE init SERIAL"));
 
   setupSteppers();
   setupTimers();
-  setupMainMenu();
-  setupOffsetMenu();
   servo.attach(SERVO1_PIN);
-
   // must happen after setupSteppers()
   getStoredData();
 
+  // Duet Laser Sensor is not being used yet because the 
+  // measurements are somewhat unreliable. Not sure if it's the 
+  // sensor itself or it's just some mechanical issue.
+  /*
   if(smuffConfig.useDuetLaser) {
     duetLS.attach(Z_END_PIN);
   }
+  */
   
+  // Please note: All the PWM pins on the SKR are not working as
+  // expected. Maybe it's a common libmaple issue, maybe it's a 
+  // STM32 timer related thing or maybe it's the
+  // hardware design of the board itself. 
+  // Can't tell for sure, need some more investigation.
   if(HEATER0_PIN != -1) {
     pinMode(HEATER0_PIN, OUTPUT);
-    //pwmWrite(HEATER0_PIN, 32000); 
   }
 #ifdef __STM32F1__
   if(HEATBED_PIN != -1) {
     pinMode(HEATBED_PIN, OUTPUT); 
-    //pwmWrite(HEATBED_PIN, 48000); 
   }
 #endif
   
@@ -218,10 +225,11 @@ void setup() {
     pinMode(FAN_PIN, PWM);
 #else
     pinMode(FAN_PIN, OUTPUT);
-    if(smuffConfig.fanSpeed > 0 && smuffConfig.fanSpeed <= 255) {
-      analogWrite(FAN_PIN, smuffConfig.fanSpeed);
-    }
 #endif      
+    if(smuffConfig.fanSpeed > 0 && smuffConfig.fanSpeed <= 100) {
+      analogWrite(FAN_PIN, (int)(smuffConfig.fanSpeed*2.55));
+    }
+    //__debug(PSTR("DONE FAN init"));
   }
 
 #ifndef __STM32F1__
@@ -231,14 +239,13 @@ void setup() {
   }
   //__debug(PSTR("DONE I2C init"));
  #endif
-  
-  //__debug(PSTR("DONE reset Revolver"));
   if(smuffConfig.homeAfterFeed) {
     moveHome(REVOLVER, false, false);
   }
   else {
     resetRevolver();
   }
+  //__debug(PSTR("DONE reset Revolver"));
   
   sendStartResponse(0);
   if(smuffConfig.prusaMMU2) {
@@ -275,11 +282,13 @@ void setupSteppers() {
   steppers[REVOLVER].setMaxHSpeed(smuffConfig.maxSpeedHS_Y);
   
   steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, smuffConfig.acceleration_Z, smuffConfig.maxSpeed_Z);
+  /*
   if(smuffConfig.useDuetLaser) {
     steppers[FEEDER].setEndstop(-1, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
     steppers[FEEDER].endstopCheck = checkDuetEndstop;
   }
   else
+  */
     steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
   steppers[FEEDER].stepFunc = overrideStepZ;
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM_Z);
@@ -297,6 +306,7 @@ void setupSteppers() {
   for(int i=0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
+  //__debug(PSTR("DONE initializing swaps"));
 }
 
 void setupTimers() {
@@ -304,72 +314,25 @@ void setupTimers() {
   // Attn: Servo uses TIMER5
   // *****
 #ifdef __BRD_I3_MINI
-  stepperTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER256);
-  encoderTimer.setNextInterruptInterval(63);    // round about 1ms on 16MHz CPU
+  stepperTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1);
+  encoderTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256); // round about 1ms on 16MHz CPU
 #else
   stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER1, 4500);
-  encoderTimer.setNextInterruptInterval(16);    // equals to 1ms on 72MHz CPU
+  encoderTimer.setupTimer(ZTimer::ZTIMER1, 4500); // equals to 1ms on 72MHz CPU
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);
   encoderTimer.setupTimerHook(isrEncoderHandler);
   encoder.setDoubleClickEnabled(true);
-}
-
-void setupToolsMenu() {
-  char menu[256];
-  sprintf_P(menu, P_MenuItemBack, NULL);
-  memset(toolSelections, 0, sizeof(int)*MAX_TOOLS);
-  int n = 0;
-  for(int i=0; i< smuffConfig.toolCount; i++) {
-    if(i == toolSelected)
-      continue;
-    toolSelections[n] = i;
-    sprintf_P(tmp, P_ToolMenu, i);
-    strcat(menu, tmp);
-    strcat(menu, (char*)"\n");
-    n++;
-  }
-  menu[strlen(menu)-1] = '\0';
-  toolsList = String(menu);
-}
-
-void setupMainMenu() {
-  char menu[256];
-  sprintf_P(menu, P_MenuItemBack, NULL);
-  strcat_P(menu, P_MenuItems);
-  if(smuffConfig.prusaMMU2)
-    strcat_P(menu, P_MenuItemsPMMU);
-  mainList = String(menu);
-  //__debug(PSTR("DONE setting Main menu"));
-}
-
-void setupOffsetMenu() {
-  char menu[256];
-  sprintf_P(menu, P_MenuItemBack, NULL);
-  strcat_P(menu, P_OfsMenuItems);
-  offsetsList = String(menu);
-  //__debug(PSTR("DONE setting Offset menu"));
-}
-
-void setupSwapMenu() {
-  char menu[256];
-  sprintf_P(menu, P_MenuItemBack, NULL);
-  sprintf_P(tmp, P_SwapReset, NULL);
-  strcat(menu, tmp);
-  for(int i=0; i< smuffConfig.toolCount; i++) {
-    sprintf_P(tmp, P_SwapMenu, i, swapTools[i]);
-    strcat(menu, tmp);
-    strcat(menu, (char*)"\n");
-  }
-  menu[strlen(menu)-1] = '\0';
-  swapList = String(menu);
+#ifdef __BRD_I3_MINI
+  encoderTimer.setNextInterruptInterval(63);    // run encoder timer
+#else
+  encoderTimer.setNextInterruptInterval(16);    // run encoder timer
+#endif
+  //__debug(PSTR("DONE setup timers"));
 }
 
 void startStepperInterval() {
-
   unsigned int minDuration = 65535;
   for(int i = 0; i < NUM_STEPPERS; i++) {
     if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration ) {
@@ -427,8 +390,8 @@ void runAndWait(int index) {
     checkSerialPending(); // not a really nice solution but needed to check serials for Abort command
     //delayMicroseconds(1000);
 #ifdef __STM32F1__
-    refreshStatus(true);
-    lastDisplayRefresh = millis()+1500; // keep the last status for 1.5 seconds
+    if(!showMenu)
+      refreshStatus(true);
 #endif
   }
   //if(index==FEEDER) __debug(PSTR("Fed: %smm"), String(steppers[index].getStepsTakenMM()).c_str());
@@ -444,10 +407,8 @@ void refreshStatus(bool withLogo) {
   lastDisplayRefresh = millis();
 }
 
-unsigned long lastMsg = millis();
-unsigned lastState = duetLS.getState();
-
 void loop() {
+
 #ifdef __STM32F1__
   if(Serial1.available()) serialEvent1();
   if(Serial3.available()) serialEvent3();
@@ -463,10 +424,11 @@ void loop() {
   }
   //__debug(PSTR("Mem: %d"), freeMemory());
 
-  if(!checkUserMessage()) {
-    if(!isPwrSave) {
+  checkUserMessage();
+  if(!displayingUserMessage) {
+    if(!isPwrSave && !showMenu) {
 #ifdef __STM32F1__
-      if(millis()-lastDisplayRefresh > 100) { // refresh display every 100ms
+      if(millis()-lastDisplayRefresh > 250) { // refresh display every 100ms
 #else
       if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
 #endif  
@@ -474,39 +436,38 @@ void loop() {
       }
     }
   }
-  else {
-    if(millis()-userMessageTime > USER_MESSAGE_RESET*1000) {
-      displayingUserMessage = false;
+
+  if(!showMenu) {
+    int button = encoder.getButton();
+    if(button == ClickEncoder::Pressed && isPwrSave) {
+      setPwrSave(0);
     }
-  }
-
-  int button = encoder.getButton();
-  if(button == ClickEncoder::DoubleClicked) {
-    feederJammed = false;
-    beep(2);
-    sprintf_P(tmp, P_JamCleared);
-    drawUserMessage(tmp);
-  }
-  if(button == ClickEncoder::Button_e::Pressed && isPwrSave) {
-    setPwrSave(0);
-  }
-  else {
-    int turn = encoder.getValue();
-
-    if(!showMenu && turn != 0) {
-      if(isPwrSave) {
-        setPwrSave(0);
-      }
-      else {
-        displayingUserMessage = false;
-        showMenu = true;
-        if(turn == -1) {
-          showMainMenu();
+    else if(button == ClickEncoder::Held) {
+      setPwrSave(0);
+      showMenu = true;
+      showSettingsMenu("Settings");
+      showMenu = false;
+      debounceButton();
+#ifdef __STM32F1__
+#endif
+    }
+    else {
+      int turn = encoder.getValue();
+      if(turn != 0) {
+        if(isPwrSave) {
+          setPwrSave(0);
         }
         else {
-          showToolsMenu();
+          displayingUserMessage = false;
+          showMenu = true;
+          if(turn == -1) {
+            showMainMenu();
+          }
+          else {
+            showToolsMenu();
+          }
+          showMenu = false;
         }
-        showMenu = false;
       }
     }
   }
@@ -539,12 +500,11 @@ void loop() {
   */
 }
 
-
 void setPwrSave(int state) {
   display.setPowerSave(state);
   isPwrSave = state == 1;
   if(!isPwrSave) {
-    delay(2000);
+    delay(1200);
     pwrSaveTime = millis();
   }
 }
@@ -561,275 +521,6 @@ bool checkUserMessage() {
   return displayingUserMessage;
 }
 
-void showMainMenu() {
-
-  bool stopMenu = false;
-  unsigned int startTime = millis();
-  uint8_t current_selection = 0;
-  sprintf_P(_title, P_TitleMainMenu, NULL);
-  do {
-    resetAutoClose();
-    while(checkUserMessage());
-    current_selection = display.userInterfaceSelectionList(_title, current_selection, mainList.c_str());
-
-    if(current_selection == 0)
-      return;
-
-    else {
-      switch(current_selection) {
-        case 1:
-          stopMenu = true;
-          break;
-        
-        case 2:
-          moveHome(SELECTOR);
-          moveHome(REVOLVER, true, false);
-          startTime = millis();
-          break;
-        
-        case 3:
-          steppers[SELECTOR].setEnabled(false);
-          steppers[REVOLVER].setEnabled(false);
-          steppers[FEEDER].setEnabled(false);
-          startTime = millis();
-          break;
-
-        case 4:
-          showOffsetsMenu();
-          break;
-          
-        case 5:
-          if(smuffConfig.prusaMMU2)
-            loadFilamentPMMU2();
-          else
-            loadFilament();
-          startTime = millis();
-          break;
-        
-        case 6:
-          unloadFilament();
-          startTime = millis();
-          break;
-
-        case 7:
-          showSwapMenu();
-          break;
-        
-        case 8:
-          loadFilament();
-          break;
-      }
-    }
-    if (millis() - startTime > (unsigned long)smuffConfig.menuAutoClose * 1000) {
-      stopMenu = true;
-    }
-  } while(!stopMenu);
-}
-
-void drawSwapTool(int from, int with) {
-  sprintf_P(tmp, P_SwapToolDialog, from, with);
-  drawUserMessage(String(tmp));
-}
-
-uint8_t swapTool(uint8_t index) {
-  uint8_t ndx = 0;
-  
-  while(digitalRead(ENCODER_BUTTON_PIN) == LOW) {
-    delay(20);
-  }
-  delay(250);
-  
-  drawSwapTool(index, ndx);
-
-  while(1) {
-    if(digitalRead(ENCODER_BUTTON_PIN) == LOW) {
-      break;
-    }
-    int turn = encoder.getValue();
-    if(turn == 0)
-      continue;
-    ndx += turn;
-
-    if(ndx >= smuffConfig.toolCount)
-      ndx = smuffConfig.toolCount-1;
-    if(ndx == 255)
-      ndx = smuffConfig.toolCount-1;
-    drawSwapTool(index, ndx);
-  }
-  return ndx;
-}
-
-void showSwapMenu() {
-  bool stopMenu = false;
-  uint8_t current_selection = 0;
-  sprintf_P(_title, P_TitleSwapMenu, NULL);
-  
-  do {
-    setupSwapMenu();
-    resetAutoClose();
-    while(checkUserMessage());
-    current_selection = display.userInterfaceSelectionList(_title, current_selection, swapList.c_str());
-
-    if(current_selection == 0)
-      return;
-    else if(current_selection == 1) {
-      stopMenu = true;
-    }
-    else if(current_selection == 2) {
-      for(int i=0; i < MAX_TOOLS; i++) {
-        swapTools[i] = i;
-      }
-    }
-    else {
-      uint8_t tool = swapTool(current_selection-3);
-      uint8_t tmp = swapTools[current_selection-3];
-      swapTools[current_selection-3] = tool;
-      swapTools[tool] = tmp;
-    }
-  } while(!stopMenu);
-  saveStore();
-}
-
-
-void showOffsetsMenu() {
-  bool stopMenu = false;
-  unsigned int startTime = millis();
-  uint8_t current_selection = 0;
-  sprintf_P(_title, P_TitleOffsetsMenu, NULL);
-  
-  do {
-    resetAutoClose();
-    while(checkUserMessage());
-    current_selection = display.userInterfaceSelectionList(_title, current_selection, offsetsList.c_str());
-
-    if(current_selection == 0)
-      return;
-
-    else {
-      switch(current_selection) {
-        case 1:
-          stopMenu = true;
-          break;
-        
-        case 2:
-          changeOffset(SELECTOR);
-          startTime = millis();
-          break;
-        
-        case 3:
-          changeOffset(REVOLVER);
-          startTime = millis();
-          break;
-      }
-    }
-    if (millis() - startTime > (unsigned long)smuffConfig.menuAutoClose * 1000) {
-      stopMenu = true;
-    }
-  } while(!stopMenu);  
-}
-
-void changeOffset(int index) {
-  int steps = (smuffConfig.stepsPerRevolution_Y / 360);
-  int turn;
-  float stepsF = 0.1f;
-
-  while(digitalRead(ENCODER_BUTTON_PIN) == LOW) {
-    delay(20);
-  }
-  delay(250);
-  
-  moveHome(index);
-  long pos = steppers[index].getStepPosition();
-  float posF = steppers[index].getStepPositionMM();
-  unsigned int curSpeed = steppers[index].getMaxSpeed();
-  steppers[FEEDER].setMaxSpeed(500);
-  encoder.setAccelerationEnabled(true);
-  
-  drawOffsetPosition(index);
-
-  while(1) {
-    if(digitalRead(ENCODER_BUTTON_PIN) == LOW)
-      break;
-    if((turn=encoder.getValue()) == 0)
-      continue;
-    if(turn == -1) {
-      pos = -steps;
-      posF = -stepsF;
-    }
-    else if(turn == 1) {
-      pos = steps;
-      posF = stepsF;
-    }
-    if(index == REVOLVER) {
-      prepSteppingRel(REVOLVER, pos, true);
-    }
-    if(index == SELECTOR) {
-      prepSteppingRelMillimeter(SELECTOR, posF, true);
-    }
-    runAndWait(index);
-    drawOffsetPosition(index);
-  }
-  steppers[index].setMaxSpeed(curSpeed);
-  encoder.setAccelerationEnabled(false);
-}
-
-void drawOffsetPosition(int index) {
-  if(index == REVOLVER) {
-    sprintf_P(tmp, PSTR("%s\n%d"), steppers[index].getDescriptor(), steppers[index].getStepPosition());
-  }
-  if(index == SELECTOR) {
-    sprintf_P(tmp, PSTR("%s\n%s"), steppers[index].getDescriptor(), String(steppers[index].getStepPositionMM()).c_str());
-  }
-  drawUserMessage(String(tmp));
-}
-
-void showToolsMenu() {
-
-  bool stopMenu = false;
-  unsigned int startTime = millis();
-  uint8_t current_selection = 0;
-  sprintf_P(_title, P_TitleToolsMenu, NULL);
-  do {
-    setupToolsMenu();
-    resetAutoClose();
-    while(checkUserMessage());
-    uint8_t startPos = toolSelected == 255 ? 0 : toolSelected+1;
-    current_selection = display.userInterfaceSelectionList(_title, startPos, toolsList.c_str());
-
-    if(current_selection <= 1)
-      stopMenu = true;
-    else {
-      int tool = toolSelections[current_selection-2];
-      if(!smuffConfig.duetDirect) {
-        selectTool(tool);
-      }
-      else {
-        selectTool(tool);
-        // TODO: do tool change using Duet3D 
-        // not yet possible due to Duet3D is being blocked waiting for endstop
-        /*
-        sprintf_P(tmp, PSTR("T%d\n"), tool); 
-        Serial2.print(tmp);
-        */
-      }
-      startTime = millis();
-    }
-    if (millis() - startTime > (unsigned long)smuffConfig.menuAutoClose * 1000) {
-      stopMenu = true;
-    }
-  } while(!stopMenu);
-}
-
-void resetAutoClose() {
-  lastEncoderButtonTime = millis();
-}
-
-bool checkAutoClose() {
-  if (millis() - lastEncoderButtonTime >= (unsigned long)smuffConfig.menuAutoClose*1000) {
-    return true;
-  }
-  return false;
-}
 
 #ifdef __STM32F1__
 void serialEventRun() {

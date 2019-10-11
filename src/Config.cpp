@@ -32,9 +32,9 @@ const size_t capacity = 2400;
 const size_t capacity = 1300;
 #endif
 
+
 void readConfig()
 {
-  
   DynamicJsonDocument jsonDoc(capacity);
 
   if (!SD.begin()) {
@@ -61,44 +61,46 @@ void readConfig()
       showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail2, P_OkButtonOnly);
     }
     else {
-      const char* selector = "Selector";
-      const char* revolver = "Revolver";
-      const char* feeder   = "Feeder";
-      const char* maxSpeed = "MaxSpeed";
-      const char* maxSpeedHS = "MaxSpeedHS";
-      const char* invertDir = "InvertDir";
-      const char* stepDelay = "StepDelay";
+      const char* selector    = "Selector";
+      const char* revolver    = "Revolver";
+      const char* feeder      = "Feeder";
+      const char* maxSpeed    = "MaxSpeed";
+      const char* maxSpeedHS  = "MaxSpeedHS";
+      const char* acceleration= "Acceleration";
+      const char* invertDir   = "InvertDir";
+      const char* endstopTrig = "EndstopTrigger";
+      const char* stepDelay   = "StepDelay";
       drawSDStatus(SD_READING_CONFIG);
-      int toolCnt =                     jsonDoc[PSTR("ToolCount")];
+      int toolCnt =                     jsonDoc["ToolCount"];
       smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
       smuffConfig.firstToolOffset =     jsonDoc[selector]["Offset"];
       smuffConfig.toolSpacing =         jsonDoc[selector]["Spacing"];
       smuffConfig.stepsPerMM_X =        jsonDoc[selector]["StepsPerMillimeter"];
       smuffConfig.maxSteps_X = ((smuffConfig.toolCount-1)*smuffConfig.toolSpacing+smuffConfig.firstToolOffset) * smuffConfig.stepsPerMM_X;
       smuffConfig.maxSpeed_X =          jsonDoc[selector][maxSpeed];
-      smuffConfig.acceleration_X =      jsonDoc[selector]["Acceleration"];
+      smuffConfig.acceleration_X =      jsonDoc[selector][acceleration];
       smuffConfig.invertDir_X =         jsonDoc[selector][invertDir];
-      smuffConfig.endstopTrigger_X =    jsonDoc[selector]["EndstopTrigger"];
+      smuffConfig.endstopTrigger_X =    jsonDoc[selector][endstopTrig];
       smuffConfig.stepDelay_X =         jsonDoc[selector][stepDelay];
       smuffConfig.maxSpeedHS_X =        jsonDoc[selector][maxSpeedHS];
       smuffConfig.stepsPerRevolution_Y= jsonDoc[revolver]["StepsPerRevolution"];
       smuffConfig.firstRevolverOffset = jsonDoc[revolver]["Offset"];
       smuffConfig.revolverSpacing =     smuffConfig.stepsPerRevolution_Y / 10;
       smuffConfig.maxSpeed_Y =          jsonDoc[revolver][maxSpeed];
-      smuffConfig.acceleration_Y =      jsonDoc[revolver]["Acceleration"];
+      smuffConfig.acceleration_Y =      jsonDoc[revolver][acceleration];
       smuffConfig.resetBeforeFeed_Y =   jsonDoc[revolver]["ResetBeforeFeed"];
       smuffConfig.homeAfterFeed =       jsonDoc[revolver]["HomeAfterFeed"];
       smuffConfig.invertDir_Y =         jsonDoc[revolver][invertDir];
-      smuffConfig.endstopTrigger_Y =    jsonDoc[revolver]["EndstopTrigger"];
+      smuffConfig.endstopTrigger_Y =    jsonDoc[revolver][endstopTrig];
       smuffConfig.stepDelay_Y =         jsonDoc[revolver][stepDelay];
       smuffConfig.maxSpeedHS_Y =        jsonDoc[revolver][maxSpeedHS];
       smuffConfig.externalControl_Z =   jsonDoc[feeder]["ExternalControl"];
       smuffConfig.stepsPerMM_Z =        jsonDoc[feeder]["StepsPerMillimeter"];
-      smuffConfig.acceleration_Z =      jsonDoc[feeder]["Acceleration"];
+      smuffConfig.acceleration_Z =      jsonDoc[feeder][acceleration];
       smuffConfig.maxSpeed_Z =          jsonDoc[feeder][maxSpeed];
       smuffConfig.insertSpeed_Z =       jsonDoc[feeder]["InsertSpeed"];
       smuffConfig.invertDir_Z =         jsonDoc[feeder][invertDir];
-      smuffConfig.endstopTrigger_Z =    jsonDoc[feeder]["EndstopTrigger"];
+      smuffConfig.endstopTrigger_Z =    jsonDoc[feeder][endstopTrig];
       smuffConfig.stepDelay_Z =         jsonDoc[feeder][stepDelay];
       smuffConfig.reinforceLength =     jsonDoc[feeder]["ReinforceLength"];
       smuffConfig.unloadRetract =       jsonDoc[feeder]["UnloadRetract"];
@@ -113,6 +115,7 @@ void readConfig()
         smuffConfig.insertLength = 5;
       smuffConfig.maxSpeedHS_Z =        jsonDoc[feeder][maxSpeedHS];
       smuffConfig.useDuetLaser =        jsonDoc[feeder]["DuetLaser"];
+
       int contrast =                    jsonDoc["LCDContrast"];
       smuffConfig.lcdContrast = (contrast > MIN_CONTRAST && contrast < MAX_CONTRAST) ? contrast : DSP_CONTRAST;
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];
@@ -137,18 +140,21 @@ void readConfig()
       }
       smuffConfig.prusaMMU2 =           jsonDoc["EmulatePrusa"];
 
+#ifdef __STM32F1__  
       for(int i=0; i < smuffConfig.toolCount; i++) {
         char tmp[16];
         sprintf(tmp,"T%d", i);
         if(jsonDoc["Material"][tmp] == NULL)
           sprintf(tmp,"Tool%d", i);
         memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
-#ifdef __STM32F1__
         strncpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i])); 
-#else
-        strlcpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i])); 
-#endif
       }
+#else
+      for(int i=0; i < smuffConfig.toolCount; i++) {
+        memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
+      }
+#endif
+      
       //__debug(PSTR("DONE reading config"));
     }
     if(smuffConfig.maxSpeedHS_X == 0)
@@ -160,8 +166,104 @@ void readConfig()
     cfg.close();
   }
   else {
-    __debug(PSTR("Open config file failed: handle = %s"), !cfg ? "FALSE" : "TRUE");
+    //__debug(PSTR("Open config file failed: handle = %s"), !cfg ? "FALSE" : "TRUE");
     drawSDStatus(SD_ERR_NOCONFIG);
     delay(5000);
-  } 
+  }
+}
+
+bool writeConfig(Print* dumpTo)
+{
+  bool stat = false;
+
+  StaticJsonDocument<capacity> jsonDoc;
+  if(dumpTo == NULL) {
+    if(!SD.begin()) {
+      drawSDStatus(SD_ERR_INIT);
+      delay(5000);
+      return false;
+    }
+  }
+  JsonObject jsonObj = jsonDoc.to<JsonObject>();
+  jsonDoc["Serial1Baudrate"]      = smuffConfig.serial1Baudrate;
+  jsonDoc["Serial2Baudrate"]      = smuffConfig.serial2Baudrate;
+  jsonDoc["SerialDueBaudrate"]    = smuffConfig.serialDueBaudrate;
+  jsonDoc["ToolCount"]            = smuffConfig.toolCount;
+  jsonDoc["BowdenLength"]         = smuffConfig.bowdenLength;
+  jsonDoc["SelectorDist"]         = smuffConfig.selectorDistance;
+  jsonDoc["LCDContrast"]          = smuffConfig.lcdContrast;
+  jsonDoc["I2CAddress"]           = smuffConfig.i2cAddress;
+  jsonDoc["MenuAutoClose"]        = smuffConfig.menuAutoClose;
+  jsonDoc["FanSpeed"]             = smuffConfig.fanSpeed;
+  jsonDoc["DelayBetweenPulses"]   = smuffConfig.delayBetweenPulses;
+  jsonDoc["PowerSaveTimeout"]     = smuffConfig.powerSaveTimeout;
+  jsonDoc["Duet3DDirect"]         = smuffConfig.duetDirect;
+  jsonDoc["EmulatePrusa"]         = smuffConfig.prusaMMU2;
+  jsonDoc["UnloadCommand"]        = smuffConfig.unloadCommand;
+  
+  JsonObject node = jsonObj.createNestedObject("Selector");
+  node["Offset"]              = smuffConfig.firstToolOffset;
+  node["Spacing"]             = smuffConfig.toolSpacing;
+  node["StepsPerMillimeter"]  = smuffConfig.stepsPerMM_X;
+  node["StepDelay"]           = smuffConfig.stepDelay_X;
+  node["MaxSpeed"]            = smuffConfig.maxSpeed_X;
+  node["MaxSpeedHS"]          = smuffConfig.maxSpeedHS_X;
+  node["Acceleration"]        = smuffConfig.acceleration_X;
+  node["InvertDir"]           = smuffConfig.invertDir_X;
+  node["EndstopTrigger"]      = smuffConfig.endstopTrigger_X;
+
+  node = jsonObj.createNestedObject("Revolver");
+  node["Offset"]              = smuffConfig.firstRevolverOffset;
+  node["StepsPerRevolution"]  = smuffConfig.stepsPerRevolution_Y;
+  node["StepDelay"]           = smuffConfig.stepDelay_Y;
+  node["MaxSpeed"]            = smuffConfig.maxSpeed_Y;
+  node["MaxSpeedHS"]          = smuffConfig.maxSpeedHS_Y;
+  node["Acceleration"]        = smuffConfig.acceleration_Y;
+  node["ResetBeforeFeed"]     = smuffConfig.resetBeforeFeed_Y;
+  node["HomeAfterFeed"]       = smuffConfig.homeAfterFeed;
+  node["InvertDir"]           = smuffConfig.invertDir_Y;
+  node["EndstopTrigger"]      = smuffConfig.endstopTrigger_Y;
+
+  node = jsonObj.createNestedObject("Feeder");
+  node["ExternalControl"]     = smuffConfig.externalControl_Z;
+  node["StepsPerMillimeter"]  = smuffConfig.stepsPerMM_Z;
+  node["StepDelay"]           = smuffConfig.stepDelay_Z;
+  node["MaxSpeed"]            = smuffConfig.maxSpeed_Z;
+  node["MaxSpeedHS"]          = smuffConfig.maxSpeedHS_Z;
+  node["Acceleration"]        = smuffConfig.acceleration_Z;
+  node["InsertSpeed"]         = smuffConfig.insertSpeed_Z;
+  node["InvertDir"]           = smuffConfig.invertDir_Z;
+  node["EndstopTrigger"]      = smuffConfig.endstopTrigger_Z;
+  node["ReinforceLength"]     = smuffConfig.reinforceLength;
+#ifdef __STM32F1__
+  node["UnloadRetract"]       = smuffConfig.unloadRetract;
+  node["UnloadPushback"]      = smuffConfig.unloadPushback;
+  node["PushbackDelay"]       = smuffConfig.pushbackDelay;
+#endif
+  node["EnableChunks"]        = smuffConfig.enableChunks;
+  node["FeedChunks"]          = smuffConfig.feedChunks;
+  node["InsertLength"]        = smuffConfig.insertLength;
+
+#ifdef __STM32F1__  
+  node = jsonObj.createNestedObject("Materials");
+  for(int i=0; i < smuffConfig.toolCount; i++) {
+    char tmp[16];
+    sprintf(tmp,"T%d", i);
+    node[tmp] = smuffConfig.materials[i] != NULL ?  smuffConfig.materials[i] : "";
+  }
+#endif
+
+  if(dumpTo == NULL) {
+    FsFile cfg;
+    if(cfg.open(CONFIG_FILE, O_WRITE | O_CREAT | O_TRUNC)) {
+      serializeJsonPretty(jsonDoc, cfg);
+      stat = true;
+    }
+    cfg.close();  
+  }
+  else {
+    serializeJsonPretty(jsonDoc, *dumpTo);
+    stat = true;
+  }
+  return stat;
 }

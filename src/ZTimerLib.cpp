@@ -127,7 +127,6 @@ void ZTimer::setupTimer(IsrTimer timer, TimerPrescaler prescaler) {
     case ZTIMER6:                 // not available on AVR
       break;
   }
-  //setNextInterruptInterval(1000);
   interrupts();
 }
 #endif
@@ -181,7 +180,6 @@ void ZTimer::setupTimer(IsrTimer timer, int channel, unsigned int prescaler) {
       hwTimer6.attachInterrupt(channel, ISR6);
       break;
   }
-  //setNextInterruptInterval(1000);
   interrupts();
 }
 #endif
