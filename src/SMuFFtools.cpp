@@ -1249,11 +1249,6 @@ void testRun(String fname) {
           gCode = line;
           if(gCode.startsWith(";"))
               continue;
-          if(gCode.startsWith("T")) {
-            const char* p = gCode.c_str()+1;
-            tool = strtol(p, NULL, 10);
-            toolChanges++;
-          }
           gCode.replace(" ", "");
           gCode.replace("\r","");
           gCode.replace(delimiter,"");
@@ -1266,6 +1261,11 @@ void testRun(String fname) {
                 break;
             } while(tool == lastTool);
             gCode.replace("{RNDT}", String(tool));
+          }
+          if(gCode.startsWith("T")) {
+            const char* p = gCode.c_str()+1;
+            tool = strtol(p, NULL, 10);
+            toolChanges++;
           }
           __debug(PSTR("GCode: %-40s\t[ Loops: %ld  Cmds: %ld  ToolChanges: %ld  Elapsed: %d:%02d:%02d ]"), gCode.c_str(), loopCnt, cmdCnt, toolChanges, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
           parseGcode(gCode, 0);
