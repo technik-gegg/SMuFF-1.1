@@ -547,19 +547,31 @@ void positionRevolver() {
 
   long pos = steppers[REVOLVER].getStepPosition();
   long newPos = smuffConfig.firstRevolverOffset + (toolSelected *smuffConfig.revolverSpacing);
-  //__debug(PSTR("PositionRevolver: pos: %d - newPos: %d"), pos, newPos);
+  // calculate the new position and decide whether to move forward or backard
+  // i.e. which ever has the shorter distance
   long delta1 = newPos - (smuffConfig.stepsPerRevolution_Y + pos);  // number of steps if moved backward
   long delta2 = newPos - pos;                                       // number of steps if moved forward
-  //__debug(PSTR("PositionRevolver: D1: %ld D2: %ld"), delta1, delta2);
   if(abs(delta1) < abs(delta2))
     newPos = delta1;
   else 
     newPos = delta2;
-  //__debug(PSTR("PositionRevolver: newPos: %d"), newPos);
 
-  prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
-  remainingSteppersFlag |= _BV(REVOLVER);
-  runAndWait(-1);
+  // if the position hasn't changed, do nothing
+  if(newPos != 0) {
+    prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
+    remainingSteppersFlag |= _BV(REVOLVER);
+    runAndWait(-1);
+    // wiggle the Revolver one position back and forth 
+    // just to adjust the gears a bit better
+    delay(50);
+    prepSteppingRel(REVOLVER, smuffConfig.revolverSpacing, true);
+    remainingSteppersFlag |= _BV(REVOLVER);
+    runAndWait(-1);
+    delay(50);
+    prepSteppingRel(REVOLVER, -(smuffConfig.revolverSpacing), true);
+    remainingSteppersFlag |= _BV(REVOLVER);
+    runAndWait(-1);
+  }
   steppers[FEEDER].setEnabled(true);
   delay(150);
   //__debug(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
