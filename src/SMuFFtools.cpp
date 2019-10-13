@@ -538,6 +538,9 @@ void signalNoTool() {
 }
 
 void positionRevolver() {
+
+  // disable Feeder temporarily
+  steppers[FEEDER].setEnabled(false);
   if(smuffConfig.resetBeforeFeed_Y) {
     moveHome(REVOLVER, false, false);
   }
@@ -557,6 +560,7 @@ void positionRevolver() {
   prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
   remainingSteppersFlag |= _BV(REVOLVER);
   runAndWait(-1);
+  steppers[FEEDER].setEnabled(true);
   delay(150);
   //__debug(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }

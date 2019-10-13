@@ -275,20 +275,23 @@ bool M203(const char* msg, String buf, int serial) {
     return stat;
   }
   if((param = getParam(buf, X_Param))  != -1) {
-    if(param > 0 && param <= 10000)
+    if(param > 0 && param <= 65000) {
       steppers[SELECTOR].setMaxSpeed(param);
+      smuffConfig.maxSpeed_X = param;
+    }
     else stat = false;
     if((param = getParam(buf, S_Param))  != -1) {
       smuffConfig.stepDelay_X = (int)param;
     }
     if((param = getParam(buf, P_Param))  != -1) {
       steppers[SELECTOR].setMaxHSpeed(param);
+      smuffConfig.maxSpeedHS_X = param;
     }
   }
   if((param = getParam(buf, Y_Param))  != -1) {
-    if(param > 0 && param <= 10000) {
+    if(param > 0 && param <= 65000) {
       steppers[REVOLVER].setMaxSpeed(param);
-      //__debug(PSTR("Revolver max speed: %d"), steppers[REVOLVER].getMaxSpeed());
+      smuffConfig.maxSpeed_Y = param;
     }
     else stat = false;
     if((param = getParam(buf, S_Param))  != -1) {
@@ -296,17 +299,21 @@ bool M203(const char* msg, String buf, int serial) {
     }
     if((param = getParam(buf, P_Param))  != -1) {
       steppers[REVOLVER].setMaxHSpeed(param);
+      smuffConfig.maxSpeedHS_Y = param;
     }
   }
   if((param = getParam(buf, Z_Param))  != -1) {
-    if(param > 0 && param <= 10000)
+    if(param > 0 && param <= 65000) {
       steppers[FEEDER].setMaxSpeed(param);
+      smuffConfig.maxSpeed_Z = param;
+    }
     else stat = false;
     if((param = getParam(buf, S_Param))  != -1) {
       smuffConfig.stepDelay_Z = (int)param;
     }
     if((param = getParam(buf, P_Param))  != -1) {
       steppers[FEEDER].setMaxHSpeed(param);
+      smuffConfig.maxSpeedHS_Z = param;
     }
     if((param = getParam(buf, F_Param))  != -1) {
       smuffConfig.insertSpeed_Z = param;
