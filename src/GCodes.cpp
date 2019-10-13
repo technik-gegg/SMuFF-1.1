@@ -250,18 +250,24 @@ bool M201(const char* msg, String buf, int serial) {
     return stat;
   }
   if((param = getParam(buf, X_Param))  != -1) {
-    if(param >= 200 && param <= 15000)
+    if(param >= 200 && param <= 65000) {
       steppers[SELECTOR].setAcceleration(param);
+      smuffConfig.acceleration_X = param;
+    }
     else stat = false;
   }
   if((param = getParam(buf, Y_Param))  != -1) {
-    if(param >= 200 && param <= 15000)
+    if(param >= 200 && param <= 65000) {
       steppers[REVOLVER].setAcceleration(param);
+      smuffConfig.acceleration_Y = param;
+    }
     else stat = false;
   }
   if((param = getParam(buf, Z_Param))  != -1) {
-    if(param >= 200 && param <= 15000)
+    if(param >= 200 && param <= 65000) {
       steppers[FEEDER].setAcceleration(param);
+      smuffConfig.acceleration_Z = param;
+    }
     else stat = false;
   }
   return stat;

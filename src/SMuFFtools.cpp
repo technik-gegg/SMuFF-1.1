@@ -56,6 +56,7 @@ bool                  isAbortRequested = false;
 unsigned int          userMessageTime = 0;
 int                   swapTools[MAX_TOOLS];
 bool                  isWarning;
+unsigned long         feederErrors = 0;
 
 const char brand[] = VERSION_STRING;
 
@@ -605,6 +606,7 @@ bool feedToEndstop(bool showMessage) {
       runAndWait(FEEDER);
       steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
       resetRevolver();
+      feederErrors++;
     }
     if (n <= 0) { // still no endstop trigger, abort action
       
@@ -1241,8 +1243,9 @@ void testRun(String fname) {
     drawUserMessage(msg);
     delay(1750);
     fname += ".gcode";      
+    feederErrors = 0;
 
-    gCode.reserve(128);
+    gCode.reserve(60);
     if(file.open(fname.c_str(), O_READ)) {
       file.rewind();
 
@@ -1283,7 +1286,6 @@ void testRun(String fname) {
             tool = strtol(p, NULL, 10);
             toolChanges++;
           }
-          __debug(PSTR("GCode: %-40s\t[ Loops: %ld  Cmds: %ld  ToolChanges: %ld  Elapsed: %d:%02d:%02d ]"), gCode.c_str(), loopCnt, cmdCnt, toolChanges, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
           parseGcode(gCode, 0);
           cmdCnt++;
           if(cmdCnt %10 == 0) {
@@ -1291,6 +1293,7 @@ void testRun(String fname) {
             if(mode > 2)
               mode = 0;
           }
+          __debug(PSTR("GCode: %-40s\t[ Loops: %ld  Cmds: %ld  ToolChanges: %ld  Elapsed: %d:%02d:%02d Feeder Errors: %d ]"), gCode.c_str(), loopCnt, cmdCnt, toolChanges, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60), feederErrors);
         }
         else {
           // restart from begin and increment loop count
