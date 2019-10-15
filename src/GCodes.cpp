@@ -267,6 +267,8 @@ bool M201(const char* msg, String buf, int serial) {
     if(param >= 200 && param <= 65000) {
       steppers[FEEDER].setAcceleration(param);
       smuffConfig.acceleration_Z = param;
+      if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
+        smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
     }
     else stat = false;
   }
@@ -323,6 +325,8 @@ bool M203(const char* msg, String buf, int serial) {
     }
     if((param = getParam(buf, F_Param))  != -1) {
       smuffConfig.insertSpeed_Z = param;
+      if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
+        smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
     }
   }
   return stat;

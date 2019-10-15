@@ -29,7 +29,7 @@ ZStepper::ZStepper() {
   
 }
 
-ZStepper::ZStepper(int number, char* descriptor, int stepPin, int dirPin, int enablePin, float acceleration, unsigned int minStepInterval) {
+ZStepper::ZStepper(int number, char* descriptor, int stepPin, int dirPin, int enablePin, unsigned int acceleration, unsigned int minStepInterval) {
   _number = number;
   _descriptor = descriptor;
   _stepPin = stepPin;

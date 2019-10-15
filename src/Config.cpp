@@ -99,6 +99,8 @@ void readConfig()
       smuffConfig.acceleration_Z =      jsonDoc[feeder][acceleration];
       smuffConfig.maxSpeed_Z =          jsonDoc[feeder][maxSpeed];
       smuffConfig.insertSpeed_Z =       jsonDoc[feeder]["InsertSpeed"];
+      if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
+        smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
       smuffConfig.invertDir_Z =         jsonDoc[feeder][invertDir];
       smuffConfig.endstopTrigger_Z =    jsonDoc[feeder][endstopTrig];
       smuffConfig.stepDelay_Z =         jsonDoc[feeder][stepDelay];

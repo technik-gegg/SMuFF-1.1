@@ -720,10 +720,12 @@ bool loadFilamentPMMU2(bool showMessage) {
   // move filament until it hits the feeder endstop
   if(!feedToEndstop(showMessage))
     return false;
+    
   steppers[FEEDER].setStepsTaken(0);
   // inhibit interrupts at this step
   steppers[FEEDER].setIgnoreAbort(true);
   // now pull it back again
+  steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
   prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
   runAndWait(FEEDER);
 
@@ -800,12 +802,13 @@ bool unloadFilament() {
   }
 
   unloadFromNozzle();
+  float ofs = steppers[FEEDER].getStepPositionMM();
   // move forward until the feeder endstop gets hit
-  //while(!feederEndstop()) {
-    steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
-    prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
-    runAndWait(FEEDER);
-  //}
+  steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+  prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
+  runAndWait(FEEDER);
+  ofs = steppers[FEEDER].getStepPositionMM() - ofs;
+
   
   // only if the unload hasn't been aborted yet, unload from Selector as well
   if(steppers[FEEDER].getAbort() == false) {
@@ -813,12 +816,12 @@ bool unloadFilament() {
     steppers[FEEDER].setIgnoreAbort(true);
     int n = 200;
     do {
-      prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
+      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.selectorDistance-ofs), true);
       runAndWait(FEEDER);
       if(!feederEndstop()) {
         if((n > 0 && n < 200) && n % 50 == 0) {
           resetRevolver();
-          prepSteppingRelMillimeter(FEEDER, smuffConfig.selectorDistance, true);
+          prepSteppingRelMillimeter(FEEDER, smuffConfig.selectorDistance+ofs, true);
           runAndWait(FEEDER);
         }
         if (n <= 0) {

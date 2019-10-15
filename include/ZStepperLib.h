@@ -41,7 +41,7 @@ public:
     } MoveDirection;
 
   ZStepper();
-  ZStepper(int number, char* descriptor, int stepPin, int dirPin, int enablePin, float accelaration, unsigned int minStepInterval);
+  ZStepper(int number, char* descriptor, int stepPin, int dirPin, int enablePin, unsigned int accelaration, unsigned int minStepInterval);
 
   void prepareMovement(long steps, boolean ignoreEndstop = false);
   void handleISR();
@@ -87,8 +87,8 @@ public:
   void          incrementStepPosition() { setStepPosition(getStepPosition() + _dir); }
   bool          getMovementDone() { return _movementDone; }
   void          setMovementDone(bool state) { _movementDone = state; }
-  float         getAcceleration() { return _acceleration; }
-  void          setAcceleration(float value) { _acceleration = value; }
+  unsigned int  getAcceleration() { return _acceleration; }
+  void          setAcceleration(unsigned int value) { _acceleration = value; }
   unsigned int  getMaxSpeed() { return _minStepInterval; }
   void          setMaxSpeed(unsigned int value) { _minStepInterval = value; }
   unsigned int  getMaxHSpeed() { return _minStepIntervalHS; }
@@ -127,7 +127,7 @@ private:
   volatile MoveDirection _dir = CW;             // current direction of movement, used to keep track of position
   volatile long   _totalSteps = 0;              // number of steps requested for current movement
   volatile bool   _movementDone = true;         // true if the current movement has been completed (used by main program to wait for completion)
-  float           _acceleration = 1000;         // acceleration value 
+  unsigned int    _acceleration = 1000;         // acceleration value 
   unsigned int    _minStepInterval = 100;       // ie. max speed, smaller is faster
   unsigned int    _minStepIntervalHS = 10;      // ie. max speed (HighSpeed mode), smaller is faster
   long            _stepCount = 0;               // number of steps completed in current movement

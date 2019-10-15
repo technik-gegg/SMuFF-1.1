@@ -609,8 +609,11 @@ void showFeederMenu(char* menuTitle) {
 
         case 7: // Acceleration
             iVal = smuffConfig.acceleration_Z;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000))
+            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000)) {
               smuffConfig.acceleration_Z = iVal;
+              if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
+                smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
+            }
             startTime = millis();
             break;
 
@@ -646,8 +649,11 @@ void showFeederMenu(char* menuTitle) {
 
         case 12: // Insert Speed
             iVal = smuffConfig.insertSpeed_Z;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000))
+            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000)) {
               smuffConfig.insertSpeed_Z = iVal;
+              if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
+                smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
+            }
             startTime = millis();
             break;
 

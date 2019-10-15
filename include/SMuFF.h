@@ -64,35 +64,35 @@ typedef struct {
   int   revolverSpacing     = REVOLVER_SPACING;
   long  stepsPerMM_X        = 800;
   long  maxSteps_X          = 68000;
-  int   maxSpeed_X          = 10;
-  int   acceleration_X      = 510;
+  unsigned maxSpeed_X       = 10;
+  unsigned acceleration_X   = 510;
   bool  invertDir_X         = false;
   int   endstopTrigger_X    = HIGH;
   int   stepDelay_X         = 10;
-  int   maxSpeedHS_X        = 10;          
+  unsigned maxSpeedHS_X     = 10;          
   
   long  stepsPerRevolution_Y= 9600;
   long  maxSteps_Y          = 9600;
-  int   maxSpeed_Y          = 800;
-  int   acceleration_Y      = 2000;
+  unsigned maxSpeed_Y       = 800;
+  unsigned acceleration_Y   = 2000;
   bool  resetBeforeFeed_Y   = true;
   bool  invertDir_Y         = false;
   int   endstopTrigger_Y    = HIGH;
   int   stepDelay_Y         = 10;
-  int   maxSpeedHS_Y        = 10;          
+  unsigned maxSpeedHS_Y     = 10;          
   
   bool  externalControl_Z   = false;
   long  stepsPerMM_Z        = 136;
-  int   maxSpeed_Z          = 10;
-  int   insertSpeed_Z       = 1000;
-  int   acceleration_Z      = 300;
+  unsigned maxSpeed_Z       = 10;
+  unsigned insertSpeed_Z    = 1000;
+  unsigned acceleration_Z   = 300;
   bool  invertDir_Z         = false;
   int   endstopTrigger_Z    = LOW;
   int   stepDelay_Z         = 10;
   int   feedChunks          = 20;
   bool  enableChunks        = false;
   float insertLength        = 5.0;
-  int   maxSpeedHS_Z        = 10;          
+  unsigned maxSpeedHS_Z     = 10;          
   
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
