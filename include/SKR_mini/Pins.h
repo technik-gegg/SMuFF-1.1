@@ -44,12 +44,16 @@
 #define Z_DIR_PIN           PB0
 #define Z_ENABLE_PIN        PC4
 #define Z_END_PIN           PC0
+#define Z_END2_PIN          PA2
 #define Z_END_DUET_PIN      PC3 // for testing only
 
 #define BEEPER_PIN          PC10 
 
-#define SERVO1_PIN          PB1     // THB
-#define SERVO2_PIN          PA0     // TH0
+//#define SERVO1_PIN          PB1     // THB - Not usable. See SKR mini schematics
+//#define SERVO2_PIN          PA0     // TH0 - Not usable. See SKR mini schematics
+
+#define SERVO1_PIN          PA1     // Endstop Y+
+#define SERVO2_PIN          PC3     // Endstop Z+
 #define FAN_PIN             PC8
 #define HEATER0_PIN         PA8
 #define HEATBED_PIN         PC9

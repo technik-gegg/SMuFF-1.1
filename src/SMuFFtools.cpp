@@ -39,11 +39,9 @@ SPIClass SPI_3(3);
 #endif
 
 
-extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);    // in tone library
-#undef USE_BSSR
-
 extern ZStepper       steppers[];
 extern ZServo         servo;
+extern ZServo         servoRevolver;
 extern char           tmp[];
 
 SMuFFConfig           smuffConfig;
@@ -61,9 +59,6 @@ unsigned long         feederErrors = 0;
 const char brand[] = VERSION_STRING;
 
 void setupDisplay() {
-#ifdef __STM32F1__
-  setToneTimerChannel(4, 3);      // force TIMER4 / CH3 on STM32F1x for tone library
-#endif
   display.begin(/*Select=*/ ENCODER_BUTTON_PIN,  /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
   display.enableUTF8Print();
   resetDisplay();
@@ -268,8 +263,8 @@ bool revolverEndstop() {
   return steppers[REVOLVER].getEndstopHit();
 }
 
-bool feederEndstop() {
-  return steppers[FEEDER].getEndstopHit();
+bool feederEndstop(int index) {
+  return steppers[FEEDER].getEndstopHit(index);
 }
 
 void setAbortRequested(bool state) {
@@ -432,6 +427,7 @@ uint8_t u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8
 
 
 bool moveHome(int index, bool showMessage, bool checkFeeder) {
+
   if(!steppers[index].getEnabled())
     steppers[index].setEnabled(true);
 
@@ -453,8 +449,12 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
       }
     }
   }
-  //__debug(PSTR("Stepper home"));
-  steppers[index].home();
+  if(index == REVOLVER && smuffConfig.revolverIsServo) {
+    setServoPos(1, smuffConfig.revolverOffPos);
+  }
+  else {
+    steppers[index].home();
+  }
   //__debug(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
     toolSelected = -1;
@@ -543,7 +543,15 @@ void positionRevolver() {
   // disable Feeder temporarily
   steppers[FEEDER].setEnabled(false);
   if(smuffConfig.resetBeforeFeed_Y) {
-    moveHome(REVOLVER, false, false);
+    if(smuffConfig.revolverIsServo)
+      setServoPos(1, smuffConfig.revolverOffPos);
+    else
+      moveHome(REVOLVER, false, false);
+  }
+  if(smuffConfig.revolverIsServo) {
+    setServoPos(1, smuffConfig.revolverOnPos);
+    steppers[FEEDER].setEnabled(true);
+    return;
   }
 
   long pos = steppers[REVOLVER].getStepPosition();
@@ -562,20 +570,45 @@ void positionRevolver() {
     prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
     remainingSteppersFlag |= _BV(REVOLVER);
     runAndWait(-1);
-    // wiggle the Revolver one position back and forth 
-    // just to adjust the gears a bit better
-    delay(50);
-    prepSteppingRel(REVOLVER, smuffConfig.revolverSpacing, true);
-    remainingSteppersFlag |= _BV(REVOLVER);
-    runAndWait(-1);
-    delay(50);
-    prepSteppingRel(REVOLVER, -(smuffConfig.revolverSpacing), true);
-    remainingSteppersFlag |= _BV(REVOLVER);
-    runAndWait(-1);
+    if(smuffConfig.wiggleRevolver) {
+      // wiggle the Revolver one position back and forth 
+      // just to adjust the gears a bit better
+      delay(50);
+      prepSteppingRel(REVOLVER, smuffConfig.revolverSpacing, true);
+      remainingSteppersFlag |= _BV(REVOLVER);
+      runAndWait(-1);
+      delay(50);
+      prepSteppingRel(REVOLVER, -(smuffConfig.revolverSpacing), true);
+      remainingSteppersFlag |= _BV(REVOLVER);
+      runAndWait(-1);
+    }
   }
   steppers[FEEDER].setEnabled(true);
   delay(150);
   //__debug(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
+}
+
+void repositionSelector(bool retractFilament) {
+  int tool = toolSelected;
+  if(retractFilament) {
+    char tmp[15];
+    unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
+    steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+    // go through all tools available and retract some filament
+    for(int i=0; i < smuffConfig.toolCount; i++) {
+      if(i==tool)
+        continue;
+      sprintf(tmp, "Y%d", i);
+      G0("G0", tmp, 0);                  // position Revolver on tool
+      prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true); // retract 
+      runAndWait(FEEDER);
+    }
+    sprintf(tmp, "Y%d", tool);
+    G0("G0", tmp, 0);                  // position Revolver on tool selected
+    steppers[FEEDER].setMaxSpeed(curSpeed);
+  }
+  moveHome(SELECTOR, false, false);   // home Revolver
+  selectTool(tool, false);            // reposition Selector
 }
 
 bool feedToEndstop(bool showMessage) {   
@@ -593,30 +626,39 @@ bool feedToEndstop(bool showMessage) {
   steppers[FEEDER].setAllowAccel(false);
 
   int l = (int)(smuffConfig.selectorDistance*2);
-  int n = l;
-  int n2 = (n/2)+1;
+  int n = 0;
+  int retry = 3;
   while (!feederEndstop()) {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength, false);
     runAndWait(FEEDER);
-    if (n == n2) { // endstop hasn't triggered yet, something went wrong
+    if (n >= l && !feederEndstop()) { // endstop hasn't triggered yet, something went wrong
       // retract the same amount that was fed and reset the Revolver
       delay(250);
       steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z/2);
-      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength*n), true);
+      prepSteppingRelMillimeter(FEEDER, -(n+smuffConfig.insertLength), true);
       runAndWait(FEEDER);
       steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
       resetRevolver();
       feederErrors++;
+      retry--;
+      if(retry == 1) { // after two retries reposition the Selector
+        repositionSelector(false);
+      }
+      if(retry == 0) { // after three retries rectract all filaments a bit and reposition the Selector
+        repositionSelector(true);
+      }
+      n = 0;
     }
-    if (n <= 0) { // still no endstop trigger, abort action
-      
+    if (retry < 0) { 
+      // still got no endstop trigger, abort action
       if (showMessage) {
         moveHome(REVOLVER, false, false);   // home Revolver
-        M18("M18", "XY", 0);   // turn motors off
+        M18("M18", "", 0);                  // turn all motors off
         if(showFeederFailedMessage(1) == true) { // user wants to retry...
           steppers[FEEDER].setEnabled(true);
           positionRevolver();
-          n = l;
+          n = 0;
+          retry = 3;
           continue;
         }
       }
@@ -628,7 +670,8 @@ bool feedToEndstop(bool showMessage) {
       steppers[FEEDER].setAllowAccel(true);
       return false;
     }
-    n--;
+    n += smuffConfig.insertLength;
+    //__debug(PSTR("L: %s N: %s Retry: %d"), String(l).c_str(), String(n).c_str(), retry);
   }
   steppers[FEEDER].setIgnoreAbort(false);
   steppers[FEEDER].setAllowAccel(true);
@@ -835,6 +878,10 @@ bool unloadFilament() {
       }
       n--;
     } while (!feederEndstop());
+    if(n >0 && n < 199) {
+      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.selectorDistance-ofs), true);
+      runAndWait(FEEDER);
+    }
   }
   feederJammed = false;
   steppers[FEEDER].setIgnoreAbort(false);
@@ -897,7 +944,7 @@ bool selectTool(int ndx, bool showMessage) {
       beep(4);
       while(feederEndstop()) {
         moveHome(REVOLVER, false, false);   // home Revolver
-        M18("M18", "XY", 0);   // motors off
+        M18("M18", "", 0);   // motors off
         showFeederFailedMessage(0);
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
           Serial2.print(smuffConfig.unloadCommand);
@@ -949,8 +996,13 @@ void resetRevolver() {
   moveHome(REVOLVER, false, false);
   //__debug(PSTR("DONE resetting revolver"));
   if (toolSelected >=0 && toolSelected <= smuffConfig.toolCount-1) {
-    prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected*smuffConfig.revolverSpacing), true);
-    runAndWait(REVOLVER);
+    if(!smuffConfig.revolverIsServo) {
+      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected*smuffConfig.revolverSpacing), true);
+      runAndWait(REVOLVER);
+    }
+    else {
+      setServoPos(1, smuffConfig.revolverOnPos);
+    }
   }
 }
 
@@ -1127,8 +1179,23 @@ void initBeep() {
   _tone(BEEPER_PIN, 1760, 200); delay(250); _noTone(BEEPER_PIN);
 }
 
-bool setServoPos(int degree) {
-  return servo.setServoPos(degree);
+bool setServoPos(int servoNum, int degree) {
+  if(servoNum == 0) {
+    servo.write(degree);
+    return true;
+  }
+  else if(servoNum == 1) {
+    servoRevolver.write(degree);
+    return true;
+  }
+}
+
+bool setServoMS(int servoNum, int microseconds) {
+  if(servoNum == 0)
+    servo.writeMicroseconds(microseconds);
+  else if(servoNum == 1)
+    servoRevolver.writeMicroseconds(microseconds);
+  return true;
 }
 
 void getStoredData() {
@@ -1234,6 +1301,7 @@ void testRun(String fname) {
   long tool = 0, lastTool = 0;
   int mode = 1, toolChanges = 0;
   unsigned long startTime = millis();
+  unsigned long endstop2Miss = 0, endstop2Hit = 0;
   
   debounceButton();
 
@@ -1259,11 +1327,11 @@ void testRun(String fname) {
         if(turn < 0) { 
           mode--;
           if(mode < 0)
-            mode = 2; 
+            mode = 3; 
         }
         else if(turn > 0) {
           mode++;
-          if(mode > 2)
+          if(mode > 3)
             mode = 0;
         }
         unsigned long secs = (millis()-startTime)/1000;
@@ -1290,13 +1358,19 @@ void testRun(String fname) {
             toolChanges++;
           }
           parseGcode(gCode, 0);
+          if(gCode.startsWith("C")) {
+            if(!feederEndstop(2)) 
+              endstop2Hit++;
+            else
+              endstop2Miss++;
+          }
           cmdCnt++;
           if(cmdCnt %10 == 0) {
             mode++;
-            if(mode > 2)
+            if(mode > 3)
               mode = 0;
           }
-          __debug(PSTR("GCode: %-40s\t[ Loops: %ld  Cmds: %ld  ToolChanges: %ld  Elapsed: %d:%02d:%02d Feeder Errors: %d ]"), gCode.c_str(), loopCnt, cmdCnt, toolChanges, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60), feederErrors);
+          __debug(PSTR("GCode: %-25s\t[ Elapsed: %d:%02d:%02d  Loops: %-4ld  Cmds: %5ld  ToolChanges: %5ld  Feeder Errors: %3d  Feeds ok/miss: %d/%d ]"), gCode.c_str(), (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60), loopCnt, cmdCnt, toolChanges, feederErrors, endstop2Hit, endstop2Miss);
         }
         else {
           // restart from begin and increment loop count
@@ -1304,6 +1378,9 @@ void testRun(String fname) {
           loopCnt++;
         }
         switch(mode) {
+          case 3:
+            sprintf_P(msg, P_FeederErrors, feederErrors);
+            break;
           case 2:
             sprintf_P(msg, P_ToolChanges, toolChanges);
             break;

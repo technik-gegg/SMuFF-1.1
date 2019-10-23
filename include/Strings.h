@@ -99,13 +99,13 @@ const char P_Baudrates[] PROGMEM            = { "4800\n9600\n19200\n38400\n56700
 #ifdef __STM32F1__
 const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nRevolver            %2s\nFeeder              %2s" };
 const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
-const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps Per Rev.   %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s" };
+const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps Per Rev.   %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s" };
 const char P_FeederMenuItems[] PROGMEM      = { "\nSteps Per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
 const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps Per MM    %5s" };
 #else
 const char P_SteppersMenuItems[] PROGMEM    = { "Selector            >\nRevolver            >\nFeeder              >" };
 const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4S\nEndstop Trigger  %4S\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
-const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps Per Rev.   %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s" };
+const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps Per Rev.   %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s" };
 const char P_FeederMenuItems[] PROGMEM      = { "\nSteps Per MM    %5s\nEnable Chunks    %4S\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
 const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps Per MM    %5s" };
 #endif
@@ -118,6 +118,7 @@ const char P_RunningCmd[] PROGMEM           = { "Running loop %ld" };
 const char P_CmdLoop[] PROGMEM              = { "CMD: %-7ld T%d" };
 const char P_ToolChanges[] PROGMEM          = { "Tool change: %5ld" };
 const char P_TestTime[] PROGMEM             = { "Elapsed: %3d:%02d:%02d" };
+const char P_FeederErrors[] PROGMEM         = { "Feed errors: %5ld" };
 const char P_ButtonToStop[] PROGMEM         = { "Press Button To Stop" };
 
 const char P_SD_ReadingConfig[] PROGMEM = { "Reading config..." };

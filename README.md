@@ -1,7 +1,8 @@
 # SMuFF-1.1
+
 This is the latest version of the SMuFF firmware to be compiled using PlatformIO.
 
-This is the software package for the Smart Multi Filament Feeder (SMuFF) project as published on Thingiverse (https://www.thingiverse.com/thing:3431438).
+This is the software package for the Smart Multi Filament Feeder (SMuFF) project as published on [Thingiverse](https://www.thingiverse.com/thing:3431438).
 ![The SMuFF](https://github.com/technik-gegg/SMuFF-1.1/blob/master/images/SMuFF%20render-2.png)
 
 You have to compile and install this firmware on the Wanhao i3 duplicator mini board (i.e. [AliExpress Wanhao i3-Mini](https://www.aliexpress.com/item/motherboard-i3mini-0ne-motherboard-New-2017-Wanhao-printer-i3-Mini/32849200836.html?spm=a2g0x.10010108.1000001.12.20c22a870NKth9&pvid=f20ef7d9-21cb-4600-b3eb-75382e0c6661&gps-id=pcDetailBottomMoreOtherSeller&scm=1007.13338.122670.0&scm-url=1007.13338.122670.0&scm_id=1007.13338.122670.0])) or on the SKR mini V1.1 board [AliExpress SKR mini](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53).
@@ -13,13 +14,28 @@ This firmware can be adopted to run on other boards as well. Make sure your boar
 
 The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Thus, changing parameters doesn't require recompiling the firmware. Just edit the configuration JSON file and reboot.
 From version 1.6 on, the firmware has been enhanced to enable you doing changes directly from the UI, which means: No more fiddling in the JSON file.
-Also new in the 1.6 version is the option to automatically run GCode scripts from the SD-Card for testing purposes. In the **test* folder you'll find some sample scripts. Copy those to your SD-Card and pick one from within the menu to start the testrun. Once started, the test will run infinitelly and can be stopped by clicking the encoder button. 
+Also new in the 1.6 version is the option to automatically run GCode scripts from the SD-Card for testing purposes. In the **test* folder you'll find some sample scripts. Copy those to your SD-Card and pick one from within the menu to start the testrun. Once started, the test will run infinitelly and can be stopped by clicking the encoder button.
 
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
 
 ## Recent changes
+
+**1.63** - Minor changes
+
++ Wiggling the Revolver is now an option in the settings.
++ Added Feed error count to test run info display.
++ Added ok/missed feeds to test run. You'll need a 2nd endstop at the end of the bowden tube, which gets connected to the X+ endstop port on the SKR mini.
++ On feed errors, firmware will now retry 4 times before giving up. On second retry it'll home and reset the Selector. On third retry it'll go through all tools and retract the filament a bit (to prevent other tools/filaments blocking the Selector), then reposition the Selector as well.
++ Modified the servo module, so that it can handle more than one servo. Also, redefined the pins for the servo in the Pins.h. Servos are now driven by the endstops Y+ and Z+ ports.
++ Added experimental code to replace the Revolver stepper motor with an standard sized servo. This is still work in progress.
+
+**1.62** - Not been published
+
+**1.61** - Not been published
+
 **1.60** - New enhancements
-+ restructured the Main Menu
+
++ restructured the Main Menu.
 + added **Settings Menu** - *now, almost all parameters can be changed comfortably through the UI and saved to the SD-Card.*.
 + added long click to main screen for a quick access of the *Settings Menu*.
 + added long click in each setting dialog to close the dialog and discard the changes made.
@@ -33,11 +49,11 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 **Please notice:**
 This version will be the last one compatible with the **Wanhao i3 mini** (or 8-Bit in general)!
-With the development going on, the memory limitations on 8-Bit devices are a real deal breaker. 
+With the development going on, the memory limitations on 8-Bit devices are a real deal breaker.
 For example: The only way to reach the *Settings Menu* screen is the long click on the main screen. The way it works on the SKR mini (through the *Main Menu*) crashes on the ATMega because of low working memory. For the same reason I've got to leave out the testrun option.
 
 Hence, I've decided to focus on the 32-Bit devices in future versions.
-If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's fine. There's no need to switch over to the SKR mini unless you *really badly need* some of the enhancements and extensions that may come in the future. 
+If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's fine. There's no need to switch over to the SKR mini unless you *really badly need* some of the enhancements and extensions that may come in the future.
 
 **1.59** - Not been published
 
@@ -46,34 +62,37 @@ If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's 
 **1.57** - Not been published
 
 **1.56** - Optimization
-+ added resetting the "Feder Jammed" state by double clicking the encoder button
-+ removed the ZPwm.cpp / ZPwm.h since it's not needed 
+
++ added resetting the "Feder Jammed" state by double clicking the encoder button.
++ removed the ZPwm.cpp / ZPwm.h since it's not needed.
 
 **1.55** - Optimization
-+ reworked Revolver movement - much smoother now
-+ optimized stepper motor speeds for SKR in configuration file
-+ Tools swapping is now being stored in the EEPROM.DAT file so that swaps will survive a reset
-+ added Cancel / Retry option when loading fails
-+ sound (beeper) now works flawlessly on SKR (STM32)
-+ SKR still has issues with the fan (it's either full speed or no speed)
+
++ reworked Revolver movement - much smoother now.
++ optimized stepper motor speeds for SKR in configuration file.
++ Tools swapping is now being stored in the EEPROM.DAT file so that swaps will survive a reset.
++ added Cancel / Retry option when loading fails.
++ sound (beeper) now works flawlessly on SKR (STM32).
++ SKR still has issues with the fan (it's either full speed or no speed).
 
 **1.54** - Not been published
 
 **1.53** - This version has got some major changes:
-+ Full integration of the SKR mini V1.1 controller board (STM32) completed
-+ Prusa MMU2 Emulation mode improved even more
-+ Heavy refactoring to make the code better readable
-+ Optimized memory usage (all strings are now located in PROGMEM)
-+ replaced the Rotary Encoder library
-+ Header files are now located in the include folder
-+ Pins header file separated into subfolders for different devices (uses the  -I compiler directive)
-+ Added Configs folder containing different configuration samples for the modes/controllers
-+ Platformio.ini modified to allow different build environments
-+ Moved datastore from EEPROM to SD-Card (mainly because of the STM32)
-+ Indexer for Materials in SMUFF.CFG renamed from Tool0..x to T0..x (because of memory issues)
+
++ Full integration of the SKR mini V1.1 controller board (STM32) completed.
++ Prusa MMU2 Emulation mode improved even more.
++ Heavy refactoring to make the code better readable.
++ Optimized memory usage (all strings are now located in PROGMEM).
++ replaced the Rotary Encoder library.
++ Header files are now located in the include folder.
++ Pins header file separated into subfolders for different devices (uses the  -I compiler directive).
++ Added Configs folder containing different configuration samples for the modes/controllers.
++ Platformio.ini modified to allow different build environments.
++ Moved datastore from EEPROM to SD-Card (mainly because of the STM32).
++ Indexer for Materials in SMUFF.CFG renamed from Tool0..x to T0..x (because of memory issues).
 + Added *FeedChunks* and *EnableChunks* settings to SMUFF.CFG. Those are needed since the communcation on the 2nd serial port tends to hand in long operations (such as feeding the filament to nozzle) and Prusa won't be able to abort the feed.
 + Added *StepDelay* setting to SMUFF.CFG for the SKR Mini. This is needed because of the speed of an 32 bit board to keep the steppers from stalling.
-+ Added schematics of the SKR Mini LCD board
++ Added schematics of the SKR Mini LCD board.
 
 **1.52** - Not been published
 

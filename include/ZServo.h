@@ -25,42 +25,59 @@
 #ifndef _ZSERVO_H
 #define _ZSERVO_H
 
-#define US_PER_PULSE_0DEG       500       // 0 degrees
-#define US_PER_PULSE_180DEG     2400      // 180 degrees
+#define MAX_SERVOS              5
+#define US_PER_PULSE_0DEG       544       // microseconds for 0 degrees
+#define US_PER_PULSE_180DEG     2400      // microseconds for 180 degrees
 #ifdef __STM32F1__
-#define TIMER_INTERVAL          1406      // CPU-Clock / (Prescaler * 50)-1 =  72000000 / (1024 * 50) - 1 = 1406.3
+#define TIMER_INTERVAL          800       // CPU-Clock / (Prescaler * 50Hz)-1 =  72000000 / (1800 * 50 - 1) = 800.008
 #endif
 #ifdef __AVR__
-#define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50)-1 =  16000000 / (1024 * 50) - 1 = 311.5
+#define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50Hz)-1 =  16000000 / (1024 * 50 - 1) = 311.5
 #endif
 
 
 void isrServoTimerHandler();
+static ZTimer  servoTimer;
+static volatile bool timerSet = false;
 
 class ZServo {
 public:
   ZServo() { _pin = 0; };
-  ZServo(int pin) { attach(pin); }
+  ZServo(int servoIndex, int pin) { attach(pin); setIndex(servoIndex); }
 
-  void attach(int pin) { 
-    _pin = pin; 
-    pinMode(_pin, OUTPUT); 
-    digitalWrite(_pin, 0);
-    servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
-    servoTimer.setupTimerHook(isrServoTimerHandler);
-  }
+  void attach(int pin);
+  void attach(int pin, bool useTimer);
+  void attach(int pin, int servoIndex) { attach(pin); setIndex(servoIndex); }
+  void setIndex(int servoIndex);
+  void detach();
   void write(int degree);
+  void writeMicroseconds(int microseconds);
   bool setServoPos(int degree);
   void setServoMS(int microseconds);
   void setServo();
-  void stop() { servoTimer.stopTimer(); }
+  void setDegreeMinMax(int min, int max) { _minDegree = min; _maxDegree = max; }
+  void setPulseWidthMinMax(int min, int max) { _minPw = min; _maxPw = max; }
+  void stop() { if(_useTimer) servoTimer.stopTimer(); }
 
   int getDegree() { return _degree; }
+  void getDegreeMinMax(int* min, int* max) { *min = _minDegree; *max = _maxDegree; }
+  void getPulseWidthMinMax(int* min, int* max) { *min = _minPw; *max = _maxPw; }
 
 private:
-  ZTimer  servoTimer;
   int _pin;
+  bool _useTimer = false;
+  volatile uint32 *_pin_reg;
+  uint32 _pin_set;
+  uint32 _pin_reset;
+  int _servoIndex;
   int _degree;
+  int _lastDegree;
+  uint32 _lastUpdate;
+  int _loopCnt;
   int _pulseLen;
+  int _minPw = US_PER_PULSE_0DEG;
+  int _maxPw = US_PER_PULSE_180DEG;
+  int _minDegree = 0;
+  int _maxDegree = 180;
 };
 #endif

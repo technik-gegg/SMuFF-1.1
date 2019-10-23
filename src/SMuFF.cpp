@@ -38,6 +38,7 @@ ZStepper                steppers[NUM_STEPPERS];
 ZTimer                  stepperTimer;
 ZTimer                  encoderTimer;
 ZServo                  servo;
+ZServo                  servoRevolver;
 DuetLaserSensor         duetLS;
 ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
 //CRGB                    leds[NUM_LEDS];
@@ -50,13 +51,17 @@ int                     toolSelections[MAX_TOOLS];
 volatile unsigned long  pwrSaveTime;
 volatile bool           isPwrSave = false;
 volatile bool           showMenu = false; 
-volatile bool           lastZEndstopState = 0;
+volatile bool           lastZEndstopState = false;
+volatile bool           lastZEndstop2State = false;
+unsigned long           endstopZ2HitCnt = 0;
 static unsigned long    lastDisplayRefresh = 0;
+volatile unsigned long  generalCounter = 0;
 
 String serialBuffer0, serialBuffer2, serialBuffer9; 
 String traceSerial2;
 
 extern int  swapTools[MAX_TOOLS];
+extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);    // defined in tone library
 
 void isrStepperHandler();       // forward declarations ... makes every compiler happy
 void isrEncoderHandler();
@@ -119,12 +124,39 @@ void endstopZevent() {
   //__debug(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
 }
 
+void endstopZ2event() {
+}
+
 void duetLSHandler() {
   duetLS.service();
 }
 
+/*
+  Handles the timer interrupt for the rotary encoder.
+  Also serves as a general purpose timer dispatcher since the 
+  interrupt occures every millisecond.
+*/
+unsigned long lastTick;
+unsigned gcInterval;
 void isrEncoderHandler() {
   encoder.service();
+  generalCounter++;
+  if(generalCounter % 20 == 0) { // every 20 ms
+    // do the servos interrupt routines so we save one timer 
+    servo.setServo();
+    servoRevolver.setServo();
+  }
+  if(generalCounter % 100 == 0) { // every 100 ms
+  }
+  if(generalCounter % 250 == 0) { // every 250 ms
+  }
+  if(generalCounter % 500 == 0) { // every 500 ms
+  }
+  if(generalCounter % 1000 == 0) { // every 1000 ms
+    unsigned long tmp = millis();
+    gcInterval = tmp-lastTick;
+    lastTick = tmp;
+  }
   //duetLSHandler();
 }
 
@@ -162,7 +194,7 @@ void setup() {
   serialBuffer2.reserve(40);
   traceSerial2.reserve(40);
   
-  /* No go. Maybe at a later stage
+  /* This is a No-Go. Maybe at a later stage.
   FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
   */
@@ -194,6 +226,17 @@ void setup() {
   setupSteppers();
   setupTimers();
   servo.attach(SERVO1_PIN);
+  
+  // This is quite experimental yet.
+  // Trying to replace the Revolver stepper motor with a servo motor
+  if(smuffConfig.revolverIsServo) {
+    servoRevolver.attach(SERVO2_PIN);  
+  }
+  
+  servo.setIndex(0);
+  servo.setServoPos(90);
+  servoRevolver.setIndex(1);
+  servoRevolver.setServoPos(90);
   // must happen after setupSteppers()
   getStoredData();
 
@@ -223,11 +266,18 @@ void setup() {
   if(FAN_PIN != -1){
 #ifdef __STM32F1__
     pinMode(FAN_PIN, PWM);
+    /*
+    Timer8.pause();
+    Timer8.setChannelMode(3, TIMER_PWM);
+    Timer8.setCompare(3, 40);
+    Timer8.refresh();
+    Timer8.resume();
+    */
 #else
     pinMode(FAN_PIN, OUTPUT);
 #endif      
-    if(smuffConfig.fanSpeed > 0 && smuffConfig.fanSpeed <= 100) {
-      analogWrite(FAN_PIN, (int)(smuffConfig.fanSpeed*2.55));
+    if(smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100) {
+      analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));    
     }
     //__debug(PSTR("DONE FAN init"));
   }
@@ -289,10 +339,13 @@ void setupSteppers() {
   }
   else
   */
-    steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
+  steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
+  if(Z_END2_PIN != -1)
+    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN, 2); // optional; used for testing only
   steppers[FEEDER].stepFunc = overrideStepZ;
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM_Z);
   steppers[FEEDER].endstopFunc = endstopZevent;
+  steppers[FEEDER].endstop2Func = endstopZ2event;
   steppers[FEEDER].setInvertDir(smuffConfig.invertDir_Z);
   steppers[FEEDER].setMaxHSpeed(smuffConfig.maxSpeedHS_Z);
 
@@ -310,15 +363,22 @@ void setupSteppers() {
 }
 
 void setupTimers() {
-    // *****
-  // Attn: Servo uses TIMER5
-  // *****
 #ifdef __BRD_I3_MINI
+  // *****
+  // Attn: Servo uses TIMER5 if setup to create its own timer 
+  // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1);
   encoderTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256); // round about 1ms on 16MHz CPU
 #else
-  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER1, 4500); // equals to 1ms on 72MHz CPU
+  // *****
+  // Attn: 
+  //    Servo uses TIMER5 if setup to create its own timer 
+  //    Fan uses TIMER8 CH3
+  //    Beeper uses TIMER4 CH3
+  // *****
+  stepperTimer.setupTimer(ZTimer::ZTIMER1, 3, 1);
+  encoderTimer.setupTimer(ZTimer::ZTIMER8, 1, 1760);  // equals to 1ms on 72MHz CPU (supposed to be 1800 but measured around 1760)
+  setToneTimerChannel(4, 3);                          // force TIMER4 / CH3 on STM32F1x for tone library
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);
@@ -327,7 +387,7 @@ void setupTimers() {
 #ifdef __BRD_I3_MINI
   encoderTimer.setNextInterruptInterval(63);    // run encoder timer
 #else
-  encoderTimer.setNextInterruptInterval(16);    // run encoder timer
+  encoderTimer.setNextInterruptInterval(40);    // run encoder timer
 #endif
   //__debug(PSTR("DONE setup timers"));
 }
@@ -378,17 +438,16 @@ void isrStepperHandler() {
   startStepperInterval();
 }
 
-void runNoWait(int index) {
+void runNoWait(volatile int index) {
   if(index != -1)
     remainingSteppersFlag |= _BV(index);
   startStepperInterval();
 }
 
-void runAndWait(int index) {
+void runAndWait(volatile int index) {
   runNoWait(index);
   while(remainingSteppersFlag) {
-    checkSerialPending(); // not a really nice solution but needed to check serials for Abort command
-    //delayMicroseconds(1000);
+    checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
 #ifdef __STM32F1__
     if(!showMenu)
       refreshStatus(true);
@@ -409,6 +468,7 @@ void refreshStatus(bool withLogo) {
 
 void loop() {
 
+  //__debug(PSTR("gcInterval: %ld"), gcInterval);
 #ifdef __STM32F1__
   if(Serial1.available()) serialEvent1();
   if(Serial3.available()) serialEvent3();
@@ -421,6 +481,11 @@ void loop() {
     setSignalPort(FEEDER_SIGNAL, !state);
     delay(200);
     setSignalPort(FEEDER_SIGNAL, state);
+  }
+  if(feederEndstop(2) != lastZEndstop2State) {
+    lastZEndstop2State = feederEndstop(2);
+    endstopZ2HitCnt++;
+    //__debug(PSTR("Endstop Z2: %d"), endstopZ2HitCnt);
   }
   //__debug(PSTR("Mem: %d"), freeMemory());
 
@@ -445,7 +510,8 @@ void loop() {
     else if(button == ClickEncoder::Held) {
       setPwrSave(0);
       showMenu = true;
-      showSettingsMenu("Settings");
+      char title[] = {"Settings"};
+      showSettingsMenu(title);
       showMenu = false;
       debounceButton();
 #ifdef __STM32F1__

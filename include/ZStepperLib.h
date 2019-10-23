@@ -49,6 +49,7 @@ public:
 
   void          (*stepFunc)() = NULL;
   void          (*endstopFunc)() = NULL;
+  void          (*endstop2Func)() = NULL;
   bool          (*endstopCheck)() = NULL;
   void          (*runAndWaitFunc)(int number) = NULL;
   void          (*runNoWaitFunc)(int number) = NULL;
@@ -60,14 +61,14 @@ public:
   void          setDirection(MoveDirection newDir);
   bool          getEnabled() { return _enabled; }
   void          setEnabled(bool state);
-  void          setEndstop(int pin, int triggerState, EndstopType type);
+  void          setEndstop(int pin, int triggerState, EndstopType type, int index=1);
   EndstopType   getEndstopType() { return _endstopType; }
   void          setEndstopType(EndstopType type) { _endstopType = type; }
   int           getEndstopState() { return _endstopState; }
   void          setEndstopState(int state) { _endstopState = state; }
-  bool          getEndstopHit();
-  bool          getEndstopHitAlt() { return _endstopHit; }
-  void          setEndstopHit(int state) { _endstopHit = state; }
+  bool          getEndstopHit(int index = 1);
+  bool          getEndstopHitAlt(int index = 1) { return index == 1 ? _endstopHit : _endstopHit2; }
+  void          setEndstopHit(int state, int index = 1) { if(index == 1) _endstopHit = state; else _endstopHit2 = state; }
   int           getEndstopPin() { return _endstopPin; }
   void          setEndstopPin(int pin) { _endstopPin = pin; }
   bool          getIgnoreEndstop() { return _ignoreEndstop; }
@@ -119,10 +120,14 @@ private:
   int             _enablePin = -1;              // enable pin
   bool            _enabled = false;             // enabled state
   int             _endstopPin = -1;             // endstop pin
+  int             _endstopPin2 = -1;            // 2nd endstop
   volatile bool   _endstopHit = false;          // set when endstop is being triggered
+  volatile bool   _endstopHit2 = false;         // set when 2nd endstop is being triggered
   bool            _ignoreEndstop = false;       // flag whether or not to ignore endstop trigger
   int             _endstopState = HIGH;         // value for endstop triggered
   EndstopType     _endstopType = NONE;          // type of endstop (MIN, MAX, ORBITAL etc)
+  int             _endstopState2 = HIGH;        // value for 2nd endstop triggered
+  EndstopType     _endstopType2 = NONE;         // type of 2nd endstop (MIN, MAX, ORBITAL etc)
   volatile long   _stepPosition = 0;            // current position of stepper (total of all movements taken so far)
   volatile MoveDirection _dir = CW;             // current direction of movement, used to keep track of position
   volatile long   _totalSteps = 0;              // number of steps requested for current movement

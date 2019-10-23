@@ -184,7 +184,8 @@ bool M106(const char* msg, String buf, int serial) {
   if((param = getParam(buf, S_Param)) == -1) {
     param = 255;
   }
-  analogWrite(FAN_PIN, param);
+  //__debug(PSTR("Fan speed: %d%%"), param);
+  analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
   return true;
 }
  
@@ -411,9 +412,17 @@ bool M250(const char* msg, String buf, int serial) {
 
 bool M280(const char* msg, String buf, int serial) {
   bool stat = true;
+  int servoIndex = 0;
   printResponse(msg, serial);
+  if((param = getParam(buf, P_Param)) != -1) {
+    servoIndex = param;
+  }
   if((param = getParam(buf, S_Param)) != -1) {
-    if(!setServoPos(param))
+    if(!setServoPos(servoIndex, param))
+      stat = false;
+  }
+  else if((param = getParam(buf, F_Param)) != -1) {
+    if(!setServoMS(servoIndex, param))
       stat = false;
   }
   else stat = false;
@@ -683,9 +692,9 @@ bool G12(const char* msg, String buf, int serial) {
     } 
   }
   else {
-    setServoPos(10);
+    setServoPos(0, 10);
     delay(wait);
-    setServoPos(110);
+    setServoPos(0, 110);
     delay(100);
     servo.stop();
   }

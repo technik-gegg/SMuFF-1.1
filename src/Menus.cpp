@@ -169,7 +169,8 @@ void setupRevolverMenu(char* menu) {
   sprintf_P(items2, P_RevolverMenuItems,
     String(smuffConfig.stepsPerRevolution_Y).c_str(),
     smuffConfig.homeAfterFeed ? P_Yes : P_No,
-    smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No);
+    smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
+    smuffConfig.wiggleRevolver ? P_Yes : P_No);
   strcat(menu, items1);
   strcat(menu, items2);
 }
@@ -310,17 +311,20 @@ void showMainMenu() {
           if(smuffConfig.prusaMMU2)
               showSettingsMenu(title);
           current_selection = 1;
+          startTime = millis();
           break;
         case 11:
           if(!smuffConfig.prusaMMU2)
               showTestrunMenu(title);
           current_selection = 1;
+          startTime = millis();
           break;
         case 12:
           if(smuffConfig.prusaMMU2)
               showTestrunMenu(title);
           current_selection = 1;
-            break;
+          startTime = millis();
+          break;
       }
     }
     debounceButton();
@@ -459,6 +463,13 @@ void showRevolverMenu(char* menuTitle) {
             bVal = smuffConfig.resetBeforeFeed_Y;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.resetBeforeFeed_Y = bVal;
+            startTime = millis();
+            break;
+
+        case 11: // Wiggle
+            bVal = smuffConfig.wiggleRevolver;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.wiggleRevolver = bVal;
             startTime = millis();
             break;
       }
@@ -773,7 +784,7 @@ void showSettingsMenu(char* menuTitle) {
             iVal = smuffConfig.fanSpeed;
             if(showInputDialog(title, P_InPercent, &iVal, 0, 100)) {
               smuffConfig.fanSpeed = iVal;
-              analogWrite(FAN_PIN, smuffConfig.fanSpeed*2.55);
+              analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
             }
             startTime = millis();
             break;
@@ -1106,6 +1117,7 @@ bool checkAutoClose() {
 }
 
 void debounceButton() {
+  delay(150);
   while(digitalRead(ENCODER_BUTTON_PIN) == LOW) {
       delay(20);
   }
