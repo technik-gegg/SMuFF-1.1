@@ -28,6 +28,7 @@
 #define MAX_SERVOS              5
 #define US_PER_PULSE_0DEG       544       // microseconds for 0 degrees
 #define US_PER_PULSE_180DEG     2400      // microseconds for 180 degrees
+#define DUTY_CYCLE              20000     // servo cycle in us (equals 20ms)
 #ifdef __STM32F1__
 #define TIMER_INTERVAL          800       // CPU-Clock / (Prescaler * 50Hz)-1 =  72000000 / (1800 * 50 - 1) = 800.008
 #endif
@@ -50,14 +51,15 @@ public:
   void attach(int pin, int servoIndex) { attach(pin); setIndex(servoIndex); }
   void setIndex(int servoIndex);
   void detach();
-  void write(int degree);
+  void write(int val);                     
   void writeMicroseconds(int microseconds);
-  bool setServoPos(int degree);
-  void setServoMS(int microseconds);
-  void setServo();
+  bool setServoPos(int val);                  // sets the servo position if val is between 0 and 180, otherwise it sets the frequency (ms)
+  void setServoMS(int microseconds);          // sets the frequency in milliseconds
+  void setServo();                            // method called cyclically from an interrupt to refresh the servo position
   void setDegreeMinMax(int min, int max) { _minDegree = min; _maxDegree = max; }
   void setPulseWidthMinMax(int min, int max) { _minPw = min; _maxPw = max; }
   void stop() { if(_useTimer) servoTimer.stopTimer(); }
+  bool hasTimer() { return _useTimer; }
 
   int getDegree() { return _degree; }
   void getDegreeMinMax(int* min, int* max) { *min = _minDegree; *max = _maxDegree; }
@@ -73,6 +75,7 @@ private:
   int _degree;
   int _lastDegree;
   uint32 _lastUpdate;
+  int _tickCnt;
   int _loopCnt;
   int _pulseLen;
   int _minPw = US_PER_PULSE_0DEG;

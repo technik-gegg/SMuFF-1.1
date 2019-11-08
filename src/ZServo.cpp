@@ -44,7 +44,7 @@ void ZServo::attach(int pin) {
 #ifdef __AVR__
     servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
 #else
-    servoTimer.setupTimer(ZTimer::ZTIMER5, 1800);   // equals to 20 ms on 72 MHz CPU
+    servoTimer.setupTimer(ZTimer::ZTIMER5, 3600);   // equals to 50 us on 72 MHz CPU
 #endif
     servoTimer.setupTimerHook(isrServoTimerHandler);
   }
@@ -55,8 +55,16 @@ void ZServo::detach() {
   servoInstances[_servoIndex] = NULL;
 }
 
-void ZServo::write(int degree) {
-  setServoPos(degree);
+/*
+  Main method to set the servo position.
+  Values between 0 and 180 will be treated as degrees.
+  Values above 180 will be treated as milliseconds (usually in the range of 500-2400 ms).
+*/
+void ZServo::write(int val) {
+  if(val >= 0 && val <= 180)
+    setServoPos(val);
+  else
+    setServoMS(val);
 }
 
 void ZServo::writeMicroseconds(int microseconds) {
@@ -74,9 +82,9 @@ bool ZServo::setServoPos(int degree) {
   bool stat = false;
   if(_pin > 0) {
     _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-    //__debug(PSTR("Pulse length of servo %d set to: %duS"), _servoIndex, _pulseLen);
+    _tickCnt = 0;
     if(_useTimer)
-      servoTimer.setNextInterruptInterval(TIMER_INTERVAL);
+      servoTimer.setNextInterruptInterval(1);
     stat = true;
     _degree = degree;
     _lastUpdate = millis();
@@ -87,8 +95,9 @@ bool ZServo::setServoPos(int degree) {
 void ZServo::setServoMS(int microseconds) {
   _pulseLen = microseconds;
   _degree = map(_pulseLen, _minPw, _maxPw, _minDegree, _maxDegree);
+  _tickCnt = 0;
   if(_useTimer)
-    servoTimer.setNextInterruptInterval(TIMER_INTERVAL);
+    servoTimer.setNextInterruptInterval(1);
 }
 
 /*
@@ -98,19 +107,41 @@ void ZServo::setServoMS(int microseconds) {
   In latter case, make sure you have the interval set correctly.
 */
 void ZServo::setServo() {
-  if(_degree != _lastDegree || millis() - _lastUpdate < 200) 
-  { // avoid jitter on servo by ignoring this call 
-#ifndef __STM32F1__    
-    digitalWrite(_pin, HIGH);
-    delayMicroseconds(_pulseLen);
-    digitalWrite(_pin, LOW);
-#else
-    // use the direct write (Bit set reset) method on STM32
-    *_pin_reg = _pin_set;
-    delay_us(_pulseLen);
-    *_pin_reg = _pin_reset;
+  if(!_useTimer) {
+    if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call 
+  #ifndef __STM32F1__    
+      digitalWrite(_pin, HIGH);
+      delayMicroseconds(_pulseLen);
+      digitalWrite(_pin, LOW);
+  #else
+      // use the direct write (Bit set reset) method on STM32
+      *_pin_reg = _pin_set;
+      delay_us(_pulseLen);
+      *_pin_reg = _pin_reset;
 #endif
-    _lastDegree = _degree;
+      _lastDegree = _degree;
+    }
+  }
+  else {
+    // this method increments every 50 us and when the _pulseLen is reached 
+    // it sets the ouput to low.
+    // Using this method will prevent blocking the whole CPU while the delay 
+    // is being active, as it's in the method above.
+    // It though is less accurate but will do its job an a servo.
+    _tickCnt += 50;
+#ifdef __STM32F1__
+    if(_tickCnt < _pulseLen)
+      *_pin_reg = _pin_set;
+    else
+      *_pin_reg = _pin_reset;
+    
+    if(_tickCnt >= DUTY_CYCLE) { // restart the duty cycle
+      _tickCnt = 0;
+      *_pin_reg = _pin_set;
+    }
+#else
+
+#endif
   }
 }
 

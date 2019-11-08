@@ -143,8 +143,10 @@ void isrEncoderHandler() {
   generalCounter++;
   if(generalCounter % 20 == 0) { // every 20 ms
     // do the servos interrupt routines so we save one timer 
-    servo.setServo();
-    servoRevolver.setServo();
+    if(!servo.hasTimer())
+      servo.setServo();
+    if(!servoRevolver.hasTimer())
+      servoRevolver.setServo();
   }
   if(generalCounter % 100 == 0) { // every 100 ms
   }
@@ -225,18 +227,16 @@ void setup() {
 
   setupSteppers();
   setupTimers();
-  servo.attach(SERVO1_PIN);
   
-  // This is quite experimental yet.
-  // Trying to replace the Revolver stepper motor with a servo motor
-  if(smuffConfig.revolverIsServo) {
-    servoRevolver.attach(SERVO2_PIN);  
-  }
-  
+  servo.attach(SERVO1_PIN, true);
   servo.setIndex(0);
-  servo.setServoPos(90);
+  setServoPos(0, 90);
+  // This one's quite experimental yet.
+  // Trying to replace the Revolver stepper motor with a servo motor
+  servoRevolver.attach(SERVO2_PIN, true);  
   servoRevolver.setIndex(1);
-  servoRevolver.setServoPos(90);
+  setServoPos(1, smuffConfig.revolverOffPos);
+
   // must happen after setupSteppers()
   getStoredData();
 
@@ -259,20 +259,30 @@ void setup() {
   }
 #ifdef __STM32F1__
   if(HEATBED_PIN != -1) {
-    pinMode(HEATBED_PIN, OUTPUT); 
+    pinMode(HEATBED_PIN, PWM); 
   }
 #endif
   
   if(FAN_PIN != -1){
 #ifdef __STM32F1__
+
+#define FAN_PWM_FREQ_MS -1  // set to 40 for about 25 kHz
     pinMode(FAN_PIN, PWM);
-    /*
-    Timer8.pause();
-    Timer8.setChannelMode(3, TIMER_PWM);
-    Timer8.setCompare(3, 40);
-    Timer8.refresh();
-    Timer8.resume();
-    */
+    // Set a different PWM frequency than default if needed.
+    // Notice: The default frequency is good enough is a PWM Fan is being used. 
+    // A normal Fan (not PWM driven) will either do full speed or no speed.
+    if(FAN_PWM_FREQ_MS != -1) {
+      timer_dev *dev = PIN_MAP[FAN_PIN].timer_device;     // determine timer via PIN mapping
+      uint8 cc_channel = PIN_MAP[FAN_PIN].timer_channel;  // as well as the channel
+      timer_pause(dev);
+      uint32 period_cyc = FAN_PWM_FREQ_MS * CYCLES_PER_MICROSECOND;
+      uint16 prescaler = (uint16)(period_cyc / ((1 << 16) - 1) + 1);
+      uint16 overflow = (uint16)((period_cyc + (prescaler / 2)) / prescaler);
+      timer_set_prescaler(dev, prescaler);
+      timer_set_reload(dev, overflow);
+      timer_generate_update(dev);
+      timer_resume(dev);
+    }
 #else
     pinMode(FAN_PIN, OUTPUT);
 #endif      
@@ -283,6 +293,8 @@ void setup() {
   }
 
 #ifndef __STM32F1__
+  // We can't do Master and Slave on this device. 
+  // Slave mode is used for the I2C OLE Display on SKR mini
   if(smuffConfig.i2cAddress != 0) {
     Wire.begin(smuffConfig.i2cAddress);
     Wire.onReceive(wireReceiveEvent);
@@ -322,14 +334,17 @@ void setupSteppers() {
   steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM_X);
   steppers[SELECTOR].setInvertDir(smuffConfig.invertDir_X);
   steppers[SELECTOR].setMaxHSpeed(smuffConfig.maxSpeedHS_X);
-
+  steppers[SELECTOR].setAccelDistance(smuffConfig.accelDistance_X);
+  
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, smuffConfig.acceleration_Y, smuffConfig.maxSpeed_Y);
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrigger_Y, ZStepper::ORBITAL);
   steppers[REVOLVER].stepFunc = overrideStepY;
   steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerRevolution_Y);
+  steppers[REVOLVER].setStepsPerDegree(smuffConfig.stepsPerRevolution_Y/360);
   steppers[REVOLVER].endstopFunc = endstopYevent;
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir_Y);
   steppers[REVOLVER].setMaxHSpeed(smuffConfig.maxSpeedHS_Y);
+  steppers[REVOLVER].setAccelDistance(smuffConfig.accelDistance_Y);
   
   steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, smuffConfig.acceleration_Z, smuffConfig.maxSpeed_Z);
   /*
@@ -348,6 +363,7 @@ void setupSteppers() {
   steppers[FEEDER].endstop2Func = endstopZ2event;
   steppers[FEEDER].setInvertDir(smuffConfig.invertDir_Z);
   steppers[FEEDER].setMaxHSpeed(smuffConfig.maxSpeedHS_Z);
+  steppers[FEEDER].setAccelDistance(smuffConfig.accelDistance_Z);
 
   for(int i=0; i < NUM_STEPPERS; i++) {
       steppers[i].runAndWaitFunc = runAndWait;
@@ -372,12 +388,13 @@ void setupTimers() {
 #else
   // *****
   // Attn: 
-  //    Servo uses TIMER5 if setup to create its own timer 
+  //    Servo uses TIMER5 if it's set up to create its own timer 
   //    Fan uses TIMER8 CH3
   //    Beeper uses TIMER4 CH3
+  //    PC9 (Heatbed) uses TIMER1 CH1
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER1, 3, 1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER8, 1, 1760);  // equals to 1ms on 72MHz CPU (supposed to be 1800 but measured around 1760)
+  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);
+  encoderTimer.setupTimer(ZTimer::ZTIMER1, 1, 1460);  // equals to 1ms on 72MHz CPU (supposed to be 1800 but measured around 1760)
   setToneTimerChannel(4, 3);                          // force TIMER4 / CH3 on STM32F1x for tone library
 #endif
 

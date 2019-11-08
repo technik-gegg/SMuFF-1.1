@@ -69,7 +69,8 @@ typedef struct {
   bool  invertDir_X         = false;
   int   endstopTrigger_X    = HIGH;
   int   stepDelay_X         = 10;
-  unsigned maxSpeedHS_X     = 10;          
+  unsigned maxSpeedHS_X     = 10;
+  unsigned accelDistance_X  = 21;          
   
   long  stepsPerRevolution_Y= 9600;
   long  maxSteps_Y          = 9600;
@@ -84,6 +85,7 @@ typedef struct {
   bool  revolverIsServo     = false;
   int   revolverOffPos      = 0;
   int   revolverOnPos       = 90;
+  unsigned accelDistance_Y  = 20;          
   
   bool  externalControl_Z   = false;
   long  stepsPerMM_Z        = 136;
@@ -97,7 +99,8 @@ typedef struct {
   bool  enableChunks        = false;
   float insertLength        = 5.0;
   unsigned maxSpeedHS_Z     = 10;          
-  
+  unsigned accelDistance_Z  = 5;          
+    
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
   float pushbackDelay       = 1.5f;
@@ -155,6 +158,7 @@ extern volatile bool  parserBusy;
 extern volatile bool  isPwrSave;
 extern unsigned long  endstopZ2HitCnt;
 //extern CRGB           leds[];
+extern volatile bool  showMenu;
 
 extern void setupDisplay();
 extern void setupTimers();

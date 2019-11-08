@@ -55,6 +55,7 @@ unsigned int          userMessageTime = 0;
 int                   swapTools[MAX_TOOLS];
 bool                  isWarning;
 unsigned long         feederErrors = 0;
+bool                  ignoreHoming = false;
 
 const char brand[] = VERSION_STRING;
 
@@ -449,12 +450,12 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
       }
     }
   }
-  if(index == REVOLVER && smuffConfig.revolverIsServo) {
+  if(index != FEEDER && smuffConfig.revolverIsServo) {
     setServoPos(1, smuffConfig.revolverOffPos);
   }
-  else {
-    steppers[index].home();
-  }
+  
+  steppers[index].home();
+  
   //__debug(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
     toolSelected = -1;
@@ -542,10 +543,11 @@ void positionRevolver() {
 
   // disable Feeder temporarily
   steppers[FEEDER].setEnabled(false);
-  if(smuffConfig.resetBeforeFeed_Y) {
-    if(smuffConfig.revolverIsServo)
+  if(smuffConfig.resetBeforeFeed_Y && !ignoreHoming) {
+    if(smuffConfig.revolverIsServo) {
       setServoPos(1, smuffConfig.revolverOffPos);
-    else
+    }
+    else 
       moveHome(REVOLVER, false, false);
   }
   if(smuffConfig.revolverIsServo) {
@@ -590,10 +592,11 @@ void positionRevolver() {
 
 void repositionSelector(bool retractFilament) {
   int tool = toolSelected;
-  if(retractFilament) {
+  if(retractFilament && !smuffConfig.revolverIsServo) {
     char tmp[15];
     unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
     steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+    ignoreHoming = true;
     // go through all tools available and retract some filament
     for(int i=0; i < smuffConfig.toolCount; i++) {
       if(i==tool)
@@ -603,6 +606,7 @@ void repositionSelector(bool retractFilament) {
       prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true); // retract 
       runAndWait(FEEDER);
     }
+    ignoreHoming = false;
     sprintf(tmp, "Y%d", tool);
     G0("G0", tmp, 0);                  // position Revolver on tool selected
     steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -647,6 +651,8 @@ bool feedToEndstop(bool showMessage) {
       if(retry == 0) { // after three retries rectract all filaments a bit and reposition the Selector
         repositionSelector(true);
       }
+      if(smuffConfig.revolverIsServo)
+        setServoPos(1, smuffConfig.revolverOnPos);
       n = 0;
     }
     if (retry < 0) { 
@@ -654,6 +660,9 @@ bool feedToEndstop(bool showMessage) {
       if (showMessage) {
         moveHome(REVOLVER, false, false);   // home Revolver
         M18("M18", "", 0);                  // turn all motors off
+        if(smuffConfig.revolverIsServo) {   // release servo, if used
+          setServoPos(1, smuffConfig.revolverOffPos);
+        }
         if(showFeederFailedMessage(1) == true) { // user wants to retry...
           steppers[FEEDER].setEnabled(true);
           positionRevolver();
@@ -735,7 +744,11 @@ bool loadFilament(bool showMessage) {
   saveStore();
 
   if(smuffConfig.homeAfterFeed) {
-    steppers[REVOLVER].home();
+    if(smuffConfig.revolverIsServo) {
+      setServoPos(1, smuffConfig.revolverOffPos);
+    }
+    else
+      steppers[REVOLVER].home();
   }
   steppers[FEEDER].setAbort(false);
 
@@ -783,8 +796,13 @@ bool loadFilamentPMMU2(bool showMessage) {
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore(); 
 
-  if(smuffConfig.homeAfterFeed)
-    steppers[REVOLVER].home();
+  if(smuffConfig.homeAfterFeed) {
+    if(smuffConfig.revolverIsServo) {
+      setServoPos(1, smuffConfig.revolverOffPos);
+    }
+    else 
+      steppers[REVOLVER].home();
+  }
   steppers[FEEDER].setAbort(false);
 
   parserBusy = false;
@@ -857,12 +875,14 @@ bool unloadFilament() {
   if(steppers[FEEDER].getAbort() == false) {
     steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
     steppers[FEEDER].setIgnoreAbort(true);
-    int n = 200;
+    int n = (smuffConfig.bowdenLength / smuffConfig.selectorDistance)+1;
+    int n1 = n;
+    int n2 = n/2;
     do {
       prepSteppingRelMillimeter(FEEDER, -(smuffConfig.selectorDistance-ofs), true);
       runAndWait(FEEDER);
       if(!feederEndstop()) {
-        if((n > 0 && n < 200) && n % 50 == 0) {
+        if((n > 0 && n < n1) && n % n2 == 0) {
           resetRevolver();
           prepSteppingRelMillimeter(FEEDER, smuffConfig.selectorDistance+ofs, true);
           runAndWait(FEEDER);
@@ -894,8 +914,13 @@ bool unloadFilament() {
   saveStore();
 
   steppers[FEEDER].setAbort(false);
-  if(smuffConfig.homeAfterFeed)
-    steppers[REVOLVER].home();
+  if(smuffConfig.homeAfterFeed) {
+    if(smuffConfig.revolverIsServo) {
+      setServoPos(1, smuffConfig.revolverOffPos);
+    }
+    else 
+      steppers[REVOLVER].home();
+  }
 
   parserBusy = false;
   return true;
@@ -1007,6 +1032,13 @@ void resetRevolver() {
 }
 
 void setStepperSteps(int index, long steps, bool ignoreEndstop) {
+  // make sure the servo is in off position before the Selector gets moved
+  // ... just in case... you never know...
+  if(smuffConfig.revolverIsServo && index == SELECTOR) {
+    if(servoRevolver.getDegree() != smuffConfig.revolverOffPos) {
+      setServoPos(1, smuffConfig.revolverOffPos);
+    }
+  }
   if (steps != 0)
     steppers[index].prepareMovement(steps, ignoreEndstop);
 }
@@ -1186,6 +1218,7 @@ bool setServoPos(int servoNum, int degree) {
   }
   else if(servoNum == 1) {
     servoRevolver.write(degree);
+    delay(250);
     return true;
   }
 }

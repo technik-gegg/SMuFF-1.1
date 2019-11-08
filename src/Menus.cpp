@@ -157,7 +157,7 @@ void setupSteppersMenu(char *menu) {
 
 void setupRevolverMenu(char* menu) {
   char items1[150];
-  char items2[100];
+  char items2[200];
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items1, P_AllSteppersMenuItems,
     smuffConfig.invertDir_Y ? P_Yes : P_No,
@@ -170,7 +170,10 @@ void setupRevolverMenu(char* menu) {
     String(smuffConfig.stepsPerRevolution_Y).c_str(),
     smuffConfig.homeAfterFeed ? P_Yes : P_No,
     smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
-    smuffConfig.wiggleRevolver ? P_Yes : P_No);
+    smuffConfig.wiggleRevolver ? P_Yes : P_No,
+    smuffConfig.revolverIsServo ? P_Yes : P_No,
+    String(smuffConfig.revolverOffPos).c_str(),
+    String(smuffConfig.revolverOnPos).c_str());
   strcat(menu, items1);
   strcat(menu, items2);
 }
@@ -470,6 +473,27 @@ void showRevolverMenu(char* menuTitle) {
             bVal = smuffConfig.wiggleRevolver;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.wiggleRevolver = bVal;
+            startTime = millis();
+            break;
+
+        case 12: // Use Servo
+            bVal = smuffConfig.revolverIsServo;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.revolverIsServo = bVal;
+            startTime = millis();
+            break;
+
+        case 13: // Servo open
+            iVal = smuffConfig.revolverOffPos;
+            if(showInputDialog(title, P_OpenPos, &iVal, 0, 2400))
+              smuffConfig.revolverOffPos = iVal;
+            startTime = millis();
+            break;
+
+        case 14: // Servo closed
+            iVal = smuffConfig.revolverOnPos;
+            if(showInputDialog(title, P_ClosedPos, &iVal, 0, 2400))
+              smuffConfig.revolverOnPos = iVal;
             startTime = millis();
             break;
       }

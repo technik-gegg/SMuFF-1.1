@@ -65,6 +65,7 @@ GCodeFunctions gCodeFuncsM[] = {
   {  20, M20 },
   {  42, M42 },
   {  84, M18 },
+  {  98, M98 },
   { 106, M106 },
   { 107, M107 }, 
   { 110, M110 },
@@ -179,13 +180,27 @@ bool M42(const char* msg, String buf, int serial) {
   return stat;
 }
 
+bool M98(const char* msg, String buf, int serial) {
+  printResponse(msg, serial);
+  char cmd[80];
+  if((getParamString(buf, P_Param, cmd, sizeof(cmd)))) {
+    showMenu = true;
+    testRun(String(cmd));
+    showMenu = false;
+  }
+}
+
 bool M106(const char* msg, String buf, int serial) {
   printResponse(msg, serial); 
   if((param = getParam(buf, S_Param)) == -1) {
-    param = 255;
+    param = 100;
   }
   //__debug(PSTR("Fan speed: %d%%"), param);
+#ifdef __STM32F1__
+  pwmWrite(FAN_PIN, map(param, 0, 100, 0, 65535));
+#else
   analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
+#endif
   return true;
 }
  

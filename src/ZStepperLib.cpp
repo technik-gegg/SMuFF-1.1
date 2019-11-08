@@ -61,8 +61,9 @@ void ZStepper::resetStepper() {
 void ZStepper::prepareMovement(long steps, boolean ignoreEndstop /*= false */) {
   setDirection(steps < 0 ? CCW : CW);
   _totalSteps = abs(steps);
-  _accelDistance = _totalSteps >> 5;
-  _stepsAcceleration = (float)((_acceleration - _minStepInterval)+.1) / _accelDistance;
+  _accelDistSteps = _endstopType == ORBITAL ? _stepsPerDegree * _accelDistance : _stepsPerMM * _accelDistance; 
+  _stepsAcceleration = (float)((_acceleration - _minStepInterval)+.1) / _accelDistSteps;
+  //__debug(PSTR("total: %ld  _accelDist: %ld  _stepsAccel: %s"), _totalSteps, _accelDistSteps, String(_stepsAcceleration).c_str());
   _ignoreEndstop = ignoreEndstop;
   resetStepper();
 }
@@ -108,17 +109,11 @@ void ZStepper::updateAcceleration() {
     _durationInt = _duration = _minStepInterval;
     return;
   }
-  if(_accelDistance < (long)_stepsPerMM*3) {
-    _duration = _stepsAcceleration;
+  if(_stepCount <= _accelDistSteps) {
+    _duration -= _stepsAcceleration;    // accelerate
   }
-  else {
-    if(_stepCount <= _accelDistance) {
-      _duration -= _stepsAcceleration;    // accelerate
-      //__debug(PSTR("durInt: %d, %s"), _durationInt,  String(_duration).c_str());
-    }
-    else if (_stepCount >= _totalSteps - _accelDistance ) {
-      _duration += _stepsAcceleration;    // decelerate
-    }
+  if (_stepCount >= _totalSteps - _accelDistSteps ) {
+    _duration += _stepsAcceleration;    // decelerate
   }
   if(_duration <= _minStepInterval)
     _duration = _minStepInterval;
