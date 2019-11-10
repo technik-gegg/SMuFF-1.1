@@ -453,8 +453,9 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
   if(index != FEEDER && smuffConfig.revolverIsServo) {
     setServoPos(1, smuffConfig.revolverOffPos);
   }
-  
-  steppers[index].home();
+  if(index != REVOLVER && smuffConfig.revolverIsServo) {
+   steppers[index].home();
+  }
   
   //__debug(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
