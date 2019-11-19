@@ -18,6 +18,7 @@
  */
 #include "SMuFF.h"
 #include "Config.h"
+#include "InputDialogs.h"
 
 
 void drawValue(const char* title, const char* PROGMEM message, String val) {
@@ -43,7 +44,7 @@ void getEncoderButton(int* turn, int* button, bool* isHeld, bool* isClicked) {
   }
 }
 
-bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max) {
+bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max, fCallback cb) {
   bool stat = true;
   float steps = 1.0F;
   int turn, btn;
@@ -52,6 +53,9 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
   debounceButton();
   encoder.setAccelerationEnabled(true);
   drawValue(title, message, String(*val));
+  if(cb != NULL) {
+    cb(*val);
+  }
 
   while(1) {
     getEncoderButton(&turn, &btn, &isHeld, &isClicked);
@@ -71,13 +75,16 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
         else beep(1);
       }
       drawValue(title, message, String(*val));
+      if(cb != NULL) {
+        cb(*val);
+      }
     }
   }
   encoder.setAccelerationEnabled(false);
   return stat;
 }
 
-bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int min, int max) {
+bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int min, int max, iCallback cb) {
   bool stat = true;
   int turn, btn;
   bool isHeld, isClicked;
@@ -85,6 +92,9 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
   debounceButton();
   encoder.setAccelerationEnabled(true);
   drawValue(title, message, String(*val));
+  if(cb != NULL) {
+    cb(*val);
+  }
   
   while(1) {
     getEncoderButton(&turn, &btn, &isHeld, &isClicked);
@@ -104,6 +114,9 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
         else beep(1);
       }
       drawValue(title, message, String(*val));
+      if(cb != NULL) {
+        cb(*val);
+      }
     }
   }
   //__debug(PSTR("Stopped %d"),stat);
@@ -111,7 +124,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
   return stat;
 }
 
-bool showInputDialog(const char* title, const char* PROGMEM message, bool* val) {
+bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, bCallback cb) {
   bool stat = true;
   int turn, btn;
   bool isHeld, isClicked;
@@ -122,7 +135,10 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val) 
 
   debounceButton();
   drawValue(title, message, String(*val ? _yes : _no));
-  
+  if(cb != NULL) {
+    cb(*val);
+  }
+ 
   while(1) {
     getEncoderButton(&turn, &btn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
@@ -133,6 +149,10 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val) 
       continue;
     *val = !*val;
     drawValue(title, message, String(*val ? _yes : _no));
+    if(cb != NULL) {
+        cb(*val);
+    }
+
   }
   return stat;
 }

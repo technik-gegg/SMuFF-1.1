@@ -61,11 +61,13 @@ public:
     unsigned int   getOverflow();
     void           setOverflow(unsigned int value);
     void           setCounter(unsigned int value);
+    void           setCompare(unsigned int value);
     void           startTimer();
     void           stopTimer();
 
 private:
     IsrTimer      _timer;
+    int           _channel;
 };
 
 #endif

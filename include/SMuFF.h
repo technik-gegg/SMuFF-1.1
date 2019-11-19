@@ -85,6 +85,7 @@ typedef struct {
   bool  revolverIsServo     = false;
   int   revolverOffPos      = 0;
   int   revolverOnPos       = 90;
+  int   servoCycles         = 0;
   unsigned accelDistance_Y  = 20;          
   
   bool  externalControl_Z   = false;

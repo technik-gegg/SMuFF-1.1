@@ -1215,6 +1215,7 @@ void initBeep() {
 bool setServoPos(int servoNum, int degree) {
   if(servoNum == 0) {
     servo.write(degree);
+    delay(250);
     return true;
   }
   else if(servoNum == 1) {

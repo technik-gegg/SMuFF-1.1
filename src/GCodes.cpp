@@ -379,6 +379,15 @@ bool M205(const char* msg, String buf, int serial) {
       else if(strcmp_P(cmd, PSTR("EmulatePrusa"))==0) {
         smuffConfig.prusaMMU2 = (param > 0);
       }
+      else if(strcmp_P(cmd, PSTR("UseServo"))==0) {
+        smuffConfig.revolverIsServo = (param > 0);
+      }
+      else if(strcmp_P(cmd, PSTR("ServoOpened"))==0) {
+        smuffConfig.revolverOffPos = param;
+      }
+      else if(strcmp_P(cmd, PSTR("ServoClosed"))==0) {
+        smuffConfig.revolverOnPos = param;
+      }
     }
   }
   return stat;
@@ -694,7 +703,7 @@ bool G12(const char* msg, String buf, int serial) {
       }
       servo.write(pos0);
       delay(100);
-      servo.stop();
+      //servo.stop();
     }
     else {
       while(n < sizeof(smuffConfig.wipeSequence)) {
@@ -711,7 +720,7 @@ bool G12(const char* msg, String buf, int serial) {
     delay(wait);
     setServoPos(0, 110);
     delay(100);
-    servo.stop();
+    //servo.stop();
   }
   return true;
 }

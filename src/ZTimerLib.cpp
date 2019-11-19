@@ -154,6 +154,7 @@ void ZTimer::setupTimer(IsrTimer timer, unsigned int prescaler) {
 
 void ZTimer::setupTimer(IsrTimer timer, int channel, unsigned int prescaler, unsigned int compare) {
   _timer = timer;
+  _channel = channel;
 
   stopTimer();
   noInterrupts();
@@ -280,6 +281,21 @@ void ZTimer::setOverflow(unsigned int value) {
     case ZTIMER6: hwTimer6.setOverflow(value); break;
     case ZTIMER7: hwTimer7.setOverflow(value); break;
     case ZTIMER8: hwTimer8.setOverflow(value); break;
+#endif
+  }
+}
+
+void ZTimer::setCompare(unsigned int value) {
+  switch(_timer) {
+#if defined(__STM32F1__)
+    case ZTIMER1: hwTimer1.setCompare(_channel, value); break;
+    case ZTIMER2: hwTimer2.setCompare(_channel, value); break;
+    case ZTIMER3: hwTimer3.setCompare(_channel, value); break;
+    case ZTIMER4: hwTimer4.setCompare(_channel, value); break;
+    case ZTIMER5: hwTimer5.setCompare(_channel, value); break;
+    case ZTIMER6: hwTimer6.setCompare(_channel, value); break;
+    case ZTIMER7: hwTimer7.setCompare(_channel, value); break;
+    case ZTIMER8: hwTimer8.setCompare(_channel, value); break;
 #endif
   }
 }

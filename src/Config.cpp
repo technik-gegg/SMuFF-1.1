@@ -98,6 +98,7 @@ void readConfig()
       smuffConfig.revolverIsServo =     jsonDoc[revolver]["UseServo"];
       smuffConfig.revolverOffPos =      jsonDoc[revolver]["ServoOffPos"];
       smuffConfig.revolverOnPos =       jsonDoc[revolver]["ServoOnPos"];
+      smuffConfig.servoCycles =         jsonDoc[revolver]["ServoCycles"];
 
       smuffConfig.externalControl_Z =   jsonDoc[feeder]["ExternalControl"];
       smuffConfig.stepsPerMM_Z =        jsonDoc[feeder]["StepsPerMillimeter"];
@@ -234,6 +235,7 @@ bool writeConfig(Print* dumpTo)
   node["UseServo"]            = smuffConfig.revolverIsServo;
   node["ServoOffPos"]         = smuffConfig.revolverOffPos;
   node["ServoOnPos"]          = smuffConfig.revolverOnPos;
+  node["ServoCycles"]         = smuffConfig.servoCycles;
 
   node = jsonObj.createNestedObject("Feeder");
   node["ExternalControl"]     = smuffConfig.externalControl_Z;

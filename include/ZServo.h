@@ -30,12 +30,13 @@
 #define US_PER_PULSE_180DEG     2400      // microseconds for 180 degrees
 #define DUTY_CYCLE              20000     // servo cycle in us (equals 20ms)
 #ifdef __STM32F1__
-#define TIMER_INTERVAL          800       // CPU-Clock / (Prescaler * 50Hz)-1 =  72000000 / (1800 * 50 - 1) = 800.008
+#define TIMER_INTERVAL          1         
 #endif
 #ifdef __AVR__
 #define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50Hz)-1 =  16000000 / (1024 * 50 - 1) = 311.5
 #endif
 
+extern void __debug(const char* fmt, ...);
 
 void isrServoTimerHandler();
 static ZTimer  servoTimer;
@@ -47,7 +48,7 @@ public:
   ZServo(int servoIndex, int pin) { attach(pin); setIndex(servoIndex); }
 
   void attach(int pin);
-  void attach(int pin, bool useTimer);
+  void attach(int pin, bool useTimer, int servoIndex = -1);
   void attach(int pin, int servoIndex) { attach(pin); setIndex(servoIndex); }
   void setIndex(int servoIndex);
   void detach();
@@ -60,6 +61,8 @@ public:
   void setPulseWidthMinMax(int min, int max) { _minPw = min; _maxPw = max; }
   void stop() { if(_useTimer) servoTimer.stopTimer(); }
   bool hasTimer() { return _useTimer; }
+  void setMaxCycles(int val) { _maxCycles = val;}
+  int  getMaxCycles() { return _maxCycles;}
 
   int getDegree() { return _degree; }
   void getDegreeMinMax(int* min, int* max) { *min = _minDegree; *max = _maxDegree; }
@@ -75,7 +78,9 @@ private:
   int _degree;
   int _lastDegree;
   uint32 _lastUpdate;
-  int _tickCnt;
+  volatile uint32 _tickCnt;
+  volatile int _dutyCnt;
+  int _maxCycles;
   int _loopCnt;
   int _pulseLen;
   int _minPw = US_PER_PULSE_0DEG;

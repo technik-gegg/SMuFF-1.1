@@ -22,11 +22,15 @@
 #define _INPUT_DIALOGS_H 1
 
 #include "SMuFF.h"
+typedef void(*iCallback)(int val);
+typedef void(*fCallback)(float val);
+typedef void(*bCallback)(bool val);
+
 void getEncoderButton(int* turn, int* button, bool* isHeld, bool* isClicked);
 void drawValue(const char* title, const char* PROGMEM message, String val);
-bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max);
-bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int min, int max);
-bool showInputDialog(const char* title, const char* PROGMEM message, bool* val);
+bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max, fCallback cb = NULL);
+bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int min, int max, iCallback cb = NULL);
+bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, bCallback cb = NULL);
 bool showInputDialog(const char* title, const char* PROGMEM message, unsigned long* val, String list);
 
 #endif

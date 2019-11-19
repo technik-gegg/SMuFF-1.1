@@ -228,16 +228,16 @@ void setup() {
   setupSteppers();
   setupTimers();
   
-  servo.attach(SERVO1_PIN, true);
-  servo.setIndex(0);
+  servo.attach(SERVO1_PIN, true, 0);
+  servo.setMaxCycles(smuffConfig.servoCycles);
   setServoPos(0, 90);
   // This one's quite experimental yet.
   // Trying to replace the Revolver stepper motor with a servo motor
-  servoRevolver.attach(SERVO2_PIN, true);  
-  servoRevolver.setIndex(1);
+  servoRevolver.attach(SERVO2_PIN, true, 1);  
+  servoRevolver.setMaxCycles(smuffConfig.servoCycles);
   setServoPos(1, smuffConfig.revolverOffPos);
 
-  // must happen after setupSteppers()
+  // this call must happen after setupSteppers()
   getStoredData();
 
   // Duet Laser Sensor is not being used yet because the 
@@ -388,7 +388,7 @@ void setupTimers() {
 #else
   // *****
   // Attn: 
-  //    Servo uses TIMER5 if it's set up to create its own timer 
+  //    Servo uses TIMER5 CH1 if it's set up to create its own timer 
   //    Fan uses TIMER8 CH3
   //    Beeper uses TIMER4 CH3
   //    PC9 (Heatbed) uses TIMER1 CH1

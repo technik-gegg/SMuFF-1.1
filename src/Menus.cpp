@@ -157,7 +157,7 @@ void setupSteppersMenu(char *menu) {
 
 void setupRevolverMenu(char* menu) {
   char items1[150];
-  char items2[200];
+  char items2[240];
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items1, P_AllSteppersMenuItems,
     smuffConfig.invertDir_Y ? P_Yes : P_No,
@@ -173,7 +173,8 @@ void setupRevolverMenu(char* menu) {
     smuffConfig.wiggleRevolver ? P_Yes : P_No,
     smuffConfig.revolverIsServo ? P_Yes : P_No,
     String(smuffConfig.revolverOffPos).c_str(),
-    String(smuffConfig.revolverOnPos).c_str());
+    String(smuffConfig.revolverOnPos).c_str(),
+    String(smuffConfig.servoCycles).c_str());
   strcat(menu, items1);
   strcat(menu, items2);
 }
@@ -380,6 +381,10 @@ bool selectBaudrate(int port, char* menuTitle) {
     return true;
 }
 
+void positionServoCallback(int val) {
+  setServoPos(1, val);
+}
+
 void showRevolverMenu(char* menuTitle) {
   bool stopMenu = false;
   unsigned int startTime = millis();
@@ -387,7 +392,7 @@ void showRevolverMenu(char* menuTitle) {
   char* title;
   bool bVal;
   int iVal;
-  char _menu[300];
+  char _menu[350];
 
   do {
     setupRevolverMenu(_menu);
@@ -485,15 +490,22 @@ void showRevolverMenu(char* menuTitle) {
 
         case 13: // Servo open
             iVal = smuffConfig.revolverOffPos;
-            if(showInputDialog(title, P_OpenPos, &iVal, 0, 2400))
+            if(showInputDialog(title, P_OpenPos, &iVal, 0, 2400, positionServoCallback))
               smuffConfig.revolverOffPos = iVal;
             startTime = millis();
             break;
 
         case 14: // Servo closed
             iVal = smuffConfig.revolverOnPos;
-            if(showInputDialog(title, P_ClosedPos, &iVal, 0, 2400))
+            if(showInputDialog(title, P_ClosedPos, &iVal, 0, 2400, positionServoCallback))
               smuffConfig.revolverOnPos = iVal;
+            startTime = millis();
+            break;
+
+        case 15: // Servo cycles
+            iVal = smuffConfig.servoCycles;
+            if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50))
+              smuffConfig.servoCycles = iVal;
             startTime = millis();
             break;
       }

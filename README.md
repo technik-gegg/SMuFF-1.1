@@ -20,12 +20,19 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## Recent changes
 
+**1.65** - Minor changes - mainly for servo variant
+
++ changed the servo timing (duty cycle was twice as long as it's supposed to).
++ added live position change while configuring the servo positions in the menu (opened/closed).
++ added option to set up the servo pulse cycles (0 means: cycle forever, any value above 0: cycle only *n* times). *Set this value to about 20-30 if you experiencing jitter on the servo.*
++ added "**UseServo**", "**ServoOpened**" and "**ServoClosed**" parameters to M205 GCode command.
+
 **1.64** - Minor changes
 
 + reworked the acceleration/deceleration algorithm for the stepper motors.
 + changed some default speed settings in the SMuFF.cfg file for SKR (due to the reworked acceleration/deceleration).
 + modified some of the test scripts for automated testing.
-+ added M98 GCode to enable startig test runs from GCode (M98 P"filename" - omit the file extension ".gcode"). *Please notice: Since serial communication is disabled during test runs, you'll have to stop them by pressing the encoder button*
++ added M98 GCode to enable startig test runs from GCode (M98 P"filename" - omit the file extension ".gcode"). *Please notice: Since serial communication is disabled during test runs, you'll have to stop them by pressing the encoder button.*
 + reworked timer usage on STM32.
 + reworked servo library.
 
