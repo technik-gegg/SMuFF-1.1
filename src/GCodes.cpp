@@ -104,7 +104,7 @@ GCodeFunctions gCodeFuncsG[] = {
 };
 
 int param;
-char tmp[128];
+char tmp[256];
 
 /*========================================================
  * Class M
@@ -112,7 +112,7 @@ char tmp[128];
 bool dummy(const char* msg, String buf, int serial) {
   if(!smuffConfig.prusaMMU2) {
     int code = buf.toInt();
-    //__debug(PSTR("Ignored M-Code: M%d"), code);
+    __debug(PSTR("Ignored M-Code: M%d"), code);
   }
   return true;
 }
@@ -148,7 +148,7 @@ bool M20(const char* msg, String buf, int serial) {
     sprintf(tmp,"/");
   }
   SdFs SD;
-  Print* out;
+  Print* out = &Serial;
   if (SD.begin()) {
     switch(serial) {
       case 0: out = &Serial; break;
@@ -477,7 +477,7 @@ bool M500(const char* msg, String buf, int serial) {
 
 bool M503(const char* msg, String buf, int serial) {
   printResponse(msg, serial);
-  Print *_print;
+  Print *_print = &Serial;
   switch (serial)
   {
       case 0:
