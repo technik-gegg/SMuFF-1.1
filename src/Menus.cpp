@@ -67,7 +67,9 @@ void setupToolsMenu(char* menu) {
 
 void setupMainMenu(char* menu) {
     char items[450];
+#ifdef __STM32F1__
     char items2[150];
+#endif
     char stat[45];
     char opt[30] = "";
     
@@ -986,7 +988,6 @@ void showOffsetsMenu(char* menuTitle) {
   bool stopMenu = false;
   unsigned int startTime = millis();
   uint8_t current_selection = 0;
-  char* title;
   char _menu[120];
 
   do {
@@ -1000,7 +1001,6 @@ void showOffsetsMenu(char* menuTitle) {
     if(current_selection == 0)
       return;
     else {
-      title = extractTitle(_menu, current_selection-1);
       switch(current_selection) {
         case 1:
           stopMenu = true;

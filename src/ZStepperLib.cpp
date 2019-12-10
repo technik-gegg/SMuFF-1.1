@@ -225,6 +225,7 @@ bool ZStepper::getEndstopHit(int index) {
     }
     return _endstopHit2;
   }
+  return false;
 }
 
 void ZStepper::home() {

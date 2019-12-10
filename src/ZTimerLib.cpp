@@ -286,8 +286,8 @@ void ZTimer::setOverflow(unsigned int value) {
 }
 
 void ZTimer::setCompare(unsigned int value) {
-  switch(_timer) {
 #if defined(__STM32F1__)
+  switch(_timer) {
     case ZTIMER1: hwTimer1.setCompare(_channel, value); break;
     case ZTIMER2: hwTimer2.setCompare(_channel, value); break;
     case ZTIMER3: hwTimer3.setCompare(_channel, value); break;
@@ -296,8 +296,8 @@ void ZTimer::setCompare(unsigned int value) {
     case ZTIMER6: hwTimer6.setCompare(_channel, value); break;
     case ZTIMER7: hwTimer7.setCompare(_channel, value); break;
     case ZTIMER8: hwTimer8.setCompare(_channel, value); break;
-#endif
   }
+#endif
 }
 
 void ZTimer::setCounter(unsigned int value) {

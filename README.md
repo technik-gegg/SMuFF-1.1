@@ -20,6 +20,11 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## Recent changes
 
+**1.66** - Buxfix for Wanhao i3 mini
+
++ fixed compile time error in ZServo for Wanhao i3
++ fixed compile time warnings for Wanhao i3
+
 **1.65** - Minor changes - mainly for servo variant
 
 + changed the servo timing (duty cycle was twice as long as it's supposed to).

@@ -1223,6 +1223,7 @@ bool setServoPos(int servoNum, int degree) {
     delay(250);
     return true;
   }
+  return false;
 }
 
 bool setServoMS(int servoNum, int microseconds) {

@@ -71,14 +71,25 @@ public:
 private:
   int _pin;
   bool _useTimer = false;
+#ifdef __STM32F1__
   volatile uint32 *_pin_reg;
   uint32 _pin_set;
   uint32 _pin_reset;
+#else
+  volatile int *_pin_reg;
+  int _pin_set;
+  int _pin_reset;
+#endif
   int _servoIndex;
   int _degree;
   int _lastDegree;
+#ifdef __STM32F1__
   uint32 _lastUpdate;
   volatile uint32 _tickCnt;
+#else
+  unsigned int _lastUpdate;
+  volatile int _tickCnt;
+#endif
   volatile int _dutyCnt;
   int _maxCycles;
   int _loopCnt;

@@ -188,6 +188,7 @@ bool M98(const char* msg, String buf, int serial) {
     testRun(String(cmd));
     showMenu = false;
   }
+  return true;
 }
 
 bool M106(const char* msg, String buf, int serial) {
