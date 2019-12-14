@@ -8,3 +8,5 @@
 *SMuFF.code-workspace
 .vscode/arduino.json
 .vscode/settings.json
+Schematics/SKR mini LCD board/*.bak
+

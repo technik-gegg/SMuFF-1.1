@@ -1,4 +1,5 @@
 EESchema Schematic File Version 4
+LIBS:SKR mini LCD board-cache
 EELAYER 29 0
 EELAYER END
 $Descr A4 11693 8268
@@ -319,4 +320,14 @@ Wire Wire Line
 	3550 4800 3550 5400
 Wire Wire Line
 	3550 5400 3550 5950
+Wire Notes Line width 12
+	2950 3850 4250 3850
+Wire Notes Line width 12
+	4250 3850 4250 5000
+Wire Notes Line width 12
+	4250 5000 2950 5000
+Wire Notes Line width 12
+	2950 5000 2950 3850
+Text Notes 3050 4950 0    50   ~ 0
+Optional
 $EndSCHEMATC
