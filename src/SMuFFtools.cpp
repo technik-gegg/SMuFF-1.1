@@ -1246,7 +1246,11 @@ void getStoredData() {
 void setSignalPort(int port, bool state) {
   if(!smuffConfig.prusaMMU2) {
     sprintf(tmp,"%c%c%s", 0x1b, port, state ? "1" : "0");
+#ifdef __STM32F1__
+    Serial1.write(tmp);
+#else
     Serial2.write(tmp);
+#endif
   }
 }
 

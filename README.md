@@ -12,13 +12,17 @@ The SKR mini v1.1 is also very small and yet more powerful because of the 32-Bit
 
 This firmware can be adopted to run on other boards as well. Make sure your board of choice has all the components needed, then adopt the settings according to the hardware being used in your *platformio.ini* and *pins.h* files.
 
-The basic configuration (SMuFF.cfg) has to be located on the SD-Card. Thus, changing parameters doesn't require recompiling the firmware. Just edit the configuration JSON file and reboot.
+The basic configuration (SMuFF.cfg) must to be located on the SD-Card. Thus, changing parameters doesn't require recompiling the firmware. Just edit the configuration JSON file and reboot.
 From version 1.6 on, the firmware has been enhanced in order to enable you making changes directly from the UI, which means: No more fiddling in the JSON file.
-Also new in the 1.6 version is the option to run GCode scripts from the SD-Card for testing purposes. In the **test* folder you'll find some sample scripts. Copy those to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly and can be stopped by clicking the encoder button.
+Also new in the 1.6 version is the option to run GCode scripts from the SD-Card for testing purposes. In the **test** folder you'll find some sample scripts. Copy those to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly and can be stopped by clicking the encoder button.
 
 For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
 
 ## Recent changes
+
+**1.67** - Bugfix for SKR in Duet3D mode
+
++ fixed sending endstop states to wrong serial port for Duet3D. Please notice: In Duet3D mode you **must use** the Serial 1 (the one labeled TFT on the board). Serial 3 will not receive the endstop states, which are needed to make the scripts on the Duet3D work correctly.
 
 **1.66** - Buxfix for Wanhao i3 mini
 
