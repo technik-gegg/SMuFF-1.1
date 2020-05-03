@@ -1,0 +1,17 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+# Files with Unix line endings
+*.cpp text eol=lf
+*.h text eol=lf
+*.gcode text eol=lf
+*.CFG text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.pdf binary
+*.lib binary
+*.kicad_pcb binary
+*.pro binary
+*.sch binary
