@@ -31,7 +31,7 @@
 #include "Menus.h"
 #include "ClickEncoder.h"
 #include <Wire.h>
-#include <SPI.H>
+#include <SPI.h>
 #include <SdFs.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
