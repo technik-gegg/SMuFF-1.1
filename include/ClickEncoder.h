@@ -16,7 +16,7 @@
 // ----------------------------------------------------------------------------
 
 #include <stdint.h>
-#if !defined (__STM32F1__)	
+#if defined (__AVR__)
 	#include <avr/io.h>
 	#include <avr/interrupt.h>
 	#include <avr/pgmspace.h>
@@ -58,9 +58,31 @@ public:
 
   } Button;
 
+private:  
+  uint8_t pinA;
+  uint8_t pinB;
+  uint8_t pinBTN;
+  bool pinsActive;
+  volatile int16_t delta = 0;
+  volatile int16_t last = 0;
+  volatile uint16_t acceleration = 0;  
+  bool  accelerationEnabled;
+  uint8_t steps = 0;
+
+#ifndef WITHOUT_BUTTON
+  volatile Button button;
+  unsigned long lastButtonCheck = 0;
+  uint8_t doubleClickTicks = 0;     
+  bool doubleClickEnabled;  
+  uint16_t keyDownTicks = 0;    
+#endif
+
+#if ENC_DECODER != ENC_NORMAL
+  static const int8_t table[16];
+#endif
+
 public:
-  ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN = -1,
-               uint8_t stepsPerNotch = 1, bool active = LOW);
+  ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active = false);
 
   void service(void);
   int16_t getValue(void);
@@ -98,28 +120,6 @@ public:
     return accelerationEnabled;
   }
 
-private:  
-  const uint8_t pinA;
-  const uint8_t pinB;
-  const uint8_t pinBTN;
-  const bool pinsActive;
-  volatile int16_t delta = 0;
-  volatile int16_t last = 0;
-  volatile uint16_t acceleration = 0;  
-  bool  accelerationEnabled = false;
-  uint8_t steps = 0;
-
-#ifndef WITHOUT_BUTTON
-  volatile Button button = Open;
-  unsigned long lastButtonCheck = 0;
-  uint8_t doubleClickTicks = 0;     
-  bool doubleClickEnabled = false;  
-  uint16_t keyDownTicks = 0;    
-#endif
-
-#if ENC_DECODER != ENC_NORMAL
-  static const int8_t table[16];
-#endif
 
 };
 

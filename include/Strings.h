@@ -20,13 +20,15 @@
 #ifndef _SMUFF_STRINGS_H
 #define _SMUFF_STRINGS_H
 
+#if defined (__AVR__)
 #include <avr/pgmspace.h>
-
+#endif
+ 
 #define SD_ERR_INIT           1
 #define SD_ERR_NOCONFIG       2
 #define SD_READING_CONFIG     0
 
-#ifdef __STM32F1__
+#if defined (__STM32F1__) || defined (__ESP32__)
 const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
 const char P_MenuItemSeparator [] PROGMEM   = { "\u25ab\u25ab\u25ab\u25ab\u25ab\n"};
 const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
@@ -71,7 +73,7 @@ const char P_TitleToolsMenu [] PROGMEM      = { "Tool Selection" };
 const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
-#ifdef __STM32F1__
+#if defined (__STM32F1__) || defined (__ESP32__)
 const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers           %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
 #else
 const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
@@ -99,7 +101,7 @@ const char P_ServoCycles[] PROGMEM          = { "cycles:" };
 const char P_NoOfChunks[] PROGMEM           = { "# of chunks:" };
 const char P_BaudMenuItems[] PROGMEM        = { "USB-Serial     %6s\n2nd Serial     %6s" };
 const char P_Baudrates[] PROGMEM            = { "4800\n9600\n19200\n38400\n56700\n115200\n230400" };
-#ifdef __STM32F1__
+#if defined (__STM32F1__) || defined (__ESP32__)
 const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nRevolver            %2s\nFeeder              %2s" };
 const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
 const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo open      %5s\nServo closed    %5s\nServo cycles    %5s" };
@@ -131,7 +133,7 @@ const char P_SD_NoConfig[] PROGMEM      = { "No config file found!" };
 const char P_Ok[] PROGMEM             = { "ok\n" };
 const char P_Start[] PROGMEM          = { "start\n" };
 const char P_Error[] PROGMEM          = { "Error: %s\n" };
-const char P_UnknownCmd[] PROGMEM     = { "Unknown command:" };
+const char P_UnknownCmd[] PROGMEM     = { "Unknown command: %s" };
 const char P_AlreadySaved[] PROGMEM   = { "Already saved.\n" };
 const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s\n" };
 const char P_TResponse[] PROGMEM      = { "T%d\n" };

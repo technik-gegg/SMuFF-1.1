@@ -28,14 +28,23 @@
 #include "ZTimerLib.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
+
+#ifdef __ESP32__
+extern BluetoothSerial SerialBT;
+#endif
+
 #ifdef __STM32F1__
 #include "libmaple/libmaple.h"
 SPIClass SPI_3(3);
-#define _tone(p, d, f)  playTone(p,d,f)
-#define _noTone(p)      muteTone(p)
+#define _tone(pin, freq, duration)  playTone(pin, freq, duration)
+#define _noTone(pin)                muteTone(pin)
+#elif defined (__ESP32__)
+#include "Tone32.h"
+#define _tone(pin, freq, duration)  tone(pin, freq, duration, BEEPER_CHANNEL)
+#define _noTone(pin)                noTone(pin, BEEPER_CHANNEL)
 #else
-#define _tone(p, d, f)  tone(p,d,f)
-#define _noTone(p)      noTone(p)
+#define _tone(pin, freq, duration)  tone(pin, freq, duration)
+#define _noTone(pin)                noTone(pin)
 #endif
 
 
@@ -116,7 +125,7 @@ void drawStatus() {
 
 void drawFeed() {
   sprintf_P(tmp, PSTR("%-7s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__ESP32__)
   display.setFont(SMALL_FONT);
   display.setFontMode(0);
   display.setDrawColor(0);
@@ -220,8 +229,9 @@ void drawUserMessage(String message) {
       for(int i=0; i< lineCnt; i++) {
         display.drawStr((display.getDisplayWidth() - display.getStrWidth(lines[i]))/2, y, lines[i]);
         if(i==0) {
-          if(strcmp(lines[1]," ")==0)
+          if(lineCnt > 1 && strcmp(lines[1]," ")==0) {
             display.drawHLine(0, y+3, display.getDisplayWidth());
+          }
         }
         y += display.getMaxCharHeight();
       }
@@ -973,19 +983,27 @@ bool selectTool(int ndx, bool showMessage) {
         M18("M18", "", 0);   // motors off
         showFeederFailedMessage(0);
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
+          #if !defined(__ESP32__)
           Serial2.print(smuffConfig.unloadCommand);
           Serial2.print("\n");
           //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
+          #endif
         }
       }
     }
+    if(smuffConfig.revolverIsServo) {
+      // release servo prior moving the selector
+      setServoPos(1, smuffConfig.revolverOffPos);
+    }
   }
-  //__debug(PSTR("Selecting tool: %d"), ndx);
+  __debug(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
   drawSelectingMessage(ndx);
   unsigned speed = steppers[SELECTOR].getMaxSpeed();
+  // if the distance between two tools is more than 3, use higher speed to move
   if(abs(toolSelected-ndx) >=3)
     steppers[SELECTOR].setMaxSpeed(steppers[SELECTOR].getMaxHSpeed());
+  
   prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
   remainingSteppersFlag |= _BV(SELECTOR);
   if(!smuffConfig.resetBeforeFeed_Y) {
@@ -1009,6 +1027,7 @@ bool selectTool(int ndx, bool showMessage) {
     resetRevolver();
     signalSelectorReady();
   }
+  // Attn: id testMode is set, it'll echo the selected tool to Serial2
   if(testMode) {
     Serial2.print("T");
     Serial2.println(ndx); 
@@ -1018,15 +1037,14 @@ bool selectTool(int ndx, bool showMessage) {
 }
 
 void resetRevolver() {
-  //__debug(PSTR("resetting revolver"));
   moveHome(REVOLVER, false, false);
-  //__debug(PSTR("DONE resetting revolver"));
   if (toolSelected >=0 && toolSelected <= smuffConfig.toolCount-1) {
     if(!smuffConfig.revolverIsServo) {
       prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected*smuffConfig.revolverSpacing), true);
       runAndWait(REVOLVER);
     }
     else {
+      //__debug(PSTR("Positioning servo to: %d (CLOSED)"), smuffConfig.revolverOnPos);
       setServoPos(1, smuffConfig.revolverOnPos);
     }
   }
@@ -1037,6 +1055,7 @@ void setStepperSteps(int index, long steps, bool ignoreEndstop) {
   // ... just in case... you never know...
   if(smuffConfig.revolverIsServo && index == SELECTOR) {
     if(servoRevolver.getDegree() != smuffConfig.revolverOffPos) {
+      //__debug(PSTR("Positioning servo to: %d (OPEN)"), smuffConfig.revolverOffPos);
       setServoPos(1, smuffConfig.revolverOffPos);
     }
   }
@@ -1246,8 +1265,11 @@ void getStoredData() {
 void setSignalPort(int port, bool state) {
   if(!smuffConfig.prusaMMU2) {
     sprintf(tmp,"%c%c%s", 0x1b, port, state ? "1" : "0");
-#ifdef __STM32F1__
+#if defined(__STM32F1__)
     Serial1.write(tmp);
+#elif defined(__ESP32__)
+    // nothing here yet, might need adding some port pins settings / resetting
+    //__debug(PSTR("setting signal port: %d, %s"), port, state ? "true" : "false");
 #else
     Serial2.write(tmp);
 #endif
@@ -1289,7 +1311,7 @@ void listDir(File root, int numTabs, int serial) {
       //listDir(entry, numTabs + 1, serial);
     } 
     else {
-      sprintf(tmp, "\t\t%ld\r\n", entry.size());
+      sprintf(tmp, "\t\t%d\r\n", entry.size());
       printResponse(tmp, serial);
     }
     entry.close();
@@ -1304,7 +1326,11 @@ bool getFiles(const char* rootFolder, const char* pattern, int maxFiles, bool cu
   FsFile root;
   SdFat SD;
 
-  if(SD.begin()) {
+#if defined(__ESP32__)
+  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+#else
+  if (SD.begin()) {
+#endif
     root.open(rootFolder, O_READ);
     while (file.openNext(&root, O_READ)) {
       if (!file.isHidden()) {
@@ -1338,8 +1364,9 @@ void testRun(String fname) {
   FsFile file;
   String gCode;
   unsigned long loopCnt = 1L, cmdCnt = 1L;
-  long tool = 0, lastTool = 0;
-  int mode = 1, toolChanges = 0;
+  int tool = 0, lastTool = 0;
+  int mode = 1;
+  long toolChanges = 0;
   unsigned long startTime = millis();
   unsigned long endstop2Miss = 0, endstop2Hit = 0;
   
@@ -1436,7 +1463,7 @@ void testRun(String fname) {
       file.close();
     }
     else {
-      sprintf_P(msg, P_TestFailed, fname);
+      sprintf_P(msg, P_TestFailed, fname.c_str());
       drawUserMessage(msg);
       delay(3000);
     }
@@ -1450,11 +1477,17 @@ void __debug(const char* fmt, ...) {
   va_start(arguments, fmt); 
   vsnprintf_P(_tmp, 511, fmt, arguments);
   va_end (arguments); 
-#ifdef __AVR__
-  Serial.print(F("echo: dbg: "));  Serial.print(_tmp); Serial.print(" - Mem: "); Serial.println(freeMemory());
-#else
-  Serial1.print(F("echo: dbg: "));  Serial1.println(_tmp);
-#endif
+  #ifdef __AVR__
+    Serial.print(F("echo: dbg: "));   Serial.print(_tmp); Serial.print(" - Mem: "); Serial.println(freeMemory());
+  #elif defined(__ESP32__)
+    #if !defined(__DEBUG_BT__)
+      Serial.print(F("echo: dbg: "));   Serial.println(_tmp);
+    #else
+      SerialBT.print(F("echo: dbg: "));   SerialBT.println(_tmp);
+    #endif
+  #else
+    Serial1.print(F("echo: dbg: "));  Serial1.println(_tmp);
+  #endif
 #endif
 }
 

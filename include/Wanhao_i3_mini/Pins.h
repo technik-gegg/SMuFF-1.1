@@ -57,6 +57,7 @@
 #define ENCODER2_PIN        3
 #define ENCODER_BUTTON_PIN  5
 
+#define SDCS_PIN            -1
 #define DSP_CS_PIN          41
 #define DSP_DC_PIN          40
 #define DSP_RESET_PIN       27

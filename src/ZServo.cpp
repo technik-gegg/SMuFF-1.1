@@ -32,7 +32,9 @@ void ZServo::attach(int pin, bool useTimer, int servoIndex) {
   if(!timerSet && _useTimer) {
     timerSet = true;
 #ifdef __STM32F1__
-    servoTimer.setupTimer(ZTimer::ZTIMER5, 1800);   // equals to 50 us on 72 MHz CPU
+    servoTimer.setupTimer(ZTimer::ZTIMER5, 3600);       // equals to 50 us on 72 MHz CPU
+#elif __ESP32__
+    servoTimer.setupTimer(ZTimer::ZTIMER3, 80, 50);     // equals to 50 us
 #else
     servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
 #endif
@@ -42,8 +44,20 @@ void ZServo::attach(int pin, bool useTimer, int servoIndex) {
   }
   if(_useTimer) {
     servoTimer.setupTimerHook(isrServoTimerHandler);
+    #if defined(__ESP32__)
+    servoTimer.setNextInterruptInterval(50);
+    #else
     servoTimer.setNextInterruptInterval(1);
-    //__debug(PSTR("Servo Timer initialized"));
+    #endif
+    __debug(PSTR("Servo with timer initialized"));
+  }
+  else {
+    #if defined(__ESP32__)
+    ledcSetup(SERVO_CHANNEL+_servoIndex, SERVO_FREQ, 16);
+    ledcAttachPin(pin, SERVO_CHANNEL+_servoIndex);
+    __debug(PSTR("Servo channel: %d"), SERVO_CHANNEL+_servoIndex);
+    #endif
+    __debug(PSTR("Servo without timer initialized"));
   }
 }
 
@@ -59,8 +73,12 @@ void ZServo::attach(int pin) {
 }
 
 void ZServo::detach() {
-  _pin = 0;
   servoInstances[_servoIndex] = NULL;
+  #if defined(__ESP32__)
+    if(!_useTimer)
+      ledcDetachPin(_pin);
+  #endif
+  _pin = 0;
 }
 
 /*
@@ -89,7 +107,19 @@ void ZServo::setIndex(int servoIndex) {
 bool ZServo::setServoPos(int degree) {
   bool stat = false;
   if(_pin > 0) {
+    #if defined(__ESP32__)
+    if(!_useTimer) {
+      _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
+      //__debug(PSTR("Servo %d: %d° = %d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
+    }
+    else {
+      _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
+      //__debug(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
+    }
+    #else
     _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
+    //__debug(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
+    #endif
     stat = true;
     _degree = degree;
     _lastUpdate = millis();
@@ -115,16 +145,18 @@ void ZServo::setServoMS(int microseconds) {
 void ZServo::setServo() {
   if(!_useTimer) {
     if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call 
-  #ifndef __STM32F1__    
+  #if defined(__STM32F1__)
       digitalWrite(_pin, HIGH);
       delayMicroseconds(_pulseLen);
       digitalWrite(_pin, LOW);
+  #elif defined(__ESP32__)
+      ledcWrite(SERVO_CHANNEL+_servoIndex, _pulseLen);
   #else
       // use the direct write (Bit set reset) method on STM32
       *_pin_reg = _pin_set;
       delay_us(_pulseLen);
       *_pin_reg = _pin_reset;
-#endif
+  #endif
       _lastDegree = _degree;
     }
   }
@@ -135,11 +167,16 @@ void ZServo::setServo() {
     // is being active, as it's in the method above.
     // It though is less accurate but will do its job on a servo.
     _tickCnt += 50;
-#ifdef __STM32F1__
+#if defined(__STM32F1__)
     if(_tickCnt < (uint32)_pulseLen)
       *_pin_reg = _pin_set;
     else
       *_pin_reg = _pin_reset;
+#elif defined(__ESP32__)
+    if(_tickCnt < _pulseLen)
+      digitalWrite(_pin, HIGH);
+    else
+      digitalWrite(_pin, LOW);
 #else
     if(_tickCnt < _pulseLen)
       digitalWrite(_pin, HIGH);

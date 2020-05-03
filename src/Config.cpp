@@ -26,8 +26,10 @@
 
 SdFs SD;
 
-#ifdef __STM32F1__
+#if defined(__STM32F1__)
 const size_t capacity = 2400;
+#elif defined(__ESP32__)
+const size_t capacity = 4800;     // since the ESP32 has more memory, we can do this
 #else
 const size_t capacity = 1300;
 #endif
@@ -37,13 +39,22 @@ void readConfig()
 {
   DynamicJsonDocument jsonDoc(capacity);
 
-  if (!SD.begin()) {
-    drawSDStatus(SD_ERR_INIT);
-    delay(5000);
-    return;
+  if(SDCS_PIN != -1) {
+    if (!SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+      drawSDStatus(SD_ERR_INIT);
+      delay(5000);
+      return;
+    }
+  }
+  else {
+    if (!SD.begin()) {
+      drawSDStatus(SD_ERR_INIT);
+      delay(5000);
+      return;
+    }
   }
 
-  //__debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
+  __debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
   FsFile cfg;
   if(cfg.open(CONFIG_FILE))
   {
@@ -140,15 +151,17 @@ void readConfig()
       smuffConfig.duetDirect =          jsonDoc["Duet3DDirect"];
       const char* p =                   jsonDoc["UnloadCommand"];
       if(p != NULL && strlen(p) > 0) {
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__ESP32__)
         strncpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
 #else
         strlcpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
 #endif
       }
       smuffConfig.prusaMMU2 =           jsonDoc["EmulatePrusa"];
+      smuffConfig.hasPanelDue =         jsonDoc["HasPanelDue"];
 
-#ifdef __STM32F1__  
+      // read materials if running on 32-Bit MCU
+#if defined(__STM32F1__) || defined(__ESP32__)
       for(int i=0; i < smuffConfig.toolCount; i++) {
         char tmp[16];
         sprintf(tmp,"T%d", i);
@@ -163,7 +176,7 @@ void readConfig()
       }
 #endif
       
-      //__debug(PSTR("DONE reading config"));
+      __debug(PSTR("DONE reading config"));
     }
     if(smuffConfig.maxSpeedHS_X == 0)
       smuffConfig.maxSpeedHS_X = smuffConfig.maxSpeed_X;
@@ -174,7 +187,7 @@ void readConfig()
     cfg.close();
   }
   else {
-    //__debug(PSTR("Open config file failed: handle = %s"), !cfg ? "FALSE" : "TRUE");
+    __debug(PSTR("Open config file failed: handle = %s"), !cfg ? "FALSE" : "TRUE");
     drawSDStatus(SD_ERR_NOCONFIG);
     delay(5000);
   }
@@ -186,10 +199,19 @@ bool writeConfig(Print* dumpTo)
 
   StaticJsonDocument<capacity> jsonDoc;
   if(dumpTo == NULL) {
-    if(!SD.begin()) {
-      drawSDStatus(SD_ERR_INIT);
-      delay(5000);
-      return false;
+    if(SDCS_PIN != -1) {
+      if (!SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+        drawSDStatus(SD_ERR_INIT);
+        delay(5000);
+        return false;
+      }
+    }
+    else {
+      if(!SD.begin()) {
+        drawSDStatus(SD_ERR_INIT);
+        delay(5000);
+        return false;
+      }
     }
   }
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
@@ -208,6 +230,7 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["Duet3DDirect"]         = smuffConfig.duetDirect;
   jsonDoc["EmulatePrusa"]         = smuffConfig.prusaMMU2;
   jsonDoc["UnloadCommand"]        = smuffConfig.unloadCommand;
+  jsonDoc["HasPanelDue"]          = smuffConfig.hasPanelDue;
   
   JsonObject node = jsonObj.createNestedObject("Selector");
   node["Offset"]              = smuffConfig.firstToolOffset;
@@ -248,7 +271,7 @@ bool writeConfig(Print* dumpTo)
   node["InvertDir"]           = smuffConfig.invertDir_Z;
   node["EndstopTrigger"]      = smuffConfig.endstopTrigger_Z;
   node["ReinforceLength"]     = smuffConfig.reinforceLength;
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__ESP32__)
   node["UnloadRetract"]       = smuffConfig.unloadRetract;
   node["UnloadPushback"]      = smuffConfig.unloadPushback;
   node["PushbackDelay"]       = smuffConfig.pushbackDelay;
@@ -257,7 +280,7 @@ bool writeConfig(Print* dumpTo)
   node["FeedChunks"]          = smuffConfig.feedChunks;
   node["InsertLength"]        = smuffConfig.insertLength;
 
-#ifdef __STM32F1__  
+#if defined(__STM32F1__) || defined(__ESP32__)
   node = jsonObj.createNestedObject("Materials");
   for(int i=0; i < smuffConfig.toolCount; i++) {
     char tmp[16];
@@ -268,7 +291,7 @@ bool writeConfig(Print* dumpTo)
 
   if(dumpTo == NULL) {
     FsFile cfg;
-    if(cfg.open(CONFIG_FILE, O_WRITE | O_CREAT | O_TRUNC)) {
+    if(cfg.open(CONFIG_FILE, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
       serializeJsonPretty(jsonDoc, cfg);
       stat = true;
     }

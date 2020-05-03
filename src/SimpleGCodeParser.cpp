@@ -97,7 +97,7 @@ void parseGcode(const String& serialBuffer, int serial) {
         if(currentLine > 0)
           sprintf_P(ptmp, PSTR("M998 %d\n"), currentLine);
         else
-          sprintf_P(ptmp, PSTR("M998\n"), NULL);
+          sprintf_P(ptmp, PSTR("M998\n"));
         printResponseP(ptmp, serial);
         //__debug(PSTR("Resend 'T' sent"));  
         return;
@@ -166,8 +166,8 @@ void parseGcode(const String& serialBuffer, int serial) {
   }
   else {
     char tmp[256];
-    sprintf_P(tmp, PSTR("%S '%s'\n"), P_UnknownCmd, line.c_str());
-    //__debug(PSTR("ParseGcode err: %s"), tmp);
+    sprintf_P(tmp, P_UnknownCmd, line.c_str());
+    __debug(PSTR("ParseGcode err: %s"), tmp);
     if(!smuffConfig.prusaMMU2) {
       sendErrorResponseP(serial, tmp);
     }
@@ -185,7 +185,7 @@ bool parse_T(const String& buf, int serial) {
   int tool = buf.toInt();
   int param;
 
-  char msg[10];
+  char msg[20];
   int ofs = 0;
   sprintf_P(msg, P_TResponse, tool);
   ofs = String(msg).length()-2;
@@ -194,10 +194,10 @@ bool parse_T(const String& buf, int serial) {
     parse_G(String("28"), serial);
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
-    //__debug(PSTR("Tool change requested: T%d"), tool);
+    __debug(PSTR("Tool change requested: T%d"), tool);
     // Prusa expects the MMU to unload filament on its own before tool change
     if(smuffConfig.prusaMMU2 && feederEndstop()) { 
-      //__debug(PSTR("must unload first!"));
+      __debug(PSTR("must unload first!"));
       unloadFilament();
     }
     stat = selectTool(tool, false);
@@ -282,7 +282,7 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
   char  tmp[80];
 
   if(!smuffConfig.prusaMMU2) {
-    sprintf_P(tmp, P_NoPrusa, NULL);
+    sprintf_P(tmp, P_NoPrusa);
     sendErrorResponseP(serial, tmp);
     //__debug(PSTR("No Prusa Emulation configured!"));
     return false;
@@ -300,7 +300,7 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
     case 'S':     // Init (S0 | S1 | S2 | S3)
       switch(type) {
         case 0:
-          sprintf_P(tmp,PSTR("ok\n"), NULL);
+          sprintf_P(tmp,PSTR("ok\n"));
           break;
         case 1:
           sprintf_P(tmp,PSTR("%dok\n"), PMMU_VERSION);
@@ -510,7 +510,9 @@ void printResponse(const char* response, int serial) {
     case 0: Serial.print(response); break;
     case 1: Serial1.print(response); break;
     case 2: Serial2.print(response); break;
+#ifndef __ESP32__
     case 3: Serial3.print(response); break;
+#endif
   }
 }
 
@@ -519,6 +521,8 @@ void printResponseP(const char* response, int serial) {
     case 0: Serial.print((__FlashStringHelper*)response); break;
     case 1: Serial1.print((__FlashStringHelper*)response); break;
     case 2: Serial2.print((__FlashStringHelper*)response); break;
+#ifndef __ESP32__
     case 3: Serial3.print((__FlashStringHelper*)response); break;
+#endif
   }
 }

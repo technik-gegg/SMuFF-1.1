@@ -23,27 +23,37 @@
 
 #define DEBUG 1
 
+#if defined (__AVR__)
 #include <avr/pgmspace.h>
+#endif
+#if defined (__ESP32__)
+#include <pgmspace.h>
+#endif
 #include <Arduino.h>
 #include "Config.h"
 #include "Strings.h"
 #include "GCodes.h"
 #include "Menus.h"
 #include "ClickEncoder.h"
+#include <SPI.h>
 #include <Wire.h>
-#include <SPI.H>
 #include <SdFs.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
 //#include <FastLED.h>
-#ifdef __STM32F1__
+#if defined (__STM32F1__)
 #include <wirish.h>
 #include <pwm.h>
 
 #undef  sprintf_P
 #define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
 #define vsnprintf_P           vsnprintf
+#endif
+
+#if defined(__ESP32__)
+#include <WiFi.h>
+#include <BluetoothSerial.h>
 #endif
 
 #define FEEDER_SIGNAL     1
@@ -124,6 +134,7 @@ typedef struct {
   int   wipeSequence[20]    = { 150,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,110,-1 };
   bool  prusaMMU2           = true;
   bool  useDuetLaser        = false;
+  bool  hasPanelDue         = false;
 } SMuFFConfig;
 
 
@@ -131,6 +142,13 @@ typedef struct {
 extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
 #endif
 #ifdef __BRD_SKR_MINI
+  #ifdef USE_TWI_DISPLAY
+  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
+  #else
+  extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  #endif
+#endif
+#ifdef __BRD_ESP32
   #ifdef USE_TWI_DISPLAY
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
   #else
@@ -193,11 +211,13 @@ extern void prepSteppingRelMillimeter(int index, float millimeter, bool ignoreEn
 extern void resetRevolver();
 extern void serialEvent();
 extern void serialEvent2();
-#ifdef __STM32F1__
+#ifndef __AVR__
 extern void serialEvent1();
 extern void serialEvent3();
 #endif
+#ifdef __AVR__
 extern void wireReceiveEvent(int numBytes);
+#endif
 extern void beep(int count);
 extern void longBeep(int count);
 extern void userBeep();

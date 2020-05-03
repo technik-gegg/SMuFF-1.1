@@ -21,12 +21,17 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V1.67"
+#define VERSION_STRING    "V2.xx"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2019-12-29"
+#define VERSION_DATE      "2020-04-30"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
+#if defined(__STM32F1__)
+#define MAX_JSON          2048              // 2K of temporary buffer for the JSON data
+#elif defined(__ESP32__)
+#define MAX_JSON          4096              // 4K of temporary buffer for the JSON data
+#endif
 
 #define NUM_STEPPERS      3
 #define SELECTOR          0

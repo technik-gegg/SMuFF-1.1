@@ -26,6 +26,7 @@
 #ifdef __BRD_I3_MINI
 U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
 #endif
+
 #ifdef __BRD_SKR_MINI
   #ifdef USE_TWI_DISPLAY
   U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE); 
@@ -33,6 +34,15 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
 #endif
+
+#ifdef __BRD_ESP32
+  #ifdef USE_TWI_DISPLAY
+  U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #else
+  U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  #endif
+#endif
+
 
 ZStepper                steppers[NUM_STEPPERS];
 ZTimer                  stepperTimer;
@@ -56,16 +66,25 @@ volatile bool           lastZEndstop2State = false;
 unsigned long           endstopZ2HitCnt = 0;
 static unsigned long    lastDisplayRefresh = 0;
 volatile unsigned long  generalCounter = 0;
+volatile int            bracketCnt = 0;
+volatile int            jsonPtr = 0;
+//char                    jsonData[MAX_JSON];         // temporary buffer for json data coming from Duet3D (not used yet)
 
 String serialBuffer0, serialBuffer2, serialBuffer9; 
 String traceSerial2;
+String _hostname = "";
 
 extern int  swapTools[MAX_TOOLS];
 extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);    // defined in tone library
 
+
 void isrStepperHandler();       // forward declarations ... makes every compiler happy
 void isrEncoderHandler();
 void refreshStatus(bool withLogo);
+
+#ifdef __ESP32__
+BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue 
+#endif
 
 #ifdef __STM32F1__
 volatile uint32_t *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
@@ -131,33 +150,57 @@ void duetLSHandler() {
   duetLS.service();
 }
 
+void every20ms() {
+  // do the servos interrupt routines so we save one timer 
+  if(!servo.hasTimer())
+    servo.setServo();
+  if(!servoRevolver.hasTimer())
+    servoRevolver.setServo();
+}
+
+void every100ms() {
+  // Add your periodical code here 
+}
+
+void every250ms() {
+  // Add your periodical code here 
+}
+
+void every500ms() {
+  // Add your periodical code here 
+}
+
+volatile unsigned long lastTick;
+volatile unsigned gcInterval;
+
+void every1s() {
+    unsigned long tmp = millis();
+    gcInterval = tmp-lastTick;
+    lastTick = tmp;
+}
+
 /*
   Handles the timer interrupt for the rotary encoder.
   Also serves as a general purpose timer dispatcher since the 
   interrupt occures every millisecond.
 */
-unsigned long lastTick;
-unsigned gcInterval;
 void isrEncoderHandler() {
   encoder.service();
   generalCounter++;
   if(generalCounter % 20 == 0) { // every 20 ms
-    // do the servos interrupt routines so we save one timer 
-    if(!servo.hasTimer())
-      servo.setServo();
-    if(!servoRevolver.hasTimer())
-      servoRevolver.setServo();
+    every20ms();
   }
   if(generalCounter % 100 == 0) { // every 100 ms
+    every100ms();
   }
   if(generalCounter % 250 == 0) { // every 250 ms
+    every250ms();
   }
   if(generalCounter % 500 == 0) { // every 500 ms
+    every500ms();
   }
   if(generalCounter % 1000 == 0) { // every 1000 ms
-    unsigned long tmp = millis();
-    gcInterval = tmp-lastTick;
-    lastTick = tmp;
+    every1s();
   }
   //duetLSHandler();
 }
@@ -167,6 +210,22 @@ bool checkDuetEndstop() {
     return duetLS.getSwitch();
   }
   return false;
+}
+
+void blinkLED() {
+#if defined(LED_PIN)
+  if(LED_PIN != -1)
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+#endif
+}
+
+void setupDeviceName() {
+  String appendix = "";
+#if defined(__ESP32__)
+  appendix = WiFi.macAddress().substring(9);
+  appendix.replace(":", "");
+#endif
+  _hostname = String("SMuFF") + "_" + appendix;
 }
 
 void setup() {
@@ -190,7 +249,7 @@ void setup() {
   #endif
 #endif
 
-  delay(1000);
+  delay(500);
   
   serialBuffer0.reserve(40);
   serialBuffer2.reserve(40);
@@ -201,13 +260,26 @@ void setup() {
   FastLED.setBrightness(BRIGHTNESS);
   */
 
-  Serial.begin(57600);        // set fixed baudrate until config file was read
+  setupDeviceName();
+
+#ifdef __ESP32__
+  // this line must be kept, otherwise BT power down will cause a reset
+  SerialBT.begin(_hostname);
+  if(BEEPER_PIN != -1) {
+    ledcSetup(BEEPER_CHANNEL, 5000, 8);
+    ledcAttachPin(BEEPER_PIN, BEEPER_CHANNEL);
+  }
+#endif
+
+  Serial.begin(115200);        // set fixed baudrate until config file was read
+  __debug(PSTR("[ setup() ]"));
+
   setupDisplay(); 
   readConfig();
   // special case: 
   // if the baudrate is set to 0, the board is running out of working memory
   if(smuffConfig.serial1Baudrate != 0) { 
-    if(smuffConfig.serial1Baudrate != 57600) {
+    if(smuffConfig.serial1Baudrate != 115200) {
       Serial.end();
       Serial.begin(smuffConfig.serial1Baudrate);
     }
@@ -217,32 +289,48 @@ void setup() {
     longBeep(3);
     showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail4, P_OkButtonOnly);
   }
-#ifdef __STM32F1__
+
+#ifndef __AVR__
   Serial1.begin(smuffConfig.serial2Baudrate);
-  Serial3.begin(smuffConfig.serial2Baudrate);
-#else
   Serial2.begin(smuffConfig.serial2Baudrate);
+  #ifndef __ESP32__
+  Serial3.begin(smuffConfig.serial2Baudrate);
+  #endif
+#else
 #endif
-  //__debug(PSTR("DONE init SERIAL"));
+  __debug(PSTR("DONE init SERIAL"));
 
   setupSteppers();
   setupTimers();
   
-  servo.attach(SERVO1_PIN, true, 0);
-  servo.setMaxCycles(smuffConfig.servoCycles);
-  setServoPos(0, 90);
-  // This one's quite experimental yet.
-  // Trying to replace the Revolver stepper motor with a servo motor
-  servoRevolver.attach(SERVO2_PIN, true, 1);  
-  servoRevolver.setMaxCycles(smuffConfig.servoCycles);
-  setServoPos(1, smuffConfig.revolverOffPos);
-
+  if(SERVO1_PIN != -1) {
+    #if defined(__ESP32__)
+      // we'll be using the internal ledcWrite for servo control on ESP32
+      servo.attach(SERVO1_PIN, false, 0);
+    #else
+      servo.attach(SERVO1_PIN, true, 0);
+    #endif
+    servo.setMaxCycles(smuffConfig.servoCycles);
+    setServoPos(0, 90);
+  }
+  
+  // Replace the Revolver stepper motor with a servo motor
+  if(SERVO2_PIN != -1) {
+    #if defined(__ESP32__)
+      // we'll be using the internal ledcWrite for servo control on ESP32
+      servoRevolver.attach(SERVO2_PIN, false, 1);
+    #else
+      servoRevolver.attach(SERVO2_PIN, true, 1);  
+    #endif
+    servoRevolver.setMaxCycles(smuffConfig.servoCycles);
+    setServoPos(1, smuffConfig.revolverOffPos);
+  }
   // this call must happen after setupSteppers()
   getStoredData();
 
   // Duet Laser Sensor is not being used yet because the 
-  // measurements are somewhat unreliable. Not sure if it's the 
-  // sensor itself or it's just some mechanical issue.
+  // measurements are somewhat unreliable. Not sure whether it's the 
+  // sensor itself or just some mechanical issue.
   /*
   if(smuffConfig.useDuetLaser) {
     duetLS.attach(Z_END_PIN);
@@ -257,13 +345,17 @@ void setup() {
   if(HEATER0_PIN != -1) {
     pinMode(HEATER0_PIN, OUTPUT);
   }
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__ESP32__)
   if(HEATBED_PIN != -1) {
-    pinMode(HEATBED_PIN, PWM); 
+    #if defined(__STM32F1__)
+      pinMode(HEATBED_PIN, PWM); 
+    #else 
+      pinMode(HEATBED_PIN, OUTPUT);
+    #endif
   }
 #endif
   
-  if(FAN_PIN != -1){
+  if(FAN_PIN != -1) {
 #ifdef __STM32F1__
 
 #define FAN_PWM_FREQ_MS -1  // set to 40 for about 25 kHz
@@ -283,16 +375,24 @@ void setup() {
       timer_generate_update(dev);
       timer_resume(dev);
     }
+#elif defined(__ESP32__) 
+      ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
+      ledcAttachPin(FAN_PIN, FAN_CHANNEL);
+      __debug(PSTR("DONE FAN PIN CONFIG"));
 #else
-    pinMode(FAN_PIN, OUTPUT);
+      pinMode(FAN_PIN, OUTPUT);
 #endif      
     if(smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100) {
+      #if defined (__ESP32__)
+      ledcWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));
+      #else
       analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));    
+      #endif
     }
-    //__debug(PSTR("DONE FAN init"));
+    __debug(PSTR("DONE FAN init"));
   }
 
-#ifndef __STM32F1__
+#ifdef __AVR__
   // We can't do Master and Slave on this device. 
   // Slave mode is used for the I2C OLE Display on SKR mini
   if(smuffConfig.i2cAddress != 0) {
@@ -307,7 +407,7 @@ void setup() {
   else {
     resetRevolver();
   }
-  //__debug(PSTR("DONE reset Revolver"));
+  __debug(PSTR("DONE reset Revolver"));
   
   sendStartResponse(0);
   if(smuffConfig.prusaMMU2) {
@@ -370,21 +470,27 @@ void setupSteppers() {
       steppers[i].runNoWaitFunc = runNoWait;
       steppers[i].setEnabled(true);
   }
-  //__debug(PSTR("DONE enabling steppers"));
+  __debug(PSTR("DONE enabling steppers"));
 
   for(int i=0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
-  //__debug(PSTR("DONE initializing swaps"));
+  __debug(PSTR("DONE initializing swaps"));
 }
 
 void setupTimers() {
-#ifdef __BRD_I3_MINI
+#if defined(__AVR__)
   // *****
   // Attn: Servo uses TIMER5 if setup to create its own timer 
   // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1);
   encoderTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256); // round about 1ms on 16MHz CPU
+#elif defined(__ESP32__)
+  // *****
+  // Attn: Servo uses TIMER4 if setup to create its own timer 
+  // *****
+  stepperTimer.setupTimer(ZTimer::ZTIMER1, 4, 1);                 // prescaler set to 20MHz, timer will be calculated as needed
+  encoderTimer.setupTimer(ZTimer::ZTIMER2, 80, 1000);             // 1ms on 80MHz Timer Clock
 #else
   // *****
   // Attn: 
@@ -393,20 +499,23 @@ void setupTimers() {
   //    Beeper uses TIMER4 CH3
   //    PC9 (Heatbed) uses TIMER1 CH1
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);
-  encoderTimer.setupTimer(ZTimer::ZTIMER1, 1, 1460);  // equals to 1ms on 72MHz CPU (supposed to be 1800 but measured around 1760)
-  setToneTimerChannel(4, 3);                          // force TIMER4 / CH3 on STM32F1x for tone library
+  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);                 // prescaler set to 24MHz, timer will be calculated as needed
+  encoderTimer.setupTimer(ZTimer::ZTIMER1, 72, 1000);             // 1ms on 72MHz CPU
+  setToneTimerChannel(4, 3);                                      // force TIMER4 / CH3 on STM32F1x for tone library
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);
   encoderTimer.setupTimerHook(isrEncoderHandler);
   encoder.setDoubleClickEnabled(true);
-#ifdef __BRD_I3_MINI
-  encoderTimer.setNextInterruptInterval(63);    // run encoder timer
+
+#if defined(__AVR__)
+  encoderTimer.setNextInterruptInterval(1000);    // run encoder timer (STM32)
+#elif defined(__ESP32__)
+  encoderTimer.setNextInterruptInterval(1000);    // run encoder timer (ESP32)
 #else
-  encoderTimer.setNextInterruptInterval(40);    // run encoder timer
+  encoderTimer.setNextInterruptInterval(40);      // run encoder timer (AVR)
 #endif
-  //__debug(PSTR("DONE setup timers"));
+  __debug(PSTR("DONE setup timers"));
 }
 
 void startStepperInterval() {
@@ -459,17 +568,19 @@ void runNoWait(volatile int index) {
   if(index != -1)
     remainingSteppersFlag |= _BV(index);
   startStepperInterval();
+  //__debug(PSTR("started stepper %d"), index);
 }
 
 void runAndWait(volatile int index) {
   runNoWait(index);
   while(remainingSteppersFlag) {
     checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
-#ifdef __STM32F1__
+#if defined(__STM32F1__) // || defined(__ESP32__)
     if(!showMenu)
       refreshStatus(true);
 #endif
   }
+  //__debug(PSTR("RunAndWait done"));
   //if(index==FEEDER) __debug(PSTR("Fed: %smm"), String(steppers[index].getStepsTakenMM()).c_str());
 }
 
@@ -486,9 +597,8 @@ void refreshStatus(bool withLogo) {
 void loop() {
 
   //__debug(PSTR("gcInterval: %ld"), gcInterval);
-#ifdef __STM32F1__
-  if(Serial1.available()) serialEvent1();
-  if(Serial3.available()) serialEvent3();
+#if defined(__STM32F1__) || defined(__ESP32__)
+  checkSerialPending();
 #endif
   if(feederEndstop() != lastZEndstopState) {
     lastZEndstopState = feederEndstop();
@@ -509,8 +619,8 @@ void loop() {
   checkUserMessage();
   if(!displayingUserMessage) {
     if(!isPwrSave && !showMenu) {
-#ifdef __STM32F1__
-      if(millis()-lastDisplayRefresh > 250) { // refresh display every 100ms
+#if defined(__STM32F1__)
+      if(millis()-lastDisplayRefresh > 250) { // refresh display every 250ms
 #else
       if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
 #endif  
@@ -557,7 +667,7 @@ void loop() {
   
   //delay(10);
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
-    //PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
+    //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
     setPwrSave(1);
   }
   /*
@@ -605,12 +715,15 @@ bool checkUserMessage() {
 }
 
 
-#ifdef __STM32F1__
+#ifndef __AVR__
 void serialEventRun() {
   if(Serial.available()) serialEvent();
   if(Serial1.available()) serialEvent1();
   if(Serial2.available()) serialEvent2();
+  
+  #ifdef __STM32F1__
   if(Serial3.available()) serialEvent3();
+  #endif
 }
 #endif
 
@@ -656,9 +769,54 @@ void filterSerialInput(String& buffer, char in) {
   }
 }
 
+void sendToPanelDue(char in) {
+    // only if PanelDue is configured...
+  if(smuffConfig.hasPanelDue) {
+    #if defined(__ESP32__)
+    Serial2.write(in);
+    #elif defined(__STM32F1__)
+    Serial3.write(in);
+    #endif
+  }
+}
+
+bool isJsonData(char in) {
+  // check for JSON formatted data
+  if(in == '{') {
+    bracketCnt++;
+  }
+  else if(in == '}') {
+    bracketCnt--;
+  }
+  if(bracketCnt > 0) {
+    jsonPtr++;
+    //__debug(PSTR("JSON nesting level: %d"), bracketCnt);
+  }
+
+  if(jsonPtr > 0) {
+    sendToPanelDue(in);
+    if(bracketCnt > 0)
+      return true;
+  }
+  if(bracketCnt == 0 && jsonPtr > 0) {
+    if(smuffConfig.hasPanelDue) {
+      __debug(PSTR("JSON data passed through to PanelDue: %d"), jsonPtr+1);
+    }
+    else {
+      __debug(PSTR("PanelDue not configured. JSON data ignored"));
+    }
+    jsonPtr = 0;
+    return true;
+  }
+  return false;
+}
+
 void serialEvent() {
   while(Serial.available()) {
     char in = (char)Serial.read();
+    // check for JSON data first
+    if(isJsonData(in))
+      continue;
     if (in == '\n') {
       //__debug(PSTR("Received-0: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 0);
@@ -673,22 +831,30 @@ void serialEvent() {
 void serialEvent2() {
   while(Serial2.available()) {
     char in = (char)Serial2.read();
-    if (in == '\n') {
-      //__debug(PSTR("Received-2: %s"), serialBuffer2.c_str());
-      parseGcode(serialBuffer2, 2);
-      isQuote = false;
+    // in case of PanelDue connected, route everthing to Duet3D - do not process it any further 
+    if(smuffConfig.hasPanelDue) {
+      Serial.write(in);
     }
     else {
-      filterSerialInput(serialBuffer2, in);
+      if (in == '\n') {
+        //__debug(PSTR("Received-2: %s"), serialBuffer2.c_str());
+        parseGcode(serialBuffer2, 2);
+        isQuote = false;
+      }
+      else {
+        filterSerialInput(serialBuffer2, in);
+      }
     }
   }
 }
 
-#ifdef __STM32F1__
+#ifndef __AVR__
 void serialEvent1() {
   while(Serial1.available()) {
     char in = (char)Serial1.read();
-    //Serial1.write(in);
+    // check for JSON data first
+    if(isJsonData(in))
+      continue;
     if (in == '\n') {
       //__debug(PSTR("Received-1: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 1);
@@ -700,6 +866,7 @@ void serialEvent1() {
   }
 }
 
+#ifndef __ESP32__
 void serialEvent3() {
   while(Serial3.available()) {
     char in = (char)Serial3.read();
@@ -715,9 +882,10 @@ void serialEvent3() {
   }
 }
 #endif
+#endif
 
 
-#ifndef __STM32F1__
+#ifdef __AVR__
 void wireReceiveEvent(int numBytes) {
   while (Wire.available()) {
     char in = (char)Wire.read();

@@ -124,7 +124,7 @@ void ZStepper::updateAcceleration() {
 
 void ZStepper::handleISR() {
 
-  bool hit;
+  bool hit = false;
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
      (_endstopType == ORBITAL)) {

@@ -49,19 +49,27 @@ public:
 
     ZTimer() { };
 
-#ifdef __AVR__    
+#if defined(__AVR__)
     void           setupTimer(IsrTimer timer, TimerPrescaler prescaler);
 #endif
 #if defined(__STM32F1__)
     void           setupTimer(IsrTimer timer, unsigned int prescaler);
     void           setupTimer(IsrTimer timer, int channel, unsigned int prescaler, unsigned int compare = 1);
+#elif defined(__ESP32__)
+    void           setupTimer(IsrTimer timer, unsigned int prescaler);
+    void           setupTimer(IsrTimer timer, unsigned int prescaler, uint64_t compare);
+    uint64_t       getOverflow();
+    void           setOverflow(uint64_t value);
+    void           setNextInterruptInterval(uint64_t interval);
 #endif
     void           setupTimerHook(void (*function)(void));
+#if !defined(__ESP32__)
     void           setNextInterruptInterval(unsigned int interval);
     unsigned int   getOverflow();
     void           setOverflow(unsigned int value);
-    void           setCounter(unsigned int value);
     void           setCompare(unsigned int value);
+#endif
+    void           setCounter(unsigned int value);
     void           startTimer();
     void           stopTimer();
 

@@ -35,6 +35,10 @@
 #ifdef __AVR__
 #define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50Hz)-1 =  16000000 / (1024 * 50 - 1) = 311.5
 #endif
+#ifdef __ESP32__
+#define SERVO_CHANNEL           8
+#define SERVO_FREQ              50
+#endif
 
 extern void __debug(const char* fmt, ...);
 

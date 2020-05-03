@@ -67,7 +67,7 @@ void setupToolsMenu(char* menu) {
 
 void setupMainMenu(char* menu) {
     char items[450];
-#ifdef __STM32F1__
+#ifndef __AVR__
     char items2[150];
 #endif
     char stat[45];
@@ -78,7 +78,7 @@ void setupMainMenu(char* menu) {
       sprintf_P(opt, P_MenuItemsPMMU);
     }
     sprintf_P(menu, P_MenuItemBack);
-#ifdef __STM32F1__
+#ifndef __AVR__
     sprintf_P(items2, P_MenuItemsDefault, P_MenuItemSeparator);
     sprintf_P(items, P_MenuItems, stat, opt, P_MenuItemSeparator, items2);
 #else
@@ -119,7 +119,7 @@ void setupSettingsMenu(char* menu) {
     String(smuffConfig.fanSpeed).c_str(),
     String(smuffConfig.powerSaveTimeout).c_str(),
     smuffConfig.prusaMMU2 ? P_Yes : P_No,
-#ifdef __STM32F1__
+#ifndef __AVR__
     "\u25b8",
     "\u25b8",
     "\u25b8",
@@ -145,7 +145,7 @@ void setupSteppersMenu(char *menu) {
   char items[128];
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items, P_SteppersMenuItems,
-#ifdef __STM32F1__
+#ifndef __AVR__
     "\u25b8",
     "\u25b8",
     "\u25b8");
@@ -242,7 +242,7 @@ void showMainMenu() {
   do {
     setupMainMenu(_menu);
     //__debug(PSTR("MainList: %s %d"), _menu, strlen(_menu));
-    sprintf_P(_title, P_TitleMainMenu, NULL);
+    sprintf_P(_title, P_TitleMainMenu);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -269,6 +269,9 @@ void showMainMenu() {
           steppers[SELECTOR].setEnabled(!enabled);
           steppers[REVOLVER].setEnabled(!enabled);
           steppers[FEEDER].setEnabled(!enabled);
+          if(smuffConfig.revolverIsServo) {
+            setServoPos(1, smuffConfig.revolverOffPos);
+          }
           startTime = millis();
           break;
 
@@ -299,7 +302,7 @@ void showMainMenu() {
           break;
 
         case 8:
-#ifdef __STM32F1__
+#ifndef __AVR__
           if(smuffConfig.prusaMMU2)
               loadFilament();
 #else
@@ -822,7 +825,13 @@ void showSettingsMenu(char* menuTitle) {
             iVal = smuffConfig.fanSpeed;
             if(showInputDialog(title, P_InPercent, &iVal, 0, 100)) {
               smuffConfig.fanSpeed = iVal;
+              #if defined (__STM32F1__)
+              pwmWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
+              #elif defined (__ESP32__)
+              ledcWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
+              #else
               analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
+              #endif
             }
             startTime = millis();
             break;

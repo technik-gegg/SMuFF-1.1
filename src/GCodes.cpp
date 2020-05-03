@@ -30,6 +30,9 @@
 #ifdef __STM32F1__
 #include "libmaple/nvic.h"
 #endif
+#ifdef __ESP32__
+#include "Tone32.h"
+#endif
 
 extern ZStepper steppers[];
 extern ZServo   servo;
@@ -149,7 +152,11 @@ bool M20(const char* msg, String buf, int serial) {
   }
   SdFs SD;
   Print* out = &Serial;
+#if defined(__ESP32__)
+  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+#else
   if (SD.begin()) {
+#endif
     switch(serial) {
       case 0: out = &Serial; break;
       case 1: out = &Serial1; break;
@@ -173,8 +180,15 @@ bool M42(const char* msg, String buf, int serial) {
   if((pin = getParam(buf, P_Param)) == -1) {
     pinMode(pin, OUTPUT);
     if((param = getParam(buf, S_Param)) == -1) {
-      if(param >= 0 && param <= 255)
-        analogWrite(pin, param);
+      if(param >= 0 && param <= 255) {
+        #ifdef __STM32F1__
+          pwmWrite(pin, param);
+        #elif __ESP32__
+          ledcWrite(pin, param);
+        #else
+          analogWrite(pin, param);
+        #endif
+      }
     }
   }
   return stat;
@@ -199,6 +213,8 @@ bool M106(const char* msg, String buf, int serial) {
   //__debug(PSTR("Fan speed: %d%%"), param);
 #ifdef __STM32F1__
   pwmWrite(FAN_PIN, map(param, 0, 100, 0, 65535));
+#elif __ESP32__
+  ledcWrite(FAN_PIN, map(param, 0, 100, 0, 255));
 #else
   analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
 #endif
@@ -207,7 +223,13 @@ bool M106(const char* msg, String buf, int serial) {
  
 bool M107(const char* msg, String buf, int serial) {
   printResponse(msg, serial); 
+#ifdef __STM32F1__
+  pwmWrite(FAN_PIN, 0);
+#elif __ESP32__
+  ledcWrite(FAN_PIN, 0);
+#else
   analogWrite(FAN_PIN, 0);
+#endif
   return true;
 }
 
@@ -541,10 +563,12 @@ bool M701(const char* msg, String buf, int serial) {
 bool M999(const char* msg, String buf, int serial) {
   printResponse(msg, serial); 
   delay(500); 
-#ifndef __STM32F1__
+#ifdef __AVR__
   __asm__ volatile ("jmp 0x0000"); 
-#else
+#elif __STM32F1__
   nvic_sys_reset();
+#elif __ESP32__
+  ESP.restart();
 #endif
   return true;
 }

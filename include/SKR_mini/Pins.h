@@ -60,6 +60,7 @@
 
 #define NEOPIXEL_PIN        PC10
 
+#define SDCS_PIN            -1      // use default
 #define DSP_CS_PIN          PB7     // These pins are only valid if a SPI display is being used
 #define DSP_DC_PIN          PC15
 #define DSP_RESET_PIN       -1 
