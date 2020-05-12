@@ -37,7 +37,9 @@
 
 extern ZStepper       steppers[];
 extern ZServo         servo;
+#if defined(__ESP32__)
 extern ZPortExpander  portEx;
+#endif
 
 char* S_Param = (char*)"S";
 char* P_Param = (char*)"P";
@@ -186,7 +188,7 @@ bool M42(const char* msg, String buf, int serial) {
   if((pin = getParam(buf, P_Param)) != -1) {
     // pins over 1000 go to the port expander
     if(pin >= 1000) {
-      #if !defined(__AVR__)
+      #if defined(__ESP32__)
       pin -= 1000;
       if((mode = getParam(buf, M_Param)) != -1) {
          // 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN
@@ -219,11 +221,13 @@ bool M42(const char* msg, String buf, int serial) {
           case 0: pinMode(pin, INPUT); break;
           case 1: pinMode(pin, OUTPUT); break;
           case 2: pinMode(pin, INPUT_PULLUP); break;
-          #if defined(__AVR__)
-          case 3: pinMode(pin, INPUT); break;
-          #else
-          case 3: pinMode(pin, INPUT_PULLDOWN); break;
-          #endif
+          case 3: 
+            #if defined(__AVR__)
+            pinMode(pin, INPUT);
+            #else
+            pinMode(pin, INPUT_PULLDOWN); 
+            #endif
+            break;
          }
       }
       else {

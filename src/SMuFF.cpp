@@ -655,15 +655,20 @@ void loop() {
   checkUserMessage();
   if(!displayingUserMessage) {
     if(!isPwrSave && !showMenu) {
+      unsigned long elapsed = millis()-lastDisplayRefresh;
 #if defined(__STM32F1__)
-      if(millis()-lastDisplayRefresh > 250) { // refresh display every 250ms
-#elif defined(__ESP32__)
-      if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
-#else
-      if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
-#endif  
+      if(elapsed > 250) { // refresh display every 250ms
         refreshStatus(true);
       }
+#elif defined(__ESP32__)
+      if(elapsed > 500) { // refresh display every 500ms
+        refreshStatus(true);
+      }
+#else
+      if(elapsed > 500) { // refresh display every 500ms
+        refreshStatus(true);
+      }
+#endif  
     }
   }
 
@@ -710,41 +715,19 @@ void loop() {
 #if defined(__ESP32__)
   // call this method only if you have serial ports assigned 
   // to the Port Expander
-  portEx.service();
+  //portEx.service();
 
   /* FOR TESTING ONLY */
   // if(interval500ms) { portEx.togglePin(1); interval500ms = false; }
+  /*
   if(interval5s) { portEx.testSerial("Testing PortExpander serial...\n"); interval5s = false; }
   while(portEx.serialAvailable(0)) { 
     char c = portEx.serialRead(0); 
-    /* for testing purpose only */ 
     char cc = (c >= 0x20 && c < 0x7F) ? c : '.';
     __debug(PSTR("Got: %3d - '%c' - 0x%02x"), c, cc, c);  
   }
-
-#endif 
-
-  /*
-  unsigned duetState = duetLS.getState();
-  String s = duetLS.getBits();
-  String s1 = duetLS.getStuffBits();
-  if(s != "") {
-    lastState = duetState;
-    //__debug(PSTR("DuetLS S:%x E:%x %s"), duetState, duetLS.getError(), s.c_str()); 
-    //__debug(PSTR("DuetLS S:%x E:%x %s"), duetState, duetLS.getError(), s1.c_str()); 
-    duetLS.resetBits();
-    __debug(PSTR("V: %d SW: %d P:%d E:%x (ST:%x) Q: %d B: %d S: %d"), 
-      duetLS.getVersion(), 
-      duetLS.getSwitch(), 
-      duetLS.getPosition(), 
-      duetLS.getError(), 
-      duetState, 
-      duetLS.getQuality(), 
-      duetLS.getBrightness(),
-      duetLS.getShutter());
-    lastMsg = millis();
-  }
   */
+#endif 
 }
 
 void setPwrSave(int state) {
