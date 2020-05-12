@@ -154,7 +154,11 @@ void ZServo::setServo() {
   #else
       // use the direct write (Bit set reset) method on STM32
       *_pin_reg = _pin_set;
+    #ifdef __AVR__
+      delayMicroseconds(_pulseLen);
+    #else
       delay_us(_pulseLen);
+    #endif
       *_pin_reg = _pin_reset;
   #endif
       _lastDegree = _degree;

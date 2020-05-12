@@ -61,6 +61,8 @@
 #define REVOLVER_SIGNAL   3
 #define LED_SIGNAL        4
 
+#define PORT_EXPANDER_ADDRESS 0x3F
+
 typedef enum {
   ABSOLUTE,
   RELATIVE

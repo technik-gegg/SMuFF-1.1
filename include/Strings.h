@@ -20,7 +20,7 @@
 #ifndef _SMUFF_STRINGS_H
 #define _SMUFF_STRINGS_H
 
-#if defined (__AVR__)
+#if !defined (__ESP32__) && !defined(__NXP__)
 #include <avr/pgmspace.h>
 #endif
  

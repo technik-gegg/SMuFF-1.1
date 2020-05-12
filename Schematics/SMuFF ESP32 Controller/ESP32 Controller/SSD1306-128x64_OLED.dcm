@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP SSD1306
+D SSD1306 OLED
+K SSD1306
+$ENDCMP
+#
+#End Doc Library

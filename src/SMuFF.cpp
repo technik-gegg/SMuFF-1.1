@@ -21,6 +21,7 @@
 #include "ZTimerLib.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
+#include "ZPortExpander.h"
 #include "DuetLaserSensor.h"
 
 #ifdef __BRD_I3_MINI
@@ -49,6 +50,9 @@ ZTimer                  stepperTimer;
 ZTimer                  encoderTimer;
 ZServo                  servo;
 ZServo                  servoRevolver;
+#if defined(__ESP32__)
+ZPortExpander           portEx;
+#endif
 DuetLaserSensor         duetLS;
 ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
 //CRGB                    leds[NUM_LEDS];
@@ -150,7 +154,9 @@ void duetLSHandler() {
   duetLS.service();
 }
 
+volatile boolean  interval20ms; 
 void every20ms() {
+  interval20ms = true;
   // do the servos interrupt routines so we save one timer 
   if(!servo.hasTimer())
     servo.setServo();
@@ -158,25 +164,39 @@ void every20ms() {
     servoRevolver.setServo();
 }
 
+volatile boolean  interval100ms; 
 void every100ms() {
+  interval100ms = true;
   // Add your periodical code here 
 }
 
+volatile boolean  interval250ms; 
 void every250ms() {
-  // Add your periodical code here 
+  interval250ms = true;
+  // Add your periodical code here
 }
 
+volatile boolean  interval500ms; 
 void every500ms() {
+  interval500ms = true;
   // Add your periodical code here 
 }
 
 volatile unsigned long lastTick;
 volatile unsigned gcInterval;
-
+volatile boolean  interval1s; 
 void every1s() {
+    interval1s = true;
     unsigned long tmp = millis();
     gcInterval = tmp-lastTick;
     lastTick = tmp;
+  // Add your periodical code here 
+}
+
+volatile boolean  interval5s; 
+void every5s() {
+  interval5s = true;
+  // Add your periodical code here 
 }
 
 /*
@@ -201,6 +221,9 @@ void isrEncoderHandler() {
   }
   if(generalCounter % 1000 == 0) { // every 1000 ms
     every1s();
+  }
+  if(generalCounter % 5000 == 0) { // every 5000 ms
+    every5s();
   }
   //duetLSHandler();
 }
@@ -390,6 +413,18 @@ void setup() {
       #endif
     }
     __debug(PSTR("DONE FAN init"));
+  #if defined( __ESP32__)
+    // init the PCF8574 port expander and set pin modes (0-5 OUTPUT, 6-7 INPUT)
+    portEx.begin(PORT_EXPANDER_ADDRESS, false);
+    for(int i=0; i< 6; i++) {
+      portEx.pinMode(i, OUTPUT);
+      portEx.setPin(i);
+    }
+    portEx.pinMode(6, INPUT_PULLUP);
+    portEx.pinMode(7, INPUT_PULLUP);
+    portEx.resetPin(0);
+    __debug(PSTR("DONE PortExpander init"));
+  #endif
   }
 
 #ifdef __AVR__
@@ -481,13 +516,14 @@ void setupSteppers() {
 void setupTimers() {
 #if defined(__AVR__)
   // *****
-  // Attn: Servo uses TIMER5 if setup to create its own timer 
+  // Attn: Servo uses TIMER5 if it's setup to create its own timer 
   // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1);
   encoderTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256); // round about 1ms on 16MHz CPU
 #elif defined(__ESP32__)
   // *****
-  // Attn: Servo uses TIMER4 if setup to create its own timer 
+  // Attn: Servo uses TIMER4 if it's setup to create its own timer 
+  //       PortExpander uses TIMER3
   // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER1, 4, 1);                 // prescaler set to 20MHz, timer will be calculated as needed
   encoderTimer.setupTimer(ZTimer::ZTIMER2, 80, 1000);             // 1ms on 80MHz Timer Clock
@@ -621,6 +657,8 @@ void loop() {
     if(!isPwrSave && !showMenu) {
 #if defined(__STM32F1__)
       if(millis()-lastDisplayRefresh > 250) { // refresh display every 250ms
+#elif defined(__ESP32__)
+      if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
 #else
       if(millis()-lastDisplayRefresh > 500) { // refresh display every 500ms
 #endif  
@@ -665,11 +703,27 @@ void loop() {
     }
   }
   
-  //delay(10);
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
     //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
     setPwrSave(1);
   }
+#if defined(__ESP32__)
+  // call this method only if you have serial ports assigned 
+  // to the Port Expander
+  portEx.service();
+
+  /* FOR TESTING ONLY */
+  // if(interval500ms) { portEx.togglePin(1); interval500ms = false; }
+  if(interval5s) { portEx.testSerial("Testing PortExpander serial...\n"); interval5s = false; }
+  while(portEx.serialAvailable(0)) { 
+    char c = portEx.serialRead(0); 
+    /* for testing purpose only */ 
+    char cc = (c >= 0x20 && c < 0x7F) ? c : '.';
+    __debug(PSTR("Got: %3d - '%c' - 0x%02x"), c, cc, c);  
+  }
+
+#endif 
+
   /*
   unsigned duetState = duetLS.getState();
   String s = duetLS.getBits();

@@ -26,6 +26,7 @@
 #include "ZTimerLib.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
+#include "ZPortExpander.h"
 #include "GCodes.h"
 #ifdef __STM32F1__
 #include "libmaple/nvic.h"
@@ -34,8 +35,9 @@
 #include "Tone32.h"
 #endif
 
-extern ZStepper steppers[];
-extern ZServo   servo;
+extern ZStepper       steppers[];
+extern ZServo         servo;
+extern ZPortExpander  portEx;
 
 char* S_Param = (char*)"S";
 char* P_Param = (char*)"P";
@@ -46,6 +48,7 @@ char* E_Param = (char*)"E";
 char* F_Param = (char*)"F";
 char* C_Param = (char*)"C";
 char* T_Param = (char*)"T";
+char* M_Param = (char*)"M";
 char* N_Param = (char*)"N";
 char* I_Param = (char*)"I";
 char* J_Param = (char*)"J";
@@ -176,18 +179,72 @@ bool M20(const char* msg, String buf, int serial) {
 bool M42(const char* msg, String buf, int serial) {
   bool stat = true;
   int pin;
+  int mode;
   printResponse(msg, serial); 
-  if((pin = getParam(buf, P_Param)) == -1) {
-    pinMode(pin, OUTPUT);
-    if((param = getParam(buf, S_Param)) == -1) {
-      if(param >= 0 && param <= 255) {
-        #ifdef __STM32F1__
-          pwmWrite(pin, param);
-        #elif __ESP32__
-          ledcWrite(pin, param);
-        #else
-          analogWrite(pin, param);
-        #endif
+  //__debug(PSTR("M42->%s"), buf);
+  
+  if((pin = getParam(buf, P_Param)) != -1) {
+    // pins over 1000 go to the port expander
+    if(pin >= 1000) {
+      #if !defined(__AVR__)
+      pin -= 1000;
+      if((mode = getParam(buf, M_Param)) != -1) {
+         // 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN
+         switch(mode) {
+          case 0: portEx.pinMode(pin, INPUT); break;
+          case 1: portEx.pinMode(pin, OUTPUT); break;
+          case 2: portEx.pinMode(pin, INPUT_PULLUP); break;
+          case 3: portEx.pinMode(pin, INPUT_PULLDOWN); break;
+         }
+      }
+      else {
+        mode = 1;
+        portEx.pinMode(pin, OUTPUT);
+      }
+      if((param = getParam(buf, S_Param)) != -1 && mode == 1) {
+        //__debug(PSTR("Pin%d set to %s"), pin, param==0 ? "LOW" : "HIGH");
+        portEx.writePin(pin, param);
+      }
+      if(mode != 1) {
+        int state = portEx.readPin(pin);
+        sprintf(tmp, "echo: P%d: %s\n", pin+1000, state==0 ? "LOW" : "HIGH");
+        printResponse(tmp, serial);
+      }
+      #endif
+    }
+    else {
+      if((mode = getParam(buf, M_Param)) != -1) {
+         // 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN
+         switch(mode) {
+          case 0: pinMode(pin, INPUT); break;
+          case 1: pinMode(pin, OUTPUT); break;
+          case 2: pinMode(pin, INPUT_PULLUP); break;
+          #if defined(__AVR__)
+          case 3: pinMode(pin, INPUT); break;
+          #else
+          case 3: pinMode(pin, INPUT_PULLDOWN); break;
+          #endif
+         }
+      }
+      else {
+        mode = 1;
+        pinMode(pin, OUTPUT);
+      }
+      if((param = getParam(buf, S_Param)) != -1 && mode == 1) {
+        if(param >= 0 && param <= 255) {
+          #ifdef __STM32F1__
+            pwmWrite(pin, param);
+          #elif __ESP32__
+            ledcWrite(pin, param);
+          #else
+            analogWrite(pin, param);
+          #endif
+        }
+      }
+      if(mode != 1) {
+        int state = digitalRead(pin);
+        sprintf(tmp, "echo: P%d: %d\n", pin, state);
+        printResponse(tmp, serial);
       }
     }
   }
