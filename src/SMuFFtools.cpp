@@ -1486,7 +1486,7 @@ void __debug(const char* fmt, ...) {
       SerialBT.print(F("echo: dbg: "));   SerialBT.println(_tmp);
     #endif
   #else
-    Serial1.print(F("echo: dbg: "));  Serial1.println(_tmp);
+    Serial.print(F("echo: dbg: "));  Serial.println(_tmp);
   #endif
 #endif
 }

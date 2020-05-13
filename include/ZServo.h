@@ -26,9 +26,9 @@
 #define _ZSERVO_H
 
 #define MAX_SERVOS              5
-#define US_PER_PULSE_0DEG       544       // microseconds for 0 degrees
+#define US_PER_PULSE_0DEG       550       // microseconds for 0 degrees
 #define US_PER_PULSE_180DEG     2400      // microseconds for 180 degrees
-#define DUTY_CYCLE              20000     // servo cycle in us (equals 20ms)
+#define DUTY_CYCLE              US_PER_PULSE_180DEG * 10 //20000     // servo cycle in us (equals 20ms)
 #ifdef __STM32F1__
 #define TIMER_INTERVAL          1         
 #endif

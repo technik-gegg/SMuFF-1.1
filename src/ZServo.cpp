@@ -32,18 +32,22 @@ void ZServo::attach(int pin, bool useTimer, int servoIndex) {
   if(!timerSet && _useTimer) {
     timerSet = true;
 #ifdef __STM32F1__
-    servoTimer.setupTimer(ZTimer::ZTIMER5, 3600);       // equals to 50 us on 72 MHz CPU
+    servoTimer.setupTimer(ZTimer::ZTIMER5, 1800);       // equals to 25 us on 72 MHz CPU
+    // timers on STM32 are killing me...
+    // it's supposed to be 50us but with 50us in the timer each
+    // PWM signal it twice as long - therefore 25us.
+    // Need to investigate in that some day.
 #elif __ESP32__
     servoTimer.setupTimer(ZTimer::ZTIMER3, 80, 50);     // equals to 50 us
 #else
     servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
 #endif
+    servoTimer.setupTimerHook(isrServoTimerHandler);
   }
   if(servoIndex != -1) {
     setIndex(servoIndex);
   }
   if(_useTimer) {
-    servoTimer.setupTimerHook(isrServoTimerHandler);
     #if defined(__ESP32__)
     servoTimer.setNextInterruptInterval(50);
     #else
@@ -138,14 +142,14 @@ void ZServo::setServoMS(int microseconds) {
 
 /*
   This method has to be called every 20 milliseconds to refresh or 
-  to set the servo position.
-  This might be called internally (via timer interrupt) or externally.
-  In latter case, make sure you have the interval set correctly.
+  to set the servo position if the internal timer is not being used.
+  If the internal timer is being used, it'll call this method quite
+  more often.
 */
 void ZServo::setServo() {
   if(!_useTimer) {
     if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call 
-  #if defined(__STM32F1__)
+  #if defined(__AVR__)
       digitalWrite(_pin, HIGH);
       delayMicroseconds(_pulseLen);
       digitalWrite(_pin, LOW);
@@ -154,11 +158,7 @@ void ZServo::setServo() {
   #else
       // use the direct write (Bit set reset) method on STM32
       *_pin_reg = _pin_set;
-    #ifdef __AVR__
-      delayMicroseconds(_pulseLen);
-    #else
       delay_us(_pulseLen);
-    #endif
       *_pin_reg = _pin_reset;
   #endif
       _lastDegree = _degree;
@@ -172,22 +172,22 @@ void ZServo::setServo() {
     // It though is less accurate but will do its job on a servo.
     _tickCnt += 50;
 #if defined(__STM32F1__)
-    if(_tickCnt < (uint32)_pulseLen)
+    if(_tickCnt <= (uint32)_pulseLen)
       *_pin_reg = _pin_set;
     else
       *_pin_reg = _pin_reset;
 #elif defined(__ESP32__)
-    if(_tickCnt < _pulseLen)
+    if(_tickCnt <= _pulseLen)
       digitalWrite(_pin, HIGH);
     else
       digitalWrite(_pin, LOW);
 #else
-    if(_tickCnt < _pulseLen)
+    if(_tickCnt <= _pulseLen)
       digitalWrite(_pin, HIGH);
     else
       digitalWrite(_pin, LOW);
 #endif
-    if(_tickCnt >= DUTY_CYCLE) {    // restart the duty cycle
+    if(_tickCnt >= (uint32)(_maxPw*10)) {    // restart the duty cycle
       if(_maxCycles == 0 || ++_dutyCnt < _maxCycles)   // but no more cycles than defined to avoid jitter on the servo
         _tickCnt = 0;
     }

@@ -191,6 +191,9 @@ void every1s() {
     gcInterval = tmp-lastTick;
     lastTick = tmp;
   // Add your periodical code here 
+#if defined(__STM32F1__)
+    // Serial1.print(gcInterval); Serial1.println("ms");
+#endif
 }
 
 volatile boolean  interval5s; 
@@ -330,10 +333,13 @@ void setup() {
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
       servo.attach(SERVO1_PIN, false, 0);
+    #elif defined(__STM32F1__)
+      servo.attach(SERVO1_PIN, true, 0);
     #else
       servo.attach(SERVO1_PIN, true, 0);
     #endif
     servo.setMaxCycles(smuffConfig.servoCycles);
+    servo.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     setServoPos(0, 90);
   }
   
@@ -342,10 +348,13 @@ void setup() {
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
       servoRevolver.attach(SERVO2_PIN, false, 1);
+    #elif defined(__STM32F1__)
+      servoRevolver.attach(SERVO2_PIN, true, 1);
     #else
       servoRevolver.attach(SERVO2_PIN, true, 1);  
     #endif
     servoRevolver.setMaxCycles(smuffConfig.servoCycles);
+    servoRevolver.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     setServoPos(1, smuffConfig.revolverOffPos);
   }
   // this call must happen after setupSteppers()
@@ -381,29 +390,29 @@ void setup() {
   if(FAN_PIN != -1) {
 #ifdef __STM32F1__
 
-#define FAN_PWM_FREQ_MS -1  // set to 40 for about 25 kHz
-    pinMode(FAN_PIN, PWM);
-    // Set a different PWM frequency than default if needed.
-    // Notice: The default frequency is good enough is a PWM Fan is being used. 
-    // A normal Fan (not PWM driven) will either do full speed or no speed.
-    if(FAN_PWM_FREQ_MS != -1) {
-      timer_dev *dev = PIN_MAP[FAN_PIN].timer_device;     // determine timer via PIN mapping
-      uint8 cc_channel = PIN_MAP[FAN_PIN].timer_channel;  // as well as the channel
-      timer_pause(dev);
-      uint32 period_cyc = FAN_PWM_FREQ_MS * CYCLES_PER_MICROSECOND;
-      uint16 prescaler = (uint16)(period_cyc / ((1 << 16) - 1) + 1);
-      uint16 overflow = (uint16)((period_cyc + (prescaler / 2)) / prescaler);
-      timer_set_prescaler(dev, prescaler);
-      timer_set_reload(dev, overflow);
-      timer_generate_update(dev);
-      timer_resume(dev);
-    }
+  #define FAN_PWM_FREQ_MS -1  // set to 40 for about 25 kHz
+  pinMode(FAN_PIN, PWM);
+  // Set a different PWM frequency than default if needed.
+  // Notice: The default frequency is good enough if a PWM Fan is being used. 
+  // A normal Fan (not PWM driven) will either do full speed or no speed.
+  if(FAN_PWM_FREQ_MS != -1) {
+    timer_dev *dev = PIN_MAP[FAN_PIN].timer_device;     // determine timer via PIN mapping
+    uint8 cc_channel = PIN_MAP[FAN_PIN].timer_channel;  // as well as the channel
+    timer_pause(dev);
+    uint32 period_cyc = FAN_PWM_FREQ_MS * CYCLES_PER_MICROSECOND;
+    uint16 prescaler = (uint16)(period_cyc / ((1 << 16) - 1) + 1);
+    uint16 overflow = (uint16)((period_cyc + (prescaler / 2)) / prescaler);
+    timer_set_prescaler(dev, prescaler);
+    timer_set_reload(dev, overflow);
+    timer_generate_update(dev);
+    timer_resume(dev);
+  }
 #elif defined(__ESP32__) 
-      ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
-      ledcAttachPin(FAN_PIN, FAN_CHANNEL);
-      __debug(PSTR("DONE FAN PIN CONFIG"));
+    ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
+    ledcAttachPin(FAN_PIN, FAN_CHANNEL);
+    __debug(PSTR("DONE FAN PIN CONFIG"));
 #else
-      pinMode(FAN_PIN, OUTPUT);
+    pinMode(FAN_PIN, OUTPUT);
 #endif      
     if(smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100) {
       #if defined (__ESP32__)
@@ -535,17 +544,17 @@ void setupTimers() {
   //    Beeper uses TIMER4 CH3
   //    PC9 (Heatbed) uses TIMER1 CH1
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1);                 // prescaler set to 24MHz, timer will be calculated as needed
-  encoderTimer.setupTimer(ZTimer::ZTIMER1, 72, 1000);             // 1ms on 72MHz CPU
-  setToneTimerChannel(4, 3);                                      // force TIMER4 / CH3 on STM32F1x for tone library
+  stepperTimer.setupTimer(ZTimer::ZTIMER2, 3, 1, 1);               // prescaler set to 72MHz, timer will be calculated as needed
+  encoderTimer.setupTimer(ZTimer::ZTIMER1, 1, 8, 9000);            // 1ms on 72MHz CPU
+  setToneTimerChannel((uint8_t)ZTimer::ZTIMER4, 3);                // force TIMER4 / CH3 on STM32F1x for tone library
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);
   encoderTimer.setupTimerHook(isrEncoderHandler);
   encoder.setDoubleClickEnabled(true);
 
-#if defined(__AVR__)
-  encoderTimer.setNextInterruptInterval(1000);    // run encoder timer (STM32)
+#if defined(__STM32F1__)
+  encoderTimer.setNextInterruptInterval(9000);    // run encoder timer (STM32)
 #elif defined(__ESP32__)
   encoderTimer.setNextInterruptInterval(1000);    // run encoder timer (ESP32)
 #else

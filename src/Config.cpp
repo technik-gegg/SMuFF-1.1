@@ -159,6 +159,12 @@ void readConfig()
       }
       smuffConfig.prusaMMU2 =           jsonDoc["EmulatePrusa"];
       smuffConfig.hasPanelDue =         jsonDoc["HasPanelDue"];
+      smuffConfig.servoMinPwm =         jsonDoc["ServoMinPwm"];
+      smuffConfig.servoMaxPwm =         jsonDoc["ServoMaxPwm"];
+      if(smuffConfig.servoMinPwm == 0)
+        smuffConfig.servoMinPwm = 550;
+      if(smuffConfig.servoMaxPwm == 0)
+        smuffConfig.servoMaxPwm = 2400;
 
       // read materials if running on 32-Bit MCU
 #if defined(__STM32F1__) || defined(__ESP32__)
@@ -231,7 +237,9 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["EmulatePrusa"]         = smuffConfig.prusaMMU2;
   jsonDoc["UnloadCommand"]        = smuffConfig.unloadCommand;
   jsonDoc["HasPanelDue"]          = smuffConfig.hasPanelDue;
-  
+  jsonDoc["ServoMinPwm"]          = smuffConfig.servoMinPwm;
+  jsonDoc["ServoMaxPwm"]          = smuffConfig.servoMaxPwm;
+
   JsonObject node = jsonObj.createNestedObject("Selector");
   node["Offset"]              = smuffConfig.firstToolOffset;
   node["Spacing"]             = smuffConfig.toolSpacing;

@@ -74,7 +74,7 @@ const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
 #if defined (__STM32F1__) || defined (__ESP32__)
-const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers           %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
+const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers/Servo     %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
 #else
 const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
 #endif
@@ -102,9 +102,17 @@ const char P_NoOfChunks[] PROGMEM           = { "# of chunks:" };
 const char P_BaudMenuItems[] PROGMEM        = { "USB-Serial     %6s\n2nd Serial     %6s" };
 const char P_Baudrates[] PROGMEM            = { "4800\n9600\n19200\n38400\n56700\n115200\n230400" };
 #if defined (__STM32F1__) || defined (__ESP32__)
-const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nRevolver            %2s\nFeeder              %2s" };
+#if defined(SMUFF_V5)
+const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nFeeder              %2s\nServo               %2s" };
+#else
+const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nFeeder              %2s\nRevolver            %2s" };
+#endif
 const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
-const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo open      %5s\nServo closed    %5s\nServo cycles    %5s" };
+#if defined(SMUFF_V5)
+const char P_RevolverMenuItems[] PROGMEM    = { "Home After Feed  %4s\nReset Bef. Feed  %4s\nUse Servo        %4s\nServo opened    %5s\nServo closed    %5s\nServo cycles    %5s" };
+#else
+const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo opened    %5s\nServo closed    %5s\nServo cycles    %5s" };
+#endif
 const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
 const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };
 #else

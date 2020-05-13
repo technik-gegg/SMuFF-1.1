@@ -534,6 +534,16 @@ bool M280(const char* msg, String buf, int serial) {
       stat = false;
   }
   else stat = false;
+  if((param = getParam(buf, T_Param)) != -1) {
+    for(int i=10; i < 180; i += 10) {
+      setServoPos(servoIndex, i);
+      sprintf(tmp,"Servo pos.: %d deg\n", i);
+      printResponse(tmp, serial);
+      delay(900);
+      stat = true;
+    }
+  }
+  delay(50);
   return stat;
 }
 

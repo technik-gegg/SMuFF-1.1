@@ -137,6 +137,8 @@ typedef struct {
   bool  prusaMMU2           = true;
   bool  useDuetLaser        = false;
   bool  hasPanelDue         = false;
+  int   servoMinPwm         = 550;
+  int   servoMaxPwm         = 2400;
 } SMuFFConfig;
 
 
