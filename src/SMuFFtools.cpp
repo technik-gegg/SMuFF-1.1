@@ -322,7 +322,7 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
 }
 
 #ifdef __STM32F1__
-  #ifndef USE_TWI_DISPLAY
+  #if !defined(USE_TWI_DISPLAY) && !defined(__BRD_FYSETC_AIOII)
 
 /* =========================================
 ATTENTION:

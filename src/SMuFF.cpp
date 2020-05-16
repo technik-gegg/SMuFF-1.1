@@ -56,6 +56,10 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   #endif
 #endif
 
+#ifdef __BRD_FYSETC_AIOII
+U8G2_UC1701_MINI12864_F_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+#endif
+
 #if defined(__ESP32__)
 BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue 
 #if defined(__DEBUG_BT__)
@@ -275,6 +279,17 @@ void setupDeviceName() {
 }
 
 void setup() {
+
+// Turn on the LCD backlit in the FYSETC_AIOII
+#ifdef __BRD_FYSETC_AIOII
+  pinMode(RGB_LED_R_PIN, OUTPUT);
+  pinMode(RGB_LED_G_PIN, OUTPUT);
+  pinMode(RGB_LED_B_PIN, OUTPUT);
+
+  digitalWrite(RGB_LED_R_PIN, 1);
+  digitalWrite(RGB_LED_G_PIN, 1);
+  digitalWrite(RGB_LED_B_PIN, 1);
+#endif
 
 #ifdef __STM32F1__
   #ifndef USE_TWI_DISPLAY
