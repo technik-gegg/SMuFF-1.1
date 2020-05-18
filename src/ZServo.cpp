@@ -24,56 +24,51 @@ static ZServo* servoInstances[MAX_SERVOS];
 void ZServo::attach(int pin, bool useTimer, int servoIndex) { 
   _useTimer = useTimer;
   attach(pin);
-  
+  setIndex(servoIndex);
+
   // To set up an independent timer, you have to use the attach()-method above
   // with useTimer = true. Otherwise you'll have to call setServo() in a 20 ms
   // period to get the servo running, which is a bit more complex but saves 
   // on timers.  
   if(!timerSet && _useTimer) {
     timerSet = true;
-#ifdef __STM32F1__
+    #ifdef __STM32F1__
     servoTimer.setupTimer(ZTimer::ZTIMER5, 1800);       // equals to 25 us on 72 MHz CPU
     // timers on STM32 are killing me...
     // it's supposed to be 50us but with 50us in the timer each
     // PWM signal it twice as long - therefore 25us.
     // Need to investigate in that some day.
-#elif __ESP32__
+    #elif __ESP32__
     servoTimer.setupTimer(ZTimer::ZTIMER3, 80, 50);     // equals to 50 us
-#else
+    #else
     servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
-#endif
+    #endif
     servoTimer.setupTimerHook(isrServoTimerHandler);
-  }
-  if(servoIndex != -1) {
-    setIndex(servoIndex);
-  }
-  if(_useTimer) {
     #if defined(__ESP32__)
     servoTimer.setNextInterruptInterval(50);
     #else
     servoTimer.setNextInterruptInterval(1);
     #endif
-    __debug(PSTR("Servo with timer initialized"));
+    //__debug(PSTR("Servo with timer initialized"));
   }
   else {
     #if defined(__ESP32__)
     ledcSetup(SERVO_CHANNEL+_servoIndex, SERVO_FREQ, 16);
     ledcAttachPin(pin, SERVO_CHANNEL+_servoIndex);
-    __debug(PSTR("Servo channel: %d"), SERVO_CHANNEL+_servoIndex);
+    //__debug(PSTR("Servo channel: %d"), SERVO_CHANNEL+_servoIndex);
     #endif
-    __debug(PSTR("Servo without timer initialized"));
+    //__debug(PSTR("Servo without timer initialized"));
   }
 }
 
 void ZServo::attach(int pin) { 
   _pin = pin;
+#if defined(__STM32F1__) && defined(SMUFF_V5)
+  pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set tp Open Drain for the +5V pullup resistor
+#else
   pinMode(_pin, OUTPUT); 
-  digitalWrite(_pin, 0);
-#ifdef __STM32F1__
-  _pin_reg = &((PIN_MAP[_pin].gpio_device)->regs->BSRR);
-  _pin_set = BIT(PIN_MAP[_pin].gpio_bit);
-  _pin_reset = BIT(PIN_MAP[_pin].gpio_bit) << 16;
 #endif
+  digitalWrite(_pin, 0);
 }
 
 void ZServo::detach() {
@@ -122,7 +117,7 @@ bool ZServo::setServoPos(int degree) {
     }
     #else
     _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-    //__debug(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
+    //__debug(PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
     #endif
     stat = true;
     _degree = degree;
@@ -156,10 +151,9 @@ void ZServo::setServo() {
   #elif defined(__ESP32__)
       ledcWrite(SERVO_CHANNEL+_servoIndex, _pulseLen);
   #else
-      // use the direct write (Bit set reset) method on STM32
-      *_pin_reg = _pin_set;
+      digitalWrite(_pin, HIGH);
       delay_us(_pulseLen);
-      *_pin_reg = _pin_reset;
+      digitalWrite(_pin, LOW);
   #endif
       _lastDegree = _degree;
     }
@@ -169,36 +163,33 @@ void ZServo::setServo() {
     // it sets the output to low.
     // Using this method will prevent blocking the whole CPU while the delay 
     // is being active, as it's in the method above.
-    // It though is less accurate but will do its job on a servo.
     _tickCnt += 50;
-#if defined(__STM32F1__)
+
     if(_tickCnt <= (uint32)_pulseLen)
-      *_pin_reg = _pin_set;
+      setServoPin(HIGH);
     else
-      *_pin_reg = _pin_reset;
-#elif defined(__ESP32__)
-    if(_tickCnt <= _pulseLen)
-      digitalWrite(_pin, HIGH);
-    else
-      digitalWrite(_pin, LOW);
-#else
-    if(_tickCnt <= _pulseLen)
-      digitalWrite(_pin, HIGH);
-    else
-      digitalWrite(_pin, LOW);
-#endif
-    if(_tickCnt >= (uint32)(_maxPw*10)) {    // restart the duty cycle
-      if(_maxCycles == 0 || ++_dutyCnt < _maxCycles)   // but no more cycles than defined to avoid jitter on the servo
+      setServoPin(LOW);
+    if(_tickCnt >= (uint32)(DUTY_CYCLE)) {
+      if(_maxCycles == 0 || (++_dutyCnt < _maxCycles))  // but no more cycles than defined to avoid jitter on the servo
         _tickCnt = 0;
     }
+   
   }
 }
 
+void ZServo::setServoPin(int state) {
+  digitalWrite(_pin, state);
+}
+
+bool state;
 void isrServoTimerHandler() {
   // call all handlers for all servos periodically if the
   // internal timer is being used.
+  //digitalWrite(SERVO2_PIN, state = !state);
+  
   for(int i=0;  i< MAX_SERVOS; i++) {
     if(servoInstances[i] != NULL)
       servoInstances[i]->setServo();
   }
+  
 }

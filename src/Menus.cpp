@@ -19,10 +19,12 @@
 #include "SMuFF.h"
 #include "Config.h"
 #include "ZStepperLib.h"
+#include "ZServo.h"
 #include "InputDialogs.h"
 
 extern int      swapTools[];
 extern ZStepper steppers[];
+extern ZServo   servo, servoRevolver;
 extern int      toolSelections[]; 
 
 char* extractTitle(const char* menu PROGMEM, int index) {
@@ -68,19 +70,27 @@ void setupToolsMenu(char* menu) {
 void setupMainMenu(char* menu) {
     char items[450];
 #ifndef __AVR__
-    char items2[150];
+    char items2[200];
 #endif
-    char stat[45];
+    char stat[10];
+    char sstat[10];
+    char mstat[10];
     char opt[30] = "";
     
     steppers[SELECTOR].getEnabled() ? sprintf_P(stat, P_Off) : sprintf_P(stat, P_On);
+    servoRevolver.getDegree() == smuffConfig.revolverOnPos ? sprintf_P(sstat, P_Open) : sprintf_P(sstat, P_Close);
+    maintainingMode ? sprintf_P(mstat, P_Off) : sprintf_P(mstat, P_On);
     if(smuffConfig.prusaMMU2) {
       sprintf_P(opt, P_MenuItemsPMMU);
     }
     sprintf_P(menu, P_MenuItemBack);
 #ifndef __AVR__
     sprintf_P(items2, P_MenuItemsDefault, P_MenuItemSeparator);
+    #if defined(SMUFF_V5)
+    sprintf_P(items, P_MenuItems, stat, sstat, mstat, opt, P_MenuItemSeparator, items2);
+    #else
     sprintf_P(items, P_MenuItems, stat, opt, P_MenuItemSeparator, items2);
+    #endif
 #else
     // need two different menus because of low memory issues on the ATMEGA
     sprintf_P(items, P_MenuItems, stat, opt);
@@ -287,7 +297,84 @@ void showMainMenu() {
           }
           startTime = millis();
           break;
+#if defined(SMUFF_V5)
+        case 4:
+          if(servoRevolver.getDegree() == smuffConfig.revolverOffPos)
+            setServoPos(1, smuffConfig.revolverOnPos);
+          else 
+            setServoPos(1, smuffConfig.revolverOffPos);
+          startTime = millis();
+          break;
 
+        case 5:
+          maintainTool();
+          startTime = millis();
+          break;
+
+        case 6:
+          feederJammed = false;
+          beep(2);
+          sprintf_P(tmp, P_JamCleared);
+          drawUserMessage(tmp);
+          startTime = millis();
+          break;
+
+        case 7:
+          showSwapMenu(title);
+          startTime = millis();
+          break;
+          
+        case 8:
+          if(smuffConfig.prusaMMU2)
+              loadFilamentPMMU2();
+          else
+              loadFilament();
+          startTime = millis();
+          break;
+        
+        case 9:
+          unloadFilament();
+          startTime = millis();
+          break;
+
+        case 10:
+#ifndef __AVR__
+          if(smuffConfig.prusaMMU2)
+              loadFilament();
+#else
+          showOffsetsMenu(title);
+#endif
+          startTime = millis();
+          break;
+
+        case 11:
+          if(!smuffConfig.prusaMMU2)
+              showSettingsMenu(title);
+          current_selection = 1;
+          startTime = millis();
+          break;
+
+        case 12:
+          if(smuffConfig.prusaMMU2)
+              showSettingsMenu(title);
+          current_selection = 1;
+          startTime = millis();
+          break;
+        
+        case 13:
+          if(!smuffConfig.prusaMMU2)
+              showTestrunMenu(title);
+          current_selection = 1;
+          startTime = millis();
+          break;
+        
+        case 14:
+          if(smuffConfig.prusaMMU2)
+              showTestrunMenu(title);
+          current_selection = 1;
+          startTime = millis();
+          break;
+#else
         case 4:
           feederJammed = false;
           beep(2);
@@ -323,30 +410,35 @@ void showMainMenu() {
 #endif
           startTime = millis();
           break;
+        
         case 9:
           if(!smuffConfig.prusaMMU2)
               showSettingsMenu(title);
           current_selection = 1;
           startTime = millis();
           break;
+        
         case 10:
           if(smuffConfig.prusaMMU2)
               showSettingsMenu(title);
           current_selection = 1;
           startTime = millis();
           break;
+        
         case 11:
           if(!smuffConfig.prusaMMU2)
               showTestrunMenu(title);
           current_selection = 1;
           startTime = millis();
           break;
+        
         case 12:
           if(smuffConfig.prusaMMU2)
               showTestrunMenu(title);
           current_selection = 1;
           startTime = millis();
           break;
+#endif
       }
     }
     debounceButton();
@@ -466,8 +558,11 @@ void showRevolverMenu(char* menuTitle) {
 
         case 7: // Servo cycles
             iVal = smuffConfig.servoCycles;
-            if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50))
+            if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
               smuffConfig.servoCycles = iVal;
+              servo.setMaxCycles(iVal);
+              servoRevolver.setMaxCycles(iVal);
+            }
             startTime = millis();
             break;
         #else

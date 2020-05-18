@@ -182,6 +182,10 @@ bool parse_T(const String& buf, int serial) {
     sendToolResponse(serial);
     return stat;
   }
+  if(toUpperCase(buf[0])=='M') {
+    maintainTool();
+    return true;
+  }
   int tool = buf.toInt();
   int param;
 
@@ -194,10 +198,10 @@ bool parse_T(const String& buf, int serial) {
     parse_G(String("28"), serial);
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
-    __debug(PSTR("Tool change requested: T%d"), tool);
+    //__debug(PSTR("Tool change requested: T%d"), tool);
     // Prusa expects the MMU to unload filament on its own before tool change
     if(smuffConfig.prusaMMU2 && feederEndstop()) { 
-      __debug(PSTR("must unload first!"));
+      //__debug(PSTR("must unload first!"));
       unloadFilament();
     }
     stat = selectTool(tool, false);
@@ -280,6 +284,7 @@ bool parse_M(const String& buf, int serial) {
 bool parse_PMMU2(char cmd, const String& buf, int serial) {
 
   char  tmp[80];
+  bool toolOk = true;
 
   if(!smuffConfig.prusaMMU2) {
     sprintf_P(tmp, P_NoPrusa);
@@ -331,9 +336,13 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
 
     case 'L':     // Load filament
       if(toolSelected != type)
-        selectTool(type, false);
-      loadFilamentPMMU2();
-      sendOkResponse(serial);
+        toolOk = selectTool(type, false);
+      if(toolOk) {
+        loadFilamentPMMU2();
+        sendOkResponse(serial);
+      }
+      else
+        sendErrorResponse(serial);
       //__debug(PSTR("To Prusa (L%d): ok<CR>"), type);
       break;
 
@@ -487,6 +496,11 @@ void sendOkResponse(int serial) {
 }
 
 void sendStartResponse(int serial){
+  char tmp[50];
+  char tmp1[15];
+  sprintf_P(tmp1, PSTR("Serial: %d"), serial);
+  sprintf_P(tmp, P_Echo, tmp1);
+  printResponse(tmp, serial);
   printResponseP(P_Start, serial);
 }
 

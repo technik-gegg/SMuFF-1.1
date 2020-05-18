@@ -271,7 +271,7 @@ bool M106(const char* msg, String buf, int serial) {
   if((param = getParam(buf, S_Param)) == -1) {
     param = 100;
   }
-  //__debug(PSTR("Fan speed: %d%%"), param);
+  __debug(PSTR("Fan speed: %d%%"), param);
 #ifdef __STM32F1__
   pwmWrite(FAN_PIN, map(param, 0, 100, 0, 65535));
 #elif __ESP32__
@@ -522,6 +522,14 @@ bool M280(const char* msg, String buf, int serial) {
   bool stat = true;
   int servoIndex = 0;
   printResponse(msg, serial);
+  if((param = getParam(buf, I_Param)) != -1) {
+    smuffConfig.servoMinPwm = param;
+    setServoMinPwm(servoIndex, param);
+  }
+  if((param = getParam(buf, J_Param)) != -1) {
+    smuffConfig.servoMaxPwm = param;
+    setServoMaxPwm(servoIndex, param);
+  }
   if((param = getParam(buf, P_Param)) != -1) {
     servoIndex = param;
   }
@@ -535,7 +543,7 @@ bool M280(const char* msg, String buf, int serial) {
   }
   else stat = false;
   if((param = getParam(buf, T_Param)) != -1) {
-    for(int i=10; i < 180; i += 10) {
+    for(int i=10; i <= 170; i += 10) {
       setServoPos(servoIndex, i);
       sprintf(tmp,"Servo pos.: %d deg\n", i);
       printResponse(tmp, serial);

@@ -44,7 +44,18 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   #endif
 #endif
 
-
+#if defined(__ESP32__)
+BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue 
+#if defined(__DEBUG_BT__)
+Stream*                 debugSerial = &SerialBT;   // decide which serial port to use for debug outputs 
+#else
+Stream*                 debugSerial = &Serial;   // decide which serial port to use for debug outputs 
+#endif
+#elif defined(__STM32F1__)
+Stream*                 debugSerial = &Serial1;   
+#else
+Stream*                 debugSerial = &Serial;   
+#endif
 ZStepper                steppers[NUM_STEPPERS];
 ZTimer                  stepperTimer;
 ZTimer                  encoderTimer;
@@ -86,9 +97,6 @@ void isrStepperHandler();       // forward declarations ... makes every compiler
 void isrEncoderHandler();
 void refreshStatus(bool withLogo);
 
-#ifdef __ESP32__
-BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue 
-#endif
 
 #ifdef __STM32F1__
 volatile uint32_t *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
@@ -192,7 +200,7 @@ void every1s() {
     lastTick = tmp;
   // Add your periodical code here 
 #if defined(__STM32F1__)
-    // Serial1.print(gcInterval); Serial1.println("ms");
+    // __debug("%d ms", gcInterval);
 #endif
 }
 
@@ -281,11 +289,10 @@ void setup() {
   serialBuffer2.reserve(40);
   traceSerial2.reserve(40);
   
-  /* This is a No-Go. Maybe at a later stage.
-  FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
-  */
-
+  /* As of yet, this is a No-Go. Maybe at a later stage. */
+  //FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  //FastLED.setBrightness(BRIGHTNESS);
+  
   setupDeviceName();
 
 #ifdef __ESP32__
@@ -298,7 +305,14 @@ void setup() {
 #endif
 
   Serial.begin(115200);        // set fixed baudrate until config file was read
-  __debug(PSTR("[ setup() ]"));
+#if defined(__STM32F1__)
+  Serial1.begin(115200);       
+  Serial2.begin(115200);
+  Serial3.begin(115200);
+#else       
+  Serial2.begin(115200);
+#endif
+  //__debug(PSTR("[ setup() ]"));
 
   setupDisplay(); 
   readConfig();
@@ -324,12 +338,14 @@ void setup() {
   #endif
 #else
 #endif
-  __debug(PSTR("DONE init SERIAL"));
+  //__debug(PSTR("DONE init SERIAL"));
 
   setupSteppers();
   setupTimers();
   
   if(SERVO1_PIN != -1) {
+    servo.setMaxCycles(smuffConfig.servoCycles);
+    servo.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
       servo.attach(SERVO1_PIN, false, 0);
@@ -338,13 +354,13 @@ void setup() {
     #else
       servo.attach(SERVO1_PIN, true, 0);
     #endif
-    servo.setMaxCycles(smuffConfig.servoCycles);
-    servo.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     setServoPos(0, 90);
   }
   
   // Replace the Revolver stepper motor with a servo motor
   if(SERVO2_PIN != -1) {
+    servoRevolver.setMaxCycles(smuffConfig.servoCycles);
+    servoRevolver.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
       servoRevolver.attach(SERVO2_PIN, false, 1);
@@ -353,8 +369,6 @@ void setup() {
     #else
       servoRevolver.attach(SERVO2_PIN, true, 1);  
     #endif
-    servoRevolver.setMaxCycles(smuffConfig.servoCycles);
-    servoRevolver.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     setServoPos(1, smuffConfig.revolverOffPos);
   }
   // this call must happen after setupSteppers()
@@ -389,39 +403,24 @@ void setup() {
   
   if(FAN_PIN != -1) {
 #ifdef __STM32F1__
-
-  #define FAN_PWM_FREQ_MS -1  // set to 40 for about 25 kHz
   pinMode(FAN_PIN, PWM);
-  // Set a different PWM frequency than default if needed.
-  // Notice: The default frequency is good enough if a PWM Fan is being used. 
-  // A normal Fan (not PWM driven) will either do full speed or no speed.
-  if(FAN_PWM_FREQ_MS != -1) {
-    timer_dev *dev = PIN_MAP[FAN_PIN].timer_device;     // determine timer via PIN mapping
-    uint8 cc_channel = PIN_MAP[FAN_PIN].timer_channel;  // as well as the channel
-    timer_pause(dev);
-    uint32 period_cyc = FAN_PWM_FREQ_MS * CYCLES_PER_MICROSECOND;
-    uint16 prescaler = (uint16)(period_cyc / ((1 << 16) - 1) + 1);
-    uint16 overflow = (uint16)((period_cyc + (prescaler / 2)) / prescaler);
-    timer_set_prescaler(dev, prescaler);
-    timer_set_reload(dev, overflow);
-    timer_generate_update(dev);
-    timer_resume(dev);
-  }
 #elif defined(__ESP32__) 
-    ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
-    ledcAttachPin(FAN_PIN, FAN_CHANNEL);
-    __debug(PSTR("DONE FAN PIN CONFIG"));
+  ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
+  ledcAttachPin(FAN_PIN, FAN_CHANNEL);
+  //__debug(PSTR("DONE FAN PIN CONFIG"));
 #else
-    pinMode(FAN_PIN, OUTPUT);
+  pinMode(FAN_PIN, OUTPUT);
 #endif      
-    if(smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100) {
-      #if defined (__ESP32__)
-      ledcWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));
-      #else
-      analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));    
-      #endif
-    }
-    __debug(PSTR("DONE FAN init"));
+  if(smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100) {
+    #if defined (__ESP32__)
+    ledcWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));
+    #elif defined(__STM32F1__) 
+    analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));    
+    #else
+    analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));    
+    #endif
+  }
+  //__debug(PSTR("DONE FAN init"));
   #if defined( __ESP32__)
     // init the PCF8574 port expander and set pin modes (0-5 OUTPUT, 6-7 INPUT)
     portEx.begin(PORT_EXPANDER_ADDRESS, false);
@@ -432,7 +431,7 @@ void setup() {
     portEx.pinMode(6, INPUT_PULLUP);
     portEx.pinMode(7, INPUT_PULLUP);
     portEx.resetPin(0);
-    __debug(PSTR("DONE PortExpander init"));
+    //__debug(PSTR("DONE PortExpander init"));
   #endif
   }
 
@@ -451,7 +450,7 @@ void setup() {
   else {
     resetRevolver();
   }
-  __debug(PSTR("DONE reset Revolver"));
+  //__debug(PSTR("DONE reset Revolver"));
   
   sendStartResponse(0);
   if(smuffConfig.prusaMMU2) {
@@ -479,7 +478,8 @@ void setupSteppers() {
   steppers[SELECTOR].setInvertDir(smuffConfig.invertDir_X);
   steppers[SELECTOR].setMaxHSpeed(smuffConfig.maxSpeedHS_X);
   steppers[SELECTOR].setAccelDistance(smuffConfig.accelDistance_X);
-  
+
+#if !defined(SMUFF_V5)
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, smuffConfig.acceleration_Y, smuffConfig.maxSpeed_Y);
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrigger_Y, ZStepper::ORBITAL);
   steppers[REVOLVER].stepFunc = overrideStepY;
@@ -489,7 +489,8 @@ void setupSteppers() {
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir_Y);
   steppers[REVOLVER].setMaxHSpeed(smuffConfig.maxSpeedHS_Y);
   steppers[REVOLVER].setAccelDistance(smuffConfig.accelDistance_Y);
-  
+#endif
+
   steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, smuffConfig.acceleration_Z, smuffConfig.maxSpeed_Z);
   /*
   if(smuffConfig.useDuetLaser) {
@@ -514,12 +515,12 @@ void setupSteppers() {
       steppers[i].runNoWaitFunc = runNoWait;
       steppers[i].setEnabled(true);
   }
-  __debug(PSTR("DONE enabling steppers"));
+  //__debug(PSTR("DONE enabling steppers"));
 
   for(int i=0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
-  __debug(PSTR("DONE initializing swaps"));
+  //__debug(PSTR("DONE initializing swaps"));
 }
 
 void setupTimers() {
@@ -560,7 +561,7 @@ void setupTimers() {
 #else
   encoderTimer.setNextInterruptInterval(40);      // run encoder timer (AVR)
 #endif
-  __debug(PSTR("DONE setup timers"));
+  //__debug(PSTR("DONE setup timers"));
 }
 
 void startStepperInterval() {
@@ -845,12 +846,14 @@ bool isJsonData(char in) {
       return true;
   }
   if(bracketCnt == 0 && jsonPtr > 0) {
+    /*
     if(smuffConfig.hasPanelDue) {
       __debug(PSTR("JSON data passed through to PanelDue: %d"), jsonPtr+1);
     }
     else {
       __debug(PSTR("PanelDue not configured. JSON data ignored"));
     }
+    */
     jsonPtr = 0;
     return true;
   }

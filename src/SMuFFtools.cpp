@@ -482,6 +482,20 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
   return true;
 }
 
+bool showFeederBlockedMessage() {
+  bool state = false;
+  lastEncoderButtonTime = millis();
+  beep(1);
+  int button = showDialog(P_TitleWarning, P_FeederLoaded, P_RemoveMaterial, P_CancelRetryButtons);
+  if (button == 1) {
+    drawStatus();
+    unloadFilament();
+    state = true;
+  }
+  display.clearDisplay();
+  return state;
+}
+
 bool showFeederLoadedMessage() {
   bool state = false;
   lastEncoderButtonTime = millis();
@@ -631,7 +645,7 @@ bool feedToEndstop(bool showMessage) {
   if(!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
 
-  // don't let interrupt feed to endstop
+  // don't allow "feed to endstop" being interrupted
   steppers[FEEDER].setIgnoreAbort(true);
 
   positionRevolver();
@@ -643,10 +657,19 @@ bool feedToEndstop(bool showMessage) {
   int l = (int)(smuffConfig.selectorDistance*2);
   int n = 0;
   int retry = 3;
+
+  // is the feeder endstop already being triggered?
+  if(feederEndstop()) {
+    // unload completelly
+    unloadFromNozzle();
+  }
+
   while (!feederEndstop()) {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength, false);
     runAndWait(FEEDER);
-    if (n >= l && !feederEndstop()) { // endstop hasn't triggered yet, something went wrong
+
+    if (n >= l && !feederEndstop()) { 
+      // endstop hasn't triggered yet, something went wrong
       // retract the same amount that was fed and reset the Revolver
       delay(250);
       steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z/2);
@@ -657,10 +680,16 @@ bool feedToEndstop(bool showMessage) {
       feederErrors++;
       retry--;
       if(retry == 1) { // after two retries reposition the Selector
-        repositionSelector(false);
+        if(feederEndstop())
+          unloadFromNozzle();
+        if(!feederEndstop())
+          repositionSelector(false);
       }
       if(retry == 0) { // after three retries rectract all filaments a bit and reposition the Selector
-        repositionSelector(true);
+        if(feederEndstop())
+          unloadFromNozzle();
+        if(!feederEndstop())
+          repositionSelector(true);
       }
       if(smuffConfig.revolverIsServo)
         setServoPos(1, smuffConfig.revolverOnPos);
@@ -842,6 +871,13 @@ void unloadFromNozzle() {
   delay(500);
 }
 
+int setUnloadParams(int* n1, int* n2) {
+  int n = (smuffConfig.bowdenLength / smuffConfig.selectorDistance)+1;
+  *n1 = n;
+  *n2 = n/2;
+  return n;
+}
+
 bool unloadFilament() {
   if (toolSelected == 255) {
     signalNoTool();
@@ -886,25 +922,36 @@ bool unloadFilament() {
   if(steppers[FEEDER].getAbort() == false) {
     steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
     steppers[FEEDER].setIgnoreAbort(true);
-    int n = (smuffConfig.bowdenLength / smuffConfig.selectorDistance)+1;
-    int n1 = n;
-    int n2 = n/2;
+    int n1, n2;
+    int n = setUnloadParams(&n1, &n2);
     do {
       prepSteppingRelMillimeter(FEEDER, -(smuffConfig.selectorDistance-ofs), true);
       runAndWait(FEEDER);
+
+      //__debug(PSTR("Unload: endstop=%d n=%d, n1=%d, n2=%d"), feederEndstop(), n, n1, n2);
+      // is the filament unloaded?
       if(!feederEndstop()) {
+        // not yet
         if((n > 0 && n < n1) && n % n2 == 0) {
+          // push the filament out a bit and retry
           resetRevolver();
           prepSteppingRelMillimeter(FEEDER, smuffConfig.selectorDistance+ofs, true);
           runAndWait(FEEDER);
         }
         if (n <= 0) {
-          showFeederFailedMessage(0);
-          steppers[FEEDER].setMaxSpeed(curSpeed);
-          feederJammed = true;
-          parserBusy = false;
-          steppers[FEEDER].setIgnoreAbort(false);
-          return false;
+          // still a no-go, show a message and wait for the users response
+          if(!showFeederFailedMessage(0)) {
+            steppers[FEEDER].setMaxSpeed(curSpeed);
+            feederJammed = true;
+            parserBusy = false;
+            steppers[FEEDER].setIgnoreAbort(false);
+            return false;
+          }
+          else {
+            // user wants to try it again
+            n = setUnloadParams(&n1, &n2);
+            continue;
+          }
         }
       }
       n--;
@@ -940,6 +987,15 @@ bool unloadFilament() {
 bool selectTool(int ndx, bool showMessage) {
 
   char _msg1[256];
+  if(ndx < 0 || ndx >= MAX_TOOLS) {
+    if(showMessage) {
+      userBeep();
+      sprintf_P(_msg1, P_WrongTool, ndx);
+      drawUserMessage(_msg1);
+    }
+    return false;
+  }
+
   ndx = swapTools[ndx];
   if(feederJammed) {
     beep(4);
@@ -996,7 +1052,7 @@ bool selectTool(int ndx, bool showMessage) {
       setServoPos(1, smuffConfig.revolverOffPos);
     }
   }
-  __debug(PSTR("Selecting tool: %d"), ndx);
+  //__debug(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
   drawSelectingMessage(ndx);
   unsigned speed = steppers[SELECTOR].getMaxSpeed();
@@ -1027,7 +1083,7 @@ bool selectTool(int ndx, bool showMessage) {
     resetRevolver();
     signalSelectorReady();
   }
-  // Attn: id testMode is set, it'll echo the selected tool to Serial2
+  // Attn: if testMode is set, it'll echo the selected tool to Serial2
   if(testMode) {
     Serial2.print("T");
     Serial2.println(ndx); 
@@ -1231,6 +1287,24 @@ void initBeep() {
   _tone(BEEPER_PIN, 1760, 200); delay(250); _noTone(BEEPER_PIN);
 }
 
+void setServoMinPwm(int servoNum, int pwm) {
+  if(servoNum == 0) {
+    servo.setPulseWidthMin(pwm);
+  }
+  else if(servoNum == 1) {
+    servoRevolver.setPulseWidthMin(pwm);
+  }
+}
+
+void setServoMaxPwm(int servoNum, int pwm) {
+  if(servoNum == 0) {
+    servo.setPulseWidthMax(pwm);
+  }
+  else if(servoNum == 1) {
+    servoRevolver.setPulseWidthMax(pwm);
+  }
+}
+
 bool setServoPos(int servoNum, int degree) {
   if(servoNum == 0) {
     servo.write(degree);
@@ -1246,11 +1320,17 @@ bool setServoPos(int servoNum, int degree) {
 }
 
 bool setServoMS(int servoNum, int microseconds) {
-  if(servoNum == 0)
+  if(servoNum == 0) {
     servo.writeMicroseconds(microseconds);
-  else if(servoNum == 1)
+    delay(250);
+    return true;
+  }
+  else if(servoNum == 1) {
     servoRevolver.writeMicroseconds(microseconds);
-  return true;
+    delay(250);
+    return true;
+  }
+  return false;
 }
 
 void getStoredData() {
@@ -1311,7 +1391,7 @@ void listDir(File root, int numTabs, int serial) {
       //listDir(entry, numTabs + 1, serial);
     } 
     else {
-      sprintf(tmp, "\t\t%d\r\n", entry.size());
+      sprintf(tmp, "\t\t%ld\r\n", entry.size());
       printResponse(tmp, serial);
     }
     entry.close();
@@ -1372,7 +1452,11 @@ void testRun(String fname) {
   
   debounceButton();
 
+#if defined(__ESP32__)
+  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+#else
   if(SD.begin()) {
+#endif
     steppers[REVOLVER].setEnabled(true);
     steppers[SELECTOR].setEnabled(true);
     steppers[FEEDER].setEnabled(true);
@@ -1470,23 +1554,58 @@ void testRun(String fname) {
   }
 }
 
+bool  maintainingMode = false;
+byte  maintainingTool = 255;
+
+void maintainTool() {
+  byte newTool;
+
+  while(feederEndstop()) {
+    if (!showFeederBlockedMessage())
+      return;
+  }
+
+  if(maintainingMode) {
+    maintainingMode = false;
+    if(maintainingTool != 255) {
+      selectTool(maintainingTool, false);
+    }
+    maintainingTool = 255;
+  }
+  else {
+    maintainingMode = true;
+    maintainingTool = toolSelected;
+
+    if(toolSelected <= (smuffConfig.toolCount/2)) {
+      newTool = toolSelected+2;
+    }
+    else {
+      newTool = toolSelected-2;
+    }
+    if(newTool >=0 && newTool < smuffConfig.toolCount) {
+      selectTool(newTool, false);
+    }
+  }
+}
+
+extern Stream* debugSerial;
+
 void __debug(const char* fmt, ...) {
+  if(debugSerial == NULL)
+    return;
 #ifdef DEBUG
   char _tmp[512];
   va_list arguments;
   va_start(arguments, fmt); 
   vsnprintf_P(_tmp, 511, fmt, arguments);
   va_end (arguments); 
+  debugSerial->print(F("echo: dbg: "));
   #ifdef __AVR__
-    Serial.print(F("echo: dbg: "));   Serial.print(_tmp); Serial.print(" - Mem: "); Serial.println(freeMemory());
-  #elif defined(__ESP32__)
-    #if !defined(__DEBUG_BT__)
-      Serial.print(F("echo: dbg: "));   Serial.println(_tmp);
-    #else
-      SerialBT.print(F("echo: dbg: "));   SerialBT.println(_tmp);
-    #endif
+  debugSerial->print(_tmp); 
+  debugSerial->print(" - Mem: "); 
+  debugSerial->println(freeMemory());
   #else
-    Serial.print(F("echo: dbg: "));  Serial.println(_tmp);
+  debugSerial->println(_tmp); 
   #endif
 #endif
 }

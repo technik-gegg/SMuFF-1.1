@@ -52,8 +52,13 @@
 //#define SERVO1_PIN          PB1     // THB - Not usable. See SKR mini schematics
 //#define SERVO2_PIN          PA0     // TH0 - Not usable. See SKR mini schematics
 
+#if !defined(SMUFF_V5)
 #define SERVO1_PIN          PA1     // Endstop Y+
 #define SERVO2_PIN          PC3     // Endstop Z+
+#else
+#define SERVO1_PIN          PB13     // Y STEP pin used because of 5V tolerance
+#define SERVO2_PIN          PB14     // Y DIR pin 
+#endif
 #define FAN_PIN             PC8
 #define HEATER0_PIN         PA8
 #define HEATBED_PIN         PC9

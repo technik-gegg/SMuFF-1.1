@@ -26,15 +26,9 @@
 #define _ZSERVO_H
 
 #define MAX_SERVOS              5
-#define US_PER_PULSE_0DEG       550       // microseconds for 0 degrees
-#define US_PER_PULSE_180DEG     2400      // microseconds for 180 degrees
-#define DUTY_CYCLE              US_PER_PULSE_180DEG * 10 //20000     // servo cycle in us (equals 20ms)
-#ifdef __STM32F1__
-#define TIMER_INTERVAL          1         
-#endif
-#ifdef __AVR__
-#define TIMER_INTERVAL          312       // CPU-Clock / (Prescaler * 50Hz)-1 =  16000000 / (1024 * 50 - 1) = 311.5
-#endif
+#define US_PER_PULSE_0DEG       1000      // microseconds for 0 degrees
+#define US_PER_PULSE_180DEG     2000      // microseconds for 180 degrees
+#define DUTY_CYCLE              20000     // servo cycle in us (>= 20ms)
 #ifdef __ESP32__
 #define SERVO_CHANNEL           8
 #define SERVO_FREQ              50
@@ -63,6 +57,8 @@ public:
   void setServo();                            // method called cyclically from an interrupt to refresh the servo position
   void setDegreeMinMax(int min, int max) { _minDegree = min; _maxDegree = max; }
   void setPulseWidthMinMax(int min, int max) { _minPw = min; _maxPw = max; }
+  void setPulseWidthMin(int min) { _minPw = min; }
+  void setPulseWidthMax(int max) { _maxPw = max; }
   void stop() { if(_useTimer) servoTimer.stopTimer(); }
   bool hasTimer() { return _useTimer; }
   void setMaxCycles(int val) { _maxCycles = val;}
@@ -73,17 +69,9 @@ public:
   void getPulseWidthMinMax(int* min, int* max) { *min = _minPw; *max = _maxPw; }
 
 private:
+  void setServoPin(int state); 
   int _pin;
   bool _useTimer = false;
-#ifdef __STM32F1__
-  volatile uint32 *_pin_reg;
-  uint32 _pin_set;
-  uint32 _pin_reset;
-#else
-  volatile int *_pin_reg;
-  int _pin_set;
-  int _pin_reset;
-#endif
   int _servoIndex;
   int _degree;
   int _lastDegree;
@@ -102,5 +90,7 @@ private:
   int _maxPw = US_PER_PULSE_180DEG;
   int _minDegree = 0;
   int _maxDegree = 180;
+  int _toggle = 0;
+
 };
 #endif

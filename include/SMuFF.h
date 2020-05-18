@@ -182,6 +182,7 @@ extern volatile bool  isPwrSave;
 extern unsigned long  endstopZ2HitCnt;
 //extern CRGB           leds[];
 extern volatile bool  showMenu;
+extern bool           maintainingMode;
 
 extern void setupDisplay();
 extern void setupTimers();
@@ -234,6 +235,8 @@ extern void signalSelectorBusy();
 extern void signalSelectorReady();
 extern bool setServoPos(int servoNum, int degree);
 extern bool setServoMS(int servoNum, int microseconds);
+extern void setServoMinPwm(int servoNum, int pwm);
+extern void setServoMaxPwm(int servoNum, int pwm);
 extern void getStoredData();
 extern void readConfig();
 extern bool writeConfig(Print* dumpTo = NULL);
@@ -286,5 +289,6 @@ extern void reportSettings(int serial);
 extern void printResponse(const char* response, int serial);
 extern void printResponseP(const char* response, int serial);
 extern void printOffsets(int serial);
+extern void maintainTool();
 
 #endif

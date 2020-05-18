@@ -31,8 +31,13 @@
 #if defined (__STM32F1__) || defined (__ESP32__)
 const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
 const char P_MenuItemSeparator [] PROGMEM   = { "\u25ab\u25ab\u25ab\u25ab\u25ab\n"};
+#if defined(SMUFF_V5)
+const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nServo %s\nTool Maint. %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
+const char P_MenuItemsDefault[] PROGMEM     = { "Settings \u25b8\n%sTestrun \u25b8" };
+#else
 const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
 const char P_MenuItemsDefault[] PROGMEM     = { "Settings \u25b8\n%sTestrun \u25b8" };
+#endif
 const char P_OfsMenuItems [] PROGMEM        = { "Selector         %4s\nRevolver        %5s" };
 #else
 const char P_MenuItemBack [] PROGMEM        = { "< BACK\n" };
@@ -53,6 +58,7 @@ const char P_TitleSelected [] PROGMEM       = { "TOOL SELECTED" };
 const char P_FeederLoaded [] PROGMEM        = { "Feeder is loaded!\n" };
 const char P_AskUnload [] PROGMEM           = { "Want me to unload\nit now?" };
 const char P_AskLoad [] PROGMEM             = { "Want me to load\nit now?" };
+const char P_RemoveMaterial[] PROGMEM       = { "Please remove material!" };
 const char P_SelectedTool [] PROGMEM        = { "\n" };
 const char P_CantLoad [] PROGMEM            = { "Can't load feeder." };
 const char P_CantUnload [] PROGMEM          = { "Can't unload feeder." };
@@ -84,6 +90,8 @@ const char P_Yes[] PROGMEM                  = { "Yes" };
 const char P_No[] PROGMEM                   = { "No" };
 const char P_High[] PROGMEM                 = { "HI" };
 const char P_Low[] PROGMEM                  = { "LO" };
+const char P_Open[] PROGMEM                 = { "OPEN" };
+const char P_Close[] PROGMEM                = { "CLOSE" };
 
 const char P_ToolCount[] PROGMEM            = { "# of tools:" };
 const char P_InMillimeter[] PROGMEM         = { "in mm:" };
@@ -140,7 +148,8 @@ const char P_SD_NoConfig[] PROGMEM      = { "No config file found!" };
 
 const char P_Ok[] PROGMEM             = { "ok\n" };
 const char P_Start[] PROGMEM          = { "start\n" };
-const char P_Error[] PROGMEM          = { "Error: %s\n" };
+const char P_Error[] PROGMEM          = { "error: %s\n" };
+const char P_Echo[] PROGMEM           = { "echo: %s\n" };
 const char P_UnknownCmd[] PROGMEM     = { "Unknown command: %s" };
 const char P_AlreadySaved[] PROGMEM   = { "Already saved.\n" };
 const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s\n" };
@@ -166,6 +175,7 @@ const char P_Aborting [] PROGMEM      = { "Aborting..."};
 const char P_FeederJammed [] PROGMEM  = { "Feeder is jammed.\n" };
 const char P_JamCleared [] PROGMEM    = { "Feeder Jam has\nbeen reset." };
 const char P_ToolAlreadySet [] PROGMEM= { "Tool already set." };
+const char P_WrongTool [] PROGMEM     = { "Tool index %d invalid." };
 
 const char P_WrongFormat [] PROGMEM   = { "Wrong format. Use Bdd:dd:dd...\n" };
 
