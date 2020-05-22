@@ -149,14 +149,15 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   #ifdef USE_TWI_DISPLAY
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
   #else
-  extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
   #endif
 #endif
 #ifdef __BRD_ESP32
   #ifdef USE_TWI_DISPLAY
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
   #else
-  extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
   #endif
 #endif
 

@@ -21,10 +21,10 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.02"
+#define VERSION_STRING    "V2.03"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-05-15"
+#define VERSION_DATE      "2020-05-22"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 #if defined(__STM32F1__)
@@ -39,7 +39,7 @@
 #define FEEDER            2
 
 #define MIN_TOOLS         2
-#define MAX_TOOLS         9
+#define MAX_TOOLS         15
 
 #define BEEPER_FREQUENCY    1760
 #define BEEPER_DURATION     90

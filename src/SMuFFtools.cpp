@@ -326,22 +326,22 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
 
 /* =========================================
 ATTENTION:
-In order to make this function work, you have to add 
-these lines to your U8G2 library source code 
-file U8x8lib.cpp:
+The following section does a rewrite of the U8G2 library function
 
+extern "C" uint8_t u8x8_byte_arduino_2nd_hw_spi(...)
+
+This is a must for the SKR mini V1.1 in order to route 
+all display handling to SPI3 instead of SPI2 since the 
+controller is wired as such.
+
+If your NOT using an SKR mini V1.1 but any other controller 
+board based on the STM32 AND this controller uses SPI2 for
+data exchange, you may comment out this whole section and the 
+standard U8G2 library will do its work as expected.
+=========================================== */
 #if defined(__GNUC__) && !defined(__CYGWIN__)
 # pragma weak  u8x8_byte_arduino_2nd_hw_spi
 #endif
-
-in front of function:
-extern "C" uint8_t u8x8_byte_arduino_2nd_hw_spi(...)
-
-Otherwise the linker will throw an error message.
-
-This function is a copy of the above mentioned
-and it sends data to SPI3 instead of SPI1.
-=========================================== */
 uint8_t u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
 {
   uint8_t *data;

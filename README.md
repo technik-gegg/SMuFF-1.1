@@ -20,6 +20,12 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## Recent changes
 
+**2.03** - Minor changes
+
++ maxed out the number of  tools to 15.
++ added option to build firmware to be flashed from the SD-Card for the SKR mini V1.1 in order to prevent the stock bootloader from being overwritten.
++ fixed bug on ESP32 build in ZServo.cpp.
+
 **2.02** - Added more support for SMuFF V5
 
 + changed some strings in the settings for V5.

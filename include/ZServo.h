@@ -76,8 +76,8 @@ private:
   int _degree;
   int _lastDegree;
 #ifdef __STM32F1__
-  uint32 _lastUpdate;
-  volatile uint32 _tickCnt;
+  uint32_t _lastUpdate;
+  volatile uint32_t _tickCnt;
 #else
   unsigned int _lastUpdate;
   volatile int _tickCnt;

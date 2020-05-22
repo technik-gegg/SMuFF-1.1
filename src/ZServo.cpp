@@ -165,11 +165,11 @@ void ZServo::setServo() {
     // is being active, as it's in the method above.
     _tickCnt += 50;
 
-    if(_tickCnt <= (uint32)_pulseLen)
+    if(_tickCnt <= (uint32_t)_pulseLen)
       setServoPin(HIGH);
     else
       setServoPin(LOW);
-    if(_tickCnt >= (uint32)(DUTY_CYCLE)) {
+    if(_tickCnt >= (uint32_t)(DUTY_CYCLE)) {
       if(_maxCycles == 0 || (++_dutyCnt < _maxCycles))  // but no more cycles than defined to avoid jitter on the servo
         _tickCnt = 0;
     }

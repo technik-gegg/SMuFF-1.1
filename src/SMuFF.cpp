@@ -32,7 +32,9 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   #ifdef USE_TWI_DISPLAY
   U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE); 
   #else
-  U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
+  U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  //U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
 #endif
 
@@ -40,7 +42,8 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   #ifdef USE_TWI_DISPLAY
   U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
   #else
-  U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
+  U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
 #endif
 
@@ -266,6 +269,9 @@ void setup() {
 
 #ifdef __STM32F1__
   #ifndef USE_TWI_DISPLAY
+  #pragma message("=================================================================")
+  #pragma message("Don't forget to short Z+ input to GND for programming the device!")
+  #pragma message("=================================================================")
   afio_remap(AFIO_REMAP_SPI1);  // remap SPI3 to SPI1 if a "normal" display is being used
 
   if(DEBUG_OFF_PIN != -1) {
