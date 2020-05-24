@@ -31,10 +31,19 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
 #ifdef __BRD_SKR_MINI
   #ifdef USE_TWI_DISPLAY
   U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE); 
+  #elif USE_ANET_DISPLAY
+  /*
+    Attn.: In order to use this display you have to make some heavy modifications on the wiring
+    for the display connector!
+    Instructions can be found here: https://www.thingiverse.com/thing:4009810
+  */
+  U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE); 
+  // if the hardware SPI doesn't work, you may try software SPI instead
+  //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC, /* data=*/ DSP_DATA, /* cs=*/ DSP_CS, /* reset=*/ U8X8_PIN_NONE)
   #else
   // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
-  U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
-  //U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  //U8G2_UC1701_MINI12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
 #endif
 
@@ -269,11 +278,13 @@ void setup() {
 
 #ifdef __STM32F1__
   #ifndef USE_TWI_DISPLAY
+    #ifdef STM32_REMAP_SPI
+    afio_remap(AFIO_REMAP_SPI1);  // remap SPI3 to SPI1 if a "normal" display is being used
+    #endif
+
   #pragma message("=================================================================")
   #pragma message("Don't forget to short Z+ input to GND for programming the device!")
   #pragma message("=================================================================")
-  afio_remap(AFIO_REMAP_SPI1);  // remap SPI3 to SPI1 if a "normal" display is being used
-
   if(DEBUG_OFF_PIN != -1) {
     pinMode(DEBUG_OFF_PIN, INPUT_PULLUP);
     /* ============ WARNING ================
