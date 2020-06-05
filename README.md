@@ -3,7 +3,7 @@
 This is the latest version of the SMuFF firmware to be compiled using PlatformIO.
 
 This is the software package for the Smart Multi Filament Feeder (SMuFF) project as published on [Thingiverse](https://www.thingiverse.com/thing:3431438).
-![The SMuFF](https://github.com/technik-gegg/SMuFF-1.1/blob/master/images/SMuFF%20render-2.png)
+![The SMuFF](https://github.com/technik-gegg/SMuFF-1.1/blob/master/images/SMuFF-V5.png)
 
 You have to compile and install this firmware on the Wanhao i3 duplicator mini board (i.e. [AliExpress Wanhao i3-Mini](https://www.aliexpress.com/item/motherboard-i3mini-0ne-motherboard-New-2017-Wanhao-printer-i3-Mini/32849200836.html?spm=a2g0x.10010108.1000001.12.20c22a870NKth9&pvid=f20ef7d9-21cb-4600-b3eb-75382e0c6661&gps-id=pcDetailBottomMoreOtherSeller&scm=1007.13338.122670.0&scm-url=1007.13338.122670.0&scm_id=1007.13338.122670.0])) or on the SKR mini V1.1 board [AliExpress SKR mini](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53).
 
