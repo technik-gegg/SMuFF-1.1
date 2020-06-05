@@ -29,7 +29,6 @@ For further information head over to the [Wiki pages](https://github.com/technik
 + added filter for printable characters only while receiving data
 + added wrap for u8x8_byte_arduino_2nd_hw_spi in order to use SPI3 for the RepRap display on the SKR Mini V1.1
 + added wrap for u8g2_UserInterfaceMessage in order to be able still receiving commands from the serial interfaces
-+ merged the [FYSETC AIOII](https://wiki.fysetc.com/AIO_II/) controller board from Gustavo Alvarez (sl1pkn07). This controller board resembles the Wanhao i3 mini but comes with an 32 bit STM32 MCU.
 
 **2.03** - Minor changes
 
