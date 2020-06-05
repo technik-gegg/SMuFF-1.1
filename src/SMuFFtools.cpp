@@ -1141,7 +1141,6 @@ bool selectTool(int ndx, bool showMessage) {
       unloadFilament();
     }
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
-      // TODO: Signal Duet3D to retract 2mm
       beep(4);
       while(feederEndstop()) {
         moveHome(REVOLVER, false, false);   // home Revolver

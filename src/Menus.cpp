@@ -1271,6 +1271,7 @@ void showToolsMenu() {
   uint8_t current_selection = 0;
   char _title[60];
   char _menu[128];
+  char _tmp[40];
 
   do {
     sprintf_P(_title, P_TitleToolsMenu);
@@ -1289,7 +1290,16 @@ void showToolsMenu() {
         selectTool(tool);
       }
       else {
-        selectTool(tool);
+        //selectTool(tool);
+        // the duetDirect flag is a synonym of "communicate directly with the controller attached"
+        if(smuffConfig.duetDirect) {
+            sprintf(_tmp, "//action: T%d\n", tool);
+            #if !defined(__STM32F1__)
+            printResponse(_tmp, 0);
+            #endif
+            printResponse(_tmp, 1);
+            printResponse(_tmp, 2);
+        }
         // TODO: do tool change using Duet3D 
         // not yet possible due to Duet3D is being blocked waiting for endstop
         /*
