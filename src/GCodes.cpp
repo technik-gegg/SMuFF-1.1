@@ -542,6 +542,10 @@ bool M280(const char* msg, String buf, int serial) {
       stat = false;
   }
   else stat = false;
+  if((param = getParam(buf, R_Param)) != -1) {
+    setServoPos(servoIndex, param == 1 ? smuffConfig.revolverOnPos : smuffConfig.revolverOffPos);
+    stat = true;
+  }
   if((param = getParam(buf, T_Param)) != -1) {
     for(int i=10; i <= 170; i += 10) {
       setServoPos(servoIndex, i);

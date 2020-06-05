@@ -76,7 +76,7 @@ void recoverStore() {
         __debug(PSTR("Data store file possibly corrupted or too large!\n"));
       } 
       else {
-        __debug(PSTR("Data store recovered\n"));
+        //__debug(PSTR("Data store recovered\n"));
         dataStore.stepperPos[SELECTOR]  = jsonDoc["Positions"]["Selector"];
         dataStore.stepperPos[REVOLVER]  = jsonDoc["Positions"]["Revolver"];
         dataStore.stepperPos[FEEDER]    = jsonDoc["Positions"]["Feeder"];

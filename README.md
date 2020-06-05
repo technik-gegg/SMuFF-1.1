@@ -20,6 +20,14 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## Recent changes
 
+**2.04** - Optimization for OctoPrint plugin
+
++ added option to continously send status informations (current tool, endstop states) every two seconds
++ added option to engage/disengage 2nd servo via GCode (M280 P1 R0/1)
++ added filter for printable characters only while receiving data
++ added wrap for u8x8_byte_arduino_2nd_hw_spi in order to use SPI3 for the RepRap display on the SKR Mini V1.1
++ added wrap for u8g2_UserInterfaceMessage in order to be able still receiving commands from the serial interfaces
+
 **2.03** - Minor changes
 
 + maxed out the number of  tools to 15.

@@ -139,6 +139,7 @@ typedef struct {
   bool  hasPanelDue         = false;
   int   servoMinPwm         = 550;
   int   servoMaxPwm         = 2400;
+  bool  sendPeriodicalStats = true;
 } SMuFFConfig;
 
 
@@ -148,9 +149,14 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
 #ifdef __BRD_SKR_MINI
   #ifdef USE_TWI_DISPLAY
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
+  #elif USE_ANET_DISPLAY
+  extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+  extern U8G2_ST7920_128X64_F_2ND_HW_SPI display; 
+  // extern U8G2_ST7920_128X64_F_SW_SPI display;
   #else
-  //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
   extern U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI display;
+  //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
   #endif
 #endif
 #ifdef __BRD_ESP32
@@ -180,6 +186,7 @@ extern bool           testMode;
 extern bool           feederJammed;
 extern volatile bool  parserBusy;
 extern volatile bool  isPwrSave;
+extern volatile bool  sendingResponse;
 extern unsigned long  endstopZ2HitCnt;
 //extern CRGB           leds[];
 extern volatile bool  showMenu;
@@ -291,5 +298,6 @@ extern void printResponse(const char* response, int serial);
 extern void printResponseP(const char* response, int serial);
 extern void printOffsets(int serial);
 extern void maintainTool();
+extern void printPeriodicalState(int serial);
 
 #endif

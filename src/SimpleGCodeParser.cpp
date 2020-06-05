@@ -29,6 +29,7 @@
 extern ZStepper steppers[];
 char ptmp[80];
 volatile bool parserBusy = false;
+volatile bool sendingResponse = false;
 unsigned int currentLine = 0;
 
 void parseGcode(const String& serialBuffer, int serial) {
@@ -520,6 +521,7 @@ void reportSettings(int serial) {
 }
 
 void printResponse(const char* response, int serial) {
+  sendingResponse = true;
   switch(serial) {
     case 0: Serial.print(response); break;
     case 1: Serial1.print(response); break;
@@ -528,9 +530,11 @@ void printResponse(const char* response, int serial) {
     case 3: Serial3.print(response); break;
 #endif
   }
+  sendingResponse = false;
 }
 
 void printResponseP(const char* response, int serial) {
+  sendingResponse = true;
   switch(serial) {
     case 0: Serial.print((__FlashStringHelper*)response); break;
     case 1: Serial1.print((__FlashStringHelper*)response); break;
@@ -539,4 +543,5 @@ void printResponseP(const char* response, int serial) {
     case 3: Serial3.print((__FlashStringHelper*)response); break;
 #endif
   }
+  sendingResponse = false;
 }

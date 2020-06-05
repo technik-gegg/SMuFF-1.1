@@ -21,10 +21,10 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.03"
+#define VERSION_STRING    "V2.04"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-05-22"
+#define VERSION_DATE      "2020-06-05"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 #if defined(__STM32F1__)

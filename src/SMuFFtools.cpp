@@ -339,14 +339,12 @@ board based on the STM32 AND this controller uses SPI2 for
 data exchange, you may comment out this whole section and the 
 standard U8G2 library will do its work as expected.
 =========================================== */
-#if defined(__GNUC__) && !defined(__CYGWIN__)
-# pragma weak  u8x8_byte_arduino_2nd_hw_spi
-#endif
-uint8_t u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
+uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
 {
   uint8_t *data;
   uint8_t internal_spi_mode;
  
+  //__debug("x");
   switch(msg)
   {
     case U8X8_MSG_BYTE_SEND:
@@ -435,6 +433,117 @@ uint8_t u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8
 }
   #endif
 #endif
+
+/*
+  This method overwrites the u8g2_UserInterfaceMessage of the
+  U8G2 library in order to achieve non-blocking on the serial 
+  interface
+*/
+#define SPACE_BETWEEN_BUTTONS_IN_PIXEL 6
+#define SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL 3
+extern uint8_t u8g2_draw_button_line(u8g2_t *u8g2, u8g2_uint_t y, u8g2_uint_t w, uint8_t cursor, const char *s);
+
+
+uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const char *title2, const char *title3, const char *buttons)
+{
+  uint8_t height;
+  uint8_t line_height;
+  u8g2_uint_t pixel_height;
+  u8g2_uint_t y, yy;
+	
+  uint8_t cursor = 0;
+  uint8_t button_cnt;
+  uint8_t event;
+	
+  /* only horizontal strings are supported, so force this here */
+  u8g2_SetFontDirection(u8g2, 0);
+
+  /* force baseline position */
+  u8g2_SetFontPosBaseline(u8g2);
+	
+	
+  /* calculate line height */
+  line_height = u8g2_GetAscent(u8g2);
+  line_height -= u8g2_GetDescent(u8g2);
+
+  /* calculate overall height of the message box in lines*/
+  height = 1;	/* button line */
+  height += u8x8_GetStringLineCnt(title1);
+  if ( title2 != NULL )
+    height++;
+  height += u8x8_GetStringLineCnt(title3);
+  
+  /* calculate the height in pixel */
+  pixel_height = height;
+  pixel_height *= line_height;
+  
+  /* ... and add the space between the text and the buttons */
+  pixel_height += SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL;
+  
+  /* calculate offset from top */
+  y = 0;
+  if ( pixel_height < u8g2_GetDisplayHeight(u8g2)   )
+  {
+    y = u8g2_GetDisplayHeight(u8g2);
+    y -= pixel_height;
+    y /= 2;
+  }
+  y += u8g2_GetAscent(u8g2);
+
+  
+  for(;;)
+  {
+      u8g2_FirstPage(u8g2);
+      do
+      {
+        yy = y;
+        /* draw message box */
+        
+        yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title1);
+        if ( title2 != NULL )
+        {
+          u8g2_DrawUTF8Line(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), title2, 0, 0);
+          yy+=line_height;
+        }
+        yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title3);
+        yy += SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL;
+
+        button_cnt = u8g2_draw_button_line(u8g2, yy, u8g2_GetDisplayWidth(u8g2), cursor, buttons);
+
+      } while( u8g2_NextPage(u8g2) );
+
+#ifdef U8G2_REF_MAN_PIC
+      return 0;
+#endif
+	  
+      for(;;)
+      {
+        checkSerialPending();   // <-- added this for serial input handling
+
+        event = u8x8_GetMenuEvent(u8g2_GetU8x8(u8g2));
+        if ( event == U8X8_MSG_GPIO_MENU_SELECT )
+          return cursor+1;
+        else if ( event == U8X8_MSG_GPIO_MENU_HOME )
+          return 0;
+        else if ( event == U8X8_MSG_GPIO_MENU_NEXT || event == U8X8_MSG_GPIO_MENU_DOWN )
+        {
+          cursor++;
+          if ( cursor >= button_cnt )
+            cursor = 0;
+          break;
+        }
+        else if ( event == U8X8_MSG_GPIO_MENU_PREV || event == U8X8_MSG_GPIO_MENU_UP )
+        {
+          if ( cursor == 0 )
+            cursor = button_cnt;
+          cursor--;
+          break;
+        }    
+      }
+  }
+  /* never reached */
+  //return 0;
+}
 
 
 bool moveHome(int index, bool showMessage, bool checkFeeder) {
@@ -1142,6 +1251,18 @@ void prepSteppingRelMillimeter(int index, float millimeter, bool ignoreEndstop) 
   setStepperSteps(index, steps, ignoreEndstop);
 }
 
+void printPeriodicalState(int serial) {
+  const char* _triggered = "on";
+  const char* _open      = "off";
+  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\n"),
+          toolSelected,
+          selectorEndstop()  ? _triggered : _open,
+          revolverEndstop()  ? _triggered : _open,
+          feederEndstop(1)   ? _triggered : _open,
+          feederEndstop(2)   ? _triggered : _open);
+  printResponse(tmp, serial);
+}
+
 void printEndstopState(int serial) {
   const char* _triggered = "triggered";
   const char* _open      = "open";
@@ -1343,7 +1464,7 @@ void getStoredData() {
 }
 
 void setSignalPort(int port, bool state) {
-  if(!smuffConfig.prusaMMU2) {
+  if(!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats) {
     sprintf(tmp,"%c%c%s", 0x1b, port, state ? "1" : "0");
 #if defined(__STM32F1__)
     Serial1.write(tmp);

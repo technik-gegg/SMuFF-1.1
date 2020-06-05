@@ -27,6 +27,7 @@ void drawValue(const char* title, const char* PROGMEM message, String val) {
     sprintf_P(msg, message);
     sprintf(tmp,"%s\n \n%-12s%5s", title, msg, val.c_str());
     drawUserMessage(String(tmp));
+    checkSerialPending();   // allow serial commands to be read and handled
 }
 
 void getEncoderButton(int* turn, int* button, bool* isHeld, bool* isClicked) {
@@ -64,15 +65,18 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
       break;
     }
     if(turn != 0) {
+      *val += steps*turn;
       if(turn < 0) {
-        if(*val > min)
-          *val += steps*turn;
-        else beep(1);
+        if(*val < min) {
+          *val = min;
+          beep(1);
+        }
       }
       else if(turn > 0) {
-        if(*val < max)
-          *val += steps*turn;
-        else beep(1);
+        if(*val > max) {
+          *val = max;          
+          beep(1);
+        }
       }
       drawValue(title, message, String(*val));
       if(cb != NULL) {
@@ -103,15 +107,18 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
       break;
     }
     if(turn != 0) {
+      *val += turn;
       if(turn < 0) {
-        if(*val > min)
-          *val += turn;
-        else beep(1);
+        if(*val < min) {
+          *val = min;
+          beep(1);
+        }
       }
       else if(turn > 0) {
-        if(*val < max)
-          *val += turn;
-        else beep(1);
+        if(*val > max) {
+          *val = max;          
+          beep(1);
+        }
       }
       drawValue(title, message, String(*val));
       if(cb != NULL) {

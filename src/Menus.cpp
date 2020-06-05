@@ -129,6 +129,7 @@ void setupSettingsMenu(char* menu) {
     String(smuffConfig.fanSpeed).c_str(),
     String(smuffConfig.powerSaveTimeout).c_str(),
     smuffConfig.prusaMMU2 ? P_Yes : P_No,
+    smuffConfig.sendPeriodicalStats ? P_Yes : P_No,
 #ifndef __AVR__
     "\u25b8",
     "\u25b8",
@@ -989,7 +990,7 @@ void showSettingsMenu(char* menuTitle) {
 
         case 7: // Power save timeout
             iVal = smuffConfig.powerSaveTimeout;
-            if(showInputDialog(title, P_InSeconds, &iVal, 0, 240))
+            if(showInputDialog(title, P_InSeconds, &iVal, 0, 480))
               smuffConfig.powerSaveTimeout = iVal;
             startTime = millis();
             break;
@@ -1001,28 +1002,35 @@ void showSettingsMenu(char* menuTitle) {
             startTime = millis();
             break;
 
-        case 9: // Baudrates
+        case 9: // Send Status Info
+            bVal = smuffConfig.sendPeriodicalStats;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.sendPeriodicalStats = bVal;
+            startTime = millis();
+            break;
+
+        case 10: // Baudrates
             showBaudratesMenu(title);
             current_selection = 1;
             startTime = millis();
             break;
 
-        case 10: // Offsets
+        case 11: // Offsets
             showOffsetsMenu(title);
             current_selection = 1;
             startTime = millis();
             break;
 
-        case 11: // Steppers
+        case 12: // Steppers
             showSteppersMenu(title);
             current_selection = 1;
             startTime = millis();
             break;
         
-        case 12: // Separator
+        case 13: // Separator
             break;
         
-        case 13: // STORE CONFIG
+        case 14: // STORE CONFIG
             if(writeConfig()) {
               beep(1);
               sprintf_P(msg, P_ConfigWriteSuccess);

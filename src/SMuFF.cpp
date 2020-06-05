@@ -39,7 +39,7 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   */
   U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE); 
   // if the hardware SPI doesn't work, you may try software SPI instead
-  //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC, /* data=*/ DSP_DATA, /* cs=*/ DSP_CS, /* reset=*/ U8X8_PIN_NONE)
+  //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC, /* data=*/ DSP_DATA, /* cs=*/ DSP_CS, /* reset=*/ U8X8_PIN_NONE);
   #else
   // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
   U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
@@ -96,6 +96,7 @@ volatile unsigned long  generalCounter = 0;
 volatile int            bracketCnt = 0;
 volatile int            jsonPtr = 0;
 //char                    jsonData[MAX_JSON];         // temporary buffer for json data coming from Duet3D (not used yet)
+volatile bool           enablePS = false;
 
 String serialBuffer0, serialBuffer2, serialBuffer9; 
 String traceSerial2;
@@ -216,6 +217,17 @@ void every1s() {
 #endif
 }
 
+void every2s() {
+  // send status of endstops and current tool to all listeners, if configured
+  if(!sendingResponse && smuffConfig.sendPeriodicalStats && enablePS && !parserBusy) {
+#if !defined(__STM32F1__)
+    printPeriodicalState(0);
+#endif
+    printPeriodicalState(1);
+    printPeriodicalState(2);
+  }
+}
+
 volatile boolean  interval5s; 
 void every5s() {
   interval5s = true;
@@ -244,6 +256,9 @@ void isrEncoderHandler() {
   }
   if(generalCounter % 1000 == 0) { // every 1000 ms
     every1s();
+  }
+  if(generalCounter % 2000 == 0) { // every 2000 ms
+    every2s();
   }
   if(generalCounter % 5000 == 0) { // every 5000 ms
     every5s();
@@ -482,7 +497,7 @@ void setup() {
   pwrSaveTime = millis();
   
   initBeep();
-  
+  enablePS = true;    // enable periodically sending status, if configured
 }
 
 void setupSteppers() {
@@ -828,7 +843,9 @@ void filterSerialInput(String& buffer, char in) {
         buffer += in;
       break;
     default:
-      buffer += in;
+      if(buffer.length() < 4096)
+        if(in >=0x21 && in <= 0x7e)   // read over non-ascii characters, just in case
+          buffer += in;
       break;
   }
 }
@@ -877,8 +894,14 @@ bool isJsonData(char in) {
   return false;
 }
 
+volatile bool processingSerial0;
+
 void serialEvent() {
+  if(processingSerial0)
+    return;
+    
   while(Serial.available()) {
+    processingSerial0 = true;
     char in = (char)Serial.read();
     // check for JSON data first
     if(isJsonData(in))
@@ -892,10 +915,16 @@ void serialEvent() {
       filterSerialInput(serialBuffer0, in);
     }
   }
+  processingSerial0 = false;
 }
 
+volatile bool processingSerial2;
+
 void serialEvent2() {
+  if(processingSerial2)
+    return;
   while(Serial2.available()) {
+    processingSerial2 = true;
     char in = (char)Serial2.read();
     // in case of PanelDue connected, route everthing to Duet3D - do not process it any further 
     if(smuffConfig.hasPanelDue) {
@@ -912,11 +941,18 @@ void serialEvent2() {
       }
     }
   }
+  processingSerial2 = false;
 }
 
+volatile bool processingSerial1;
+ 
 #ifndef __AVR__
 void serialEvent1() {
+  if(processingSerial1)
+    return;
+  
   while(Serial1.available()) {
+    processingSerial1 = true;
     char in = (char)Serial1.read();
     // check for JSON data first
     if(isJsonData(in))
@@ -930,11 +966,19 @@ void serialEvent1() {
       filterSerialInput(serialBuffer0, in);
     }
   }
+  processingSerial1 = false;
+
 }
 
 #ifndef __ESP32__
+volatile bool processingSerial3;
+
 void serialEvent3() {
+  if(processingSerial3)
+    return;
+  
   while(Serial3.available()) {
+    processingSerial3 = true;
     char in = (char)Serial3.read();
     //Serial3.write(in);
     if (in == '\n') {
@@ -946,6 +990,7 @@ void serialEvent3() {
       filterSerialInput(serialBuffer2, in);
     }
   }
+  processingSerial3 = false;
 }
 #endif
 #endif

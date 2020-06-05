@@ -54,7 +54,7 @@ void readConfig()
     }
   }
 
-  __debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
+  //__debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
   FsFile cfg;
   if(cfg.open(CONFIG_FILE))
   {
@@ -165,6 +165,7 @@ void readConfig()
         smuffConfig.servoMinPwm = 550;
       if(smuffConfig.servoMaxPwm == 0)
         smuffConfig.servoMaxPwm = 2400;
+      smuffConfig.sendPeriodicalStats = jsonDoc["SendPeriodicalStats"];
 
       // read materials if running on 32-Bit MCU
 #if defined(__STM32F1__) || defined(__ESP32__)
@@ -239,6 +240,8 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["HasPanelDue"]          = smuffConfig.hasPanelDue;
   jsonDoc["ServoMinPwm"]          = smuffConfig.servoMinPwm;
   jsonDoc["ServoMaxPwm"]          = smuffConfig.servoMaxPwm;
+  jsonDoc["SendPeriodicalStats"]  = smuffConfig.sendPeriodicalStats;
+
 
   JsonObject node = jsonObj.createNestedObject("Selector");
   node["Offset"]              = smuffConfig.firstToolOffset;

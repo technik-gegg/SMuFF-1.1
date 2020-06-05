@@ -80,7 +80,7 @@ const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
 #if defined (__STM32F1__) || defined (__ESP32__)
-const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers/Servo     %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
+const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nSend Status Info %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers/Servo     %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
 #else
 const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
 #endif
