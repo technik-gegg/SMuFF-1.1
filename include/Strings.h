@@ -117,9 +117,9 @@ const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nFeeder
 #endif
 const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
 #if defined(SMUFF_V5)
-const char P_RevolverMenuItems[] PROGMEM    = { "Home After Feed  %4s\nReset Bef. Feed  %4s\nUse Servo        %4s\nServo opened    %5s\nServo closed    %5s\nServo cycles    %5s" };
+const char P_RevolverMenuItems[] PROGMEM    = { "Home After Feed  %4s\nReset Bef. Feed  %4s\nUse Servo        %4s\nServo opened    %5s\nServo closed    %5s\nServo 1 cycles  %5s\nServo 2 cycles  %5s" };
 #else
-const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo opened    %5s\nServo closed    %5s\nServo cycles    %5s" };
+const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo opened    %5s\nServo closed    %5s\nServo 1 cycles  %5s\nServo 2 cycles  %5s" };
 #endif
 const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
 const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };

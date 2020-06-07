@@ -188,7 +188,8 @@ void setupRevolverMenu(char* menu) {
     smuffConfig.revolverIsServo ? P_Yes : P_No,
     String(smuffConfig.revolverOffPos).c_str(),
     String(smuffConfig.revolverOnPos).c_str(),
-    String(smuffConfig.servoCycles).c_str());
+    String(smuffConfig.servoCycles1).c_str(),
+    String(smuffConfig.servoCycles2).c_str());
   strcat(menu, items1);
   #else
   sprintf_P(items2, P_RevolverMenuItems,
@@ -199,7 +200,8 @@ void setupRevolverMenu(char* menu) {
     smuffConfig.revolverIsServo ? P_Yes : P_No,
     String(smuffConfig.revolverOffPos).c_str(),
     String(smuffConfig.revolverOnPos).c_str(),
-    String(smuffConfig.servoCycles).c_str());
+    String(smuffConfig.servoCycles1).c_str(),
+    String(smuffConfig.servoCycles2).c_str());
   strcat(menu, items1);
   strcat(menu, items2);
   #endif
@@ -557,11 +559,19 @@ void showRevolverMenu(char* menuTitle) {
             startTime = millis();
             break;
 
-        case 7: // Servo cycles
+        case 7: // Servo 1 cycles
             iVal = smuffConfig.servoCycles;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
-              smuffConfig.servoCycles = iVal;
+              smuffConfig.servoCycles1 = iVal;
               servo.setMaxCycles(iVal);
+            }
+            startTime = millis();
+            break;
+
+        case 8: // Servo 2 cycles
+            iVal = smuffConfig.servoCycles;
+            if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
+              smuffConfig.servoCycles2 = iVal;
               servoRevolver.setMaxCycles(iVal);
             }
             startTime = millis();
@@ -658,10 +668,19 @@ void showRevolverMenu(char* menuTitle) {
             startTime = millis();
             break;
 
-        case 15: // Servo cycles
+        case 15: // Servo 1 cycles
             iVal = smuffConfig.servoCycles;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50))
-              smuffConfig.servoCycles = iVal;
+              smuffConfig.servoCycles1 = iVal;
+              servo.setMaxCycles(iVal);
+            startTime = millis();
+            break;
+
+        case 16: // Servo 2 cycles
+            iVal = smuffConfig.servoCycles;
+            if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50))
+              smuffConfig.servoCycles2 = iVal;
+              servoRevolver.setMaxCycles(iVal);
             startTime = millis();
             break;
         #endif
