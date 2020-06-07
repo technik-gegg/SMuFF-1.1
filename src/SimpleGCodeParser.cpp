@@ -517,9 +517,11 @@ void sendOkResponse(int serial) {
 void sendStartResponse(int serial){
   char tmp[50];
   char tmp1[15];
-  sprintf_P(tmp1, PSTR("Serial: %d"), serial);
-  sprintf_P(tmp, P_Echo, tmp1);
-  printResponse(tmp, serial);
+  if(!smuffConfig.prusaMMU2) {
+    sprintf_P(tmp1, PSTR("Serial: %d"), serial);
+    sprintf_P(tmp, P_Echo, tmp1);
+    printResponse(tmp, serial);
+  }
   printResponseP(P_Start, serial);
 }
 
