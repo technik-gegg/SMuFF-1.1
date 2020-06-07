@@ -21,8 +21,6 @@
 #ifndef _SMUFF_H
 #define _SMUFF_H 1
 
-#define DEBUG 1
-
 #if defined (__AVR__)
 #include <avr/pgmspace.h>
 #endif
