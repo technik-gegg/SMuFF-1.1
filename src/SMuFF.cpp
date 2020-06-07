@@ -925,6 +925,7 @@ void serialEvent() {
       //__debug(PSTR("Received-0: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 0);
       isQuote = false;
+      actionOk = false;
     }
     else {
       filterSerialInput(serialBuffer0, in);
@@ -950,6 +951,7 @@ void serialEvent2() {
         //__debug(PSTR("Received-2: %s"), serialBuffer2.c_str());
         parseGcode(serialBuffer2, 2);
         isQuote = false;
+        actionOk = false;
       }
       else {
         filterSerialInput(serialBuffer2, in);
@@ -976,6 +978,7 @@ void serialEvent1() {
       //__debug(PSTR("Received-1: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 1);
       isQuote = false;
+      actionOk = false;
     }
     else {
       filterSerialInput(serialBuffer0, in);
@@ -1000,6 +1003,7 @@ void serialEvent3() {
       //__debug(PSTR("Received-3: %s"), serialBuffer2.c_str());
       parseGcode(serialBuffer2, 3);
       isQuote = false;
+      actionOk = false;
     }
     else {
       filterSerialInput(serialBuffer2, in);

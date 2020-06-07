@@ -30,7 +30,8 @@ extern ZStepper steppers[];
 char ptmp[80];
 volatile bool parserBusy = false;
 volatile bool sendingResponse = false;
-unsigned int currentLine = 0;
+unsigned int  currentLine = 0;
+volatile bool actionOk = false;
 
 void parseGcode(const String& serialBuffer, int serial) {
 
@@ -39,14 +40,14 @@ void parseGcode(const String& serialBuffer, int serial) {
   line = String(serialBuffer);
   resetSerialBuffer(serial);
 
-  /*
-  line.replace(" ","");
-  line.replace("\r","");
-  line.replace("\n","");
-  */
-  
   if(line.length()==0)
     return;
+
+  if(line.startsWith("//ACTION:")) {
+    line = line.substring(9);
+    parse_Action(line, serial);
+    return;
+  }
 
   if(serial == 2)
     traceSerial2 = String(line);
@@ -225,6 +226,23 @@ bool parse_T(const String& buf, int serial) {
   }
 
   return stat;
+}
+
+bool parse_Action(const String& buf, int serial) {
+
+  if(buf.length()==0) {
+    return false;
+  }
+  actionOk = false;
+  if(buf.startsWith("T:")) {
+    String msg = buf.substring(2);
+    if(msg == "OK")
+      actionOk = true;
+    else {
+      drawUserMessage(msg);
+    }
+  }
+  return false;
 }
 
 bool parse_G(const String& buf, int serial) {
