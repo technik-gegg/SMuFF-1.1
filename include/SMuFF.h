@@ -133,7 +133,7 @@ typedef struct {
   char  materials[MAX_TOOLS][20];
   long  powerSaveTimeout    = 300;
   char  unloadCommand[80]   = { 0 };
-  int   wipeSequence[20]    = { 150,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,45,20,110,-1 };
+  char  wipeSequence[30]    = { "S200 I130 J160 P10 R10" };
   bool  prusaMMU2           = true;
   bool  useDuetLaser        = false;
   bool  hasPanelDue         = false;

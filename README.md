@@ -22,6 +22,12 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## Recent changes
 
+**2.05** - Optimization for external control (i.e. OctoPrint plugin)
+
++ added WipeSequence setting to *SMuFF.CFG*.
+This setting defines how the wiper servo will run. The sequence is a string in the format "**S**nn **I**nn **J**nn **P**nn **R**nn". Where **S** defines the speed (wait in millis between each movement), **I** defines the angle of the first position while wiping, **J** the angle of the second position, **P** the angle of the released position and **R** the number of repeats between **I** and **J**. This sequence will be overridden if passed as paramters of the **G12** GCode command.
++ changed "Servo cycles" to "Servo 2 cycles" and added "Servo 1 cycles", so each servo has it's individual settings
+
 **2.04** - Optimization for OctoPrint plugin
 
 + added option to continously send status informations (current tool, endstop states) every two seconds
@@ -66,7 +72,7 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 + changed the servo timing (duty cycle was twice as long as it's supposed to).
 + added live position change while configuring the servo positions in the menu (opened/closed).
-+ added option to set up the servo pulse cycles (0 means: cycle forever, any value above 0: cycle only *n* times). *Set this value to about 20-30 if you experiencing jitter on the servo.*
++ added option to set up the servo pulse cycles (0 means: cycle forever, any value above 0: cycle only *n* times). *Set this value to about 2-3 if you experiencing jitter on the servo.*
 + added "**UseServo**", "**ServoOpened**" and "**ServoClosed**" parameters to M205 GCode command.
 
 **1.64** - Minor changes

@@ -391,7 +391,7 @@ void setup() {
   setupTimers();
   
   if(SERVO1_PIN != -1) {
-    servo.setMaxCycles(smuffConfig.servoCycles);
+    servo.setMaxCycles(smuffConfig.servoCycles1);
     servo.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
@@ -406,7 +406,7 @@ void setup() {
   
   // Replace the Revolver stepper motor with a servo motor
   if(SERVO2_PIN != -1) {
-    servoRevolver.setMaxCycles(smuffConfig.servoCycles);
+    servoRevolver.setMaxCycles(smuffConfig.servoCycles2);
     servoRevolver.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32

@@ -150,12 +150,20 @@ void readConfig()
       smuffConfig.fanSpeed =            jsonDoc["FanSpeed"];
       smuffConfig.powerSaveTimeout =    jsonDoc["PowerSaveTimeout"];
       smuffConfig.duetDirect =          jsonDoc["Duet3DDirect"];
-      const char* p =                   jsonDoc["UnloadCommand"];
-      if(p != NULL && strlen(p) > 0) {
+      const char* p1 =                  jsonDoc["UnloadCommand"];
+      const char* p2 =                  jsonDoc["WipeSequence"];
+      if(p1 != NULL && strlen(p1) > 0) {
 #if defined(__STM32F1__) || defined(__ESP32__)
-        strncpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
+        strncpy(smuffConfig.unloadCommand, p1, sizeof(smuffConfig.unloadCommand));
 #else
-        strlcpy(smuffConfig.unloadCommand, p, sizeof(smuffConfig.unloadCommand));
+        strlcpy(smuffConfig.unloadCommand, p1, sizeof(smuffConfig.unloadCommand));
+#endif
+      }
+      if(p2 != NULL && strlen(p2) > 0) {
+#if defined(__STM32F1__) || defined(__ESP32__)
+        strncpy(smuffConfig.wipeSequence, p2, sizeof(smuffConfig.wipeSequence));
+#else
+        strlcpy(smuffConfig.wipeSequence, p2, sizeof(smuffConfig.wipeSequence));
 #endif
       }
       smuffConfig.prusaMMU2 =           jsonDoc["EmulatePrusa"];
@@ -242,6 +250,7 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["ServoMinPwm"]          = smuffConfig.servoMinPwm;
   jsonDoc["ServoMaxPwm"]          = smuffConfig.servoMaxPwm;
   jsonDoc["SendPeriodicalStats"]  = smuffConfig.sendPeriodicalStats;
+  jsonDoc["WipeSequence"]         = smuffConfig.wipeSequence;
 
 
   JsonObject node = jsonObj.createNestedObject("Selector");

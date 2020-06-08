@@ -560,7 +560,7 @@ void showRevolverMenu(char* menuTitle) {
             break;
 
         case 7: // Servo 1 cycles
-            iVal = smuffConfig.servoCycles;
+            iVal = smuffConfig.servoCycles1;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
               smuffConfig.servoCycles1 = iVal;
               servo.setMaxCycles(iVal);
@@ -569,7 +569,7 @@ void showRevolverMenu(char* menuTitle) {
             break;
 
         case 8: // Servo 2 cycles
-            iVal = smuffConfig.servoCycles;
+            iVal = smuffConfig.servoCycles2;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
               smuffConfig.servoCycles2 = iVal;
               servoRevolver.setMaxCycles(iVal);
@@ -669,7 +669,7 @@ void showRevolverMenu(char* menuTitle) {
             break;
 
         case 15: // Servo 1 cycles
-            iVal = smuffConfig.servoCycles;
+            iVal = smuffConfig.servoCycles1;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50))
               smuffConfig.servoCycles1 = iVal;
               servo.setMaxCycles(iVal);
@@ -677,7 +677,7 @@ void showRevolverMenu(char* menuTitle) {
             break;
 
         case 16: // Servo 2 cycles
-            iVal = smuffConfig.servoCycles;
+            iVal = smuffConfig.servoCycles2;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50))
               smuffConfig.servoCycles2 = iVal;
               servoRevolver.setMaxCycles(iVal);

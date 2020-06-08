@@ -784,52 +784,42 @@ bool G12(const char* msg, String buf, int serial) {
   int pos1 = 20;
   int pos2 = 45;
   int pos0 = 110;
-  unsigned repeat = 0;
-  if((param = getParam(buf, S_Param)) != -1) {
-    wait = param;
+  unsigned repeat = 10;
+  String p;
+  String seq = String(smuffConfig.wipeSequence);
+
+  if(buf.length()==0 && seq.length()==0)
+    return false;
+  // sent sequence overrides internal sequence
+  if(buf.length()==0)
+    p = seq;
+  else
+    p = buf;
+
+  if((param = getParam(p, S_Param)) != -1) {  
+    wait = param; // defines the wipe speed
   }
-  if((param = getParam(buf, I_Param)) != -1) {
-    pos1 = param;
+  if((param = getParam(p, I_Param)) != -1) {
+    pos1 = param; // defines position 1 when wiping
   }
-  if((param = getParam(buf, J_Param)) != -1) {
-    pos2 = param;
+  if((param = getParam(p, J_Param)) != -1) {
+    pos2 = param; // defines position 2 when wiping
   }
-  if((param = getParam(buf, P_Param)) != -1) {
-    pos0 = param;
+  if((param = getParam(p, P_Param)) != -1) {
+    pos0 = param; // defines release position
   }
-  if((param = getParam(buf, R_Param)) != -1) {
-    repeat = param;
+  if((param = getParam(p, R_Param)) != -1) {
+    repeat = param; // defines the number of repeats
   }
-  if(smuffConfig.wipeSequence[0] > 0) {
-    unsigned n = 1;
-    if(repeat > 0) {
-      for(n=0; n < repeat; n++) {
-        servo.write(pos1);
-        delay(wait);
-        servo.write(pos2);
-        delay(wait);
-      }
-      servo.write(pos0);
-      delay(100);
-      //servo.stop();
-    }
-    else {
-      while(n < sizeof(smuffConfig.wipeSequence)) {
-        if(smuffConfig.wipeSequence[n] == -1)
-          break;
-        servo.write(smuffConfig.wipeSequence[n]);
-        delay(wait);
-        n++;
-      }     
-    } 
-  }
-  else {
-    setServoPos(0, 10);
+  unsigned n = 1;
+  for(n=0; n < repeat; n++) {
+    servo.write(pos1);
     delay(wait);
-    setServoPos(0, 110);
-    delay(100);
-    //servo.stop();
+    servo.write(pos2);
+    delay(wait);
   }
+  servo.write(pos0);
+  delay(100);
   return true;
 }
 
