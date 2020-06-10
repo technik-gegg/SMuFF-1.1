@@ -22,6 +22,10 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## Recent changes
 
+**2.06** - Changes for USB connection
+
++ made the USB serial port available for controlling the SMuFF. Comes in handy when operating on OctoPrint (Raspberry Pi), might not work on Windows though.
+
 **2.05** - Optimization for external control (i.e. OctoPrint plugin)
 
 + added WipeSequence setting to *SMuFF.CFG*.

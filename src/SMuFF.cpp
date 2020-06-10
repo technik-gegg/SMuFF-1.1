@@ -224,9 +224,7 @@ void every1s() {
 void every2s() {
   // send status of endstops and current tool to all listeners, if configured
   if(!sendingResponse && smuffConfig.sendPeriodicalStats && enablePS && !parserBusy) {
-#if !defined(__STM32F1__)
     printPeriodicalState(0);
-#endif
     printPeriodicalState(1);
     printPeriodicalState(2);
   }
