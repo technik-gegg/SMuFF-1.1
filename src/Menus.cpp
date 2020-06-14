@@ -1313,9 +1313,7 @@ void showToolsMenu() {
         // the duetDirect flag is a synonym of "communicate directly with the controller attached"
         if(smuffConfig.duetDirect) {
             sprintf(_tmp, "//action: T%d\n", tool);
-            #if !defined(__STM32F1__)
             printResponse(_tmp, 0);
-            #endif
             printResponse(_tmp, 1);
             printResponse(_tmp, 2);
         }

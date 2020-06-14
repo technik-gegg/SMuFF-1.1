@@ -1096,6 +1096,8 @@ bool unloadFilament() {
 bool selectTool(int ndx, bool showMessage) {
 
   char _msg1[256];
+  char _tmp[40];
+
   if(ndx < 0 || ndx >= MAX_TOOLS) {
     if(showMessage) {
       userBeep();
@@ -1142,10 +1144,18 @@ bool selectTool(int ndx, bool showMessage) {
     }
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
       beep(4);
+      if(smuffConfig.duetDirect) {
+        sprintf(_tmp, "//action: WAIT\n");
+        printResponse(_tmp, 0);
+        printResponse(_tmp, 1);
+        printResponse(_tmp, 2);
+      }
       while(feederEndstop()) {
         moveHome(REVOLVER, false, false);   // home Revolver
         M18("M18", "", 0);   // motors off
-        showFeederFailedMessage(0);
+        bool stat = showFeederFailedMessage(0);
+        if(!stat)
+          return false;
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
           #if !defined(__ESP32__)
           Serial2.print(smuffConfig.unloadCommand);
@@ -1153,6 +1163,12 @@ bool selectTool(int ndx, bool showMessage) {
           //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
           #endif
         }
+      }
+      if(smuffConfig.duetDirect) {
+        sprintf(_tmp, "//action: CONTINUE\n");
+        printResponse(_tmp, 0);
+        printResponse(_tmp, 1);
+        printResponse(_tmp, 2);
       }
     }
     if(smuffConfig.revolverIsServo) {
