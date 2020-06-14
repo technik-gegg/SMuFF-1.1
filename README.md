@@ -21,14 +21,15 @@ For further information head over to the [Wiki pages](https://github.com/technik
 
 ## What else?
 
-If you like this plugin and find it useful, feel free to place a donation via PayPal.Me.
-[![paypal](extras/paypalme.png)](https://paypal.me/technikgegg)
+If you like this project and find it useful, feel free to place a donation via PayPal.Me.
+[![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
 
 ## Recent changes
 
 **2.06** - Changes for USB connection
 
 + made the USB serial port available for controlling the SMuFF. Comes in handy when operating on OctoPrint (Raspberry Pi), might not work on Windows though.
++ added some more //action: commands for OctoPrint plugin
 
 **2.05** - Optimization for external control (i.e. OctoPrint plugin)
 
