@@ -26,6 +26,11 @@ If you like this project and find it useful, feel free to place a donation via P
 
 ## Recent changes
 
+**2.07** - Added FastLED to project
+
+Since some displays nowadays come with an NeoPixel backlight, I've seen the urge to add the FastLED library, which controls NeoPixels in a very comfortable way.
+Though, on the STM32 Maple framework it will not compile right away, but there's a workaround. Please read the comments above the initFastLed() function carefully.
+
 **2.06** - Changes for USB connection
 
 + made the USB serial port available for controlling the SMuFF. Comes in handy when operating on OctoPrint (Raspberry Pi), might not work on Windows though.
