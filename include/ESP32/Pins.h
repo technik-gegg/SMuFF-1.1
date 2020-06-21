@@ -68,7 +68,7 @@
 #define DSP_SCL             22      // SCL     
 #define DSP_SDA             21      // SDA
 
-#ifndef USE_TWI_DISPLAY
+#if !defined(USE_TWI_DISPLAY)
 #define ENCODER1_PIN        39      // IO37 (aka CapVP)
 #define ENCODER2_PIN        36      // IO38 (aka CapVN)
 #else

@@ -29,9 +29,9 @@
 #define US_PER_PULSE_0DEG       1000      // microseconds for 0 degrees
 #define US_PER_PULSE_180DEG     2000      // microseconds for 180 degrees
 #define DUTY_CYCLE              20000     // servo cycle in us (>= 20ms)
-#ifdef __ESP32__
-#define SERVO_CHANNEL           8
-#define SERVO_FREQ              50
+#if defined(__ESP32__)
+  #define SERVO_CHANNEL         8
+  #define SERVO_FREQ            50
 #endif
 
 extern void __debug(const char* fmt, ...);
@@ -50,7 +50,7 @@ public:
   void attach(int pin, int servoIndex) { attach(pin); setIndex(servoIndex); }
   void setIndex(int servoIndex);
   void detach();
-  void write(int val);                     
+  void write(int val);
   void writeMicroseconds(int microseconds);
   bool setServoPos(int val);                  // sets the servo position if val is between 0 and 180, otherwise it sets the frequency (ms)
   void setServoMS(int microseconds);          // sets the frequency in milliseconds
@@ -69,19 +69,19 @@ public:
   void getPulseWidthMinMax(int* min, int* max) { *min = _minPw; *max = _maxPw; }
 
 private:
-  void setServoPin(int state); 
+  void setServoPin(int state);
   int _pin;
   bool _useTimer = false;
   int _servoIndex;
   int _degree;
   int _lastDegree;
-#ifdef __STM32F1__
-  uint32_t _lastUpdate;
-  volatile uint32_t _tickCnt;
-#else
-  unsigned int _lastUpdate;
-  volatile int _tickCnt;
-#endif
+  #if defined(__STM32F1__)
+    uint32_t _lastUpdate;
+    volatile uint32_t _tickCnt;
+  #else
+    unsigned int _lastUpdate;
+    volatile int _tickCnt;
+  #endif
   volatile int _dutyCnt;
   int _maxCycles;
   int _loopCnt;

@@ -21,38 +21,38 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.08"
-#define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
-#define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-06-26"
-#define CONFIG_FILE       "SMUFF.CFG"
-#define DATASTORE_FILE    "EEPROM.DAT"
+#define VERSION_STRING          "V2.08"
+#define PMMU_VERSION            106               // Version number for Prusa MMU2 Emulation mode
+#define PMMU_BUILD              372               // Build number for Prusa MMU2 Emulation mode
+#define VERSION_DATE            "2020-06-26"
+#define CONFIG_FILE             "SMUFF.CFG"
+#define DATASTORE_FILE          "EEPROM.DAT"
 #if defined(__STM32F1__)
-#define MAX_JSON          2048              // 2K of temporary buffer for the JSON data
+  #define MAX_JSON              2048              // 2K of temporary buffer for the JSON data
 #elif defined(__ESP32__)
-#define MAX_JSON          4096              // 4K of temporary buffer for the JSON data
+  #define MAX_JSON              4096              // 4K of temporary buffer for the JSON data
 #endif
 
-#define NUM_STEPPERS      3
-#define SELECTOR          0
-#define REVOLVER          1
-#define FEEDER            2
+#define NUM_STEPPERS            3
+#define SELECTOR                0
+#define REVOLVER                1
+#define FEEDER                  2
 
-#define MIN_TOOLS         2
-#define MAX_TOOLS         15
+#define MIN_TOOLS               2
+#define MAX_TOOLS               15
 
-#define BEEPER_FREQUENCY    1760
-#define BEEPER_DURATION     90
-#define BEEPER_UFREQUENCY   440
-#define BEEPER_UDURATION    90
+#define BEEPER_FREQUENCY        1760
+#define BEEPER_DURATION         90
+#define BEEPER_UFREQUENCY       440
+#define BEEPER_UDURATION        90
 
-#define DSP_CONTRAST        200
-#define MIN_CONTRAST        60
-#define MAX_CONTRAST        250
-
-#define I2C_SLAVE_ADDRESS   0x88
+#define DSP_CONTRAST            200
+#define MIN_CONTRAST            60
+#define MAX_CONTRAST            250
 
 #include "Pins.h"               // path is defined in build environment of platformio.ini (-I)
+
+#define I2C_SLAVE_ADDRESS       0x88
 
 #define FIRST_TOOL_OFFSET       1.2   // value in millimeter
 #define TOOL_SPACING            21.0  // value im millimeter
@@ -64,17 +64,17 @@
 #define POWER_SAVE_TIMEOUT      15    // value in seconds
 
 #if !defined(NUM_LEDS)
-#define NUM_LEDS                1     // number of Neopixel LEDS
-#define BRIGHTNESS              64
-#define LED_TYPE                WS2812B
-#define COLOR_ORDER             GRB
+  #define NUM_LEDS              1     // number of Neopixel LEDS
+  #define BRIGHTNESS            64
+  #define LED_TYPE              WS2812B
+  #define COLOR_ORDER           GRB
 #endif
 
-#define BASE_FONT             u8g2_font_6x12_t_symbols
-#define BASE_FONT_BIG         u8g2_font_7x14B_tf
-#define SMALL_FONT            u8g2_font_6x10_mr
-#define STATUS_FONT           u8g2_font_7x14_tf
-#define LOGO_FONT             u8g2_font_helvR08_tf
-#define ICONIC_FONT           u8g2_font_open_iconic_check_2x_t
+#define BASE_FONT               u8g2_font_6x12_t_symbols
+#define BASE_FONT_BIG           u8g2_font_7x14B_tf
+#define SMALL_FONT              u8g2_font_6x10_mr
+#define STATUS_FONT             u8g2_font_7x14_tf
+#define LOGO_FONT               u8g2_font_helvR08_tf
+#define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
 
 #endif

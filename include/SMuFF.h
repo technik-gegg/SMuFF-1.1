@@ -21,10 +21,10 @@
 #ifndef _SMUFF_H
 #define _SMUFF_H 1
 
-#if defined (__AVR__)
+#if defined(__AVR__)
 #include <avr/pgmspace.h>
 #endif
-#if defined (__ESP32__)
+#if defined(__ESP32__)
 #include <pgmspace.h>
 #endif
 #include <Arduino.h>
@@ -41,7 +41,7 @@
 #include "DataStore.h"
 #include "FastLED.h"
 
-#if defined (__STM32F1__)
+#if defined(__STM32F1__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
 
@@ -51,15 +51,14 @@
 #endif
 
 #if defined(__ESP32__)
-#include <WiFi.h>
-#include <BluetoothSerial.h>
+  #include <WiFi.h>
+  #include <BluetoothSerial.h>
 #endif
 
-
-#define FEEDER_SIGNAL     1
-#define SELECTOR_SIGNAL   2
-#define REVOLVER_SIGNAL   3
-#define LED_SIGNAL        4
+#define FEEDER_SIGNAL         1
+#define SELECTOR_SIGNAL       2
+#define REVOLVER_SIGNAL       3
+#define LED_SIGNAL            4
 
 #define PORT_EXPANDER_ADDRESS 0x3F
 
@@ -82,8 +81,8 @@ typedef struct {
   int   endstopTrigger_X    = HIGH;
   int   stepDelay_X         = 10;
   unsigned maxSpeedHS_X     = 10;
-  unsigned accelDistance_X  = 21;          
-  
+  unsigned accelDistance_X  = 21;
+
   long  stepsPerRevolution_Y= 9600;
   long  maxSteps_Y          = 9600;
   unsigned maxSpeed_Y       = 800;
@@ -100,8 +99,8 @@ typedef struct {
   int   servoCycles         = 0;
   int   servoCycles1        = 0;
   int   servoCycles2        = 0;
-  unsigned accelDistance_Y  = 20;          
-  
+  unsigned accelDistance_Y  = 20;
+
   bool  externalControl_Z   = false;
   long  stepsPerMM_Z        = 136;
   unsigned maxSpeed_Z       = 10;
@@ -113,9 +112,9 @@ typedef struct {
   int   feedChunks          = 20;
   bool  enableChunks        = false;
   float insertLength        = 5.0;
-  unsigned maxSpeedHS_Z     = 10;          
-  unsigned accelDistance_Z  = 5;          
-    
+  unsigned maxSpeedHS_Z     = 10;
+  unsigned accelDistance_Z  = 5;
+
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
   float pushbackDelay       = 1.5f;
@@ -145,32 +144,32 @@ typedef struct {
   int   backlightColor      = 0x4;    // Cyan by default
 } SMuFFConfig;
 
-
-#ifdef __BRD_I3_MINI
-extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
+#if defined(__BRD_I3_MINI)
+  extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
 #endif
-#ifdef __BRD_SKR_MINI
+#if defined(__BRD_SKR_MINI)
   extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
-  #ifdef USE_TWI_DISPLAY
-  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
-  #elif USE_ANET_DISPLAY
-  extern U8G2_ST7920_128X64_F_2ND_HW_SPI display; 
+  #if defined(USE_TWI_DISPLAY)
+    extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
+  #elif defined(USE_ANET_DISPLAY)
+    extern U8G2_ST7920_128X64_F_2ND_HW_SPI display;
   // extern U8G2_ST7920_128X64_F_SW_SPI display;
-  #elif USE_MINI12864_PANEL_V21
-  extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
-  #else
-  extern U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI display;
-  //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  #elif defined(USE_FYSETC_2_1_DISPLAY)
+    extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
+  #elif defined(USE_MKS_2_0_DISPLAY)
+    extern U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI display;
+  #elif defined(USE_MKS_2_1_DISPLAY)
+    U8G2_ST7565_NHD_C12864_F_2ND_4W_HW_SPI display;
   #endif
 #endif
-#ifdef __BRD_ESP32
-  #ifdef USE_TWI_DISPLAY
-  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
-  #else
-  extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
+#if defined(__BRD_ESP32)
+  #if defined(USE_TWI_DISPLAY)
+    extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
+  #elif defined(USE_MKS_2_0_DISPLAY)
+    extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
   #endif
 #endif
-#ifdef __BRD_FYSETC_AIOII
+#if defined(__BRD_FYSETC_AIOII)
   extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
 #endif
 
@@ -187,7 +186,7 @@ extern volatile byte  remainingSteppersFlag;
 extern volatile unsigned long lastEncoderButtonTime;
 extern byte           toolSelected;
 extern PositionMode   positionMode;
-extern String         serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2; 
+extern String         serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
 extern bool           displayingUserMessage;
 extern unsigned int   userMessageTime;
 extern bool           testMode;
@@ -232,12 +231,12 @@ extern void prepSteppingRelMillimeter(int index, float millimeter, bool ignoreEn
 extern void resetRevolver();
 extern void serialEvent();
 extern void serialEvent2();
-#ifndef __AVR__
-extern void serialEvent1();
-extern void serialEvent3();
+#if !defined(__AVR__)
+  extern void serialEvent1();
+  extern void serialEvent3();
 #endif
-#ifdef __AVR__
-extern void wireReceiveEvent(int numBytes);
+#if defined(__AVR__)
+  extern void wireReceiveEvent(int numBytes);
 #endif
 extern void beep(int count);
 extern void longBeep(int count);

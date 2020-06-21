@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
- 
+
  /*
   * Module for reading configuration file (JSON-Format) from SD-Card
   */
@@ -27,11 +27,11 @@
 SdFs SD;
 
 #if defined(__STM32F1__)
-const size_t capacity = 2400;
+  const size_t capacity = 2400;
 #elif defined(__ESP32__)
-const size_t capacity = 4800;     // since the ESP32 has more memory, we can do this
+  const size_t capacity = 4800;     // since the ESP32 has more memory, we can do this
 #else
-const size_t capacity = 1300;
+  const size_t capacity = 1300;
 #endif
 
 
@@ -64,7 +64,7 @@ void readConfig()
       cfg.close();
       return;
     }
-    
+
     auto error = deserializeJson(jsonDoc, cfg);
     if (error) {
       longBeep(2);
@@ -156,18 +156,18 @@ void readConfig()
       const char* p1 =                  jsonDoc["UnloadCommand"];
       const char* p2 =                  jsonDoc["WipeSequence"];
       if(p1 != NULL && strlen(p1) > 0) {
-#if defined(__STM32F1__) || defined(__ESP32__)
-        strncpy(smuffConfig.unloadCommand, p1, sizeof(smuffConfig.unloadCommand));
-#else
-        strlcpy(smuffConfig.unloadCommand, p1, sizeof(smuffConfig.unloadCommand));
-#endif
+        #if defined(__STM32F1__) || defined(__ESP32__)
+          strncpy(smuffConfig.unloadCommand, p1, sizeof(smuffConfig.unloadCommand));
+        #else
+          strlcpy(smuffConfig.unloadCommand, p1, sizeof(smuffConfig.unloadCommand));
+        #endif
       }
       if(p2 != NULL && strlen(p2) > 0) {
-#if defined(__STM32F1__) || defined(__ESP32__)
-        strncpy(smuffConfig.wipeSequence, p2, sizeof(smuffConfig.wipeSequence));
-#else
-        strlcpy(smuffConfig.wipeSequence, p2, sizeof(smuffConfig.wipeSequence));
-#endif
+        #if defined(__STM32F1__) || defined(__ESP32__)
+          strncpy(smuffConfig.wipeSequence, p2, sizeof(smuffConfig.wipeSequence));
+        #else
+          strlcpy(smuffConfig.wipeSequence, p2, sizeof(smuffConfig.wipeSequence));
+        #endif
       }
       smuffConfig.prusaMMU2 =           jsonDoc["EmulatePrusa"];
       smuffConfig.hasPanelDue =         jsonDoc["HasPanelDue"];
@@ -180,22 +180,22 @@ void readConfig()
       smuffConfig.sendPeriodicalStats = jsonDoc["SendPeriodicalStats"];
 
       // read materials if running on 32-Bit MCU
-#if defined(__STM32F1__) || defined(__ESP32__)
-      for(int i=0; i < smuffConfig.toolCount; i++) {
-        char tmp[16];
-        sprintf(tmp,"T%d", i);
-        if(jsonDoc["Material"][tmp] == NULL)
-          sprintf(tmp,"Tool%d", i);
-        memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
-        strncpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i])); 
-      }
-#else
-      for(int i=0; i < smuffConfig.toolCount; i++) {
-        memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
-      }
-#endif
-      
-      __debug(PSTR("DONE reading config"));
+      #if defined(__STM32F1__) || defined(__ESP32__)
+        for(int i=0; i < smuffConfig.toolCount; i++) {
+          char tmp[16];
+          sprintf(tmp,"T%d", i);
+          if(jsonDoc["Material"][tmp] == NULL)
+            sprintf(tmp,"Tool%d", i);
+          memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
+          strncpy(smuffConfig.materials[i], jsonDoc["Materials"][tmp], sizeof(smuffConfig.materials[i]));
+        }
+      #else
+        for(int i=0; i < smuffConfig.toolCount; i++) {
+          memset(smuffConfig.materials[i], 0, sizeof(smuffConfig.materials[i]));
+        }
+      #endif
+
+    __debug(PSTR("DONE reading config"));
     }
     if(smuffConfig.maxSpeedHS_X == 0)
       smuffConfig.maxSpeedHS_X = smuffConfig.maxSpeed_X;
@@ -258,62 +258,62 @@ bool writeConfig(Print* dumpTo)
 
 
   JsonObject node = jsonObj.createNestedObject("Selector");
-  node["Offset"]              = smuffConfig.firstToolOffset;
-  node["Spacing"]             = smuffConfig.toolSpacing;
-  node["StepsPerMillimeter"]  = smuffConfig.stepsPerMM_X;
-  node["StepDelay"]           = smuffConfig.stepDelay_X;
-  node["MaxSpeed"]            = smuffConfig.maxSpeed_X;
-  node["MaxSpeedHS"]          = smuffConfig.maxSpeedHS_X;
-  node["Acceleration"]        = smuffConfig.acceleration_X;
-  node["InvertDir"]           = smuffConfig.invertDir_X;
-  node["EndstopTrigger"]      = smuffConfig.endstopTrigger_X;
+  node["Offset"]                  = smuffConfig.firstToolOffset;
+  node["Spacing"]                 = smuffConfig.toolSpacing;
+  node["StepsPerMillimeter"]      = smuffConfig.stepsPerMM_X;
+  node["StepDelay"]               = smuffConfig.stepDelay_X;
+  node["MaxSpeed"]                = smuffConfig.maxSpeed_X;
+  node["MaxSpeedHS"]              = smuffConfig.maxSpeedHS_X;
+  node["Acceleration"]            = smuffConfig.acceleration_X;
+  node["InvertDir"]               = smuffConfig.invertDir_X;
+  node["EndstopTrigger"]          = smuffConfig.endstopTrigger_X;
 
   node = jsonObj.createNestedObject("Revolver");
-  node["Offset"]              = smuffConfig.firstRevolverOffset;
-  node["StepsPerRevolution"]  = smuffConfig.stepsPerRevolution_Y;
-  node["StepDelay"]           = smuffConfig.stepDelay_Y;
-  node["MaxSpeed"]            = smuffConfig.maxSpeed_Y;
-  node["MaxSpeedHS"]          = smuffConfig.maxSpeedHS_Y;
-  node["Acceleration"]        = smuffConfig.acceleration_Y;
-  node["ResetBeforeFeed"]     = smuffConfig.resetBeforeFeed_Y;
-  node["HomeAfterFeed"]       = smuffConfig.homeAfterFeed;
-  node["InvertDir"]           = smuffConfig.invertDir_Y;
-  node["EndstopTrigger"]      = smuffConfig.endstopTrigger_Y;
-  node["Wiggle"]              = smuffConfig.wiggleRevolver;
-  node["UseServo"]            = smuffConfig.revolverIsServo;
-  node["ServoOffPos"]         = smuffConfig.revolverOffPos;
-  node["ServoOnPos"]          = smuffConfig.revolverOnPos;
-  node["Servo1Cycles"]        = smuffConfig.servoCycles1;
-  node["Servo2Cycles"]        = smuffConfig.servoCycles2;
+  node["Offset"]                  = smuffConfig.firstRevolverOffset;
+  node["StepsPerRevolution"]      = smuffConfig.stepsPerRevolution_Y;
+  node["StepDelay"]               = smuffConfig.stepDelay_Y;
+  node["MaxSpeed"]                = smuffConfig.maxSpeed_Y;
+  node["MaxSpeedHS"]              = smuffConfig.maxSpeedHS_Y;
+  node["Acceleration"]            = smuffConfig.acceleration_Y;
+  node["ResetBeforeFeed"]         = smuffConfig.resetBeforeFeed_Y;
+  node["HomeAfterFeed"]           = smuffConfig.homeAfterFeed;
+  node["InvertDir"]               = smuffConfig.invertDir_Y;
+  node["EndstopTrigger"]          = smuffConfig.endstopTrigger_Y;
+  node["Wiggle"]                  = smuffConfig.wiggleRevolver;
+  node["UseServo"]                = smuffConfig.revolverIsServo;
+  node["ServoOffPos"]             = smuffConfig.revolverOffPos;
+  node["ServoOnPos"]              = smuffConfig.revolverOnPos;
+  node["Servo1Cycles"]            = smuffConfig.servoCycles1;
+  node["Servo2Cycles"]            = smuffConfig.servoCycles2;
 
   node = jsonObj.createNestedObject("Feeder");
-  node["ExternalControl"]     = smuffConfig.externalControl_Z;
-  node["StepsPerMillimeter"]  = smuffConfig.stepsPerMM_Z;
-  node["StepDelay"]           = smuffConfig.stepDelay_Z;
-  node["MaxSpeed"]            = smuffConfig.maxSpeed_Z;
-  node["MaxSpeedHS"]          = smuffConfig.maxSpeedHS_Z;
-  node["Acceleration"]        = smuffConfig.acceleration_Z;
-  node["InsertSpeed"]         = smuffConfig.insertSpeed_Z;
-  node["InvertDir"]           = smuffConfig.invertDir_Z;
-  node["EndstopTrigger"]      = smuffConfig.endstopTrigger_Z;
-  node["ReinforceLength"]     = smuffConfig.reinforceLength;
-#if defined(__STM32F1__) || defined(__ESP32__)
-  node["UnloadRetract"]       = smuffConfig.unloadRetract;
-  node["UnloadPushback"]      = smuffConfig.unloadPushback;
-  node["PushbackDelay"]       = smuffConfig.pushbackDelay;
-#endif
-  node["EnableChunks"]        = smuffConfig.enableChunks;
-  node["FeedChunks"]          = smuffConfig.feedChunks;
-  node["InsertLength"]        = smuffConfig.insertLength;
+  node["ExternalControl"]         = smuffConfig.externalControl_Z;
+  node["StepsPerMillimeter"]      = smuffConfig.stepsPerMM_Z;
+  node["StepDelay"]               = smuffConfig.stepDelay_Z;
+  node["MaxSpeed"]                = smuffConfig.maxSpeed_Z;
+  node["MaxSpeedHS"]              = smuffConfig.maxSpeedHS_Z;
+  node["Acceleration"]            = smuffConfig.acceleration_Z;
+  node["InsertSpeed"]             = smuffConfig.insertSpeed_Z;
+  node["InvertDir"]               = smuffConfig.invertDir_Z;
+  node["EndstopTrigger"]          = smuffConfig.endstopTrigger_Z;
+  node["ReinforceLength"]         = smuffConfig.reinforceLength;
+  #if defined(__STM32F1__) || defined(__ESP32__)
+    node["UnloadRetract"]         = smuffConfig.unloadRetract;
+    node["UnloadPushback"]        = smuffConfig.unloadPushback;
+    node["PushbackDelay"]         = smuffConfig.pushbackDelay;
+  #endif
+  node["EnableChunks"]            = smuffConfig.enableChunks;
+  node["FeedChunks"]              = smuffConfig.feedChunks;
+  node["InsertLength"]            = smuffConfig.insertLength;
 
-#if defined(__STM32F1__) || defined(__ESP32__)
-  node = jsonObj.createNestedObject("Materials");
-  for(int i=0; i < smuffConfig.toolCount; i++) {
-    char tmp[16];
-    sprintf(tmp,"T%d", i);
-    node[tmp] = smuffConfig.materials[i] != NULL ?  smuffConfig.materials[i] : "";
-  }
-#endif
+  #if defined(__STM32F1__) || defined(__ESP32__)
+    node = jsonObj.createNestedObject("Materials");
+    for(int i=0; i < smuffConfig.toolCount; i++) {
+      char tmp[16];
+      sprintf(tmp,"T%d", i);
+      node[tmp] = smuffConfig.materials[i] != NULL ?  smuffConfig.materials[i] : "";
+    }
+  #endif
 
   if(dumpTo == NULL) {
     FsFile cfg;
@@ -321,7 +321,7 @@ bool writeConfig(Print* dumpTo)
       serializeJsonPretty(jsonDoc, cfg);
       stat = true;
     }
-    cfg.close();  
+    cfg.close();
   }
   else {
     serializeJsonPretty(jsonDoc, *dumpTo);

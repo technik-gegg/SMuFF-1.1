@@ -23,8 +23,8 @@
 
 #define BOARD_INFO          "SKR V1.3"
 // SELECTOR (X)
-#define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH); 
-#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);  
+#define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
+#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
 #define X_STEP_PIN          P2_02
 #define X_DIR_PIN           P2_06
 #define X_ENABLE_PIN        P2_01
@@ -45,9 +45,9 @@
 #define Z_ENABLE_PIN        P0_21
 #define Z_END_PIN           P1_25
 #define Z_END2_PIN          P1_24
-#define Z_END_DUET_PIN      -1 
+#define Z_END_DUET_PIN      -1
 
-#define BEEPER_PIN          P1_30 
+#define BEEPER_PIN          P1_30
 
 #define SERVO1_PIN          P2_00       // Servo-Pin
 #define SERVO2_PIN          P1_26       // Endstop Y+
@@ -59,24 +59,22 @@
 
 #define DSP_CS_PIN          P1_21     // These pins are only valid if a SPI display is being used
 #define DSP_DC_PIN          P1_22
-#define DSP_RESET_PIN       P1_20 
+#define DSP_RESET_PIN       P1_20
 
 #define DSP_SCL             P0_01     // By default we run the SMuFF controller display on TWI (I2C)
 #define DSP_SDA             P0_00
 
-#ifndef USE_TWI_DISPLAY
-#define ENCODER1_PIN        P3_26
-#define ENCODER2_PIN        P3_25
+#if !defined(USE_TWI_DISPLAY)
+  #define ENCODER1_PIN      P3_26
+  #define ENCODER2_PIN      P3_25
 #else
-#define ENCODER1_PIN        P1_18
-#define ENCODER2_PIN        P1_20
+  #define ENCODER1_PIN      P1_18
+  #define ENCODER2_PIN      P1_20
 #endif
 #define ENCODER_BUTTON_PIN  P1_30
 
-
 #define TX3_PIN             P1_01     // on SKR usually used for stepper driver serial connection
-#define RX3_PIN             P1_10        
+#define RX3_PIN             P1_10
 
 #define TX2_PIN             P1_00     // on SKR usually used for stepper driver serial connection
 #define RX2_PIN             P1_09     // on SKR Mini already used for SD-Card DATA2
-

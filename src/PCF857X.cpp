@@ -5,19 +5,19 @@
  *  it under the terms of the GNU General Public License as published by\n
  *  the Free Software Foundation, either version 3 of the License, or\n
  *  (at your option) any later version.\n
- * 
+ *
  *  This program is distributed in the hope that it will be useful,\n
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of\n
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n
  *  GNU General Public License for more details.\n
- * 
+ *
  *  You should have received a copy of the GNU General Public License\n
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
 /*
-	Technik Gegg 2020-05-06: 
-		Corrected ::updateGPIO() method to respect either 8 bit (8574) or 16 bit (8575) 
+	Technik Gegg 2020-05-06:
+		Corrected ::updateGPIO() method to respect either 8 bit (8574) or 16 bit (8575)
 */
 
 /* Dependencies */
@@ -213,7 +213,7 @@ void PCF857X::checkForInterrupt() {
 		return;
 	else
 		_isrIgnore = 1;
-		
+
 	/* Re-enable interrupts to allow Wire library to work */
 	sei();
 
@@ -250,7 +250,7 @@ void PCF857X::checkForInterrupt() {
 			break;
 		}
 	}
-	
+
 	/* Turn off ISR ignore flag */
 	_isrIgnore = 0;
 }
@@ -283,7 +283,7 @@ void PCF857X::readGPIO() {
 		if (_chip == CHIP_PCF8575) {
 			_PIN = I2CREAD(); /* LSB first */
 			_PIN |= I2CREAD() << 8;
-		} 
+		}
 		else {
 			// Technik Gegg: Corrected wrong assignment & shifting
 			_PIN = I2CREAD();
@@ -292,7 +292,7 @@ void PCF857X::readGPIO() {
 }
 
 /*
-	Technik Gegg: Corrected write function to respect either 8 bit (8574) or 16 bit (8575) 
+	Technik Gegg: Corrected write function to respect either 8 bit (8574) or 16 bit (8575)
 */
 void PCF857X::updateGPIO() {
 

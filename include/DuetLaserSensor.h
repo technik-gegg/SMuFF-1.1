@@ -27,7 +27,7 @@ class DuetLaserSensor {
 public:
   DuetLaserSensor() { _pin = -1; };
   DuetLaserSensor(int pin) { attach(pin); }
-  
+
   void attach(int pin);
   void reset();
   void service();
@@ -48,7 +48,7 @@ public:
 
 private:
   int       _pin = -1;
-  bool      _switch;  
+  bool      _switch;
   bool      _isV1;
   double    _positionMM;
   unsigned  _position;
@@ -60,7 +60,7 @@ private:
   int       _lastBit;
   unsigned  _state;
   unsigned  _data;
-  
+
   bool      _gotIdle;
   bool      _gotStartbit;
   bool      _isValid;

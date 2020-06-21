@@ -77,11 +77,11 @@ void parseGcode(const String& serialBuffer, int serial) {
       sendErrorResponseP(serial, P_Busy);
       return;
     }
-    else if(!line.startsWith("A") && 
-            !line.startsWith("P") && 
-            !line.startsWith("T") && 
-            !line.startsWith("C") && 
-            !line.startsWith("U") ) { // only Abort or FINDA command is being processed while parser is busy 
+    else if(!line.startsWith("A") &&
+            !line.startsWith("P") &&
+            !line.startsWith("T") &&
+            !line.startsWith("C") &&
+            !line.startsWith("U") ) { // only Abort or FINDA command is being processed while parser is busy
             //__debug(PSTR("NO valid PMMU GCode"));
       return;
     }
@@ -93,22 +93,22 @@ void parseGcode(const String& serialBuffer, int serial) {
       // request a resend of the last command, so we don't ignore and loose the command
       // as we do with the 'U' and 'A' commands.
       // The printer is supposed to send another 'T' command after a while.
-      if(!steppers[FEEDER].getMovementDone()) { 
-        //__debug(PSTR("Wait after 'T' 500ms")); 
+      if(!steppers[FEEDER].getMovementDone()) {
+        //__debug(PSTR("Wait after 'T' 500ms"));
         delay(500);
         if(currentLine > 0)
           sprintf_P(ptmp, PSTR("M998 %d\n"), currentLine);
         else
           sprintf_P(ptmp, PSTR("M998\n"));
         printResponseP(ptmp, serial);
-        //__debug(PSTR("Resend 'T' sent"));  
+        //__debug(PSTR("Resend 'T' sent"));
         return;
       }
     }
     if(line.startsWith("U") || line.startsWith("C")) {
       if(!steppers[FEEDER].getMovementDone()) {
-        sendOkResponse(serial);  
-        //__debug(PSTR("Cancelling U/C"));  
+        sendOkResponse(serial);
+        //__debug(PSTR("Cancelling U/C"));
         return;
       }
     }
@@ -118,16 +118,16 @@ void parseGcode(const String& serialBuffer, int serial) {
         setAbortRequested(true);
         //__debug(PSTR("Abort set"));
       }
-      sendOkResponse(serial);  
+      sendOkResponse(serial);
       return;
     }
   }
 
   parserBusy = true;
-  
+
   if(line.startsWith("G")) {
     if(parse_G(line.substring(1), serial))
-      sendOkResponse(serial);  
+      sendOkResponse(serial);
     else
       sendErrorResponseP(serial);
     parserBusy = false;
@@ -135,7 +135,7 @@ void parseGcode(const String& serialBuffer, int serial) {
   }
   else if(line.startsWith("M")) {
     if(parse_M(line.substring(1), serial))
-      sendOkResponse(serial);  
+      sendOkResponse(serial);
     else
       sendErrorResponseP(serial);
     parserBusy = false;
@@ -143,9 +143,9 @@ void parseGcode(const String& serialBuffer, int serial) {
   }
   else if(line.startsWith("T")) {
     if(parse_T(line.substring(1), serial))
-      sendOkResponse(serial);  
+      sendOkResponse(serial);
     else
-      sendErrorResponseP(serial);  
+      sendErrorResponseP(serial);
     parserBusy = false;
     return;
   }
@@ -202,7 +202,7 @@ bool parse_T(const String& buf, int serial) {
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
     //__debug(PSTR("Tool change requested: T%d"), tool);
     // Prusa expects the MMU to unload filament on its own before tool change
-    if(smuffConfig.prusaMMU2 && feederEndstop()) { 
+    if(smuffConfig.prusaMMU2 && feederEndstop()) {
       //__debug(PSTR("must unload first!"));
       unloadFilament();
     }
@@ -254,7 +254,7 @@ bool parse_G(const String& buf, int serial) {
   }
   int code = buf.toInt();
   //__debug(PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
- 
+
   char msg[10];
   sprintf_P(msg, P_GResponse, code);
   int ofs = String(msg).length()-2;
@@ -273,13 +273,13 @@ bool parse_G(const String& buf, int serial) {
 
 bool parse_M(const String& buf, int serial) {
   bool stat = true;
-  
+
   if(buf.length()==0) {
     sendMList(serial);
     return stat;
   }
   int code = buf.toInt();
- 
+
   char msg[10];
   sprintf_P(msg, P_MResponse, code);
   int ofs = String(msg).length()-2;
@@ -298,7 +298,7 @@ bool parse_M(const String& buf, int serial) {
 }
 
 /**
- *  Parse pseudo GCodes to emulate a Prusa MMU2 
+ *  Parse pseudo GCodes to emulate a Prusa MMU2
  **/
 bool parse_PMMU2(char cmd, const String& buf, int serial) {
 
@@ -319,7 +319,7 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
   switch(cmd) {
     case 'A':
       // Aborted - we've already handeled that
-      
+
       break;
     case 'S':     // Init (S0 | S1 | S2 | S3)
       switch(type) {
@@ -427,8 +427,8 @@ int getParam(String buf, char* token) {
     }
     return buf.substring(pos+1).toInt();
   }
-  else 
-    return -1; 
+  else
+    return -1;
 }
 
 long getParamL(String buf, char* token) {
@@ -443,8 +443,8 @@ long getParamL(String buf, char* token) {
     }
     return buf.substring(pos+1).toInt();
   }
-  else 
-    return -1; 
+  else
+    return -1;
 }
 
 bool getParamString(String buf, char* token, char* dest, int bufLen) {
@@ -491,7 +491,7 @@ void sendMList(int serial) {
   printResponseP(P_MCmds, serial);
 }
 
-void sendToolResponse(int serial) { 
+void sendToolResponse(int serial) {
   char tmp[80];
   sprintf_P(tmp, P_TResponse, toolSelected);
   printResponse(tmp, serial);
@@ -531,7 +531,7 @@ void saveSettings(int serial) {
 
 void reportSettings(int serial) {
   char tmp[128];
-  
+
   sprintf_P(tmp, P_SelectorPos,   dataStore.stepperPos[SELECTOR]); printResponse(tmp, serial);
   sprintf_P(tmp, P_RevolverPos,   dataStore.stepperPos[REVOLVER]); printResponse(tmp, serial);
   sprintf_P(tmp, P_FeederPos,     dataStore.stepperPos[FEEDER]); printResponse(tmp, serial);
@@ -546,9 +546,9 @@ void printResponse(const char* response, int serial) {
     case 0: Serial.print(response); break;
     case 1: Serial1.print(response); break;
     case 2: Serial2.print(response); break;
-#ifndef __ESP32__
-    case 3: Serial3.print(response); break;
-#endif
+    #if !defined(__ESP32__)
+      case 3: Serial3.print(response); break;
+    #endif
   }
   sendingResponse = false;
 }
@@ -559,9 +559,9 @@ void printResponseP(const char* response, int serial) {
     case 0: Serial.print((__FlashStringHelper*)response); break;
     case 1: Serial1.print((__FlashStringHelper*)response); break;
     case 2: Serial2.print((__FlashStringHelper*)response); break;
-#ifndef __ESP32__
-    case 3: Serial3.print((__FlashStringHelper*)response); break;
-#endif
+    #if !defined(__ESP32__)
+      case 3: Serial3.print((__FlashStringHelper*)response); break;
+    #endif
   }
   sendingResponse = false;
 }

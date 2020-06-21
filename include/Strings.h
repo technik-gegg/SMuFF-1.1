@@ -20,32 +20,32 @@
 #ifndef _SMUFF_STRINGS_H
 #define _SMUFF_STRINGS_H
 
-#if !defined (__ESP32__) && !defined(__NXP__)
-#include <avr/pgmspace.h>
+#if !defined(__ESP32__) && !defined(__NXP__)
+  #include <avr/pgmspace.h>
 #endif
- 
+
 #define SD_ERR_INIT           1
 #define SD_ERR_NOCONFIG       2
 #define SD_READING_CONFIG     0
 
-#if defined (__STM32F1__) || defined (__ESP32__)
-const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
-const char P_MenuItemSeparator [] PROGMEM   = { "\u25ab\u25ab\u25ab\u25ab\u25ab\n"};
-#if defined(SMUFF_V5)
-const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nServo %s\nTool Maint. %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
-const char P_MenuItemsDefault[] PROGMEM     = { "Settings \u25b8\n%sTestrun \u25b8" };
+#if defined(__STM32F1__) || defined(__ESP32__)
+  const char P_MenuItemBack [] PROGMEM      = { "\u25c0 BACK\n" };
+  const char P_MenuItemSeparator [] PROGMEM = { "\u25ab\u25ab\u25ab\u25ab\u25ab\n"};
+  #if defined(SMUFF_V5)
+    const char P_MenuItems [] PROGMEM       = { "Home All\nMotors %s\nServo %s\nTool Maint. %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
+    const char P_MenuItemsDefault[] PROGMEM = { "Settings \u25b8\n%sTestrun \u25b8" };
+  #else
+    const char P_MenuItems [] PROGMEM       = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
+    const char P_MenuItemsDefault[] PROGMEM = { "Settings \u25b8\n%sTestrun \u25b8" };
+  #endif
+  const char P_OfsMenuItems [] PROGMEM      = { "Selector         %4s\nRevolver        %5s" };
 #else
-const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools \u25b8\nLoad Filament\nUnload Filament\n%s%s%s" };
-const char P_MenuItemsDefault[] PROGMEM     = { "Settings \u25b8\n%sTestrun \u25b8" };
-#endif
-const char P_OfsMenuItems [] PROGMEM        = { "Selector         %4s\nRevolver        %5s" };
-#else
-const char P_MenuItemBack [] PROGMEM        = { "< BACK\n" };
-const char P_MenuItemSeparator [] PROGMEM   = { "-----\n"};
-const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\nOffsets >" };
-//const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\n%s%S%S" };
-const char P_MenuItemsDefault[] PROGMEM     = { "Settings >" };
-const char P_OfsMenuItems [] PROGMEM        = { "Selector         %4s\nRevolver        %5s" };
+  const char P_MenuItemBack [] PROGMEM      = { "< BACK\n" };
+  const char P_MenuItemSeparator [] PROGMEM = { "-----\n"};
+  const char P_MenuItems [] PROGMEM         = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\nOffsets >" };
+  //const char P_MenuItems [] PROGMEM         = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\n%s%S%S" };
+  const char P_MenuItemsDefault[] PROGMEM   = { "Settings >" };
+  const char P_OfsMenuItems [] PROGMEM      = { "Selector         %4s\nRevolver        %5s" };
 #endif
 const char P_MenuItemsPMMU [] PROGMEM       = { "Load To Nozzle\n" };
 const char P_OkButtonOnly [] PROGMEM        = { " Ok " };
@@ -79,116 +79,121 @@ const char P_TitleToolsMenu [] PROGMEM      = { "Tool Selection" };
 const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
-#if defined (__STM32F1__) || defined (__ESP32__)
+#if defined(__STM32F1__) || defined(__ESP32__)
 const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPrusa MMU2 Emul. %4s\nSend Status Info %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers/Servo     %4s\nDisplay            %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
 #else
-const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
+  const char P_MenuItemBack [] PROGMEM        = { "< BACK\n" };
+  const char P_MenuItemSeparator [] PROGMEM   = { "-----\n"};
+  const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\nOffsets >" };
+  //const char P_MenuItems [] PROGMEM           = { "Home All\nMotors %s\nReset Feeder Jam\nSwap Tools >\nLoad Filament\nUnload Filament\n%s%S%S" };
+  const char P_MenuItemsDefault[] PROGMEM     = { "Settings >" };
+  const char P_OfsMenuItems [] PROGMEM        = { "Selector         %4s\nRevolver        %5s" };
 #endif
-const char P_Off[] PROGMEM                  = { "OFF" };
-const char P_On[] PROGMEM                   = { "ON" };
-const char P_Yes[] PROGMEM                  = { "Yes" };
-const char P_No[] PROGMEM                   = { "No" };
-const char P_High[] PROGMEM                 = { "HI" };
-const char P_Low[] PROGMEM                  = { "LO" };
-const char P_Open[] PROGMEM                 = { "OPEN" };
-const char P_Close[] PROGMEM                = { "CLOSE" };
+const char P_Off[] PROGMEM                    = { "OFF" };
+const char P_On[] PROGMEM                     = { "ON" };
+const char P_Yes[] PROGMEM                    = { "Yes" };
+const char P_No[] PROGMEM                     = { "No" };
+const char P_High[] PROGMEM                   = { "HI" };
+const char P_Low[] PROGMEM                    = { "LO" };
+const char P_Open[] PROGMEM                   = { "OPEN" };
+const char P_Close[] PROGMEM                  = { "CLOSE" };
 
-const char P_ToolCount[] PROGMEM            = { "# of tools:" };
-const char P_InMillimeter[] PROGMEM         = { "in mm:" };
-const char P_InSeconds[] PROGMEM            = { "in seconds:" };
-const char P_InPercent[] PROGMEM            = { "in percent:" };
-const char P_InValue[] PROGMEM              = { "as value:" };
-const char P_YesNo[] PROGMEM                = { "yes / no:" };
-const char P_Baud[] PROGMEM                 = { "Baudrate:" };
-const char P_Color[] PROGMEM                = { "Color:" };
-const char P_InMicroseconds[] PROGMEM       = { "in uS:" };
-const char P_InTicks[] PROGMEM              = { "in ticks:" };
-const char P_InSteps[] PROGMEM              = { "in steps:" };
-const char P_TriggerOn[] PROGMEM            = { "on:" };
-const char P_OpenPos[] PROGMEM              = { "open @:" };
-const char P_ClosedPos[] PROGMEM            = { "closed @:" };
-const char P_ServoCycles[] PROGMEM          = { "cycles:" };
-const char P_NoOfChunks[] PROGMEM           = { "# of chunks:" };
-const char P_BaudMenuItems[] PROGMEM        = { "USB-Serial     %6s\n2nd Serial     %6s" };
-const char P_Baudrates[] PROGMEM            = { "4800\n9600\n19200\n38400\n56700\n115200\n230400" };
-const char P_Colors[] PROGMEM               = { "Black\nRed\nGreen\nBlue\nCyan\nMagenta\nYellow\nWhite" };
-#if defined (__STM32F1__) || defined (__ESP32__)
-#if defined(SMUFF_V5)
-const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nFeeder              %2s\nServo               %2s" };
+const char P_ToolCount[] PROGMEM              = { "# of tools:" };
+const char P_InMillimeter[] PROGMEM           = { "in mm:" };
+const char P_InSeconds[] PROGMEM              = { "in seconds:" };
+const char P_InPercent[] PROGMEM              = { "in percent:" };
+const char P_InValue[] PROGMEM                = { "as value:" };
+const char P_YesNo[] PROGMEM                  = { "yes / no:" };
+const char P_Baud[] PROGMEM                   = { "Baudrate:" };
+const char P_Color[] PROGMEM                  = { "Color:" };
+const char P_InMicroseconds[] PROGMEM         = { "in uS:" };
+const char P_InTicks[] PROGMEM                = { "in ticks:" };
+const char P_InSteps[] PROGMEM                = { "in steps:" };
+const char P_TriggerOn[] PROGMEM              = { "on:" };
+const char P_OpenPos[] PROGMEM                = { "open @:" };
+const char P_ClosedPos[] PROGMEM              = { "closed @:" };
+const char P_ServoCycles[] PROGMEM            = { "cycles:" };
+const char P_NoOfChunks[] PROGMEM             = { "# of chunks:" };
+const char P_BaudMenuItems[] PROGMEM          = { "USB-Serial     %6s\n2nd Serial     %6s" };
+const char P_Baudrates[] PROGMEM              = { "4800\n9600\n19200\n38400\n56700\n115200\n230400" };
+const char P_Colors[] PROGMEM                 = { "Black\nRed\nGreen\nBlue\nCyan\nMagenta\nYellow\nWhite" };
+#if defined(__STM32F1__) || defined(__ESP32__)
+  #if defined(SMUFF_V5)
+    const char P_SteppersMenuItems[] PROGMEM  = { "Selector            %2s\nFeeder              %2s\nServo               %2s" };
+  #else
+    const char P_SettingsMenuItems[] PROGMEM  = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
+  #endif
+  const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
+  #if defined(SMUFF_V5)
+    const char P_RevolverMenuItems[] PROGMEM  = { "Home After Feed  %4s\nReset Bef. Feed  %4s\nUse Servo 2      %4s\nServo 2 opened  %5s\nServo 2 closed  %5s\nServo 1 cycles  %5s\nServo 2 cycles  %5s" };
+  #else
+    const char P_RevolverMenuItems[] PROGMEM  = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo 2 opened  %5s\nServo 2 closed  %5s\nServo 1 cycles  %5s\nServo 2 cycles  %5s" };
+  #endif
+  const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
+  const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };
+  const char P_DisplayMenuItems[] PROGMEM     = { "Screen Timeout   %4s\nLCD Contrast     %4s\nBacklight    %8s" };
 #else
-const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nFeeder              %2s\nRevolver            %2s" };
+  const char P_SteppersMenuItems[] PROGMEM    = { "Selector            >\nRevolver            >\nFeeder              >" };
+  const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4S\nEndstop Trigger  %4S\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
+  const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo open      %5s\nServo closed    %5s\nServo cycles    %5s" };
+  const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4S\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
+  const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };
 #endif
-const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4s\nEndstop Trigger  %4s\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
-#if defined(SMUFF_V5)
-const char P_RevolverMenuItems[] PROGMEM    = { "Home After Feed  %4s\nReset Bef. Feed  %4s\nUse Servo 2      %4s\nServo 2 opened  %5s\nServo 2 closed  %5s\nServo 1 cycles  %5s\nServo 2 cycles  %5s" };
-#else
-const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo 2 opened  %5s\nServo 2 closed  %5s\nServo 1 cycles  %5s\nServo 2 cycles  %5s" };
-#endif
-const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
-const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };
-const char P_DisplayMenuItems[] PROGMEM     = { "Screen Timeout   %4s\nLCD Contrast     %4s\nBacklight    %8s" };
-#else
-const char P_SteppersMenuItems[] PROGMEM    = { "Selector            >\nRevolver            >\nFeeder              >" };
-const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4S\nEndstop Trigger  %4S\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
-const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome After Feed  %4s\nReset Bef. Feed  %4s\nWiggle           %4s\nUse Servo        %4s\nServo open      %5s\nServo closed    %5s\nServo cycles    %5s" };
-const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4S\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
-const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };
-#endif
-const char P_ConfigWriteSuccess[] PROGMEM   = { "Config success-\nfully written." };
-const char P_ConfigWriteFail[] PROGMEM      = { "Config write failed!\nPlease check SD-Card." };
+const char P_ConfigWriteSuccess[] PROGMEM     = { "Config success-\nfully written." };
+const char P_ConfigWriteFail[] PROGMEM        = { "Config write failed!\nPlease check SD-Card." };
 
-const char P_RunningTest[] PROGMEM          = { "Starting\n\n%s" };
-const char P_TestFailed[] PROGMEM           = { "Failed to open\n\n%s" };
-const char P_RunningCmd[] PROGMEM           = { "Running loop %ld" };
-const char P_CmdLoop[] PROGMEM              = { "CMD: %-7ld T%d" };
-const char P_ToolChanges[] PROGMEM          = { "Tool change: %5ld" };
-const char P_TestTime[] PROGMEM             = { "Elapsed: %3d:%02d:%02d" };
-const char P_FeederErrors[] PROGMEM         = { "Feed errors: %5ld" };
-const char P_ButtonToStop[] PROGMEM         = { "Press Button To Stop" };
+const char P_RunningTest[] PROGMEM            = { "Starting\n\n%s" };
+const char P_TestFailed[] PROGMEM             = { "Failed to open\n\n%s" };
+const char P_RunningCmd[] PROGMEM             = { "Running loop %ld" };
+const char P_CmdLoop[] PROGMEM                = { "CMD: %-7ld T%d" };
+const char P_ToolChanges[] PROGMEM            = { "Tool change: %5ld" };
+const char P_TestTime[] PROGMEM               = { "Elapsed: %3d:%02d:%02d" };
+const char P_FeederErrors[] PROGMEM           = { "Feed errors: %5ld" };
+const char P_ButtonToStop[] PROGMEM           = { "Press Button To Stop" };
 
-const char P_SD_ReadingConfig[] PROGMEM = { "Reading config..." };
-const char P_SD_InitError[] PROGMEM     = { "SD-Card not ready!" };
-const char P_SD_NoConfig[] PROGMEM      = { "No config file found!" };
+const char P_SD_ReadingConfig[] PROGMEM       = { "Reading config..." };
+const char P_SD_InitError[] PROGMEM           = { "SD-Card not ready!" };
+const char P_SD_NoConfig[] PROGMEM            = { "No config file found!" };
 
-const char P_Ok[] PROGMEM             = { "ok\n" };
-const char P_Start[] PROGMEM          = { "start\n" };
-const char P_Error[] PROGMEM          = { "error: %s\n" };
-const char P_Echo[] PROGMEM           = { "echo: %s\n" };
-const char P_UnknownCmd[] PROGMEM     = { "Unknown command: %s" };
-const char P_AlreadySaved[] PROGMEM   = { "Already saved.\n" };
-const char P_GVersion[] PROGMEM       = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s\n" };
-const char P_TResponse[] PROGMEM      = { "T%d\n" };
-const char P_GResponse[] PROGMEM      = { "G%d\n" };
-const char P_MResponse[] PROGMEM      = { "M%d\n" };
-const char P_M250Response[] PROGMEM   = { "M250 C%d\n" };
+const char P_Ok[] PROGMEM                     = { "ok\n" };
+const char P_Start[] PROGMEM                  = { "start\n" };
+const char P_Error[] PROGMEM                  = { "error: %s\n" };
+const char P_Echo[] PROGMEM                   = { "echo: %s\n" };
+const char P_UnknownCmd[] PROGMEM             = { "Unknown command: %s" };
+const char P_AlreadySaved[] PROGMEM           = { "Already saved.\n" };
+const char P_GVersion[] PROGMEM               = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s\n" };
+const char P_TResponse[] PROGMEM              = { "T%d\n" };
+const char P_GResponse[] PROGMEM              = { "G%d\n" };
+const char P_MResponse[] PROGMEM              = { "M%d\n" };
+const char P_M250Response[] PROGMEM           = { "M250 C%d\n" };
 
-const char P_SelectorPos[] PROGMEM    = { "Selector position = %ld\n" };
-const char P_RevolverPos[] PROGMEM    = { "Revolver position = %ld\n" };
-const char P_FeederPos[] PROGMEM      = { "Feeder position = %ld\n" };
-const char P_ToolSelected[] PROGMEM   = { "Tool selected = %d\n" };
-const char P_Contrast[] PROGMEM       = { "Display contrast = %d\n" };
-const char P_ToolsConfig[] PROGMEM    = { "Tools configured = %d\n" };
-const char P_AccelSpeed[] PROGMEM     = { "X (Selector):\t%s, D:%s\nY (Revolver):\t%s, D:%s\nZ (Feeder):\t%s, D:%s\n" };
-const char P_Positions[] PROGMEM      = { "X (Selector): %s, Y (Revolver): %s, Z (Feeder): %s\n" };
+const char P_SelectorPos[] PROGMEM            = { "Selector position = %ld\n" };
+const char P_RevolverPos[] PROGMEM            = { "Revolver position = %ld\n" };
+const char P_FeederPos[] PROGMEM              = { "Feeder position = %ld\n" };
+const char P_ToolSelected[] PROGMEM           = { "Tool selected = %d\n" };
+const char P_Contrast[] PROGMEM               = { "Display contrast = %d\n" };
+const char P_ToolsConfig[] PROGMEM            = { "Tools configured = %d\n" };
+const char P_AccelSpeed[] PROGMEM             = { "X (Selector):\t%s, D:%s\nY (Revolver):\t%s, D:%s\nZ (Feeder):\t%s, D:%s\n" };
+const char P_Positions[] PROGMEM              = { "X (Selector): %s, Y (Revolver): %s, Z (Feeder): %s\n" };
 
-const char P_CurrentTool[] PROGMEM    = {"Tool    " };
-const char P_Feed[] PROGMEM           = {"Feed    " };
+const char P_CurrentTool[] PROGMEM            = {"Tool    " };
+const char P_Feed[] PROGMEM                   = {"Feed    " };
 
-const char P_NoTool [] PROGMEM        = { "No tool set.\n" };
-const char P_Aborting [] PROGMEM      = { "Aborting..."};
-const char P_FeederJammed [] PROGMEM  = { "Feeder is jammed.\n" };
-const char P_JamCleared [] PROGMEM    = { "Feeder Jam has\nbeen reset." };
-const char P_ToolAlreadySet [] PROGMEM= { "Tool already set." };
-const char P_WrongTool [] PROGMEM     = { "Tool index %d invalid." };
+const char P_NoTool [] PROGMEM                = { "No tool set.\n" };
+const char P_Aborting [] PROGMEM              = { "Aborting..."};
+const char P_FeederJammed [] PROGMEM          = { "Feeder is jammed.\n" };
+const char P_JamCleared [] PROGMEM            = { "Feeder Jam has\nbeen reset." };
+const char P_ToolAlreadySet [] PROGMEM        = { "Tool already set." };
+const char P_WrongTool [] PROGMEM             = { "Tool index %d invalid." };
 
-const char P_WrongFormat [] PROGMEM   = { "Wrong format. Use Bdd:dd:dd...\n" };
+const char P_WrongFormat [] PROGMEM           = { "Wrong format. Use Bdd:dd:dd...\n" };
 
-const char P_NoPrusa [] PROGMEM       = { "Prusa MMU2 mode was not configured." };
-const char P_PMMU_Title [] PROGMEM    = { "Waiting..." };
-const char P_PMMU_Wait [] PROGMEM     = { "Please click the" };
-const char P_PMMU_WaitAdd [] PROGMEM  = { "encoder button" };
+const char P_NoPrusa [] PROGMEM               = { "Prusa MMU2 mode was not configured." };
+const char P_PMMU_Title [] PROGMEM            = { "Waiting..." };
+const char P_PMMU_Wait [] PROGMEM             = { "Please click the" };
+const char P_PMMU_WaitAdd [] PROGMEM          = { "encoder button" };
 
-const char P_GCmds[] PROGMEM = { 
+const char P_GCmds[] PROGMEM = {
   "G0\t-\tMove\n" \
   "G1\t-\tMove\n" \
   "G4\t-\tDwell\n" \
@@ -197,7 +202,7 @@ const char P_GCmds[] PROGMEM = {
   "G90\t-\tAbsolute positioning\n" \
   "G91\t-\tRelative positioning\n" };
 
-const char P_MCmds[] PROGMEM = { 
+const char P_MCmds[] PROGMEM = {
   "M18\t-\tMotors off\n" \
   "M84\t-\tMotors off\n" \
   "M20\t-\tList SD-Card\n" \
@@ -225,5 +230,4 @@ const char P_MCmds[] PROGMEM = {
   "M2000\t-\tText to decimal\n" \
   "M2001\t-\tDecimal to text\n"};
 
-                             
 #endif

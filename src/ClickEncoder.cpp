@@ -15,20 +15,18 @@
 // Button configuration (values for 1ms timer service calls)
 //
 #define ENC_BUTTONINTERVAL    10  // check button every x milliseconds, also debouce time
-#define ENC_DOUBLECLICKTIME  600  // second click within 600ms
-#define ENC_HOLDTIME        1200  // report held button after 1.2s
 
 // ----------------------------------------------------------------------------
 // Acceleration configuration (for 1000Hz calls to ::service())
 //
-#define ENC_ACCEL_TOP      3072   // max. acceleration: *12 (val >> 8)
-#define ENC_ACCEL_INC        25
-#define ENC_ACCEL_DEC         2
+#define ENC_ACCEL_TOP       3072  // max. acceleration: *12 (val >> 8)
+#define ENC_ACCEL_INC         25
+#define ENC_ACCEL_DEC          2
 
 // ----------------------------------------------------------------------------
 
 #if ENC_DECODER != ENC_NORMAL
-#  ifdef ENC_HALFSTEP
+#  if ENC_HALFSTEP
      // decoding table for hardware with flaky notch (half resolution)
      const int8_t ClickEncoder::table[16] __attribute__((__progmem__)) = {
        0, 0, -1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, -1, 0, 0
@@ -43,28 +41,29 @@
 
 // ----------------------------------------------------------------------------
 
-ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active)
+ClickEncoder::ClickEncoder(int8_t A, int8_t B, int8_t BTN, uint8_t stepsPerNotch, bool active) : 
+  pinA(A), 
+  pinB(B), 
+  pinBTN(BTN), 
+  pinsActive(active),
+  delta(0), 
+  last(0),
+  steps(stepsPerNotch),
+  acceleration(0),
+  accelerationEnabled(true),
+  button(Open), 
+  doubleClickEnabled(true), 
+  buttonHeldEnabled(true)
+  #if !defined(WITHOUT_BUTTON)
+    , analogInput(false)
+  #endif
 {
-    doubleClickEnabled = true;
-    accelerationEnabled = true;
-    delta = 0;
-    last = 0; 
-    acceleration = 0;
-    button = Open;
-    steps = stepsPerNotch;
-    pinA = A;
-    pinB = B;
-    pinBTN = BTN;
-    pinsActive = active;
-
-#if defined (__STM32F1__)
-  WiringPinMode configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT_PULLDOWN;
-#else
-  uint8_t configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT;
+  pinMode_t configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT;
+  if (pinA >= 0) {pinMode(pinA, configType);}
+  if (pinB >= 0) {pinMode(pinB, configType);}
+#if !defined(WITHOUT_BUTTON)
+  if (pinBTN >= 0) {pinMode(pinBTN, configType);}
 #endif
-  pinMode(pinA, configType);
-  pinMode(pinB, configType);
-  pinMode(pinBTN, configType);
 
   if (digitalRead(pinA) == pinsActive) {
     last = 3;
@@ -76,111 +75,166 @@ ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNo
 }
 
 // ----------------------------------------------------------------------------
+#if !defined(WITHOUT_BUTTON)
+
+// Depricated.  Use DigitalButton instead
+ClickEncoder::ClickEncoder(int8_t BTN, bool active) : 
+  pinA(-1), 
+  pinB(-1), 
+  pinBTN(BTN), 
+  pinsActive(active),
+  delta(0), 
+  last(0), 
+  steps(1), 
+  acceleration(0),
+  accelerationEnabled(true),
+  button(Open), 
+  doubleClickEnabled(true),
+  buttonHeldEnabled(true), 
+  analogInput(false)
+{
+  pinMode_t configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT;
+  if (pinBTN >= 0) {pinMode(pinBTN, configType);}
+}
+
+// ----------------------------------------------------------------------------
+// Constructor for using digital input as a button
+
+DigitalButton::DigitalButton(int8_t BTN, bool active) : ClickEncoder(BTN, active)
+
+{
+
+}
+
+// ----------------------------------------------------------------------------
+// Constructor for using analog input range as a button
+
+AnalogButton::AnalogButton(int8_t BTN, int16_t rangeLow, int16_t rangeHigh) : ClickEncoder(BTN, (bool)false)
+{
+  pinMode(pinBTN, INPUT);
+
+  anlogActiveRangeLow = rangeLow;
+  anlogActiveRangeHigh = rangeHigh;
+  analogInput = true;
+
+  if (anlogActiveRangeLow > anlogActiveRangeHigh) {    // swap values if provided in the wrong order
+    int16_t t = anlogActiveRangeLow;
+    anlogActiveRangeLow = anlogActiveRangeHigh;
+    anlogActiveRangeHigh = t;
+  }
+}
+#endif
+
+// ----------------------------------------------------------------------------
 // call this every 1 millisecond via timer ISR
 //
 void ClickEncoder::service(void)
 {
   bool moved = false;
-  unsigned long now = millis();
 
-  if (accelerationEnabled) { // decelerate every tick
-    acceleration -= ENC_ACCEL_DEC;
-    if (acceleration & 0x8000) { // handle overflow of MSB is set
-      acceleration = 0;
+  if (pinA >= 0 && pinB >= 0) {
+    if (accelerationEnabled) { // decelerate every tick
+      acceleration -= ENC_ACCEL_DEC;
+      if (acceleration & 0x8000) { // handle overflow of MSB is set
+        acceleration = 0;
+      }
+    }
+
+    #if ENC_DECODER == ENC_FLAKY
+      last = (last << 2) & 0x0F;
+
+      if (digitalRead(pinA) == pinsActive) {
+        last |= 2;
+      }
+
+      if (digitalRead(pinB) == pinsActive) {
+        last |= 1;
+      }
+
+    int8_t tbl = pgm_read_byte(&table[last]);
+      if (tbl) {
+        delta += tbl;
+        moved = true;
+      }
+    #elif ENC_DECODER == ENC_NORMAL
+      int8_t curr = 0;
+
+      if (digitalRead(pinA) == pinsActive) {
+        curr = 3;
+      }
+
+      if (digitalRead(pinB) == pinsActive) {
+        curr ^= 1;
+      }
+
+      int8_t diff = last - curr;
+
+      if (diff & 1) {            // bit 0 = step
+        last = curr;
+        delta += (diff & 2) - 1; // bit 1 = direction (+/-)
+        moved = true;
+      }
+    #else
+      #error "Error: define ENC_DECODER to ENC_NORMAL or ENC_FLAKY"
+    #endif
+
+    if (accelerationEnabled && moved) {
+      // increment accelerator if encoder has been moved
+      if (acceleration <= (ENC_ACCEL_TOP - ENC_ACCEL_INC)) {
+        acceleration += ENC_ACCEL_INC;
+      }
     }
   }
-
-#if ENC_DECODER == ENC_FLAKY
-  last = (last << 2) & 0x0F;
-
-  if (digitalRead(pinA) == pinsActive) {
-    last |= 2;
-  }
-
-  if (digitalRead(pinB) == pinsActive) {
-    last |= 1;
-  }
-
-  uint8_t tbl = pgm_read_byte(&table[last]);
-  if (tbl) {
-    delta += tbl;
-    moved = true;
-  }
-#elif ENC_DECODER == ENC_NORMAL
-  int8_t curr = 0;
-
-  if (digitalRead(pinA) == pinsActive) {
-    curr = 3;
-  }
-
-  if (digitalRead(pinB) == pinsActive) {
-    curr ^= 1;
-  }
-
-  int8_t diff = last - curr;
-
-  if (diff & 1) {            // bit 0 = step
-    last = curr;
-    delta += (diff & 2) - 1; // bit 1 = direction (+/-)
-    moved = true;
-  }
-#else
-# error "Error: define ENC_DECODER to ENC_NORMAL or ENC_FLAKY"
-#endif
-
-  if (accelerationEnabled && moved) {
-    // increment accelerator if encoder has been moved
-    if (acceleration <= (ENC_ACCEL_TOP - ENC_ACCEL_INC)) {
-      acceleration += ENC_ACCEL_INC;
-    }
-  }
-
   // handle button
   //
-#ifndef WITHOUT_BUTTON
-  if (pinBTN > 0 // check button only, if a pin has been provided
-      && (now - lastButtonCheck) >= ENC_BUTTONINTERVAL) // checking button is sufficient every 10-30ms
-  {
-    lastButtonCheck = now;
+  #if !defined(WITHOUT_BUTTON)
+    unsigned long currentMillis = millis();
+    if (currentMillis < lastButtonCheck) lastButtonCheck = 0;        // Handle case when millis() wraps back around to zero
+      if ((pinBTN > 0 || (pinBTN == 0 && buttonOnPinZeroEnabled))        // check button only, if a pin has been provided
+        && ((currentMillis - lastButtonCheck) >= ENC_BUTTONINTERVAL))            // checking button is sufficient every 10-30ms
+      {
+      lastButtonCheck = currentMillis;
 
-    if (digitalRead(pinBTN) == pinsActive) { // key is down
-      keyDownTicks++;
-      if (keyDownTicks > (ENC_HOLDTIME / ENC_BUTTONINTERVAL)) {
-        button = Held;
-      }
-    }
+      bool pinRead = getPinState();
 
-    if (digitalRead(pinBTN) == !pinsActive) { // key is now up
-      if (keyDownTicks > ENC_BUTTONINTERVAL) {
-        if (button == Held) {
-          button = Released;
-          doubleClickTicks = 0;
+      if (pinRead == pinsActive) { // key is down
+        keyDownTicks++;
+        if ((keyDownTicks > (buttonHoldTime / ENC_BUTTONINTERVAL)) && (buttonHeldEnabled)) {
+          button = Held;
         }
-        else {
-          #define ENC_SINGLECLICKONLY 1
-          if (doubleClickTicks > ENC_SINGLECLICKONLY) {   // prevent trigger in single click mode
-            if (doubleClickTicks < (ENC_DOUBLECLICKTIME / ENC_BUTTONINTERVAL)) {
-              button = DoubleClicked;
-              doubleClickTicks = 0;
-            }
+      }
+
+      if (pinRead == !pinsActive) { // key is now up
+        if (keyDownTicks > 1) {               //Make sure key was down through 1 complete tick to prevent random transients from registering as click
+          if (button == Held) {
+            button = Released;
+            doubleClickTicks = 0;
           }
           else {
-            doubleClickTicks = (doubleClickEnabled) ? (ENC_DOUBLECLICKTIME / ENC_BUTTONINTERVAL) : ENC_SINGLECLICKONLY;
+            #define ENC_SINGLECLICKONLY 1
+            if (doubleClickTicks > ENC_SINGLECLICKONLY) {   // prevent trigger in single click mode
+              if (doubleClickTicks < (buttonDoubleClickTime / ENC_BUTTONINTERVAL)) {
+                button = DoubleClicked;
+                doubleClickTicks = 0;
+              }
+            }
+            else {
+              doubleClickTicks = (doubleClickEnabled) ? (buttonDoubleClickTime / ENC_BUTTONINTERVAL) : ENC_SINGLECLICKONLY;
+            }
           }
         }
+
+        keyDownTicks = 0;
       }
 
-      keyDownTicks = 0;
-    }
-
-    if (doubleClickTicks > 0) {
-      doubleClickTicks--;
-      if (--doubleClickTicks == 0) {
-        button = Clicked;
+      if (doubleClickTicks > 0) {
+        doubleClickTicks--;
+        if (doubleClickTicks == 0) {
+          button = Clicked;
+        }
       }
     }
-  }
-#endif // WITHOUT_BUTTON
+  #endif // WITHOUT_BUTTON
 
 }
 
@@ -190,22 +244,13 @@ int16_t ClickEncoder::getValue(void)
 {
   int16_t val;
 
-#if defined (__STM32F1__)	
   noInterrupts();
-#else
-  cli();
-#endif
   val = delta;
 
   if (steps == 2) delta = val & 1;
   else if (steps == 4) delta = val & 3;
   else delta = 0; // default to 1 step per notch
-#if defined (__STM32F1__)	
-  interrupts();
-#else
-  sei();
-#endif
-  
+
   if (steps == 4) val >>= 2;
   if (steps == 2) val >>= 1;
 
@@ -218,19 +263,35 @@ int16_t ClickEncoder::getValue(void)
   else if (val > 0) {
     r += 1 + accel;
   }
+  interrupts();
 
   return r;
 }
 
 // ----------------------------------------------------------------------------
 
-#ifndef WITHOUT_BUTTON
+#if !defined(WITHOUT_BUTTON)
 ClickEncoder::Button ClickEncoder::getButton(void)
 {
+  noInterrupts();
   ClickEncoder::Button ret = button;
-  if (button != ClickEncoder::Held) {
+  if (button != ClickEncoder::Held && ret != ClickEncoder::Open) {
     button = ClickEncoder::Open; // reset
   }
+  interrupts();
+
   return ret;
 }
+
+bool ClickEncoder::getPinState() {
+  bool pinState;
+  if (analogInput) {
+    int16_t pinValue = analogRead(pinBTN);
+    pinState = ((pinValue >= anlogActiveRangeLow) && (pinValue <= anlogActiveRangeHigh)) ?  LOW : HIGH;    // set result to LOW (button pressed) if analog input is in range
+  } else {
+    pinState = digitalRead(pinBTN);
+  }
+  return pinState;
+}
+
 #endif

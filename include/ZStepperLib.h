@@ -115,49 +115,49 @@ public:
   void          setStepsTaken(long count) { _stepsTaken = count; }
   unsigned int  getAccelDistance() { return _accelDistance; }
   void          setAccelDistance(unsigned dist) { _accelDistance = dist; }
-  
+
 private:
-  int             _number = 0;                  // index of this stepper
-  char*           _descriptor = (char*)"";      // display name for this stepper
-  int             _stepPin = -1;                // stepping pin
-  int             _dirPin = -1;                 // direction pin
-  int             _enablePin = -1;              // enable pin
-  bool            _enabled = false;             // enabled state
-  int             _endstopPin = -1;             // endstop pin
-  int             _endstopPin2 = -1;            // 2nd endstop
-  volatile bool   _endstopHit = false;          // set when endstop is being triggered
-  volatile bool   _endstopHit2 = false;         // set when 2nd endstop is being triggered
-  bool            _ignoreEndstop = false;       // flag whether or not to ignore endstop trigger
-  int             _endstopState = HIGH;         // value for endstop triggered
-  EndstopType     _endstopType = NONE;          // type of endstop (MIN, MAX, ORBITAL etc)
-  int             _endstopState2 = HIGH;        // value for 2nd endstop triggered
-  EndstopType     _endstopType2 = NONE;         // type of 2nd endstop (MIN, MAX, ORBITAL etc)
-  volatile long   _stepPosition = 0;            // current position of stepper (total of all movements taken so far)
-  volatile MoveDirection _dir = CW;             // current direction of movement, used to keep track of position
-  volatile long   _totalSteps = 0;              // number of steps requested for current movement
-  volatile bool   _movementDone = true;         // true if the current movement has been completed (used by main program to wait for completion)
-  unsigned int    _acceleration = 1000;         // acceleration value 
-  unsigned int    _accelDistance = 5;           // distance (in millimeter or degree) need to be used for acceleration/deceleration 
-  unsigned int    _minStepInterval = 100;       // ie. max speed, smaller is faster
-  unsigned int    _minStepIntervalHS = 10;      // ie. max speed (HighSpeed mode), smaller is faster
-  long            _stepCount = 0;               // number of steps completed in current movement
-  long            _maxStepCount = 0;            // maximum number of steps
-  unsigned int    _stepsPerMM = 0;              // steps needed for one millimeter 
-  float           _stepsPerDegree = 0;          // steps needed for 1 degree on orbital motion
-  float           _stepPositionMM = 0;          // current position of stepper in millimeter
-  bool            _invertDir = false;           // stepper direction inversion
-  bool            _allowAcceleration = true;    // allow / disallow acceleration
-  bool            _abort = false;               // flag signals abortion of operation  
-  bool            _ignoreAbort = false;         // flag signals abort not possible
-  long int        _stepsTaken = 0;              // counter for steps currently taken
+  int                    _number = 0;                  // index of this stepper
+  char*                  _descriptor = (char*)"";      // display name for this stepper
+  int                    _stepPin = -1;                // stepping pin
+  int                    _dirPin = -1;                 // direction pin
+  int                    _enablePin = -1;              // enable pin
+  bool                   _enabled = false;             // enabled state
+  int                    _endstopPin = -1;             // endstop pin
+  int                    _endstopPin2 = -1;            // 2nd endstop
+  volatile bool          _endstopHit = false;          // set when endstop is being triggered
+  volatile bool          _endstopHit2 = false;         // set when 2nd endstop is being triggered
+  bool                   _ignoreEndstop = false;       // flag whether or not to ignore endstop trigger
+  int                    _endstopState = HIGH;         // value for endstop triggered
+  EndstopType            _endstopType = NONE;          // type of endstop (MIN, MAX, ORBITAL etc)
+  int                    _endstopState2 = HIGH;        // value for 2nd endstop triggered
+  EndstopType            _endstopType2 = NONE;         // type of 2nd endstop (MIN, MAX, ORBITAL etc)
+  volatile long          _stepPosition = 0;            // current position of stepper (total of all movements taken so far)
+  volatile MoveDirection _dir = CW;                    // current direction of movement, used to keep track of position
+  volatile long          _totalSteps = 0;              // number of steps requested for current movement
+  volatile bool          _movementDone = true;         // true if the current movement has been completed (used by main program to wait for completion)
+  unsigned int           _acceleration = 1000;         // acceleration value
+  unsigned int           _accelDistance = 5;           // distance (in millimeter or degree) need to be used for acceleration/deceleration
+  unsigned int           _minStepInterval = 100;       // ie. max speed, smaller is faster
+  unsigned int           _minStepIntervalHS = 10;      // ie. max speed (HighSpeed mode), smaller is faster
+  long                   _stepCount = 0;               // number of steps completed in current movement
+  long                   _maxStepCount = 0;            // maximum number of steps
+  unsigned int           _stepsPerMM = 0;              // steps needed for one millimeter
+  float                  _stepsPerDegree = 0;          // steps needed for 1 degree on orbital motion
+  float                  _stepPositionMM = 0;          // current position of stepper in millimeter
+  bool                   _invertDir = false;           // stepper direction inversion
+  bool                   _allowAcceleration = true;    // allow / disallow acceleration
+  bool                   _abort = false;               // flag signals abortion of operation
+  bool                   _ignoreAbort = false;         // flag signals abort not possible
+  long int               _stepsTaken = 0;              // counter for steps currently taken
 
   // per iteration variables (potentially changed every interrupt)
-  volatile float          _duration;            // current interval length
-  volatile unsigned int   _durationInt;         // above variable truncated
-  volatile long           _accelDistSteps = 0;  // amount of steps for acceleration/deceleration 
-  volatile float          _stepsAcceleration  = 0.0;
+  volatile float         _duration;                    // current interval length
+  volatile unsigned int  _durationInt;                 // above variable truncated
+  volatile long          _accelDistSteps = 0;          // amount of steps for acceleration/deceleration
+  volatile float         _stepsAcceleration  = 0.0;
 
-  void resetStepper();                          // method to reset work params
+  void resetStepper();                                 // method to reset work params
   void updateAcceleration();
 };
 

@@ -74,7 +74,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
       }
       else if(turn > 0) {
         if(*val > max) {
-          *val = max;          
+          *val = max;
           beep(1);
         }
       }
@@ -99,7 +99,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
   if(cb != NULL) {
     cb(*val);
   }
-  
+
   while(1) {
     getEncoderButton(&turn, &btn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
@@ -116,7 +116,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
       }
       else if(turn > 0) {
         if(*val > max) {
-          *val = max;          
+          *val = max;
           beep(1);
         }
       }
@@ -136,7 +136,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, 
   int turn, btn;
   bool isHeld, isClicked;
   char _yes[10], _no[10];
-  
+
   sprintf_P(_yes, P_Yes);
   sprintf_P(_no, P_No);
 
@@ -145,7 +145,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, 
   if(cb != NULL) {
     cb(*val);
   }
- 
+
   while(1) {
     getEncoderButton(&turn, &btn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
@@ -232,7 +232,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
 
   if(lineCnt==0)
     return false;
-  
+
   for(int i=0; i< lineCnt; i++) {
     if(String(options[i]) == String(*val)) {
         opt = i;
@@ -264,4 +264,3 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
   *val = strtol(options[opt], NULL, 10);
   return stat;
 }
-

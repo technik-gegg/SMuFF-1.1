@@ -20,7 +20,7 @@
 /*
  * Module for handling all the G-Codes supported
  */
- 
+
 #include <Arduino.h>
 #include "SMuFF.h"
 #include "ZTimerLib.h"
@@ -28,17 +28,17 @@
 #include "ZServo.h"
 #include "ZPortExpander.h"
 #include "GCodes.h"
-#ifdef __STM32F1__
-#include "libmaple/nvic.h"
+#if defined(__STM32F1__)
+  #include "libmaple/nvic.h"
 #endif
-#ifdef __ESP32__
-#include "Tone32.h"
+#if defined(__ESP32__)
+  #include "Tone32.h"
 #endif
 
-extern ZStepper       steppers[];
-extern ZServo         servo;
+extern ZStepper         steppers[];
+extern ZServo           servo;
 #if defined(__ESP32__)
-extern ZPortExpander  portEx;
+  extern ZPortExpander  portEx;
 #endif
 
 char* S_Param = (char*)"S";
@@ -77,7 +77,7 @@ GCodeFunctions gCodeFuncsM[] = {
   {  84, M18 },
   {  98, M98 },
   { 106, M106 },
-  { 107, M107 }, 
+  { 107, M107 },
   { 110, M110 },
   { 111, M111 },
   { 114, M114 },
@@ -130,7 +130,7 @@ bool dummy(const char* msg, String buf, int serial) {
 
 bool M18(const char* msg, String buf, int serial) {
   bool stat = true;
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if(buf.length()==0) {
     steppers[SELECTOR].setEnabled(false);
     steppers[REVOLVER].setEnabled(false);
@@ -154,18 +154,18 @@ bool M18(const char* msg, String buf, int serial) {
 }
 
 bool M20(const char* msg, String buf, int serial) {
-  
+
   if(!getParamString(buf, S_Param, tmp, sizeof(tmp))){
     sprintf(tmp,"/");
   }
   SdFs SD;
   Print* out = &Serial;
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
-    switch(serial) {
+  #if defined(__ESP32__)
+    if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+  #else
+    if (SD.begin()) {
+  #endif
+  switch(serial) {
       case 0: out = &Serial; break;
       case 1: out = &Serial1; break;
       case 2: out = &Serial2; break;
@@ -175,7 +175,7 @@ bool M20(const char* msg, String buf, int serial) {
   }
   else {
     sprintf_P(tmp, P_SD_InitError);
-    printResponse(tmp, serial); 
+    printResponse(tmp, serial);
     return false;
   }
   return true;
@@ -185,36 +185,36 @@ bool M42(const char* msg, String buf, int serial) {
   bool stat = true;
   int pin;
   int mode;
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   //__debug(PSTR("M42->%s"), buf);
-  
+
   if((pin = getParam(buf, P_Param)) != -1) {
     // pins over 1000 go to the port expander
     if(pin >= 1000) {
       #if defined(__ESP32__)
-      pin -= 1000;
-      if((mode = getParam(buf, M_Param)) != -1) {
-         // 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN
-         switch(mode) {
-          case 0: portEx.pinMode(pin, INPUT); break;
-          case 1: portEx.pinMode(pin, OUTPUT); break;
-          case 2: portEx.pinMode(pin, INPUT_PULLUP); break;
-          case 3: portEx.pinMode(pin, INPUT_PULLDOWN); break;
-         }
-      }
-      else {
-        mode = 1;
-        portEx.pinMode(pin, OUTPUT);
-      }
-      if((param = getParam(buf, S_Param)) != -1 && mode == 1) {
-        //__debug(PSTR("Pin%d set to %s"), pin, param==0 ? "LOW" : "HIGH");
-        portEx.writePin(pin, param);
-      }
-      if(mode != 1) {
-        int state = portEx.readPin(pin);
-        sprintf(tmp, "echo: P%d: %s\n", pin+1000, state==0 ? "LOW" : "HIGH");
-        printResponse(tmp, serial);
-      }
+        pin -= 1000;
+        if((mode = getParam(buf, M_Param)) != -1) {
+           // 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN
+           switch(mode) {
+            case 0: portEx.pinMode(pin, INPUT); break;
+            case 1: portEx.pinMode(pin, OUTPUT); break;
+            case 2: portEx.pinMode(pin, INPUT_PULLUP); break;
+            case 3: portEx.pinMode(pin, INPUT_PULLDOWN); break;
+           }
+        }
+        else {
+          mode = 1;
+          portEx.pinMode(pin, OUTPUT);
+        }
+        if((param = getParam(buf, S_Param)) != -1 && mode == 1) {
+          //__debug(PSTR("Pin%d set to %s"), pin, param==0 ? "LOW" : "HIGH");
+          portEx.writePin(pin, param);
+        }
+        if(mode != 1) {
+          int state = portEx.readPin(pin);
+          sprintf(tmp, "echo: P%d: %s\n", pin+1000, state==0 ? "LOW" : "HIGH");
+          printResponse(tmp, serial);
+        }
       #endif
     }
     else {
@@ -224,11 +224,11 @@ bool M42(const char* msg, String buf, int serial) {
           case 0: pinMode(pin, INPUT); break;
           case 1: pinMode(pin, OUTPUT); break;
           case 2: pinMode(pin, INPUT_PULLUP); break;
-          case 3: 
+          case 3:
             #if defined(__AVR__)
-            pinMode(pin, INPUT);
+              pinMode(pin, INPUT);
             #else
-            pinMode(pin, INPUT_PULLDOWN); 
+              pinMode(pin, INPUT_PULLDOWN);
             #endif
             break;
          }
@@ -239,9 +239,9 @@ bool M42(const char* msg, String buf, int serial) {
       }
       if((param = getParam(buf, S_Param)) != -1 && mode == 1) {
         if(param >= 0 && param <= 255) {
-          #ifdef __STM32F1__
+          #if defined(__STM32F1__)
             pwmWrite(pin, param);
-          #elif __ESP32__
+          #elif defined(__ESP32__)
             ledcWrite(pin, param);
           #else
             analogWrite(pin, param);
@@ -270,35 +270,35 @@ bool M98(const char* msg, String buf, int serial) {
 }
 
 bool M106(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if((param = getParam(buf, S_Param)) == -1) {
     param = 100;
   }
   __debug(PSTR("Fan speed: %d%%"), param);
-#ifdef __STM32F1__
-  pwmWrite(FAN_PIN, map(param, 0, 100, 0, 65535));
-#elif __ESP32__
-  ledcWrite(FAN_PIN, map(param, 0, 100, 0, 255));
-#else
-  analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
-#endif
+  #if defined(__STM32F1__)
+    pwmWrite(FAN_PIN, map(param, 0, 100, 0, 65535));
+  #elif  defined(__ESP32__)
+    ledcWrite(FAN_PIN, map(param, 0, 100, 0, 255));
+  #else
+    analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
+  #endif
   return true;
 }
- 
+
 bool M107(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
-#ifdef __STM32F1__
-  pwmWrite(FAN_PIN, 0);
-#elif __ESP32__
-  ledcWrite(FAN_PIN, 0);
-#else
-  analogWrite(FAN_PIN, 0);
-#endif
+  printResponse(msg, serial);
+  #if defined(__STM32F1__)
+    pwmWrite(FAN_PIN, 0);
+  #elif defined(__ESP32__)
+    ledcWrite(FAN_PIN, 0);
+  #else
+    analogWrite(FAN_PIN, 0);
+  #endif
   return true;
 }
 
 bool M110(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if((param = getParam(buf, N_Param)) != -1) {
     currentLine = param;
   }
@@ -308,23 +308,23 @@ bool M110(const char* msg, String buf, int serial) {
 bool M111(const char* msg, String buf, int serial) {
   if((param = getParam(buf, S_Param)) != -1) {
     testMode = param == 1;
-  }      
+  }
   return true;
 }
 
 bool M114(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
-  sprintf_P(tmp, P_Positions, 
+  printResponse(msg, serial);
+  sprintf_P(tmp, P_Positions,
   String(steppers[SELECTOR].getStepPositionMM()).c_str(),
   String(steppers[REVOLVER].getStepPosition()).c_str(),
   String(steppers[FEEDER].getStepPositionMM()).c_str());
-  printResponse(tmp, serial); 
+  printResponse(tmp, serial);
   return true;
 }
 
 bool M115(const char* msg, String buf, int serial) {
   sprintf_P(tmp, P_GVersion, VERSION_STRING, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "Duet");
-  printResponse(tmp, serial); 
+  printResponse(tmp, serial);
   return true;
 }
 
@@ -337,11 +337,11 @@ bool M117(const char* msg, String buf, int serial) {
 }
 
 bool M119(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if((param = getParam(buf, Z_Param)) != -1) {
     steppers[FEEDER].setEndstopHit(param);
   }
-  printEndstopState(serial); 
+  printEndstopState(serial);
   return true;
 }
 
@@ -389,7 +389,7 @@ bool M150(const char* msg, String buf, int serial) {
 
 bool M201(const char* msg, String buf, int serial) {
   bool stat = true;
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if(buf.length()==0) {
     printAcceleration(serial);
     return stat;
@@ -422,7 +422,7 @@ bool M201(const char* msg, String buf, int serial) {
 
 bool M203(const char* msg, String buf, int serial) {
   bool stat = true;
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if(buf.length()==0) {
     printSpeeds(serial);
     return stat;
@@ -479,7 +479,7 @@ bool M203(const char* msg, String buf, int serial) {
 
 bool M205(const char* msg, String buf, int serial) {
   bool stat = true;
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if(buf.length()==0) {
     //printAdvancedSettings(serial);
     return stat;
@@ -524,7 +524,7 @@ bool M205(const char* msg, String buf, int serial) {
 
 bool M206(const char* msg, String buf, int serial) {
   bool stat = true;
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   if(buf.length()==0) {
     printOffsets(serial);
     return stat;
@@ -549,7 +549,7 @@ bool M250(const char* msg, String buf, int serial) {
     if(param >= 60 && param < 256) {
       display.setContrast(param);
       smuffConfig.lcdContrast = param;
-      printResponse(msg, serial); 
+      printResponse(msg, serial);
     }
     else
       stat = false;
@@ -558,7 +558,7 @@ bool M250(const char* msg, String buf, int serial) {
       printResponse(msg, serial);
       char tmp[50];
       sprintf_P(tmp, P_M250Response, smuffConfig.lcdContrast);
-      printResponse(tmp, serial); 
+      printResponse(tmp, serial);
   }
   return stat;
 }
@@ -612,10 +612,10 @@ bool M300(const char* msg, String buf, int serial) {
     if((param = getParam(buf, P_Param)) != -1) {
       tone(BEEPER_PIN, frequency, param);
     }
-    else 
+    else
       stat = false;
   }
-  else 
+  else
     stat = false;
   return stat;
 }
@@ -665,7 +665,7 @@ bool M575(const char* msg, String buf, int serial) {
       smuffConfig.serial2Baudrate = paramL;
     }
   }
-  else 
+  else
     stat = false;
   return stat;
 }
@@ -678,7 +678,7 @@ bool M700(const char* msg, String buf, int serial) {
     //__debug(PSTR("Material: %s\n"),smuffConfig.materials[toolSelected]);
     return loadFilament();
   }
-  else 
+  else
     stat = false;
   return stat;
 }
@@ -689,27 +689,27 @@ bool M701(const char* msg, String buf, int serial) {
 }
 
 bool M999(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
-  delay(500); 
-#ifdef __AVR__
-  __asm__ volatile ("jmp 0x0000"); 
-#elif __STM32F1__
-  nvic_sys_reset();
-#elif __ESP32__
-  ESP.restart();
-#endif
+  printResponse(msg, serial);
+  delay(500);
+  #if defined(__AVR__)
+    __asm__ volatile ("jmp 0x0000");
+  #elif defined(__STM32F1__)
+    nvic_sys_reset();
+  #elif defined(__ESP32__)
+    ESP.restart();
+  #endif
   return true;
 }
 
 bool M2000(const char* msg, String buf, int serial) {
   char s[80];
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   getParamString(buf, S_Param, tmp, sizeof(tmp));
   if(strlen(tmp)>0) {
     printResponseP(PSTR("B"), serial);
     for(unsigned i=0; i< strlen(tmp); i++) {
       sprintf(s,"%d:", (char)tmp[i]);
-      printResponse(s, serial); 
+      printResponse(s, serial);
     }
     printResponseP(PSTR("10\n"), serial);
   }
@@ -717,7 +717,7 @@ bool M2000(const char* msg, String buf, int serial) {
 }
 
 bool M2001(const char* msg, String buf, int serial) {
-  printResponse(msg, serial); 
+  printResponse(msg, serial);
   getParamString(buf, S_Param, tmp, sizeof(tmp));
   String data = String(tmp);
   data.trim();
@@ -725,7 +725,7 @@ bool M2001(const char* msg, String buf, int serial) {
     int ndx = 0;
     int pos = 0;
     if(data.startsWith("B")) {
-      printResponseP(PSTR(">>"), serial); 
+      printResponseP(PSTR(">>"), serial);
       ndx++;
       do {
         pos = data.indexOf(":", ndx);
@@ -737,22 +737,22 @@ bool M2001(const char* msg, String buf, int serial) {
           c = data.substring(ndx).toInt();
         }
         if(c == 10) {
-          printResponseP(PSTR("\\n"), serial); 
+          printResponseP(PSTR("\\n"), serial);
         }
         else {
           sprintf(tmp, "%c", c);
-          printResponse(tmp, serial); 
+          printResponse(tmp, serial);
         }
         ndx = pos + 1;
       } while(pos != -1);
-      printResponseP(PSTR("<<\n"), serial); 
+      printResponseP(PSTR("<<\n"), serial);
     }
     else {
       printResponseP(P_WrongFormat, serial);
       return false;
     }
   }
-  else 
+  else
     return false;
   return true;
 }
@@ -765,7 +765,7 @@ bool G0(const char* msg, String buf, int serial) {
   if((param = getParam(buf, Y_Param)) != -1) {
     steppers[REVOLVER].setEnabled(true);
     if(getParam(buf, S_Param)) {
-      // for testing only 
+      // for testing only
       toolSelected = param;
       positionRevolver();
     }
@@ -841,7 +841,7 @@ bool G12(const char* msg, String buf, int serial) {
   else
     p = buf;
 
-  if((param = getParam(p, S_Param)) != -1) {  
+  if((param = getParam(p, S_Param)) != -1) {
     wait = param; // defines the wipe speed
   }
   if((param = getParam(p, I_Param)) != -1) {
@@ -872,16 +872,16 @@ bool G28(const char* msg, String buf, int serial) {
   bool stat = true;
   printResponse(msg, serial);
   if(buf.length()==0) {
-    stat = moveHome(SELECTOR, false, true); 
+    stat = moveHome(SELECTOR, false, true);
     if(stat)
-      moveHome(REVOLVER, false, false); 
+      moveHome(REVOLVER, false, false);
   }
   else {
     if(buf.indexOf(X_Param) != -1) {
-      stat = moveHome(SELECTOR, false, false); 
+      stat = moveHome(SELECTOR, false, false);
     }
     if(buf.indexOf(Y_Param) != -1) {
-      stat = moveHome(REVOLVER, false, false); 
+      stat = moveHome(REVOLVER, false, false);
     }
   }
   return stat;

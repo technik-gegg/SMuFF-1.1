@@ -25,7 +25,7 @@
 #define BOARD_INFO          "FYSETC AIO II V3.2"
 // SELECTOR (X)
 #define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
-#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW); 
+#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
 #define X_STEP_PIN          PB8
 #define X_DIR_PIN           PB9
 #define X_ENABLE_PIN        PA8
@@ -49,7 +49,7 @@
 
 #define BEEPER_PIN          PC9
 
-#define SERVO1_PIN          -1
+#define SERVO1_PIN          PD2      // AC-DET
 #define SERVO2_PIN          PB15     // FIL-DET
 #define FAN_PIN             PC8      // FAN1
 #define HEATER0_PIN         PC7      // BED
@@ -58,9 +58,17 @@
 #define NEOPIXEL_PIN        -1
 
 #define SDCS_PIN            PA4
+
 #define DSP_CS_PIN          PB5
 #define DSP_DC_PIN          PA15
 #define DSP_RESET_PIN       PB4
+
+#undef DSP_CONTRAST
+#define DSP_CONTRAST        230
+
+#define RGB_LED_R_PIN       PB0
+#define RGB_LED_G_PIN       PB6
+#define RGB_LED_B_PIN       PB7
 
 #define ENCODER1_PIN        PC10
 #define ENCODER2_PIN        PC11
@@ -73,7 +81,3 @@
 
 #define TX2_PIN             PA2      // P4-8
 #define RX2_PIN             PA3      // P4-6
-
-#define RGB_LED_R_PIN       PB0
-#define RGB_LED_G_PIN       PB6
-#define RGB_LED_B_PIN       PB7

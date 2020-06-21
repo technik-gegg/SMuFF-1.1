@@ -29,22 +29,22 @@
 #include "ZStepperLib.h"
 #include "ZServo.h"
 
-#ifdef __ESP32__
-extern BluetoothSerial SerialBT;
+#if defined(__ESP32__)
+  extern BluetoothSerial SerialBT;
 #endif
 
-#ifdef __STM32F1__
-#include "libmaple/libmaple.h"
-SPIClass SPI_3(3);
-#define _tone(pin, freq, duration)  playTone(pin, freq, duration)
-#define _noTone(pin)                muteTone(pin)
-#elif defined (__ESP32__)
-#include "Tone32.h"
-#define _tone(pin, freq, duration)  tone(pin, freq, duration, BEEPER_CHANNEL)
-#define _noTone(pin)                noTone(pin, BEEPER_CHANNEL)
+#if defined(__STM32F1__)
+  #include "libmaple/libmaple.h"
+  SPIClass SPI_3(3);
+  #define _tone(pin, freq, duration)  playTone(pin, freq, duration)
+  #define _noTone(pin)                muteTone(pin)
+#elif defined(__ESP32__)
+  #include "Tone32.h"
+  #define _tone(pin, freq, duration)  tone(pin, freq, duration, BEEPER_CHANNEL)
+  #define _noTone(pin)                noTone(pin, BEEPER_CHANNEL)
 #else
-#define _tone(pin, freq, duration)  tone(pin, freq, duration)
-#define _noTone(pin)                noTone(pin)
+  #define _tone(pin, freq, duration)  tone(pin, freq, duration)
+  #define _noTone(pin)                noTone(pin)
 #endif
 
 
@@ -104,11 +104,11 @@ void drawStatus() {
   display.setDrawColor(2);
   display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, display.getDisplayWidth(), display.getMaxCharHeight());
   sprintf_P(_wait, parserBusy ? P_Busy : (smuffConfig.prusaMMU2) ? P_Pemu : P_Ready);
-#ifdef __AVR__
-  sprintf_P(tmp, PSTR("M:%d | %-4s | %-5s "), freeMemory(), traceSerial2.c_str(), _wait);
-#else
-  sprintf_P(tmp, PSTR("%-4s| %-4s | %-5s "), String(steppers[FEEDER].getStepsTakenMM()).c_str(), traceSerial2.c_str(), _wait);
-#endif
+  #if defined(__AVR__)
+    sprintf_P(tmp, PSTR("M:%d | %-4s | %-5s "), freeMemory(), traceSerial2.c_str(), _wait);
+  #else
+    sprintf_P(tmp, PSTR("%-4s| %-4s | %-5s "), String(steppers[FEEDER].getStepsTakenMM()).c_str(), traceSerial2.c_str(), _wait);
+  #endif
   display.drawStr(1, display.getDisplayHeight(), tmp);
   display.setFontMode(0);
   display.setDrawColor(1);
@@ -125,20 +125,20 @@ void drawStatus() {
 
 void drawFeed() {
   sprintf_P(tmp, PSTR("%-7s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
-#if defined(__STM32F1__) || defined(__ESP32__)
-  display.setFont(SMALL_FONT);
-  display.setFontMode(0);
-  display.setDrawColor(0);
-  display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, 40, display.getMaxCharHeight());
-  display.drawStr(1, display.getDisplayHeight(), tmp);
-#else
-  display.setFont(STATUS_FONT);
-  display.setFontMode(0);
-  display.setDrawColor(0);
-  display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight()-2);
-  display.setDrawColor(1);
-  display.drawStr(62, 34, tmp);
-#endif
+  #if defined(__STM32F1__) || defined(__ESP32__)
+    display.setFont(SMALL_FONT);
+    display.setFontMode(0);
+    display.setDrawColor(0);
+    display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, 40, display.getMaxCharHeight());
+    display.drawStr(1, display.getDisplayHeight(), tmp);
+  #else
+    display.setFont(STATUS_FONT);
+    display.setFontMode(0);
+    display.setDrawColor(0);
+    display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight()-2);
+    display.setDrawColor(1);
+    display.drawStr(62, 34, tmp);
+  #endif
 }
 
 void resetDisplay() {
@@ -191,7 +191,7 @@ int splitStringLines(char* lines[], int maxLines, const char* message) {
   char* tok = strtok((char*)message, "\n");
   char* lastTok = NULL;
   int cnt = -1;
-  
+
   while(tok != NULL) {
     lines[++cnt] = tok;
     lastTok = tok;
@@ -201,7 +201,7 @@ int splitStringLines(char* lines[], int maxLines, const char* message) {
     tok = strtok(NULL, "\n");
   }
   if(lastTok != NULL && *lastTok != 0 && cnt <= maxLines-1) {
-    lines[cnt] = lastTok;   // copy the last line as well 
+    lines[cnt] = lastTok;   // copy the last line as well
     cnt++;
   }
 
@@ -237,7 +237,7 @@ void drawUserMessage(String message) {
       }
     } while(display.nextPage());
     display.setFont(BASE_FONT);
-  } while(display.nextPage());  
+  } while(display.nextPage());
   displayingUserMessage  = true;
   userMessageTime = millis();
 }
@@ -287,7 +287,7 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
   int stat = 0;
   int button = digitalRead(ENCODER_BUTTON_PIN);
   int turn = encoder.getValue();
-  
+
   if (button == LOW) {
     delay(20);
     button = digitalRead(ENCODER_BUTTON_PIN);
@@ -321,122 +321,122 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
   return stat;
 }
 
-#ifdef __STM32F1__
+#if defined(__STM32F1__)
   #if !defined(USE_TWI_DISPLAY) && !defined(__BRD_FYSETC_AIOII)
 
-/* =========================================
-ATTENTION:
-The following section does a rewrite of the U8G2 library function
+  /* =========================================
+  ATTENTION:
+  The following section does a rewrite of the U8G2 library function
 
-extern "C" uint8_t u8x8_byte_arduino_2nd_hw_spi(...)
+  extern "C" uint8_t u8x8_byte_arduino_2nd_hw_spi(...)
 
-This is a must for the SKR mini V1.1 in order to route 
-all display handling to SPI3 instead of SPI2 since the 
-controller is wired as such.
+  This is a must for the SKR mini V1.1 in order to route
+  all display handling to SPI3 instead of SPI2 since the
+  controller is wired as such.
 
-If your NOT using an SKR mini V1.1 but any other controller 
-board based on the STM32 AND this controller uses SPI2 for
-data exchange, you may comment out this whole section and the 
-standard U8G2 library will do its work as expected.
-=========================================== */
-uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
-{
-  uint8_t *data;
-  uint8_t internal_spi_mode;
- 
-  //__debug("x");
-  switch(msg)
+  If your NOT using an SKR mini V1.1 but any other controller
+  board based on the STM32 AND this controller uses SPI2 for
+  data exchange, you may comment out this whole section and the
+  standard U8G2 library will do its work as expected.
+  =========================================== */
+  uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
   {
-    case U8X8_MSG_BYTE_SEND:
-      
-      // 1.6.5 offers a block transfer, but the problem is, that the
-      // buffer is overwritten with the incoming data
-      // so it can not be used...
-      // SPI.transfer((uint8_t *)arg_ptr, arg_int);
-      
-      data = (uint8_t *)arg_ptr;
-      while( arg_int > 0 )
-      {
-        SPI_3.transfer((uint8_t)*data);
-        data++;
-        arg_int--;
-      }
-  
-      break;
-    case U8X8_MSG_BYTE_INIT:
-      if ( u8x8->bus_clock == 0 ) 	/* issue 769 */
-      	u8x8->bus_clock = u8x8->display_info->sck_clock_hz;
-      /* disable chipselect */
-      u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
-      /* no wait required here */
-      
-      /* for SPI1: setup correct level of the clock signal */
-      // removed, use SPI.begin() instead: pinMode(11, OUTPUT);
-      // removed, use SPI.begin() instead: pinMode(13, OUTPUT);
-      // removed, use SPI.begin() instead: digitalWrite(13, u8x8_GetSPIClockPhase(u8x8));
-      
-      /* setup hardware with SPI.begin() instead of previous digitalWrite() and pinMode() calls */
-      SPI_3.begin();	
+    uint8_t *data;
+    uint8_t internal_spi_mode;
 
-      break;
-      
-    case U8X8_MSG_BYTE_SET_DC:
-      u8x8_gpio_SetDC(u8x8, arg_int);
-      break;
-      
-    case U8X8_MSG_BYTE_START_TRANSFER:
-      /* SPI1 mode has to be mapped to the mode of the current controller, at least Uno, Due, 101 have different SPI_MODEx values */
-      internal_spi_mode =  0;
-      switch(u8x8->display_info->spi_mode)
-      {
-        case 0: internal_spi_mode = SPI_MODE0; break;
-        case 1: internal_spi_mode = SPI_MODE1; break;
-        case 2: internal_spi_mode = SPI_MODE2; break;
-        case 3: internal_spi_mode = SPI_MODE3; break;
-      }
-      
-#if ARDUINO >= 10600
-      SPI_3.beginTransaction(SPISettings(u8x8->bus_clock, MSBFIRST, internal_spi_mode));
-#else
-      SPI_3.begin();
-      
-      if ( u8x8->display_info->sck_pulse_width_ns < 70 )
-      	SPI3.setClockDivider( SPI_CLOCK_DIV2 );
-      else if ( u8x8->display_info->sck_pulse_width_ns < 140 )
-	      SPI3.setClockDivider( SPI_CLOCK_DIV4 );
-      else
-	      SPI3.setClockDivider( SPI_CLOCK_DIV8 );
-      SPI3.setDataMode(internal_spi_mode);
-      SPI3.setBitOrder(MSBFIRST);
-#endif
-      
-      u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_enable_level);  
-      u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->post_chip_enable_wait_ns, NULL);
-      break;
-      
-    case U8X8_MSG_BYTE_END_TRANSFER:      
-      u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->pre_chip_disable_wait_ns, NULL);
-      u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
+    //__debug("x");
+    switch(msg)
+    {
+      case U8X8_MSG_BYTE_SEND:
 
-#if ARDUINO >= 10600
-      SPI_3.endTransaction();
-#else
-      SPI_3.end();
-#endif
+        // 1.6.5 offers a block transfer, but the problem is, that the
+        // buffer is overwritten with the incoming data
+        // so it can not be used...
+        // SPI.transfer((uint8_t *)arg_ptr, arg_int);
 
-      break;
-    default:
-      return 0;
+        data = (uint8_t *)arg_ptr;
+        while( arg_int > 0 )
+        {
+          SPI_3.transfer((uint8_t)*data);
+          data++;
+          arg_int--;
+        }
+
+        break;
+      case U8X8_MSG_BYTE_INIT:
+        if ( u8x8->bus_clock == 0 )   /* issue 769 */
+        u8x8->bus_clock = u8x8->display_info->sck_clock_hz;
+        /* disable chipselect */
+        u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
+        /* no wait required here */
+
+        /* for SPI1: setup correct level of the clock signal */
+        // removed, use SPI.begin() instead: pinMode(11, OUTPUT);
+        // removed, use SPI.begin() instead: pinMode(13, OUTPUT);
+        // removed, use SPI.begin() instead: digitalWrite(13, u8x8_GetSPIClockPhase(u8x8));
+
+        /* setup hardware with SPI.begin() instead of previous digitalWrite() and pinMode() calls */
+        SPI_3.begin();
+
+        break;
+
+      case U8X8_MSG_BYTE_SET_DC:
+        u8x8_gpio_SetDC(u8x8, arg_int);
+        break;
+
+      case U8X8_MSG_BYTE_START_TRANSFER:
+        /* SPI1 mode has to be mapped to the mode of the current controller, at least Uno, Due, 101 have different SPI_MODEx values */
+        internal_spi_mode =  0;
+        switch(u8x8->display_info->spi_mode)
+        {
+          case 0: internal_spi_mode = SPI_MODE0; break;
+          case 1: internal_spi_mode = SPI_MODE1; break;
+          case 2: internal_spi_mode = SPI_MODE2; break;
+          case 3: internal_spi_mode = SPI_MODE3; break;
+        }
+
+      #if ARDUINO >= 10600
+        SPI_3.beginTransaction(SPISettings(u8x8->bus_clock, MSBFIRST, internal_spi_mode));
+      #else
+        SPI_3.begin();
+
+        if ( u8x8->display_info->sck_pulse_width_ns < 70 )
+          SPI3.setClockDivider( SPI_CLOCK_DIV2 );
+        else if ( u8x8->display_info->sck_pulse_width_ns < 140 )
+          SPI3.setClockDivider( SPI_CLOCK_DIV4 );
+        else
+          SPI3.setClockDivider( SPI_CLOCK_DIV8 );
+        SPI3.setDataMode(internal_spi_mode);
+        SPI3.setBitOrder(MSBFIRST);
+      #endif
+
+        u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_enable_level);
+        u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->post_chip_enable_wait_ns, NULL);
+        break;
+
+      case U8X8_MSG_BYTE_END_TRANSFER:
+        u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->pre_chip_disable_wait_ns, NULL);
+        u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
+
+      #if ARDUINO >= 10600
+        SPI_3.endTransaction();
+      #else
+        SPI_3.end();
+      #endif
+
+        break;
+      default:
+        return 0;
+    }
+
+    return 1;
   }
-  
-  return 1;
-}
   #endif
 #endif
 
 /*
   This method overwrites the u8g2_UserInterfaceMessage of the
-  U8G2 library in order to achieve non-blocking on the serial 
+  U8G2 library in order to achieve non-blocking on the serial
   interface
 */
 #define SPACE_BETWEEN_BUTTONS_IN_PIXEL 6
@@ -450,36 +450,36 @@ uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const
   uint8_t line_height;
   u8g2_uint_t pixel_height;
   u8g2_uint_t y, yy;
-	
+
   uint8_t cursor = 0;
   uint8_t button_cnt;
   uint8_t event;
-	
+
   /* only horizontal strings are supported, so force this here */
   u8g2_SetFontDirection(u8g2, 0);
 
   /* force baseline position */
   u8g2_SetFontPosBaseline(u8g2);
-	
-	
+
+
   /* calculate line height */
   line_height = u8g2_GetAscent(u8g2);
   line_height -= u8g2_GetDescent(u8g2);
 
   /* calculate overall height of the message box in lines*/
-  height = 1;	/* button line */
+  height = 1;  /* button line */
   height += u8x8_GetStringLineCnt(title1);
   if ( title2 != NULL )
     height++;
   height += u8x8_GetStringLineCnt(title3);
-  
+
   /* calculate the height in pixel */
   pixel_height = height;
   pixel_height *= line_height;
-  
+
   /* ... and add the space between the text and the buttons */
   pixel_height += SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL;
-  
+
   /* calculate offset from top */
   y = 0;
   if ( pixel_height < u8g2_GetDisplayHeight(u8g2)   )
@@ -490,7 +490,7 @@ uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const
   }
   y += u8g2_GetAscent(u8g2);
 
-  
+
   for(;;)
   {
       u8g2_FirstPage(u8g2);
@@ -498,7 +498,7 @@ uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const
       {
         yy = y;
         /* draw message box */
-        
+
         yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title1);
         if ( title2 != NULL )
         {
@@ -512,10 +512,10 @@ uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const
 
       } while( u8g2_NextPage(u8g2) );
 
-#ifdef U8G2_REF_MAN_PIC
-      return 0;
-#endif
-	  
+      #if defined(U8G2_REF_MAN_PIC)
+        return 0;
+      #endif
+
       for(;;)
       {
         checkSerialPending();   // <-- added this for serial input handling
@@ -538,7 +538,7 @@ uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const
             cursor = button_cnt;
           cursor--;
           break;
-        }    
+        }
       }
   }
   /* never reached */
@@ -575,7 +575,7 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
   if(index != REVOLVER && smuffConfig.revolverIsServo) {
    steppers[index].home();
   }
-  
+
   //__debug(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
     toolSelected = -1;
@@ -681,7 +681,7 @@ void positionRevolver() {
     if(smuffConfig.revolverIsServo) {
       setServoPos(1, smuffConfig.revolverOffPos);
     }
-    else 
+    else
       moveHome(REVOLVER, false, false);
   }
   if(smuffConfig.revolverIsServo) {
@@ -698,7 +698,7 @@ void positionRevolver() {
   long delta2 = newPos - pos;                                       // number of steps if moved forward
   if(abs(delta1) < abs(delta2))
     newPos = delta1;
-  else 
+  else
     newPos = delta2;
 
   // if the position hasn't changed, do nothing
@@ -707,7 +707,7 @@ void positionRevolver() {
     remainingSteppersFlag |= _BV(REVOLVER);
     runAndWait(-1);
     if(smuffConfig.wiggleRevolver) {
-      // wiggle the Revolver one position back and forth 
+      // wiggle the Revolver one position back and forth
       // just to adjust the gears a bit better
       delay(50);
       prepSteppingRel(REVOLVER, smuffConfig.revolverSpacing, true);
@@ -737,7 +737,7 @@ void repositionSelector(bool retractFilament) {
         continue;
       sprintf(tmp, "Y%d", i);
       G0("G0", tmp, 0);                  // position Revolver on tool
-      prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true); // retract 
+      prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true); // retract
       runAndWait(FEEDER);
     }
     ignoreHoming = false;
@@ -749,7 +749,7 @@ void repositionSelector(bool retractFilament) {
   selectTool(tool, false);            // reposition Selector
 }
 
-bool feedToEndstop(bool showMessage) {   
+bool feedToEndstop(bool showMessage) {
   // enable steppers if they were turned off
   if(!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
@@ -777,7 +777,7 @@ bool feedToEndstop(bool showMessage) {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength, false);
     runAndWait(FEEDER);
 
-    if (n >= l && !feederEndstop()) { 
+    if (n >= l && !feederEndstop()) {
       // endstop hasn't triggered yet, something went wrong
       // retract the same amount that was fed and reset the Revolver
       delay(250);
@@ -804,7 +804,7 @@ bool feedToEndstop(bool showMessage) {
         setServoPos(1, smuffConfig.revolverOnPos);
       n = 0;
     }
-    if (retry < 0) { 
+    if (retry < 0) {
       // still got no endstop trigger, abort action
       if (showMessage) {
         moveHome(REVOLVER, false, false);   // home Revolver
@@ -840,7 +840,7 @@ bool feedToEndstop(bool showMessage) {
 }
 
 void feedToNozzle() {
-  
+
   if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
     // prepare to feed full speed in chunks
     float bLen = smuffConfig.bowdenLength;
@@ -887,9 +887,9 @@ bool loadFilament(bool showMessage) {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
   }
-  
+
   steppers[FEEDER].setMaxSpeed(curSpeed);
-  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition(); 
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
 
   if(smuffConfig.homeAfterFeed) {
@@ -907,7 +907,7 @@ bool loadFilament(bool showMessage) {
 
 /*
   This method is used to feed the filament Prusa style (L command on MMU2).
-  If first feeds the filament until the endstop is hit, then 
+  If first feeds the filament until the endstop is hit, then
   it pulls it back again.
 */
 bool loadFilamentPMMU2(bool showMessage) {
@@ -925,7 +925,7 @@ bool loadFilamentPMMU2(bool showMessage) {
   // move filament until it hits the feeder endstop
   if(!feedToEndstop(showMessage))
     return false;
-    
+
   steppers[FEEDER].setStepsTaken(0);
   // inhibit interrupts at this step
   steppers[FEEDER].setIgnoreAbort(true);
@@ -940,16 +940,16 @@ bool loadFilamentPMMU2(bool showMessage) {
     runAndWait(FEEDER);
   }
   steppers[FEEDER].setIgnoreAbort(false);
-  
+
   steppers[FEEDER].setMaxSpeed(curSpeed);
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
-  saveStore(); 
+  saveStore();
 
   if(smuffConfig.homeAfterFeed) {
     if(smuffConfig.revolverIsServo) {
       setServoPos(1, smuffConfig.revolverOffPos);
     }
-    else 
+    else
       steppers[REVOLVER].home();
   }
   steppers[FEEDER].setAbort(false);
@@ -1002,7 +1002,7 @@ bool unloadFilament() {
   if(!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
 
-  positionRevolver();  
+  positionRevolver();
 
   unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
   steppers[FEEDER].setEndstopState(!steppers[FEEDER].getEndstopState());
@@ -1026,7 +1026,7 @@ bool unloadFilament() {
   runAndWait(FEEDER);
   ofs = steppers[FEEDER].getStepPositionMM() - ofs;
 
-  
+
   // only if the unload hasn't been aborted yet, unload from Selector as well
   if(steppers[FEEDER].getAbort() == false) {
     steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
@@ -1085,7 +1085,7 @@ bool unloadFilament() {
     if(smuffConfig.revolverIsServo) {
       setServoPos(1, smuffConfig.revolverOffPos);
     }
-    else 
+    else
       steppers[REVOLVER].home();
   }
 
@@ -1131,7 +1131,7 @@ bool selectTool(int ndx, bool showMessage) {
   }
   if(!steppers[SELECTOR].getEnabled())
     steppers[SELECTOR].setEnabled(true);
-  
+
   if (showMessage) {
     while(feederEndstop()) {
       if (!showFeederLoadedMessage())
@@ -1158,9 +1158,9 @@ bool selectTool(int ndx, bool showMessage) {
           return false;
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
           #if !defined(__ESP32__)
-          Serial2.print(smuffConfig.unloadCommand);
-          Serial2.print("\n");
-          //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
+            Serial2.print(smuffConfig.unloadCommand);
+            Serial2.print("\n");
+            //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
           #endif
         }
       }
@@ -1183,7 +1183,7 @@ bool selectTool(int ndx, bool showMessage) {
   // if the distance between two tools is more than 3, use higher speed to move
   if(abs(toolSelected-ndx) >=3)
     steppers[SELECTOR].setMaxSpeed(steppers[SELECTOR].getMaxHSpeed());
-  
+
   prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
   remainingSteppersFlag |= _BV(SELECTOR);
   if(!smuffConfig.resetBeforeFeed_Y) {
@@ -1210,7 +1210,7 @@ bool selectTool(int ndx, bool showMessage) {
   // Attn: if testMode is set, it'll echo the selected tool to Serial2
   if(testMode) {
     Serial2.print("T");
-    Serial2.println(ndx); 
+    Serial2.println(ndx);
   }
   parserBusy = false;
   return true;
@@ -1325,32 +1325,32 @@ void printPos(int index, int serial) {
 }
 
 
-#ifdef __STM32F1__
-/*
-  Special function since the tone() function from the 
-  libmaple library crashes the I2C Display if the
-  timer and channel are not set correctly (see initDisplay).
-
-  In such case, use the commented out solution below.
-*/
-void playTone(int pin, int freq, int duration) {
-  
-  tone(pin, freq, duration);
-  return;
+#if defined(__STM32F1__)
   /*
-  pinMode(pin, OUTPUT);
-  for (long i = 0; i < duration * 500L; i += freq) {
-    digitalWrite(pin, HIGH);
-    delayMicroseconds(freq/10);
-    digitalWrite(pin, LOW);
-    delayMicroseconds(freq/10);
-  }
-  */
-}
+    Special function since the tone() function from the
+    libmaple library crashes the I2C Display if the
+    timer and channel are not set correctly (see initDisplay).
 
-void muteTone(int pin) {
-  pinMode(pin, INPUT);
-}
+    In such case, use the commented out solution below.
+  */
+  void playTone(int pin, int freq, int duration) {
+
+    tone(pin, freq, duration);
+    return;
+    /*
+    pinMode(pin, OUTPUT);
+    for (long i = 0; i < duration * 500L; i += freq) {
+      digitalWrite(pin, HIGH);
+      delayMicroseconds(freq/10);
+      digitalWrite(pin, LOW);
+      delayMicroseconds(freq/10);
+    }
+    */
+  }
+
+  void muteTone(int pin) {
+    pinMode(pin, INPUT);
+  }
 #endif
 
 void beep(int count) {
@@ -1459,14 +1459,14 @@ void getStoredData() {
 void setSignalPort(int port, bool state) {
   if(!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats) {
     sprintf(tmp,"%c%c%s", 0x1b, port, state ? "1" : "0");
-#if defined(__STM32F1__)
-    Serial1.write(tmp);
-#elif defined(__ESP32__)
-    // nothing here yet, might need adding some port pins settings / resetting
-    //__debug(PSTR("setting signal port: %d, %s"), port, state ? "true" : "false");
-#else
-    Serial2.write(tmp);
-#endif
+      #if defined(__STM32F1__)
+        Serial1.write(tmp);
+      #elif defined(__ESP32__)
+      // nothing here yet, might need adding some port pins settings / resetting
+      //__debug(PSTR("setting signal port: %d, %s"), port, state ? "true" : "false");
+      #else
+        Serial2.write(tmp);
+      #endif
   }
 }
 
@@ -1503,13 +1503,13 @@ void listDir(File root, int numTabs, int serial) {
     if (entry.isDirectory()) {
       printResponse("/\r\n", serial);
       //listDir(entry, numTabs + 1, serial);
-    } 
+    }
     else {
-#if defined(__ESP32__)
-      sprintf(tmp, "\t\t%u\r\n", entry.size());
-#else
-      sprintf(tmp, "\t\t%lu\r\n", entry.size());
-#endif
+      #if defined(__ESP32__)
+        sprintf(tmp, "\t\t%u\r\n", entry.size());
+      #else
+        sprintf(tmp, "\t\t%lu\r\n", entry.size());
+      #endif
       printResponse(tmp, serial);
     }
     entry.close();
@@ -1524,11 +1524,11 @@ bool getFiles(const char* rootFolder, const char* pattern, int maxFiles, bool cu
   FsFile root;
   SdFat SD;
 
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
+  #if defined(__ESP32__)
+    if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+  #else
+    if (SD.begin()) {
+  #endif
     root.open(rootFolder, O_READ);
     while (file.openNext(&root, O_READ)) {
       if (!file.isHidden()) {
@@ -1567,14 +1567,14 @@ void testRun(String fname) {
   long toolChanges = 0;
   unsigned long startTime = millis();
   unsigned long endstop2Miss = 0, endstop2Hit = 0;
-  
+
   debounceButton();
 
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if(SD.begin()) {
-#endif
+  #if defined(__ESP32__)
+    if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+  #else
+    if(SD.begin()) {
+  #endif
     steppers[REVOLVER].setEnabled(true);
     steppers[SELECTOR].setEnabled(true);
     steppers[FEEDER].setEnabled(true);
@@ -1582,7 +1582,7 @@ void testRun(String fname) {
     sprintf_P(msg, P_RunningTest, fname.c_str());
     drawUserMessage(msg);
     delay(1750);
-    fname += ".gcode";      
+    fname += ".gcode";
     feederErrors = 0;
 
     gCode.reserve(60);
@@ -1593,10 +1593,10 @@ void testRun(String fname) {
         if(encoder.getButton() == ClickEncoder::Clicked)
           break;
         int turn = encoder.getValue();
-        if(turn < 0) { 
+        if(turn < 0) {
           mode--;
           if(mode < 0)
-            mode = 3; 
+            mode = 3;
         }
         else if(turn > 0) {
           mode++;
@@ -1628,7 +1628,7 @@ void testRun(String fname) {
           }
           parseGcode(gCode, 0);
           if(gCode.startsWith("C")) {
-            if(!feederEndstop(2)) 
+            if(!feederEndstop(2))
               endstop2Hit++;
             else
               endstop2Miss++;
@@ -1711,20 +1711,19 @@ extern Stream* debugSerial;
 void __debug(const char* fmt, ...) {
   if(debugSerial == NULL)
     return;
-#ifdef DEBUG
+#if defined(DEBUG)
   char _tmp[512];
   va_list arguments;
-  va_start(arguments, fmt); 
+  va_start(arguments, fmt);
   vsnprintf_P(_tmp, 511, fmt, arguments);
-  va_end (arguments); 
+  va_end (arguments);
   debugSerial->print(F("echo: dbg: "));
-  #ifdef __AVR__
-  debugSerial->print(_tmp); 
-  debugSerial->print(" - Mem: "); 
-  debugSerial->println(freeMemory());
+  #if defined(__AVR__)
+    debugSerial->print(_tmp);
+    debugSerial->print(" - Mem: ");
+    debugSerial->println(freeMemory());
   #else
-  debugSerial->println(_tmp); 
+    debugSerial->println(_tmp);
   #endif
 #endif
 }
-

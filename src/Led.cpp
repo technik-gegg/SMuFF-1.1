@@ -63,15 +63,15 @@ void setBacklightRGB(int color) {
 #if defined(RGB_LED_R_PIN)
     pinMode(RGB_LED_R_PIN, OUTPUT);
     digitalWrite(RGB_LED_R_PIN, color & 1);
-#endif
-#if defined(RGB_LED_G_PIN)
+  #endif
+  #if defined(RGB_LED_G_PIN)
     pinMode(RGB_LED_G_PIN, OUTPUT);
     digitalWrite(RGB_LED_G_PIN, color & 2);
-#endif
-#if defined(RGB_LED_B_PIN)
+  #endif
+  #if defined(RGB_LED_B_PIN)
     pinMode(RGB_LED_B_PIN, OUTPUT);
     digitalWrite(RGB_LED_B_PIN, color & 4);
-#endif
+  #endif
 }
 
 void setBacklightCRGB(CRGB color) {

@@ -8,7 +8,7 @@ This is the software package for the Smart Multi Filament Feeder (SMuFF) project
 
 You have to compile and install this firmware on the Wanhao i3 duplicator mini board (i.e. [AliExpress Wanhao i3-Mini](https://www.aliexpress.com/item/motherboard-i3mini-0ne-motherboard-New-2017-Wanhao-printer-i3-Mini/32849200836.html?spm=a2g0x.10010108.1000001.12.20c22a870NKth9&pvid=f20ef7d9-21cb-4600-b3eb-75382e0c6661&gps-id=pcDetailBottomMoreOtherSeller&scm=1007.13338.122670.0&scm-url=1007.13338.122670.0&scm_id=1007.13338.122670.0])) or on the SKR mini V1.1 board [AliExpress SKR mini](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53).
 
-The Wanhao i3 mini is a very small but powerful controller, usually used to drive a 3D printer. It can handle up to 4 stepper motors, has it's own LC display and SD-Card / rotary encoder and runs on 12V as well as on 24V, it's the ideal tool for this project.  
+The Wanhao i3 mini is a very small but powerful controller, usually used to drive a 3D printer. It can handle up to 4 stepper motors, has it's own LC display and SD-Card / rotary encoder and runs on 12V as well as on 24V, it's the ideal tool for this project.
 The SKR mini v1.1 is also very small and yet more powerful because of the 32-Bit STM micro controller chip. On a downside, it comes with no display nor a rotary encoder but you can utilize any stepper drivers you like or have laying around.
 
 This firmware can be adopted to run on other boards as well. Make sure your board of choice has all the components needed, then adopt the settings according to the hardware being used in your *platformio.ini* and *pins.h* files.
@@ -186,7 +186,7 @@ If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's 
 
 **1.4x** - Not been published
 
-**1.4**  - Major changes to gain better compatibility for Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet. 
+**1.4**  - Major changes to gain better compatibility for Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet.
 The configuration file (SMUFF.CFG) has got a new setting which defines the distance from the filament guide to the Selector (see *SelectorDist* setting).
 
 **1.3**  - Some modifications to gain Prusa MMU2 compatibility

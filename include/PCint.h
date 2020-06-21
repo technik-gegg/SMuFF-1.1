@@ -40,7 +40,7 @@ void PCattachInterrupt(uint8_t pin, void (*userFunc)(void), int mode) {
 	*pcmask |= bit;
 	// enable the interrupt
 	PCICR |= 0x01 << port;
-	
+
 	// Fix init by SkyWodd
 	PCintLast[0] = *portInputRegister(2);
 	PCintLast[1] = *portInputRegister(3);

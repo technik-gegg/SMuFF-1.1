@@ -20,7 +20,7 @@
 /*
  * Module for storing/reading data as a replacement for EEPROM
  */
- 
+
 #include "SMuFF.h"
 #include "ArduinoJson.h"
 
@@ -45,51 +45,51 @@ void saveStore() {
     }
 
     //__debug(PSTR("Updating dataStore"));
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
+    #if defined(__ESP32__)
+      if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+    #else
+      if (SD.begin()) {
+    #endif
     FsFile cfg;
     if(cfg.open(DATASTORE_FILE, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
         serializeJsonPretty(jsonDoc, cfg);
     }
-    cfg.close();  
+    cfg.close();
     //__debug(PSTR("DataStore updated"));
   }
 }
 
 void recoverStore() {
   StaticJsonDocument<512> jsonDoc;
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
+  #if defined(__ESP32__)
+    if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+  #else
+    if (SD.begin()) {
+  #endif
     FsFile cfg;
     if (!cfg.open(DATASTORE_FILE)){
       __debug(PSTR("Data store file '%s' not found!\n"), DATASTORE_FILE);
-    } 
+    }
     else {
-      auto error = deserializeJson(jsonDoc, cfg);
-      if (error) {
-        __debug(PSTR("Data store file possibly corrupted or too large!\n"));
-      } 
-      else {
-        //__debug(PSTR("Data store recovered\n"));
-        dataStore.stepperPos[SELECTOR]  = jsonDoc["Positions"]["Selector"];
-        dataStore.stepperPos[REVOLVER]  = jsonDoc["Positions"]["Revolver"];
-        dataStore.stepperPos[FEEDER]    = jsonDoc["Positions"]["Feeder"];
-        dataStore.tool = jsonDoc["Tool"];
-        char tmp[16];
-        for(int i=0; i< MAX_TOOLS; i++) {
-          sprintf(tmp,"T%d", i);
-          if(jsonDoc["SwapTools"][tmp] != NULL) {
+    auto error = deserializeJson(jsonDoc, cfg);
+    if (error) {
+      __debug(PSTR("Data store file possibly corrupted or too large!\n"));
+    }
+    else {
+      //__debug(PSTR("Data store recovered\n"));
+      dataStore.stepperPos[SELECTOR]  = jsonDoc["Positions"]["Selector"];
+      dataStore.stepperPos[REVOLVER]  = jsonDoc["Positions"]["Revolver"];
+      dataStore.stepperPos[FEEDER]    = jsonDoc["Positions"]["Feeder"];
+      dataStore.tool = jsonDoc["Tool"];
+      char tmp[16];
+      for(int i=0; i< MAX_TOOLS; i++) {
+        sprintf(tmp,"T%d", i);
+        if(jsonDoc["SwapTools"][tmp] != NULL) {
             swapTools[i] = jsonDoc["SwapTools"][tmp];
-          }
         }
       }
-      cfg.close();
+    }
+    cfg.close();
     }
   }
 }
