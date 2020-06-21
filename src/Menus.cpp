@@ -169,7 +169,7 @@ void setupSteppersMenu(char *menu) {
 }
 
 void setupRevolverMenu(char* menu) {
-  char items1[150];
+  char items1[170];
 #if !defined(SMUFF_V5)
   char items2[240];
 #endif

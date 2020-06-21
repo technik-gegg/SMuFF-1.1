@@ -1324,28 +1324,6 @@ void printPos(int index, int serial) {
   printResponseP(buf, serial);
 }
 
-void showLed(int mode, int count) {
-  /*
-  CRGB color;
-  switch(mode) {
-    case 0: // off
-      color = CRGB::Black;
-      break;
-    case 1: // beep
-      color = CRGB::Red;
-      break;
-    case 2: // longBeep
-      color = CRGB::Cyan;
-      break;
-    case 3: // userBeep
-      color = CRGB::Orange;
-      break;
-  }
-  for(int i=0; i< NUM_LEDS; i++)
-    leds[i] = color;
-  FastLED.show();
-  */
-}
 
 #ifdef __STM32F1__
 /*
@@ -1527,7 +1505,11 @@ void listDir(File root, int numTabs, int serial) {
       //listDir(entry, numTabs + 1, serial);
     } 
     else {
-      sprintf(tmp, "\t\t%ld\r\n", entry.size());
+#if defined(__ESP32__)
+      sprintf(tmp, "\t\t%u\r\n", entry.size());
+#else
+      sprintf(tmp, "\t\t%lu\r\n", entry.size());
+#endif
       printResponse(tmp, serial);
     }
     entry.close();

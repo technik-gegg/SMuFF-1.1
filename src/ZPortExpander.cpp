@@ -241,8 +241,8 @@ ZPESerial::ZPESerial(ZPortExpander* parent, int txPin, int rxPin) {
  */
 int ZPESerial::write(const char* buffer) {
     // copy everything into the transmit buffer
-    int cnt=0;
-    for(int i=0; i < strlen(buffer); i++) {
+    size_t cnt=0;
+    for(size_t i=0; i < strlen(buffer); i++) {
         _txBuffer[_txBufferH] = buffer[i];
         cnt++;
         _txBufferH = (_txBufferH+1 >= MAX_TX_BUFFER) ?  0 : _txBufferH+1;

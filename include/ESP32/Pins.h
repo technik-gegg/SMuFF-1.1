@@ -86,3 +86,9 @@
 
 #define TX3_PIN             1       // Serial 0
 #define RX3_PIN             3    
+
+#define NEOPIXEL_PIN        13       
+#define NUM_LEDS            1     // number of Neopixel LEDS
+#define BRIGHTNESS          64
+#define LED_TYPE            WS2812B
+#define COLOR_ORDER         GRB

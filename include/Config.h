@@ -21,10 +21,10 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.06"
+#define VERSION_STRING    "V2.07"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-06-10"
+#define VERSION_DATE      "2020-06-21"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 #if defined(__STM32F1__)
@@ -62,11 +62,13 @@
 #define MAX_LINES               5
 #define MAX_LINE_LENGTH         80
 #define POWER_SAVE_TIMEOUT      15    // value in seconds
-// Does not work yet due to some compile failures in the FastLED library for STM32
+
+#if !defined(NUM_LEDS)
 #define NUM_LEDS                1     // number of Neopixel LEDS
 #define BRIGHTNESS              64
 #define LED_TYPE                WS2812B
 #define COLOR_ORDER             GRB
+#endif
 
 #define BASE_FONT             u8g2_font_6x12_t_symbols
 #define BASE_FONT_BIG         u8g2_font_7x14B_tf

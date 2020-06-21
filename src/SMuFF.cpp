@@ -82,7 +82,6 @@ ZPortExpander           portEx;
 #endif
 DuetLaserSensor         duetLS;
 ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
-//CRGB                    leds[NUM_LEDS];
 
 volatile byte           nextStepperFlag = 0;
 volatile byte           remainingSteppersFlag = 0;
@@ -291,18 +290,42 @@ void setupDeviceName() {
   _hostname = String("SMuFF") + "_" + appendix;
 }
 
+/*===================================================================================================  
+  Initialize FastLED for NeoPixels (primarily used as backlight on some displays)
+
+  STM32 platform users: Read on!
+  Other than STM32 platform users: Don't care about what's stated here!
+  
+  Unfortunatelly, the FastLED library still does not compile correctly under the Libmaple
+  framework correctly. 
+  Therefore, if you're using FastLED on STM32, you have to start the build process once
+  and after that, regardless whether or not you've got errors, copy all the files from here:
+
+    https://github.com/metalstarlight/stm32/tree/master/FastLed-stm32duino
+
+  into you local SMuFF project folder:
+    
+    ...\SMuFF\.pio\libdeps\BIGTREE_SKR_MINI\FastLED_ID126\platforms\arm\stm32
+    OR
+    ...\SMuFF\.pio\libdeps\BIGTREE_SKR_MINI_SD\FastLED_ID126\platforms\arm\stm32
+
+  depending on which build enviroment you use.
+
+  Otherwise you'll get a compile time error stating:
+
+    error: incomplete type '__gen_struct_GPIOx' used in nested name specifier
+
+  Let's see this as work around until the FastLED library gets updated an is prooven to 
+  be compiling/working. 
+  =================================================================================================== */
+void initFastLED() {
+  #if NEOPIXEL_PIN != -1
+    FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+    FastLED.setBrightness(BRIGHTNESS);
+  #endif
+}
+
 void setup() {
-
-// Turn on the LCD backlit in the FYSETC_AIOII
-#ifdef __BRD_FYSETC_AIOII
-  pinMode(RGB_LED_R_PIN, OUTPUT);
-  pinMode(RGB_LED_G_PIN, OUTPUT);
-  pinMode(RGB_LED_B_PIN, OUTPUT);
-
-  digitalWrite(RGB_LED_R_PIN, 1);
-  digitalWrite(RGB_LED_G_PIN, 1);
-  digitalWrite(RGB_LED_B_PIN, 1);
-#endif
 
 #ifdef __STM32F1__
   #ifndef USE_TWI_DISPLAY
@@ -334,10 +357,19 @@ void setup() {
   serialBuffer2.reserve(40);
   traceSerial2.reserve(40);
   
-  /* As of yet, this is a No-Go. Maybe at a later stage. */
-  //FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  //FastLED.setBrightness(BRIGHTNESS);
-  
+  initFastLED();
+
+// turn on the LCD backlight on the FYSETC_AIOII
+#if defined(__BRD_FYSETC_AIOII)
+  setBacklightRGB(7);   // equals white color
+#endif
+
+// turn on the LCD backlight on the FYSETC MINI 12864 Panel V2.x
+#if defined(USE_MINI12864_PANEL_V21)
+  setBacklightFastLED(CRGB::Cyan);
+#endif
+
+
   setupDeviceName();
 
 #ifdef __ESP32__

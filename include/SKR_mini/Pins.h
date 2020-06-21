@@ -63,7 +63,12 @@
 #define HEATER0_PIN         PA8
 #define HEATBED_PIN         PC9
 
-#define NEOPIXEL_PIN        PC10
+//#define NEOPIXEL_PIN        46      // equals to PB9 (see definitions _FL_DEFPIN(...) in fastpin_arm_stm32.h)
+#define NEOPIXEL_PIN        PB9     
+#define NUM_LEDS            3       // number of Neopixel LEDS
+#define BRIGHTNESS          127
+#define LED_TYPE            WS2812B
+#define COLOR_ORDER         GRB
 
 #define SDCS_PIN            -1      // use default
 

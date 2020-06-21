@@ -39,10 +39,11 @@
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
-//#include <FastLED.h>
+#include "FastLED.h"
+
 #if defined (__STM32F1__)
 #include <wirish.h>
-#include <pwm.h>
+#include <libmaple/gpio.h>
 
 #undef  sprintf_P
 #define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
@@ -53,6 +54,7 @@
 #include <WiFi.h>
 #include <BluetoothSerial.h>
 #endif
+
 
 #define FEEDER_SIGNAL     1
 #define SELECTOR_SIGNAL   2
@@ -133,7 +135,7 @@ typedef struct {
   char  materials[MAX_TOOLS][20];
   long  powerSaveTimeout    = 300;
   char  unloadCommand[80]   = { 0 };
-  char  wipeSequence[30]    = { "S200 I130 J160 P10 R10" };
+  char  wipeSequence[30]    = { 0 };
   bool  prusaMMU2           = true;
   bool  useDuetLaser        = false;
   bool  hasPanelDue         = false;
@@ -171,6 +173,7 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
 #endif
 
 extern ClickEncoder   encoder;
+extern CRGB           leds[];
 
 extern SMuFFConfig    smuffConfig;
 extern GCodeFunctions gCodeFuncsM[];
@@ -192,7 +195,6 @@ extern volatile bool  isPwrSave;
 extern volatile bool  actionOk;
 extern volatile bool  sendingResponse;
 extern unsigned long  endstopZ2HitCnt;
-//extern CRGB           leds[];
 extern volatile bool  showMenu;
 extern bool           maintainingMode;
 
@@ -304,5 +306,10 @@ extern void printResponseP(const char* response, int serial);
 extern void printOffsets(int serial);
 extern void maintainTool();
 extern void printPeriodicalState(int serial);
+
+extern void showLed(int mode, int count);
+extern void setBacklightRGB(byte color);
+extern void setBacklightRGB(byte R, byte G, byte B);
+extern void setBacklightFastLED(CRGB color);
 
 #endif
