@@ -24,6 +24,7 @@ CRGB leds[NUM_LEDS];
 
 void showLed(int mode, int count) {
   
+  #if !defined(USE_MINI12864_PANEL_V21)
   CRGB color;
   switch(mode) {
     case 0: // off
@@ -47,7 +48,6 @@ void showLed(int mode, int count) {
   }
   for(int i=0; i< NUM_LEDS; i++)
     leds[i] = color;
-  #if defined(__STM32F1__)
   FastLED.show();
   #endif
 }
