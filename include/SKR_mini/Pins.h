@@ -84,15 +84,21 @@
 #define DSP_SCL             PB6     // By default we run the SMuFF controller display on TWI (I2C)
 #define DSP_SDA             PB7
 
-#ifdef USE_ANET_DISPLAY
+#if defined(USE_ANET_DISPLAY)
 
 #define DSP_CS_PIN          PC14    // CS
 #define DSP_DC_PIN          PB7     // CLK
-#define DSP_DATA_PIN        PC12    // DATA
 #define ENCODER1_PIN        PC13
 #define ENCODER2_PIN        PC15
 #define ENCODER_BUTTON_PIN  PB6
 
+#elif defined(USE_MINI12864_PANEL_V21)
+#define DSP_CS_PIN          PB6     // CS
+#define DSP_DC_PIN          PC12    // CLK
+#define DSP_RESET_PIN       PC13 
+#define ENCODER1_PIN        PD2
+#define ENCODER2_PIN        PB8
+#define ENCODER_BUTTON_PIN  PC11
 #else
 
 #define DSP_CS_PIN          PB7     // These pins are only valid if a SPI display is being used
