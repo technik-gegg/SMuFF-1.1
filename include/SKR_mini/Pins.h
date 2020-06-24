@@ -63,13 +63,15 @@
 #define HEATER0_PIN         PA8
 #define HEATBED_PIN         PC9
 
-//#define NEOPIXEL_PIN        46      // equals to PB9 (see definitions _FL_DEFPIN(...) in fastpin_arm_stm32.h)
+#include "FastLED.h"
+_DEFPIN_ARM(PC12, 12, C);           // needed to compensate "Invalid pin specified" while compiling
+_DEFPIN_ARM(PB9, 9, B);
 
 #if defined(USE_MINI12864_PANEL_V21)
 #define NEOPIXEL_PIN        PB7
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #elif defined(USE_TWI_DISPLAY)
-#define NEOPIXEL_PIN        PC12    // if compiling fails stating "Invalid pin specified" add this line "_DEFPIN_ARM(PC12, 12, C);" in fastpin_arm_stm32.h
+#define NEOPIXEL_PIN        PC12    
 #define NUM_LEDS            1       // number of Neopixel LEDS
 #else
 #define NEOPIXEL_PIN        PB9

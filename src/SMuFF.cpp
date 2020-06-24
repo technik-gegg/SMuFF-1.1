@@ -292,34 +292,10 @@ void setupDeviceName() {
   _hostname = String("SMuFF") + "_" + appendix;
 }
 
-/*===================================================================================================  
-  Initialize FastLED for NeoPixels (primarily used as backlight on some displays)
-
-  STM32 platform users: Read on!
-  Other than STM32 platform users: Don't care about what's stated here!
-  
-  Unfortunatelly, the FastLED library still does not compile correctly under the Libmaple
-  framework correctly. 
-  Therefore, if you're using FastLED on STM32, you have to start the build process once
-  and after that, regardless whether or not you've got errors, copy all the files from here:
-
-    https://github.com/metalstarlight/stm32/tree/master/FastLed-stm32duino
-
-  into you local SMuFF project folder:
-    
-    ...\SMuFF\.pio\libdeps\BIGTREE_SKR_MINI\FastLED_ID126\platforms\arm\stm32
-    OR
-    ...\SMuFF\.pio\libdeps\BIGTREE_SKR_MINI_SD\FastLED_ID126\platforms\arm\stm32
-
-  depending on which build enviroment you use.
-
-  Otherwise you'll get a compile time error stating:
-
-    error: incomplete type '__gen_struct_GPIOx' used in nested name specifier
-
-  Let's see this as work around until the FastLED library gets updated an is prooven to 
-  be compiling/working. 
-  =================================================================================================== */
+/*
+  Initialize FastLED library for NeoPixels.
+  Primarily used for backlight on some displays (i.e. FYSETC 12864 Mini V2.1)
+*/
 void initFastLED() {
   #if NEOPIXEL_PIN != -1
     FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
@@ -335,9 +311,7 @@ void setup() {
     afio_remap(AFIO_REMAP_SPI1);  // remap SPI3 to SPI1 if a "normal" display is being used
     #endif
 
-  #pragma message("=================================================================")
-  #pragma message("Don't forget to short Z+ input to GND for programming the device!")
-  #pragma message("=================================================================")
+  #warning("**** Don't forget to short Z+ input to GND for programming the device! ****")
   if(DEBUG_OFF_PIN != -1) {
     pinMode(DEBUG_OFF_PIN, INPUT_PULLUP);
     /* ============ WARNING ================
