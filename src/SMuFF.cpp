@@ -334,17 +334,11 @@ void setup() {
   traceSerial2.reserve(40);
   
   initFastLED();
+  testFastLED();
 
-// turn on the LCD backlight on the FYSETC_AIOII
-#if defined(__BRD_FYSETC_AIOII)
-  setBacklightRGB(7);   // equals white color
+#if defined(USE_RGB_BACKLIGHT) || defined(USE_FASTLED_BACKLIGHT)
+  setBacklightIndex(7); // set backlight color to white by default - gets overwritten after config has been read
 #endif
-
-// turn on the LCD backlight on the FYSETC MINI 12864 Panel V2.x
-#if defined(USE_MINI12864_PANEL_V21)
-  setBacklightFastLED(CRGB::Cyan);
-#endif
-
 
   setupDeviceName();
 
@@ -369,6 +363,12 @@ void setup() {
 
   setupDisplay(); 
   readConfig();
+// turn on the LCD backlight accroding to the configured setting
+#if defined(USE_RGB_BACKLIGHT) || defined(USE_FASTLED_BACKLIGHT)
+  setBacklightIndex(smuffConfig.backlightColor);
+#endif
+
+
   // special case: 
   // if the baudrate is set to 0, the board is running out of working memory
   if(smuffConfig.serial1Baudrate != 0) { 

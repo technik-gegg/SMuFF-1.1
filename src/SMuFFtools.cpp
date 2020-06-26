@@ -211,7 +211,7 @@ int splitStringLines(char* lines[], int maxLines, const char* message) {
 void drawUserMessage(String message) {
 
   char* lines[6];
-  int lineCnt = splitStringLines(lines, 6, message.c_str());
+  int lineCnt = splitStringLines(lines, (int)(sizeof(lines)/sizeof(lines[0])), message.c_str());
   
   if(isPwrSave) {
     setPwrSave(0);

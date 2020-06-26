@@ -71,8 +71,8 @@ _DEFPIN_ARM(PB9, 9, B);
 #define NEOPIXEL_PIN        PB7
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #elif defined(USE_TWI_DISPLAY)
-#define NEOPIXEL_PIN        PC12    
-#define NUM_LEDS            1       // number of Neopixel LEDS
+#define NEOPIXEL_PIN        PB9     // PC12
+#define NUM_LEDS            5       // number of Neopixel LEDS
 #else
 #define NEOPIXEL_PIN        PB9
 #define NUM_LEDS            5       // number of Neopixel LEDS

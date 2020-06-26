@@ -127,10 +127,10 @@ void setupSettingsMenu(char* menu) {
     String(smuffConfig.selectorDistance).c_str(),
     String(smuffConfig.menuAutoClose).c_str(),
     String(smuffConfig.fanSpeed).c_str(),
-    String(smuffConfig.powerSaveTimeout).c_str(),
     smuffConfig.prusaMMU2 ? P_Yes : P_No,
     smuffConfig.sendPeriodicalStats ? P_Yes : P_No,
 #ifndef __AVR__
+    "\u25b8",
     "\u25b8",
     "\u25b8",
     "\u25b8",
@@ -246,6 +246,25 @@ void setupSelectorMenu(char* menu) {
   strcat(menu, items2);
 }
 
+const char* translateColor(int color) {
+  char* colorNames[16];
+  char tmp[80];
+  sprintf_P(tmp, P_Colors);
+  splitStringLines(colorNames, (int)(sizeof(colorNames)/sizeof(colorNames[0])), tmp);
+  if(color >= 0 && color < (int)sizeof(colorNames))
+    return colorNames[color];
+  return "???";
+}
+
+void setupDisplayMenu(char* menu) {
+  char items1[200];
+  sprintf_P(menu, P_MenuItemBack);
+  sprintf_P(items1, P_DisplayMenuItems,
+    String(smuffConfig.powerSaveTimeout).c_str(),
+    String(smuffConfig.lcdContrast).c_str(),
+    translateColor(smuffConfig.backlightColor));
+  strcat(menu, items1);
+}
 
 void setupTestrunMenu(char* menu) {
   char items[410];
@@ -467,7 +486,7 @@ void showTestrunMenu(char* menuTitle) {
       stopMenu = true;
     }
     else if(current_selection >= 2) {
-      splitStringLines(fnames, sizeof(fnames), (const char*)_menu);
+      splitStringLines(fnames, (int)(sizeof(fnames)/sizeof(fnames[0])), (const char*)_menu);
       _file = String(fnames[current_selection-1]);
       _file.trim();
       //__debug(PSTR("Selected file: %s"), _file.c_str());
@@ -483,13 +502,24 @@ bool selectBaudrate(int port, char* menuTitle) {
     sprintf_P(tmp, P_Baudrates);
     if(port == 1) {
         val = smuffConfig.serial1Baudrate;
-        if(showInputDialog(menuTitle, P_Baud, &val, tmp))
+        if(showInputDialog(menuTitle, P_Baud, &val, String(tmp)))
           smuffConfig.serial1Baudrate = val;
     }
     else {
         val = smuffConfig.serial2Baudrate;
-        if(showInputDialog(menuTitle, P_Baud, &val, tmp))
+        if(showInputDialog(menuTitle, P_Baud, &val, String(tmp)))
           smuffConfig.serial2Baudrate = val;
+    }
+    return true;
+}
+
+bool selectBacklightColor(int color, char* menuTitle) {
+    int val = color;
+    char tmp[80];
+    sprintf_P(tmp, P_Colors);
+    if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setBacklightIndex, true)) {
+      smuffConfig.backlightColor = val;
+      //__debug(PSTR("Backlight: %d"), val);
     }
     return true;
 }
@@ -936,6 +966,55 @@ void showSteppersMenu(char* menuTitle) {
   } while(!stopMenu);
 }
 
+void showDisplayMenu(char* menuTitle) {
+  bool stopMenu = false;
+  unsigned int startTime = millis();
+  uint8_t current_selection = 0;
+  char* title;
+  char _menu[128];
+  int iVal;
+  bool bVal;
+
+  do {
+    setupDisplayMenu(_menu);
+    resetAutoClose();
+    stopMenu = checkStopMenu(startTime);
+
+    current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+
+    if(current_selection == 0)
+      return;
+    else {
+      title = extractTitle(_menu, current_selection-1);
+      switch(current_selection) {
+        case 1:
+            stopMenu = true;
+            break;
+
+        case 2: // Power Save Timeout
+            iVal = smuffConfig.powerSaveTimeout;
+            if(showInputDialog(title, P_InSeconds, &iVal, 0, 480))
+              smuffConfig.powerSaveTimeout = iVal;
+            startTime = millis();
+            break;
+
+        case 3: // LCD Contrast
+            iVal = smuffConfig.lcdContrast;
+            if(showInputDialog(title, P_InValue, &iVal, MIN_CONTRAST, MAX_CONTRAST))
+              smuffConfig.lcdContrast = iVal;
+            startTime = millis();
+            break;
+
+        case 4: // Backlight Color
+            selectBacklightColor(smuffConfig.backlightColor, title);
+            startTime = millis();
+            break;
+      }
+    }
+  } while(!stopMenu);
+}
+
+
 void showSettingsMenu(char* menuTitle) {
   bool stopMenu = false;
   unsigned int startTime = millis();
@@ -1007,41 +1086,40 @@ void showSettingsMenu(char* menuTitle) {
             startTime = millis();
             break;
 
-        case 7: // Power save timeout
-            iVal = smuffConfig.powerSaveTimeout;
-            if(showInputDialog(title, P_InSeconds, &iVal, 0, 480))
-              smuffConfig.powerSaveTimeout = iVal;
-            startTime = millis();
-            break;
-
-        case 8: // Prusa Emulation
+        case 7: // Prusa Emulation
             bVal = smuffConfig.prusaMMU2;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.prusaMMU2 = bVal;
             startTime = millis();
             break;
 
-        case 9: // Send Status Info
+        case 8: // Send Status Info
             bVal = smuffConfig.sendPeriodicalStats;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.sendPeriodicalStats = bVal;
             startTime = millis();
             break;
 
-        case 10: // Baudrates
+        case 9: // Baudrates
             showBaudratesMenu(title);
             current_selection = 1;
             startTime = millis();
             break;
 
-        case 11: // Offsets
+        case 10: // Offsets
             showOffsetsMenu(title);
             current_selection = 1;
             startTime = millis();
             break;
 
-        case 12: // Steppers
+        case 11: // Steppers
             showSteppersMenu(title);
+            current_selection = 1;
+            startTime = millis();
+            break;
+
+        case 12: // Display
+            showDisplayMenu(title);
             current_selection = 1;
             startTime = millis();
             break;

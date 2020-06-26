@@ -56,6 +56,8 @@ char* I_Param = (char*)"I";
 char* J_Param = (char*)"J";
 char* K_Param = (char*)"K";
 char* R_Param = (char*)"R";
+char* U_Param = (char*)"U";
+char* B_Param = (char*)"B";
 
 GCodeFunctions gCodeFuncsM[] = {
   {   0, dummy },     // used in Prusa Emulation mode to switch to normal mode
@@ -82,6 +84,7 @@ GCodeFunctions gCodeFuncsM[] = {
   { 115, M115 },
   { 117, M117 },
   { 119, M119 },
+  { 150, M150 },
   { 201, M201 },
   { 203, M203 },
   { 205, M205 },
@@ -339,6 +342,48 @@ bool M119(const char* msg, String buf, int serial) {
     steppers[FEEDER].setEndstopHit(param);
   }
   printEndstopState(serial); 
+  return true;
+}
+
+bool M150(const char* msg, String buf, int serial) {
+  int red=0, green=0, blue=0, index=-1, intensity = 255, colorNdx=-1;
+  printResponse(msg, serial); 
+
+  if(NEOPIXEL_PIN == -1)
+      return false;
+
+  if((param = getParam(buf, R_Param)) != -1) {
+    red = param;
+  }
+  if((param = getParam(buf, U_Param)) != -1) {
+    green = param;
+  }
+  if((param = getParam(buf, B_Param)) != -1) {
+    blue = param;
+  }
+  if((param = getParam(buf, S_Param)) != -1) {
+    index = param;
+  }
+  if((param = getParam(buf, P_Param)) != -1) {
+    intensity = param;
+  }
+  if((param = getParam(buf, C_Param)) != -1) {
+    colorNdx = param;
+  }
+  setFastLEDIntensity(intensity);
+  if(colorNdx != -1) {
+    if(index == -1)
+      setBacklightIndex(colorNdx);
+    else
+      if(index >= 0 && index < NUM_LEDS)
+        setFastLEDIndex(index, colorNdx);
+  }
+  else {
+    if(index == -1 || index > NUM_LEDS)
+      return false;
+    CRGB color = CRGB(red, green, blue);
+    setFastLED(index, color);
+  }
   return true;
 }
 

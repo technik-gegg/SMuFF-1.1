@@ -26,6 +26,12 @@ If you like this project and find it useful, feel free to place a donation via P
 
 ## Recent changes
 
+**2.08** - Added Display menu in settings
+
++ new menu "Display" in settings lets you define stuff as Power save timeout, LCD Contrast and Backlight color
++ Backlight color of either RGB or NeoPixel displays will be saved to the SMuFF.CFG
++ added **M150** to set LED color (RGB or NeoPixel) via GCode. Parameters are same as on Marlin. Parameter **C*x*** allows you to set all LEDs to one of the predefined color indices (Black, Red, Green, Blue, Cyan, Magenta, Yellow, White) starting with 0 for Black (i.e. *M150 C4* sets all LEDs to Cyan). Parameter **S*n*** lets you define the LED index on NeoPixel LED stripes (starting at index 0 for first LED).
+
 **2.07** - Added FastLED to project
 
 Since some displays nowadays come with an NeoPixel backlight, I've seen the urge to add the FastLED library, which controls NeoPixels in a very comfortable way.

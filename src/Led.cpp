@@ -21,10 +21,13 @@
 #include "FastLED.h"
 
 CRGB leds[NUM_LEDS];
+static CRGB ColorsFastLED[8] = { CRGB::Black, CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Cyan, CRGB::Magenta, CRGB::Yellow, CRGB::White };
 
+// old function - meant to simulate beeps with 
+// different colors
 void showLed(int mode, int count) {
   
-  #if !defined(USE_MINI12864_PANEL_V21)
+  /*
   CRGB color;
   switch(mode) {
     case 0: // off
@@ -49,14 +52,14 @@ void showLed(int mode, int count) {
   for(int i=0; i< NUM_LEDS; i++)
     leds[i] = color;
   FastLED.show();
-  #endif
+  */
 }
 
 void setBacklightRGB(byte R, byte G, byte B) {
-  setBacklightRGB((R&1) | (G&1)<<1 | (B&1)<<2);
+  setBacklightRGB((int)(R&1) | (G&1)<<1 | (B&1)<<2);
 }
 
-void setBacklightRGB(byte color) {
+void setBacklightRGB(int color) {
 #if defined(RGB_LED_R_PIN)
     pinMode(RGB_LED_R_PIN, OUTPUT);
     digitalWrite(RGB_LED_R_PIN, color & 1);
@@ -71,8 +74,37 @@ void setBacklightRGB(byte color) {
 #endif
 }
 
-void setBacklightFastLED(CRGB color) {
-    for(int i=0; i< NUM_LEDS; i++)
-        leds[i] = color;
+void setBacklightCRGB(CRGB color) {
+  FastLED.showColor(color);
+}
+
+void setFastLED(int index, CRGB color) {
+    leds[index] = color;
     FastLED.show();
+}
+
+void setFastLEDIndex(int index, int color) {
+    leds[index] = ColorsFastLED[color];
+    FastLED.show();
+}
+
+void setFastLEDIntensity(int intensity) {
+    FastLED.setBrightness(intensity);
+}
+
+void setBacklightIndex(int color) {
+#if defined(USE_RGB_BACKLIGHT)
+  setBacklightRGB(color);
+#else
+  setBacklightCRGB(ColorsFastLED[color]);
+#endif
+}
+
+void testFastLED() {
+  for(int i=0; i< NUM_LEDS; i++) {
+    leds[i] = ColorsFastLED[1];
+    FastLED.show();
+    delay(250);
+    leds[i] = ColorsFastLED[0];
+  }
 }

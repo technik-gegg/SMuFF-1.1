@@ -80,7 +80,7 @@ const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
 #if defined (__STM32F1__) || defined (__ESP32__)
-const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4s\nSend Status Info %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers/Servo     %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
+const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPrusa MMU2 Emul. %4s\nSend Status Info %4s\nBaudrates          %4s\nOffsets            %4s\nSteppers/Servo     %4s\nDisplay            %4s\n%s\u25b9 SAVE TO SD-CARD \u25c3" };
 #else
 const char P_SettingsMenuItems[] PROGMEM    = { "Tool Count      %5s\nBowden Length   %5s\nSelector Dist.  %5s\nMenu Auto Close  %4s\nFan Speed       %5s\nPower Save Time %5s\nPrusa MMU2 Emul. %4S\nBaudrates           %s\nOffsets             %s\nSteppers            %s\n%S> SAVE TO SD-CARD <" };
 #endif
@@ -97,8 +97,10 @@ const char P_ToolCount[] PROGMEM            = { "# of tools:" };
 const char P_InMillimeter[] PROGMEM         = { "in mm:" };
 const char P_InSeconds[] PROGMEM            = { "in seconds:" };
 const char P_InPercent[] PROGMEM            = { "in percent:" };
+const char P_InValue[] PROGMEM              = { "as value:" };
 const char P_YesNo[] PROGMEM                = { "yes / no:" };
 const char P_Baud[] PROGMEM                 = { "Baudrate:" };
+const char P_Color[] PROGMEM                = { "Color:" };
 const char P_InMicroseconds[] PROGMEM       = { "in uS:" };
 const char P_InTicks[] PROGMEM              = { "in ticks:" };
 const char P_InSteps[] PROGMEM              = { "in steps:" };
@@ -109,6 +111,7 @@ const char P_ServoCycles[] PROGMEM          = { "cycles:" };
 const char P_NoOfChunks[] PROGMEM           = { "# of chunks:" };
 const char P_BaudMenuItems[] PROGMEM        = { "USB-Serial     %6s\n2nd Serial     %6s" };
 const char P_Baudrates[] PROGMEM            = { "4800\n9600\n19200\n38400\n56700\n115200\n230400" };
+const char P_Colors[] PROGMEM               = { "Black\nRed\nGreen\nBlue\nCyan\nMagenta\nYellow\nWhite" };
 #if defined (__STM32F1__) || defined (__ESP32__)
 #if defined(SMUFF_V5)
 const char P_SteppersMenuItems[] PROGMEM    = { "Selector            %2s\nFeeder              %2s\nServo               %2s" };
@@ -123,6 +126,7 @@ const char P_RevolverMenuItems[] PROGMEM    = { "\nSteps per Rev.  %5s\nHome Aft
 #endif
 const char P_FeederMenuItems[] PROGMEM      = { "\nSteps per MM    %5s\nEnable Chunks    %4s\nFeed Chunks      %4s\nInsert Length    %5s\nInsert Speed     %5s\nReinforce Len.  %5s" };
 const char P_SelectorMenuItems[] PROGMEM    = { "\nSteps per MM    %5s" };
+const char P_DisplayMenuItems[] PROGMEM     = { "Screen Timeout   %4s\nLCD Contrast     %4s\nBacklight    %8s" };
 #else
 const char P_SteppersMenuItems[] PROGMEM    = { "Selector            >\nRevolver            >\nFeeder              >" };
 const char P_AllSteppersMenuItems[] PROGMEM = { "Invert DIR       %4S\nEndstop Trigger  %4S\nStep Delay       %4s\nMax. Speed      %5s\nMax. Speed HS   %5s\nAcceleration    %5s" };
@@ -205,8 +209,7 @@ const char P_MCmds[] PROGMEM = {
   "M115\t-\tReport version\n" \
   "M117\t-\tDisplay message\n" \
   "M119\t-\tReport endstop status\n" \
-  "M120\t-\tEnable endstops\n" \
-  "M121\t-\tDisable endstops\n" \
+  "M150\t-\tSet FastLED color\n" \
   "M201\t-\tSet max acceleration\n" \
   "M203\t-\tSet max feedrate\n" \
   "M205\t-\tSet advanced options\n" \

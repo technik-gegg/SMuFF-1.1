@@ -137,7 +137,10 @@ void readConfig()
       smuffConfig.useDuetLaser =        jsonDoc[feeder]["DuetLaser"];
 
       int contrast =                    jsonDoc["LCDContrast"];
-      smuffConfig.lcdContrast = (contrast > MIN_CONTRAST && contrast < MAX_CONTRAST) ? contrast : DSP_CONTRAST;
+      smuffConfig.lcdContrast = (contrast >= MIN_CONTRAST && contrast <= MAX_CONTRAST) ? contrast : DSP_CONTRAST;
+      int backlightColor =              jsonDoc["BacklightColor"];
+      smuffConfig.backlightColor = (backlightColor == 0 ? 7 : backlightColor);   // set backlight color to white if not set
+
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];
       smuffConfig.selectorDistance =    jsonDoc["SelectorDist"];
       int i2cAdr =                      jsonDoc["I2CAddress"];
@@ -251,6 +254,7 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["ServoMaxPwm"]          = smuffConfig.servoMaxPwm;
   jsonDoc["SendPeriodicalStats"]  = smuffConfig.sendPeriodicalStats;
   jsonDoc["WipeSequence"]         = smuffConfig.wipeSequence;
+  jsonDoc["BacklightColor"]       = smuffConfig.backlightColor;
 
 
   JsonObject node = jsonObj.createNestedObject("Selector");

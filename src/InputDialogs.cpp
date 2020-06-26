@@ -25,7 +25,7 @@ void drawValue(const char* title, const char* PROGMEM message, String val) {
     char tmp[256];
     char msg[128];
     sprintf_P(msg, message);
-    sprintf(tmp,"%s\n \n%-12s%5s", title, msg, val.c_str());
+    sprintf(tmp,"%s\n \n%-11s%7s", title, msg, val.c_str());
     drawUserMessage(String(tmp));
     checkSerialPending();   // allow serial commands to be read and handled
 }
@@ -164,6 +164,62 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, 
   return stat;
 }
 
+bool showInputDialog(const char* title, const char* PROGMEM message, int* val, String list, iCallback cb, bool valIsIndex) {
+  bool stat = true;
+  int turn, btn;
+  bool isHeld, isClicked;
+  int opt = 0;
+  char* options[16];
+
+  debounceButton();
+  int lineCnt = splitStringLines(options, (int)(sizeof(options) / sizeof(options[0])), list.c_str());
+
+  if(lineCnt==0)
+    return false;
+  
+  for(int i=0; i< lineCnt; i++) {
+    if(valIsIndex) {
+      opt = *val;
+    }
+    else {
+      if(String(options[i]) == String(*val)) {
+          opt = i;
+          //__debug(PSTR("Current selection: %s"), options[i]);
+      }
+    }
+  }
+  drawValue(title, message, String(options[opt]));
+
+  while(1) {
+    getEncoderButton(&turn, &btn, &isHeld, &isClicked);
+    if(isHeld || isClicked) {
+      stat = isHeld ? false : true;
+      break;
+    }
+    if(turn != 0) {
+      if(turn == -1) {
+        if(opt > 0)
+          opt--;
+        else opt = lineCnt-1;
+      }
+      else if(turn == 1) {
+        if(opt < lineCnt-1)
+          opt++;
+        else opt = 0;
+      }
+      drawValue(title, message, String(options[opt]));
+      if(cb != NULL && valIsIndex) {
+        cb(opt);
+      }
+    }
+  }
+  if(valIsIndex)
+    *val = opt;
+  else
+    *val = atoi(options[opt]);
+  return stat;
+}
+
 bool showInputDialog(const char* title, const char* PROGMEM message, unsigned long* val, String list) {
   bool stat = true;
   int turn, btn;
@@ -172,7 +228,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
   char* options[10];
 
   debounceButton();
-  int lineCnt = splitStringLines(options, 10, list.c_str());
+  int lineCnt = splitStringLines(options, (int)(sizeof(options)/sizeof(options[0])), list.c_str());
 
   if(lineCnt==0)
     return false;

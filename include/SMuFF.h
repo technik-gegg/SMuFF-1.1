@@ -142,6 +142,7 @@ typedef struct {
   int   servoMinPwm         = 550;
   int   servoMaxPwm         = 2400;
   bool  sendPeriodicalStats = true;
+  int   backlightColor      = 0x4;    // Cyan by default
 } SMuFFConfig;
 
 
@@ -309,8 +310,12 @@ extern void maintainTool();
 extern void printPeriodicalState(int serial);
 
 extern void showLed(int mode, int count);
-extern void setBacklightRGB(byte color);
+extern void setBacklightIndex(int color);
+extern void setBacklightRGB(int color);
 extern void setBacklightRGB(byte R, byte G, byte B);
-extern void setBacklightFastLED(CRGB color);
-
+extern void setBacklightCRGB(CRGB color);
+extern void setFastLED(int index, CRGB color);
+extern void setFastLEDIndex(int index, int color);
+extern void setFastLEDIntensity(int intensity);
+extern void testFastLED();
 #endif
