@@ -29,6 +29,7 @@ If you like this project and find it useful, feel free to place a donation via P
 **2.09** - Bugfix for PMMU mode
 
 + fixed the bug which didn't realize the **A**(bort) command comming from Marlins MMU code
++ added SOFTRESET option for Marlin in MMU2 mode. This will not initiate a hard reset on the SMuFF, instead it'll pretend to have been resetted. This option is needed because some bootloaders will send various information at boot up and thus confuse the MMU2 code in Marlin.
 
 **2.08** - Added Display menu in settings
 
