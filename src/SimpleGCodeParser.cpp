@@ -398,7 +398,15 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
     case 'X':     // Reset MMU
       sendOkResponse(serial);
       //__debug(PSTR("To Prusa (X%d): ok<CR>"), type);
+    #if !defined(SOFTRESET)
       M999("", tmp, serial);
+    #else
+      // SOFTRESET needed if some bootloader sends messages at boot.
+      // This will cause an buffer overrun in Marlins MMU code.
+      // Hence, don't reset, just pretend to.
+      delay(1000);
+      sendStartResponse(serial);
+    #endif
       break;
 
     default:
