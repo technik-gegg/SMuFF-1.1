@@ -30,6 +30,7 @@ If you like this project and find it useful, feel free to place a donation via P
 
 + fixed the bug which didn't realize the **A**(bort) command comming from Marlins MMU code
 + added SOFTRESET option for Marlin in MMU2 mode. This will not initiate a hard reset on the SMuFF, instead it'll pretend to have been resetted. This option is needed because some bootloaders will send various information at boot up and thus confuse the MMU2 code in Marlin.
++ added build flag MARLIN2_ONLY to overcome incompatibilities between Marlin 2.0 and Prusa firmware. Remove this build flag **only** when you're intending to run the SMuFF on a Prusa MK2/3/S.
 
 **2.08** - Added Display menu in settings
 

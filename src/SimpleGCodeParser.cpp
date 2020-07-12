@@ -107,8 +107,10 @@ void parseGcode(const String& serialBuffer, int serial) {
     }
     if(line.startsWith("U") || line.startsWith("C")) {
       if(!steppers[FEEDER].getMovementDone()) {
-        sendOkResponse(serial);  
-        //__debug(PSTR("Cancelling U/C"));  
+        #if !defined(MARLIN2_ONLY)
+        sendOkResponse(serial);
+        //__debug(PSTR("Cancelling U/C"));
+        #endif
         return;
       }
     }

@@ -899,10 +899,11 @@ bool loadFilament(bool showMessage) {
     else
       steppers[REVOLVER].home();
   }
+  bool wasAborted = steppers[FEEDER].getAbort();
   steppers[FEEDER].setAbort(false);
 
   parserBusy = false;
-  return true;
+  return true; //aborted ? false : true;
 }
 
 /*
