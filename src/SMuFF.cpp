@@ -918,8 +918,10 @@ bool isJsonData(char in) {
 volatile bool processingSerial0;
 
 void serialEvent() {
+  
   if(processingSerial0)
-    return;
+    if(!smuffConfig.prusaMMU2)
+      return;
     
   while(Serial.available()) {
     processingSerial0 = true;
@@ -943,8 +945,11 @@ void serialEvent() {
 volatile bool processingSerial2;
 
 void serialEvent2() {
+  
   if(processingSerial2)
-    return;
+    if(!smuffConfig.prusaMMU2)
+      return;
+  
   while(Serial2.available()) {
     processingSerial2 = true;
     char in = (char)Serial2.read();
@@ -971,8 +976,10 @@ volatile bool processingSerial1;
  
 #ifndef __AVR__
 void serialEvent1() {
+  
   if(processingSerial1)
-    return;
+    if(!smuffConfig.prusaMMU2)
+      return;
   
   while(Serial1.available()) {
     processingSerial1 = true;
@@ -998,8 +1005,10 @@ void serialEvent1() {
 volatile bool processingSerial3;
 
 void serialEvent3() {
+  
   if(processingSerial3)
-    return;
+    if(!smuffConfig.prusaMMU2)
+      return;
   
   while(Serial3.available()) {
     processingSerial3 = true;

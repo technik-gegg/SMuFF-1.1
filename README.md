@@ -26,6 +26,10 @@ If you like this project and find it useful, feel free to place a donation via P
 
 ## Recent changes
 
+**2.09** - Bugfix for PMMU mode
+
++ fixed the bug which didn't realize the **A**(bort) command comming from Marlins MMU code
+
 **2.08** - Added Display menu in settings
 
 + new menu "Display" in settings lets you define stuff as Power save timeout, LCD Contrast and Backlight color
