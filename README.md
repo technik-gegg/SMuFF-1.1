@@ -17,7 +17,7 @@ The basic configuration (SMuFF.cfg) must to be located on the SD-Card. Thus, cha
 From version 1.6 on, the firmware has been enhanced in order to enable you making changes directly from the UI, which means: No more fiddling in the JSON file.
 Also new in the 1.6 version is the option to run GCode scripts from the SD-Card for testing purposes. In the **test** folder you'll find some sample scripts. Copy those to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly and can be stopped by clicking the encoder button.
 
-For further information head over to the [Wiki pages](https://github.com/technik-gegg/SMuFF-1.1/wiki).
+For more information head over to [the SMuFF website](https://sites.google.com/view/the-smuff/).
 
 ## What else?
 
@@ -25,6 +25,31 @@ If you like this project and find it useful, feel free to place a donation via P
 [![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
 
 ## Recent changes
+
+**2.10** - A lot of changes, such as TMC driver support; **Please read on**
+
++ finished the implementation of the Duet3D Laser Sensor (V2) which can be used as the Feeder endstop and is able to monitor filament jams.
++ added GCode **M412** which will switch on/off runout/jam detection or report its status, when using a Duet3D Laser Sensor.
++ removed configuration file variants. There's only one general config file left.
++ renamed configuration file from **.CFG** to **.CFG.json**. This makes it easier for some after market *VS-Code extensions* to validate and format its content. **Please notice:** This file is meant as a template for your initial configuration. Make sure you rename the template file to "**SMuFF.CFG**" after you've copied it onto the SMuFF's SD-Card.
++ added GCode **M17** which enables you to switch a relay in order to switch from external stepper (3D-Printer) to internal stepper (SMuFF). The parameter must either be **E** for the **external** or **I** for the **internal** stepper. The relay is controlled over the **RELAIS_PIN** in Pins.h. Read more about this [new feature here](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.qbpb6pvlq20x).
++ overhauled Settings Menu (moved additional settings into Options menu).
++ added **Serial0Baudrate** (for USB port) to config files, renamed **SerialDueBaudrate** to **Serial3Baudrate**.
++ fixed a bug for the old Revolver version where it refused to home correctly.
++ added defines for SERVO_LID and SERVO_WIPER for better code readability.
++ changed the behavior of boolean inputs (YES/NO and HI/LO) in the menus (they're single click now).
++ changed the increments on all stepper speeds (they'll now increment/decrement by 50).
++ moved some of the most common build flags (i.e. USE_xxx_DISPLAY) to the top of [platformio.ini](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0#h.3e6724efr6vl).
++ moved all initializing functions into **SetupInit.cpp**. SMuFF.cpp and setup() got much more streamlined now.
++ moved all periodical functions into **Periodicals.cpp**.
++ periodicals are now called from within **loop()**, which makes them more stable when handling serial I/O.
++ added the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4) and [SKR mini E3 DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3) to the collection of usable boards.
++ rewrote the timers code. Encoder, Servos and Fans are now being served by one general purpose timer only. Servos are far more stable now.
++ added TMC-Stepper library for being able to support TMC2209 stepper drivers.
++ added TMC-Params to the stepper menus. You'll need those settings at least on the SKR mini **E3**, on the SKR mini **E3DIP** when using TMC2209s.
++ added GCodes **M122**, **M350**, **M569**, **M906** and **M914** for handling TMC stepper driver settings (see Marlin GCode what they're used for).
++ got the USB port working on E3 and E3 DIP on Windows.
++ added a couple of more parameters supported by the [M205 GCode](https://sites.google.com/view/the-smuff/tips-hints/talk-to-the-smuff?authuser=0#h.g5l7kws0923c) command.
 
 **2.09** - Bugfix for PMMU mode
 

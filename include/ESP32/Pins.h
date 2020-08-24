@@ -48,6 +48,9 @@
 
 #define LED_PIN             2       // IO2
 
+#define DEBUG_PIN           -1     
+#define RELAIS_PIN          -1     // Relais for stepper motor switching
+
 #define BEEPER_CHANNEL      1
 #define BEEPER_PIN          2       // IO2
 
@@ -77,6 +80,9 @@
 #endif
 #define ENCODER_BUTTON_PIN  32      // IO39 (aka SenseVN)
 
+#define CAN_USE_SERIAL1     true
+#define CAN_USE_SERIAL2     true
+#define CAN_USE_SERIAL3     false
 
 #define TX1_PIN             17      // Serial 1
 #define RX1_PIN             16

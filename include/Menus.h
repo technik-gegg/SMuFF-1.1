@@ -23,19 +23,27 @@
 
 extern void setupMainMenu(char* menu);
 extern void setupToolsMenu(char* menu);
-extern void setupOffsetMenu(char* menu);
+extern void setupStatusInfoMenu(char* menu);
 extern void setupSwapMenu(char* menu);
 extern void setupSettingsMenu(char* menu);
 extern void setupTestrunMenu(char* menu);
+extern void setupOptionsMenu(char* menu);
 
 extern void showMainMenu();
 extern void showToolsMenu();
-extern void showOffsetsMenu(char* menuTitle);
+extern void showStatusInfoMenu(char* menuTitle);
 extern void showSwapMenu(char* menuTitle);
 extern void showSettingsMenu(char* menuTitle);
 extern void showBaudratesMenu(char* menuTitle);
+extern void showOptionsMenu(char* menuTitle);
 extern void showTestrunMenu(char* menuTitle);
+extern void showTMCStatus(int axis);
 extern void changeOffset(int index);
 extern void drawOffsetPosition(int index);
+extern bool selectBaudrate(int port, char* menuTitle);
+extern void selectPanelDuePort(char* menuTitle);
 
+extern const char* translateColor(int color);
+extern const char* translatePanelDuePort(int port);
+extern const char* translateTMCDriverMode(int mode);
 #endif

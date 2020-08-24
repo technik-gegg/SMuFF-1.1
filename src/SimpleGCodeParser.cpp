@@ -96,12 +96,14 @@ void parseGcode(const String& serialBuffer, int serial) {
       if(!steppers[FEEDER].getMovementDone()) { 
         //__debug(PSTR("Wait after 'T' 500ms")); 
         delay(500);
+        #if !defined(MARLIN2_ONLY)
         if(currentLine > 0)
           sprintf_P(ptmp, PSTR("M998 %d\n"), currentLine);
         else
           sprintf_P(ptmp, PSTR("M998\n"));
         printResponseP(ptmp, serial);
         //__debug(PSTR("Resend 'T' sent"));  
+        #endif
         return;
       }
     }
@@ -203,10 +205,12 @@ bool parse_T(const String& buf, int serial) {
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
     //__debug(PSTR("Tool change requested: T%d"), tool);
-    // Prusa expects the MMU to unload filament on its own before tool change
-    if(smuffConfig.prusaMMU2 && feederEndstop()) { 
-      //__debug(PSTR("must unload first!"));
-      unloadFilament();
+    if(feederEndstop()) { 
+      // Prusa expects the MMU to unload filament on its own before tool change
+      // Same goes if the Feeder stepper is declared shared
+      if(smuffConfig.prusaMMU2 || smuffConfig.isSharedStepper)
+        //__debug(PSTR("must unload first!"));
+        unloadFilament();
     }
     stat = selectTool(tool, false);
     if(stat) {
@@ -219,7 +223,7 @@ bool parse_T(const String& buf, int serial) {
         }
       }
     }
-    if(!smuffConfig.prusaMMU2)  // Prusa expects not Tx as response
+    if(!smuffConfig.prusaMMU2)  // Prusa doesn't expect "Tx" as a response
       printResponse(msg, serial);
   }
   else {
@@ -232,17 +236,23 @@ bool parse_T(const String& buf, int serial) {
 
 bool parse_Action(const String& buf, int serial) {
 
+  char tmp[256];
+
   if(buf.length()==0) {
     return false;
   }
-  actionOk = false;
   if(buf.startsWith("T:")) {
+    actionOk = false;
     String msg = buf.substring(2);
     if(msg == "OK")
       actionOk = true;
     else {
-      drawUserMessage(msg);
+      sprintf_P(tmp, P_ActionMsg, msg.c_str());
+      drawUserMessage(tmp);
     }
+  }
+  else if(buf.startsWith("PING")) {
+    printResponse("//action: PONG", serial);
   }
   return false;
 }
@@ -441,6 +451,22 @@ int getParam(String buf, char* token) {
     return -1; 
 }
 
+float getParamF(String buf, char* token) {
+  int pos = buf.indexOf(token);
+  //__debug(PSTR("getParam: %s\n"),buf.c_str());
+  if(pos != -1) {
+    //__debug(PSTR("getParam:pos: %d"),pos);
+    if(buf.charAt(pos+1)=='-') {
+      int val = buf.substring(pos+2).toInt();
+      //__debug(PSTR("Negative: %d"), 0-val);
+      return 0-val;
+    }
+    return atof(buf.substring(pos+1).c_str());
+  }
+  else 
+    return -1; 
+}
+
 long getParamL(String buf, char* token) {
   int pos = buf.indexOf(token);
   //__debug(PSTR("getParam: %s\n"),buf.c_str());
@@ -554,11 +580,9 @@ void printResponse(const char* response, int serial) {
   sendingResponse = true;
   switch(serial) {
     case 0: Serial.print(response); break;
-    case 1: Serial1.print(response); break;
-    case 2: Serial2.print(response); break;
-#ifndef __ESP32__
-    case 3: Serial3.print(response); break;
-#endif
+    case 1: if(CAN_USE_SERIAL1) Serial1.print(response); break;
+    case 2: if(CAN_USE_SERIAL2) Serial2.print(response); break;
+    case 3: if(CAN_USE_SERIAL3) Serial3.print(response); break;
   }
   sendingResponse = false;
 }
@@ -567,11 +591,9 @@ void printResponseP(const char* response, int serial) {
   sendingResponse = true;
   switch(serial) {
     case 0: Serial.print((__FlashStringHelper*)response); break;
-    case 1: Serial1.print((__FlashStringHelper*)response); break;
-    case 2: Serial2.print((__FlashStringHelper*)response); break;
-#ifndef __ESP32__
-    case 3: Serial3.print((__FlashStringHelper*)response); break;
-#endif
+    case 1: if(CAN_USE_SERIAL1) Serial1.print((__FlashStringHelper*)response); break;
+    case 2: if(CAN_USE_SERIAL2) Serial2.print((__FlashStringHelper*)response); break;
+    case 3: if(CAN_USE_SERIAL3) Serial3.print((__FlashStringHelper*)response); break;
   }
   sendingResponse = false;
 }

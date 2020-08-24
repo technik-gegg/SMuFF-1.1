@@ -48,6 +48,9 @@
 
 #define BEEPER_PIN          37
 
+#define DEBUG_PIN           -1     
+#define RELAIS_PIN          -1     // Relais for stepper motor switching
+
 #define SERVO1_PIN          44
 #define SERVO2_PIN          14
 #define FAN_PIN             12
@@ -61,6 +64,10 @@
 #define DSP_CS_PIN          41
 #define DSP_DC_PIN          40
 #define DSP_RESET_PIN       27
+
+#define CAN_USE_SERIAL1     true
+#define CAN_USE_SERIAL2     false
+#define CAN_USE_SERIAL3     false
 
 #define TX2_PIN             16
 #define RX2_PIN             17

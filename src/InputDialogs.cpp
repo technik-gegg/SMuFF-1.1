@@ -45,9 +45,8 @@ void getEncoderButton(int* turn, int* button, bool* isHeld, bool* isClicked) {
   }
 }
 
-bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max, fCallback cb) {
+bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max, fCallback cb, float increment) {
   bool stat = true;
-  float steps = 1.0F;
   int turn, btn;
   bool isHeld, isClicked;
 
@@ -65,7 +64,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
       break;
     }
     if(turn != 0) {
-      *val += steps*turn;
+      *val += increment*turn;
       if(turn < 0) {
         if(*val < min) {
           *val = min;
@@ -88,11 +87,17 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
   return stat;
 }
 
-bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int min, int max, iCallback cb) {
+bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int min, int max, iCallback cb, int increment) {
   bool stat = true;
   int turn, btn;
   bool isHeld, isClicked;
 
+  if(cb == NULL && (min==0 && max==1)) {
+    // if there's no callback set, and min, max equals 0,1 don't show the dialog
+    // just return the inverted value (used for HI / LO)
+    *val = (*val==min ? max : min);
+    return true;
+  }
   debounceButton();
   encoder.setAccelerationEnabled(true);
   drawValue(title, message, String(*val));
@@ -107,7 +112,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
       break;
     }
     if(turn != 0) {
-      *val += turn;
+      *val += (turn*increment);
       if(turn < 0) {
         if(*val < min) {
           *val = min;
@@ -135,8 +140,14 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, 
   bool stat = true;
   int turn, btn;
   bool isHeld, isClicked;
-  char _yes[10], _no[10];
+  char _yes[5], _no[5];
   
+  if(cb == NULL) {
+    // if there's no callback set, don't show the dialog
+    // just return the inverted value
+    *val = !*val;
+    return true;
+  }
   sprintf_P(_yes, P_Yes);
   sprintf_P(_no, P_No);
 
@@ -177,17 +188,17 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, S
   if(lineCnt==0)
     return false;
   
-  for(int i=0; i< lineCnt; i++) {
     if(valIsIndex) {
       opt = *val;
     }
     else {
-      if(String(options[i]) == String(*val)) {
-          opt = i;
-          //__debug(PSTR("Current selection: %s"), options[i]);
+      for(int i=0; i< lineCnt; i++) {
+        if(String(options[i]) == String(*val)) {
+            opt = i;
+            //__debug(PSTR("Current selection: %s"), options[i]);
+        }
       }
     }
-  }
   drawValue(title, message, String(options[opt]));
 
   while(1) {
@@ -228,7 +239,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
   char* options[10];
 
   debounceButton();
-  int lineCnt = splitStringLines(options, (int)(sizeof(options)/sizeof(options[0])), list.c_str());
+  int lineCnt = splitStringLines(options, (int)ArraySize(options), list.c_str());
 
   if(lineCnt==0)
     return false;

@@ -23,7 +23,7 @@
  
 #include "ZTimerLib.h"
 #if defined(__STM32F1__)
-#include <libmaple/libmaple.h>
+//#include <libmaple/libmaple.h>
 #elif defined(__ESP32__)
 #include "esp32-hal.h"
 #endif
@@ -237,15 +237,25 @@ void ZTimer::setupTimer(IsrTimer timer, int channel, unsigned int prescaler, uns
       hwTimer5.attachInterrupt(channel, ISR5);
       break;
     case ZTIMER6:
+      /*
       hwTimer6.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer6.setPrescaleFactor(prescaler);
       hwTimer6.setCompare(channel, compare);
+      */
+      // since this timer doesn't have a compare mode, we're using
+      // the compare value as a period (in uS)
+      hwTimer6.setPeriod(compare);
       hwTimer6.attachInterrupt(channel, ISR6);
       break;
     case ZTIMER7:
+      /*
       hwTimer7.setMode(channel, TIMER_OUTPUT_COMPARE);
       hwTimer7.setPrescaleFactor(prescaler);
       hwTimer7.setCompare(channel, compare);
+      */
+      // since this timer doesn't have a compare mode, we're using
+      // the compare value as a period (in uS)
+      hwTimer7.setPeriod(compare);
       hwTimer7.attachInterrupt(channel, ISR7);
       break;
     case ZTIMER8:

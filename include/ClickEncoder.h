@@ -68,6 +68,7 @@ private:
   volatile uint16_t acceleration = 0;  
   bool  accelerationEnabled;
   uint8_t steps = 0;
+  bool enableSound;
 
 #ifndef WITHOUT_BUTTON
   volatile Button button;
@@ -107,6 +108,16 @@ public:
 #endif
 
 public:
+  void setEnableSound(const bool &d)
+  {
+    enableSound = d;
+  }
+
+  const bool getEnableSound()
+  {
+    return enableSound;
+  }
+
   void setAccelerationEnabled(const bool &a)
   {
     accelerationEnabled = a;

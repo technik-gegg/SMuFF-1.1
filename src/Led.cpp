@@ -17,11 +17,13 @@
  *
  */
 #include "SMuFF.h"
-#include "Config.h"
-#include "FastLED.h"
 
 CRGB leds[NUM_LEDS];
+#if !defined(USE_FASTLED_BACKLIGHT)
+static CRGB ColorsFastLED[8];
+#else
 static CRGB ColorsFastLED[8] = { CRGB::Black, CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Cyan, CRGB::Magenta, CRGB::Yellow, CRGB::White };
+#endif
 
 // old function - meant to simulate beeps with 
 // different colors
@@ -61,50 +63,60 @@ void setBacklightRGB(byte R, byte G, byte B) {
 
 void setBacklightRGB(int color) {
 #if defined(RGB_LED_R_PIN)
-    pinMode(RGB_LED_R_PIN, OUTPUT);
-    digitalWrite(RGB_LED_R_PIN, color & 1);
+  pinMode(RGB_LED_R_PIN, OUTPUT);
+  digitalWrite(RGB_LED_R_PIN, color & 1);
 #endif
 #if defined(RGB_LED_G_PIN)
-    pinMode(RGB_LED_G_PIN, OUTPUT);
-    digitalWrite(RGB_LED_G_PIN, color & 2);
+  pinMode(RGB_LED_G_PIN, OUTPUT);
+  digitalWrite(RGB_LED_G_PIN, color & 2);
 #endif
 #if defined(RGB_LED_B_PIN)
-    pinMode(RGB_LED_B_PIN, OUTPUT);
-    digitalWrite(RGB_LED_B_PIN, color & 4);
+  pinMode(RGB_LED_B_PIN, OUTPUT);
+  digitalWrite(RGB_LED_B_PIN, color & 4);
 #endif
 }
 
 void setBacklightCRGB(CRGB color) {
+#if defined(USE_FASTLED_BACKLIGHT)
   FastLED.showColor(color);
+#endif
 }
 
 void setFastLED(int index, CRGB color) {
-    leds[index] = color;
-    FastLED.show();
+#if defined(USE_FASTLED_BACKLIGHT)
+  leds[index] = color;
+  FastLED.show();
+#endif
 }
 
 void setFastLEDIndex(int index, int color) {
+#if defined(USE_FASTLED_BACKLIGHT)
     leds[index] = ColorsFastLED[color];
     FastLED.show();
+#endif
 }
 
 void setFastLEDIntensity(int intensity) {
+#if defined(USE_FASTLED_BACKLIGHT)
     FastLED.setBrightness(intensity);
+#endif
 }
 
 void setBacklightIndex(int color) {
 #if defined(USE_RGB_BACKLIGHT)
   setBacklightRGB(color);
-#else
+#elif defined(USE_FASTLED_BACKLIGHT)
   setBacklightCRGB(ColorsFastLED[color]);
 #endif
 }
 
 void testFastLED() {
+#if defined(USE_FASTLED_BACKLIGHT)
   for(int i=0; i< NUM_LEDS; i++) {
     leds[i] = ColorsFastLED[1];
     FastLED.show();
     delay(250);
     leds[i] = ColorsFastLED[0];
   }
+#endif
 }

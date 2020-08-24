@@ -21,12 +21,13 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.09"
+#define VERSION_STRING    "V2.10"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-07-06"
+#define VERSION_DATE      "2020-08-24"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
+#define TUNE_FILE         "TUNE.DAT"
 #if defined(__STM32F1__)
 #define MAX_JSON          2048              // 2K of temporary buffer for the JSON data
 #elif defined(__ESP32__)
@@ -51,6 +52,10 @@
 #define MAX_CONTRAST        250
 
 #define I2C_SLAVE_ADDRESS   0x88
+#define I2C_DISPLAY_ADDRESS 0x3c
+
+#define SERVO_WIPER         0
+#define SERVO_LID           1
 
 #include "Pins.h"               // path is defined in build environment of platformio.ini (-I)
 
@@ -69,12 +74,21 @@
 #define LED_TYPE                WS2812B
 #define COLOR_ORDER             GRB
 #endif
+#define LED_BLACK_COLOR         0
+#define LED_RED_COLOR           1
+#define LED_GREEN_COLOR         2
+#define LED_BLUE_COLOR          3
+#define LED_CYAN_COLOR          4
+#define LED_MAGENTA_COLOR       5
+#define LED_YELLOW_COLOR        6
+#define LED_WHITE_COLOR         7
 
-#define BASE_FONT             u8g2_font_6x12_t_symbols
-#define BASE_FONT_BIG         u8g2_font_7x14B_tf
-#define SMALL_FONT            u8g2_font_6x10_mr
-#define STATUS_FONT           u8g2_font_7x14_tf
-#define LOGO_FONT             u8g2_font_helvR08_tf
-#define ICONIC_FONT           u8g2_font_open_iconic_check_2x_t
+#define BASE_FONT               u8g2_font_6x12_t_symbols
+#define BASE_FONT_BIG           u8g2_font_7x14B_tf
+#define SMALL_FONT              u8g2_font_6x10_mr
+#define STATUS_FONT             u8g2_font_7x14_tf
+#define LOGO_FONT               u8g2_font_helvR08_tf
+#define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
+#define SYMBOL_FONT             u8g2_font_unifont_t_symbols
 
 #endif

@@ -25,17 +25,14 @@
 #include "SMuFF.h"
 #include "SMuFFBitmaps.h"
 #include "Config.h"
-#include "ZTimerLib.h"
-#include "ZStepperLib.h"
-#include "ZServo.h"
 
 #ifdef __ESP32__
 extern BluetoothSerial SerialBT;
 #endif
 
 #ifdef __STM32F1__
-#include "libmaple/libmaple.h"
-SPIClass SPI_3(3);
+//#include "libmaple/libmaple.h"
+//SPIClass SPI_3(3);
 #define _tone(pin, freq, duration)  playTone(pin, freq, duration)
 #define _noTone(pin)                muteTone(pin)
 #elif defined (__ESP32__)
@@ -65,10 +62,22 @@ int                   swapTools[MAX_TOOLS];
 bool                  isWarning;
 unsigned long         feederErrors = 0;
 bool                  ignoreHoming = false;
+String                tuneSequence = "F440D120P150.F523D120P80.F196D220P80.F196D120P80.F587D400P120.F349D80P240.F349D80P160.";
+// the "old" tune
+//String                tuneSequence = "F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50.";
+
 
 const char brand[] = VERSION_STRING;
 
 void setupDisplay() {
+  // The next code line (display.setI2CAddress) changes the address for your TWI_DISPLAY if it's
+  // configured differently.
+  // Usually, thoses displays are pre-configured at I2C address 0x78, which equals to 0x3c
+  // from the software side because of the 7-Bit address mode. 
+  // If it's configured at 0x7a, you need to change the I2C_DISPLAY_ADDRESS in Config.h to 0x3d.
+  #if I2C_DISPLAY_ADDRESS != 0x3C
+  display.setI2CAddress(I2C_DISPLAY_ADDRESS);
+  #endif
   display.begin(/*Select=*/ ENCODER_BUTTON_PIN,  /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
   display.enableUTF8Print();
   resetDisplay();
@@ -107,7 +116,9 @@ void drawStatus() {
 #ifdef __AVR__
   sprintf_P(tmp, PSTR("M:%d | %-4s | %-5s "), freeMemory(), traceSerial2.c_str(), _wait);
 #else
-  sprintf_P(tmp, PSTR("%-4s| %-4s | %-5s "), String(steppers[FEEDER].getStepsTakenMM()).c_str(), traceSerial2.c_str(), _wait);
+  String pos = String(steppers[FEEDER].getStepsTakenMM());
+  //String pos = String(lastDuetPos);
+  sprintf_P(tmp, PSTR("%-7s| %-4s | %-4s "), pos.c_str(), smuffConfig.externalStepper ? P_External : P_Internal, _wait);
 #endif
   display.drawStr(1, display.getDisplayHeight(), tmp);
   display.setFontMode(0);
@@ -129,8 +140,15 @@ void drawFeed() {
   display.setFont(SMALL_FONT);
   display.setFontMode(0);
   display.setDrawColor(0);
-  display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, 40, display.getMaxCharHeight());
-  display.drawStr(1, display.getDisplayHeight(), tmp);
+  int x = 0;
+  int y = display.getDisplayHeight()-display.getMaxCharHeight() + 2;
+  int w = 40;
+  int h = display.getMaxCharHeight();
+  display.drawBox(x, y, w, h);
+  display.drawStr(x+1, display.getDisplayHeight(), tmp);
+  display.sendBuffer();
+  //display.updateDisplayArea(x, y, w, h);
+
 #else
   display.setFont(STATUS_FONT);
   display.setFontMode(0);
@@ -139,6 +157,125 @@ void drawFeed() {
   display.setDrawColor(1);
   display.drawStr(62, 34, tmp);
 #endif
+}
+
+int duetTurn = 0;
+void drawSymbolCallback() {
+  uint16_t symbols[] = { 0x25ef, 0x25d0, 0x25d3, 0x25d1, 0x25d2 };
+
+  if(duetLS.isMoving()) {
+    if(++duetTurn > 4)
+      duetTurn = 1;
+  }
+  else {
+    duetTurn = 0;
+  }
+  display.setFont(SYMBOL_FONT);
+  display.drawGlyph(118, 10, symbols[duetTurn]);
+}
+
+void showDuetLS() {
+  char _msg[128];
+  char _addData[15];
+  char _dir[3];
+
+  bool extStepper = smuffConfig.externalStepper;
+  switchFeederStepper(INTERNAL);
+  debounceButton();
+  encoder.setAccelerationEnabled(true);
+  while(1) {
+    if(encoder.getButton() == ClickEncoder::Clicked)
+      break;
+    // if the encoder knob is being turned, extrude / retract filament by the value defined
+    switch(encoder.getValue()) {
+        case -1: moveFeeder(-0.25); break;
+        case  1: moveFeeder( 0.25); break;
+        case -2: moveFeeder(-0.50); break;
+        case  2: moveFeeder( 0.50); break;
+        case -3: moveFeeder(-1.00); break;
+        case  3: moveFeeder( 1.00); break;
+        case -4: moveFeeder(-2.00); break;
+        case  4: moveFeeder( 2.00); break;
+        case -5: moveFeeder(-5.00); break;
+        case  5: moveFeeder( 5.00); break;
+        default: break;
+    }
+    uint8_t err = duetLS.getSensorError();
+    if(err != 0)
+      sprintf_P(_addData, PSTR("%4s/%04x"), err==E_SENSOR_INIT ? "INIT" : err==E_SENSOR_VCC ? "VCC" : String(err).c_str(), duetLS.getError());
+    else {
+      if(!duetLS.isValid())
+        sprintf_P(_addData, PSTR("-invalid-"));
+      else
+        sprintf_P(_addData, PSTR("none/%04x"), duetLS.getError());
+    }
+    switch(duetLS.getDirection()) {
+      case DIR_NONE: sprintf(_dir,"  "); break;
+      case DIR_EXTRUDE: sprintf(_dir, "<<"); break;
+      case DIR_RETRACT: sprintf(_dir, ">>"); break;
+    }
+
+    sprintf_P(_msg, P_DuetLSData, _dir, String(duetLS.getPositionMM()).c_str(),  duetLS.getQuality(), duetLS.getBrightness(), duetLS.getShutter(), duetLS.getSwitch() ? P_On : P_Off, _addData, duetLS.getVersion());
+    drawUserMessage(_msg, true, false, drawSymbolCallback);
+    delay(100);
+  }
+  if(extStepper)
+    switchFeederStepper(EXTERNAL);
+}
+
+TMC2209Stepper* showDriver = NULL;
+
+void drawStallCallback() {
+  uint16_t symbols[] = { 0x0020, 0x21af, 0x0020, 0x21a0 };
+  if(showDriver == NULL)
+    return;
+  bool stat = showDriver->diag();
+  display.setFont(SYMBOL_FONT);
+  display.drawGlyph(50, 8, symbols[stat]);
+  stat = showDriver->SG_RESULT() > showDriver->SGTHRS();
+  display.drawGlyph(61, 8, symbols[stat+2]);
+}
+
+void showTMCStatus(int axis) {
+  char _msg[256];
+
+  debounceButton();
+  encoder.setAccelerationEnabled(true);
+  switch(axis) {
+    case SELECTOR:
+      showDriver = driverX; 
+      break;
+    case REVOLVER:
+      showDriver = driverY; 
+      break;
+    case FEEDER:
+      showDriver = driverZ; 
+      break;
+  }
+  if(showDriver == NULL) {
+    debounceButton();
+    drawUserMessage(P_StepperNotCfg);
+    delay(3000);
+    return;
+  }
+  steppers[axis].setEnabled(true);
+  displayingUserMessage = true;
+  while(1) {
+    checkSerialPending();
+    if(encoder.getButton() == ClickEncoder::Clicked)
+      break;
+    sprintf_P(_msg, P_TMC_Status,
+                showDriver->stealth() ? P_Stealth : P_Spread,
+                showDriver->rms_current(),
+                showDriver->ola() ? P_Yes : P_No, 
+                showDriver->olb() ? P_Yes : P_No, 
+                showDriver->s2ga() ? P_Yes : P_No, 
+                showDriver->s2gb() ? P_Yes : P_No, 
+                showDriver->ot() ? P_Yes : P_No);
+    drawUserMessage(_msg, true, false, drawStallCallback);
+    delay(100);
+  }
+  displayingUserMessage = false;
 }
 
 void resetDisplay() {
@@ -151,6 +288,9 @@ void resetDisplay() {
 void drawSelectingMessage(int tool) {
   char _sel[128];
   char _wait[128];
+  
+  if(displayingUserMessage)     // don't show if something else is being displayed
+    return;
   display.firstPage();
   do {
     resetDisplay();
@@ -208,10 +348,10 @@ int splitStringLines(char* lines[], int maxLines, const char* message) {
   return cnt;
 }
 
-void drawUserMessage(String message) {
+void drawUserMessage(String message, bool smallFont /* = false */, bool center /* = true */, void (*drawCallbackFunc)() /* = null */) {
 
-  char* lines[6];
-  int lineCnt = splitStringLines(lines, (int)(sizeof(lines)/sizeof(lines[0])), message.c_str());
+  char* lines[8];
+  int lineCnt = splitStringLines(lines, (int)ArraySize(lines), message.c_str());
   
   if(isPwrSave) {
     setPwrSave(0);
@@ -222,12 +362,13 @@ void drawUserMessage(String message) {
   display.drawFrame(0, 0, display.getDisplayWidth(), display.getDisplayHeight());
   display.firstPage();
   do {
-    display.setFont(BASE_FONT_BIG);
+    display.setFont(smallFont ? BASE_FONT : BASE_FONT_BIG);
     int y = (display.getDisplayHeight()-(lineCnt-1)*display.getMaxCharHeight())/2;
     display.firstPage();
     do {
       for(int i=0; i< lineCnt; i++) {
-        display.drawStr((display.getDisplayWidth() - display.getStrWidth(lines[i]))/2, y, lines[i]);
+        int x = center ? (display.getDisplayWidth() - display.getStrWidth(lines[i]))/2 : 0;
+        display.drawStr(x, y, lines[i]);
         if(i==0) {
           if(lineCnt > 1 && strcmp(lines[1]," ")==0) {
             display.drawHLine(0, y+3, display.getDisplayWidth());
@@ -236,6 +377,8 @@ void drawUserMessage(String message) {
         y += display.getMaxCharHeight();
       }
     } while(display.nextPage());
+    if(drawCallbackFunc != NULL)
+      drawCallbackFunc();
     display.setFont(BASE_FONT);
   } while(display.nextPage());  
   displayingUserMessage  = true;
@@ -300,6 +443,8 @@ uint8_t u8x8_GetMenuEvent(u8x8_t *u8x8)
   else {
     if (turn != 0) {
       resetAutoClose();
+      if(smuffConfig.encoderTickSound)
+        encoderBeep(1);
       switch (turn)
       {
         case 1:
@@ -569,11 +714,20 @@ bool moveHome(int index, bool showMessage, bool checkFeeder) {
       }
     }
   }
-  if(index != FEEDER && smuffConfig.revolverIsServo) {
-    setServoPos(1, smuffConfig.revolverOffPos);
+  if(smuffConfig.revolverIsServo) {
+    //__debug(PSTR("Stepper home SERVO variant"));
+    // don't release the servo when homing the Feeder but
+    // release it when homing something else
+    if(index != FEEDER)
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
+    // Revolver isn't being used on a servo variant
+    if(index != REVOLVER)
+      steppers[index].home();
   }
-  if(index != REVOLVER && smuffConfig.revolverIsServo) {
-   steppers[index].home();
+  else {
+    //__debug(PSTR("Stepper home non SERVO variant"));
+    // not a servo variant, home stepper which ever it is
+    steppers[index].home();
   }
   
   //__debug(PSTR("DONE Stepper home"));
@@ -673,19 +827,44 @@ void signalNoTool() {
   drawUserMessage(_msg1);
 }
 
+void switchFeederStepper(int stepper) {
+  if(RELAIS_PIN != -1) {
+    if(stepper == EXTERNAL) {
+      steppers[FEEDER].setEnabled(false);
+      digitalWrite(RELAIS_PIN, 0);
+      smuffConfig.externalStepper = true;
+    }
+    else if(stepper == INTERNAL) {
+      digitalWrite(RELAIS_PIN, 1);
+      smuffConfig.externalStepper = false;
+    }
+    // gain the relay some time to debounce
+    delay(50);
+  }
+}
+
+void moveFeeder(float distanceMM) {
+  steppers[FEEDER].setEnabled(true);
+  unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
+  steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+  prepSteppingRelMillimeter(FEEDER, distanceMM, true); 
+  runAndWait(FEEDER);
+  steppers[FEEDER].setMaxSpeed(curSpeed);
+}
+
 void positionRevolver() {
 
   // disable Feeder temporarily
   steppers[FEEDER].setEnabled(false);
   if(smuffConfig.resetBeforeFeed_Y && !ignoreHoming) {
     if(smuffConfig.revolverIsServo) {
-      setServoPos(1, smuffConfig.revolverOffPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
     }
     else 
       moveHome(REVOLVER, false, false);
   }
   if(smuffConfig.revolverIsServo) {
-    setServoPos(1, smuffConfig.revolverOnPos);
+    setServoPos(SERVO_LID, smuffConfig.revolverOnPos);
     steppers[FEEDER].setEnabled(true);
     return;
   }
@@ -801,7 +980,7 @@ bool feedToEndstop(bool showMessage) {
           repositionSelector(true);
       }
       if(smuffConfig.revolverIsServo)
-        setServoPos(1, smuffConfig.revolverOnPos);
+        setServoPos(SERVO_LID, smuffConfig.revolverOnPos);
       n = 0;
     }
     if (retry < 0) { 
@@ -810,7 +989,7 @@ bool feedToEndstop(bool showMessage) {
         moveHome(REVOLVER, false, false);   // home Revolver
         M18("M18", "", 0);                  // turn all motors off
         if(smuffConfig.revolverIsServo) {   // release servo, if used
-          setServoPos(1, smuffConfig.revolverOffPos);
+          setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
         }
         if(showFeederFailedMessage(1) == true) { // user wants to retry...
           steppers[FEEDER].setEnabled(true);
@@ -866,10 +1045,13 @@ bool loadFilament(bool showMessage) {
     signalNoTool();
     return false;
   }
-  if(smuffConfig.externalControl_Z) {
+  if(smuffConfig.externalControl_Z && !smuffConfig.isSharedStepper) {
     positionRevolver();
     signalLoadFilament();
     return true;
+  }
+  if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(INTERNAL);
   }
 
   parserBusy = true;
@@ -894,13 +1076,17 @@ bool loadFilament(bool showMessage) {
 
   if(smuffConfig.homeAfterFeed) {
     if(smuffConfig.revolverIsServo) {
-      setServoPos(1, smuffConfig.revolverOffPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
     }
     else
       steppers[REVOLVER].home();
   }
   bool wasAborted = steppers[FEEDER].getAbort();
   steppers[FEEDER].setAbort(false);
+
+  if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(EXTERNAL);
+  }
 
   parserBusy = false;
   return true; //aborted ? false : true;
@@ -916,11 +1102,15 @@ bool loadFilamentPMMU2(bool showMessage) {
     signalNoTool();
     return false;
   }
-  if(smuffConfig.externalControl_Z) {
+  if(smuffConfig.externalControl_Z && !smuffConfig.isSharedStepper) {
     positionRevolver();
     signalLoadFilament();
     return true;
   }
+  if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(INTERNAL);
+  }
+
   parserBusy = true;
   unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
   // move filament until it hits the feeder endstop
@@ -948,12 +1138,16 @@ bool loadFilamentPMMU2(bool showMessage) {
 
   if(smuffConfig.homeAfterFeed) {
     if(smuffConfig.revolverIsServo) {
-      setServoPos(1, smuffConfig.revolverOffPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
     }
     else 
       steppers[REVOLVER].home();
   }
   steppers[FEEDER].setAbort(false);
+
+  if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(EXTERNAL);
+  }
 
   parserBusy = false;
   return true;
@@ -993,10 +1187,13 @@ bool unloadFilament() {
     signalNoTool();
     return false;
   }
-  if(smuffConfig.externalControl_Z) {
+  if(smuffConfig.externalControl_Z && !smuffConfig.isSharedStepper) {
     positionRevolver();
     signalUnloadFilament();
     return true;
+  }
+  else if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(INTERNAL);
   }
   steppers[FEEDER].setStepsTaken(0);
   parserBusy = true;
@@ -1084,12 +1281,14 @@ bool unloadFilament() {
   steppers[FEEDER].setAbort(false);
   if(smuffConfig.homeAfterFeed) {
     if(smuffConfig.revolverIsServo) {
-      setServoPos(1, smuffConfig.revolverOffPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
     }
     else 
       steppers[REVOLVER].home();
   }
-
+  if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(EXTERNAL);
+  }
   parserBusy = false;
   return true;
 }
@@ -1145,8 +1344,10 @@ bool selectTool(int ndx, bool showMessage) {
     }
     else if (smuffConfig.externalControl_Z && feederEndstop()) {
       beep(4);
-      if(smuffConfig.duetDirect) {
-        sprintf(_tmp, "//action: WAIT\n");
+      if(smuffConfig.sendActionCmds) {
+        // send action command to indicate a jam has happend and 
+        // the controller shall wait
+        sprintf_P(_tmp, PSTR("//action: WAIT\n"));
         printResponse(_tmp, 0);
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);
@@ -1158,15 +1359,16 @@ bool selectTool(int ndx, bool showMessage) {
         if(!stat)
           return false;
         if(smuffConfig.unloadCommand != NULL && strlen(smuffConfig.unloadCommand) > 0) {
-          #if !defined(__ESP32__)
-          Serial2.print(smuffConfig.unloadCommand);
-          Serial2.print("\n");
-          //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
-          #endif
+          if(CAN_USE_SERIAL2) {
+            Serial2.print(smuffConfig.unloadCommand);
+            Serial2.print("\n");
+            //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
+          }
         }
       }
-      if(smuffConfig.duetDirect) {
-        sprintf(_tmp, "//action: CONTINUE\n");
+      if(smuffConfig.sendActionCmds) {
+        // send action command to indicate jam cleared, continue printing
+        sprintf_P(_tmp, PSTR("//action: CONTINUE\n"));
         printResponse(_tmp, 0);
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);
@@ -1174,24 +1376,31 @@ bool selectTool(int ndx, bool showMessage) {
     }
     if(smuffConfig.revolverIsServo) {
       // release servo prior moving the selector
-      setServoPos(1, smuffConfig.revolverOffPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
     }
   }
   //__debug(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
   drawSelectingMessage(ndx);
+  //__debug(PSTR("Message shown"));
   unsigned speed = steppers[SELECTOR].getMaxSpeed();
-  // if the distance between two tools is more than 3, use higher speed to move
+  // if the distance between two tools is more than 3 (tools), use higher speed to move
   if(abs(toolSelected-ndx) >=3)
     steppers[SELECTOR].setMaxSpeed(steppers[SELECTOR].getMaxHSpeed());
   
   prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
   remainingSteppersFlag |= _BV(SELECTOR);
+  #if !defined(SMUFF_V5)
   if(!smuffConfig.resetBeforeFeed_Y) {
     prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (ndx *smuffConfig.revolverSpacing), true);
     remainingSteppersFlag |= _BV(REVOLVER);
   }
   runAndWait(-1);
+  #else
+  runAndWait(SELECTOR);
+  #endif
+  //__debug(PSTR("Selector in position: %d"), ndx);
+
   steppers[SELECTOR].setMaxSpeed(speed);
   toolSelected = ndx;
 
@@ -1200,20 +1409,26 @@ bool selectTool(int ndx, bool showMessage) {
   dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
+  //__debug(PSTR("Data stored"));
 
   if (!smuffConfig.externalControl_Z && showMessage) {
     showFeederLoadMessage();
   }
   if(smuffConfig.externalControl_Z) {
+    //__debug(PSTR("Resetting Revolver"));
     resetRevolver();
     signalSelectorReady();
+    //__debug(PSTR("Revolver reset done"));
   }
   // Attn: if testMode is set, it'll echo the selected tool to Serial2
-  if(testMode) {
+  /*
+  if(testMode && CAN_USE_SERIAL2) {
     Serial2.print("T");
     Serial2.println(ndx); 
   }
+  */
   parserBusy = false;
+  //__debug(PSTR("Finished selecting tool"));
   return true;
 }
 
@@ -1226,7 +1441,7 @@ void resetRevolver() {
     }
     else {
       //__debug(PSTR("Positioning servo to: %d (CLOSED)"), smuffConfig.revolverOnPos);
-      setServoPos(1, smuffConfig.revolverOnPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOnPos);
     }
   }
 }
@@ -1237,7 +1452,7 @@ void setStepperSteps(int index, long steps, bool ignoreEndstop) {
   if(smuffConfig.revolverIsServo && index == SELECTOR) {
     if(servoRevolver.getDegree() != smuffConfig.revolverOffPos) {
       //__debug(PSTR("Positioning servo to: %d (OPEN)"), smuffConfig.revolverOffPos);
-      setServoPos(1, smuffConfig.revolverOffPos);
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
     }
   }
   if (steps != 0)
@@ -1295,7 +1510,8 @@ void printSpeeds(int serial) {
           String(smuffConfig.stepDelay_X).c_str(),
           String(steppers[REVOLVER].getMaxSpeed()).c_str(),
           String(smuffConfig.stepDelay_Y).c_str(),
-          smuffConfig.externalControl_Z ? "external" : String(steppers[FEEDER].getMaxSpeed()).c_str(),
+          String(steppers[FEEDER].getMaxSpeed()).c_str(),
+          smuffConfig.externalControl_Z ? " (E)" : " (I)",
           String(smuffConfig.stepDelay_Z).c_str());
   printResponse(tmp, serial);
 }
@@ -1306,7 +1522,8 @@ void printAcceleration(int serial) {
           String(smuffConfig.stepDelay_X).c_str(),
           String(steppers[REVOLVER].getAcceleration()).c_str(),
           String(smuffConfig.stepDelay_Y).c_str(),
-          smuffConfig.externalControl_Z ? "external" : String(steppers[FEEDER].getAcceleration()).c_str(),
+          String(steppers[FEEDER].getMaxSpeed()).c_str(),
+          smuffConfig.externalControl_Z ? " (E)" : " (I)",
           String(smuffConfig.stepDelay_Z).c_str());
   printResponse(tmp, serial);
 }
@@ -1391,15 +1608,55 @@ void userBeep() {
   _noTone(BEEPER_PIN);
 }
 
-void initBeep() {
+void encoderBeep(int count) {
+  if(BEEPER_PIN == -1)
+    return;
+  _tone(BEEPER_PIN, 330, 5);
+  delayMicroseconds(5);
+  _noTone(BEEPER_PIN);
+}
+
+/*
+  Plays a sound sequence given in a string.
+  The format is: F{frequency} D{duration} [P{pause}].F{frequency}D{duration}[P{pause}]. ...
+  Example: "F440D120P80." plays an A (440Hz) with a duration of 120mS and pauses 80mS 
+           after the tone has played.
+           The '.' at the end of a tone is needed to play that tone and must not be omitted.
+*/
+void playSequence(const char* seq) {
+  int f=0, d=0, p=0;
+  while(*seq) {
+    if(*seq=='"' || *seq==' ')
+      seq++;
+    if(toupper(*seq)=='F') {
+      f = atoi(++seq);
+    }
+    if(toupper(*seq)=='D') {
+      d = atoi(++seq);
+    }
+    if(toupper(*seq)=='P') {
+      p = atoi(++seq);
+    }
+    if(*seq=='.') {
+      if(f && d) {
+        _tone(BEEPER_PIN, f, d);
+        delay(d);
+      }
+      if(p)
+        delay(p);
+      f = d = p = 0;
+    }    
+    seq++;
+  }
+  _noTone(BEEPER_PIN);
+}
+
+void startupBeep() {
   showLed(4, 1);
   if(BEEPER_PIN == -1)
     return;
-  _tone(BEEPER_PIN, 1760, 90); delay(90); _noTone(BEEPER_PIN);
-  _tone(BEEPER_PIN, 1975, 90); delay(90); _noTone(BEEPER_PIN);
-  _tone(BEEPER_PIN, 2093, 90); delay(90); _noTone(BEEPER_PIN);
-  _tone(BEEPER_PIN, 1975, 90); delay(90); _noTone(BEEPER_PIN);
-  _tone(BEEPER_PIN, 1760, 200); delay(250); _noTone(BEEPER_PIN);
+  // the "new" tune
+  playSequence(tuneSequence.c_str());
 }
 
 void setServoMinPwm(int servoNum, int pwm) {
@@ -1460,14 +1717,10 @@ void getStoredData() {
 void setSignalPort(int port, bool state) {
   if(!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats) {
     sprintf(tmp,"%c%c%s", 0x1b, port, state ? "1" : "0");
-#if defined(__STM32F1__)
-    Serial1.write(tmp);
-#elif defined(__ESP32__)
-    // nothing here yet, might need adding some port pins settings / resetting
-    //__debug(PSTR("setting signal port: %d, %s"), port, state ? "true" : "false");
-#else
-    Serial2.write(tmp);
-#endif
+    if(CAN_USE_SERIAL1)
+      Serial1.write(tmp);
+    if(CAN_USE_SERIAL2)
+      Serial2.write(tmp);
   }
 }
 
@@ -1554,6 +1807,23 @@ bool getFiles(const char* rootFolder, const char* pattern, int maxFiles, bool cu
   }
   return false;
 }
+
+/*
+  Removes file firmware.bin from root directory in order
+  to prevent re-flashing on each reset!
+*/
+void removeFirmwareBin() {
+    SdFat SD;
+
+#if defined(__ESP32__)
+  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+#else
+  if (SD.begin()) {
+#endif
+    SD.remove("firmware.bin");
+  }
+}
+
 
 void testRun(String fname) {
   char line[80];
@@ -1706,6 +1976,14 @@ void maintainTool() {
     }
   }
 }
+
+void blinkLED() {
+#if defined(LED_PIN)
+  if(LED_PIN != -1)
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+#endif
+}
+
 
 extern Stream* debugSerial;
 

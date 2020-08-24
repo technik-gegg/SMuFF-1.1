@@ -39,15 +39,34 @@
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
+#if defined(USE_FASTLED_BACKLIGHT)
 #include "FastLED.h"
+#endif
+#include "ZTimerLib.h"
+#include "ZStepperLib.h"
+#include "ZServo.h"
+#include "ZPortExpander.h"
+#include "ZFan.h"
+#include "DuetLaserSensor.h"
+#include "SoftwareSerial.h"
+#include <TMCStepper.h>
+
+#if !defined(USE_FASTLED_BACKLIGHT)
+#define CRGB  uint32_t
+#endif
 
 #if defined (__STM32F1__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
+#include <USBComposite.h>
 
 #undef  sprintf_P
 #define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
 #define vsnprintf_P           vsnprintf
+#define cli()                 nvic_globalirq_disable()
+#define sei()                 nvic_globalirq_enable()
+extern USBMassStorage         MassStorage;
+extern USBCompositeSerial     CompositeSerial;
 #endif
 
 #if defined(__ESP32__)
@@ -62,6 +81,11 @@
 #define LED_SIGNAL        4
 
 #define PORT_EXPANDER_ADDRESS 0x3F
+
+#define INTERNAL          1
+#define EXTERNAL          0
+
+#define ArraySize(arr)    (sizeof(arr)/sizeof(arr[0]))
 
 typedef enum {
   ABSOLUTE,
@@ -115,7 +139,19 @@ typedef struct {
   float insertLength        = 5.0;
   unsigned maxSpeedHS_Z     = 10;          
   unsigned accelDistance_Z  = 5;          
-    
+  // values for TMC drivers via UART or SPI
+  int   stepperPower[NUM_STEPPERS+1]      = { 700, 700, 700, 700 };    
+  int   stepperMode[NUM_STEPPERS+1]       = { 0, 0, 0, 0 };          // 0 = NONE, 1 = UART, 2 = SPI
+  float stepperRSense[NUM_STEPPERS+1]     = { 0.11, 0.11, 0.11, 0.11 };
+  int   stepperMicrosteps[NUM_STEPPERS+1] = { 16, 16, 16,16 };
+  int   stepperStall[NUM_STEPPERS+1]      = { 0, 0, 0, 0 };
+  int   stepperCSmin[NUM_STEPPERS+1]      = { 0, 0, 0, 0 };
+  int   stepperCSmax[NUM_STEPPERS+1]      = { 0, 0, 0, 0 };
+  int   stepperCSdown[NUM_STEPPERS+1]     = { 0, 0, 0, 0 };
+  int   stepperAddr[NUM_STEPPERS+1]       = { 0, 0, 0, 0 };
+  int   stepperToff[NUM_STEPPERS+1]       = { 2, 2, 2, 2 };
+  bool  stepperSpread[NUM_STEPPERS+1]     = { true, true, true, true };
+
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
   float pushbackDelay       = 1.5f;
@@ -126,11 +162,11 @@ typedef struct {
   int   i2cAddress          = 0x58;
   int   lcdContrast         = DSP_CONTRAST;
   int   menuAutoClose       = 20;
-  bool  delayBetweenPulses  = false;
+  unsigned long serial0Baudrate = 57600;
   unsigned long serial1Baudrate = 57600;
   unsigned long serial2Baudrate = 57600;
-  unsigned long serialDueBaudrate = 57600;
-  bool  duetDirect          = false;
+  unsigned long serial3Baudrate = 57600;
+  bool  sendActionCmds      = false;
   int   fanSpeed            = 0;
   char  materials[MAX_TOOLS][20];
   long  powerSaveTimeout    = 300;
@@ -138,18 +174,22 @@ typedef struct {
   char  wipeSequence[30]    = { 0 };
   bool  prusaMMU2           = true;
   bool  useDuetLaser        = false;
-  bool  hasPanelDue         = false;
+  int   hasPanelDue         = 0;      // Serial Port for PanelDue (0=None)
   int   servoMinPwm         = 550;
   int   servoMaxPwm         = 2400;
   bool  sendPeriodicalStats = true;
   int   backlightColor      = 0x4;    // Cyan by default
+  bool  runoutDetection     = false;
+  bool  isSharedStepper     = false;
+  bool  externalStepper     = false;
+  bool  encoderTickSound    = false;
 } SMuFFConfig;
 
 
 #ifdef __BRD_I3_MINI
 extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
 #endif
-#ifdef __BRD_SKR_MINI
+#if defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
   extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
   #ifdef USE_TWI_DISPLAY
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
@@ -158,6 +198,8 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   // extern U8G2_ST7920_128X64_F_SW_SPI display;
   #elif USE_MINI12864_PANEL_V21
   extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
+  #elif USE_CREALITY_DISPLAY
+    extern U8G2_ST7920_128X64_F_SW_SPI display;
   #else
   extern U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI display;
   //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
@@ -169,25 +211,37 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   #else
   extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
   #endif
+  extern HardwareSerial Serial3;
 #endif
 #ifdef __BRD_FYSETC_AIOII
   extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
 #endif
 
+extern ZStepper       steppers[];
+extern ZTimer         stepperTimer;
+extern ZTimer         gpTimer;
+extern ZServo         servo;
+extern ZServo         servoRevolver;
+extern ZFan           fan;
 extern ClickEncoder   encoder;
+#if defined(USE_FASTLED_BACKLIGHT)
 extern CRGB           leds[];
+#else
+#endif
 
 extern SMuFFConfig    smuffConfig;
 extern GCodeFunctions gCodeFuncsM[];
 extern GCodeFunctions gCodeFuncsG[];
 
 extern const char     brand[];
+extern int            swapTools[];
 extern volatile byte  nextStepperFlag;
 extern volatile byte  remainingSteppersFlag;
 extern volatile unsigned long lastEncoderButtonTime;
 extern byte           toolSelected;
 extern PositionMode   positionMode;
-extern String         serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2; 
+extern String         serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
+extern String         tuneSequence; 
 extern bool           displayingUserMessage;
 extern unsigned int   userMessageTime;
 extern bool           testMode;
@@ -199,14 +253,49 @@ extern volatile bool  sendingResponse;
 extern unsigned long  endstopZ2HitCnt;
 extern volatile bool  showMenu;
 extern bool           maintainingMode;
+extern volatile double lastDuetPos;
+extern DuetLaserSensor duetLS;
+extern String         wirelessHostname;
+extern volatile bool  enablePeriStat;
+extern volatile bool  interval20ms;
+extern volatile bool  interval100ms; 
+extern volatile bool  interval250ms; 
+extern volatile bool  interval500ms; 
+extern volatile bool  interval1s; 
+extern volatile bool  interval2s; 
+extern volatile bool  interval5s; 
 
+extern TMC2209Stepper* driverX;
+extern TMC2209Stepper* driverY;
+extern TMC2209Stepper* driverZ;
+extern TMC2209Stepper* driverE;
+
+
+extern void setupSerial();
+extern void setupSwSerial0();
 extern void setupDisplay();
 extern void setupTimers();
 extern void setupSteppers();
+extern void setupTMCDrivers();
+extern void setupServos();
+extern void setupHeaterBed();
+extern void setupFan();
+extern void setupPortExpander();
+extern void setupRelay();
+extern void setupI2C();
+extern void setupDeviceName();
+extern void setupSerialBT();
+extern void setupBuzzer();
+extern void setupEncoder();
+extern void setupBacklight();
+extern void setupDuetLaserSensor();
+extern void initHwDebug();
+extern void initFastLED();
+extern void initUSB();
 extern void drawLogo();
 extern void drawStatus();
 extern void drawSelectingMessage();
-extern void drawUserMessage(String message);
+extern void drawUserMessage(String message, bool smallFont = false, bool center = true, void (*drawCallbackFunc)() = NULL);
 extern void drawSDStatus(int stat);
 extern void drawFeed();
 extern void resetDisplay();
@@ -242,7 +331,8 @@ extern void wireReceiveEvent(int numBytes);
 extern void beep(int count);
 extern void longBeep(int count);
 extern void userBeep();
-extern void initBeep();
+extern void encoderBeep(int count);
+extern void startupBeep();
 extern void setSignalPort(int port, bool state);
 extern void signalNoTool();
 extern void signalLoadFilament();
@@ -254,6 +344,7 @@ extern bool setServoMS(int servoNum, int microseconds);
 extern void setServoMinPwm(int servoNum, int pwm);
 extern void setServoMaxPwm(int servoNum, int pwm);
 extern void getStoredData();
+extern void readTune();
 extern void readConfig();
 extern bool writeConfig(Print* dumpTo = NULL);
 extern bool checkAutoClose();
@@ -278,6 +369,31 @@ extern bool checkStopMenu(unsigned startTime);
 extern void drawTestrunMessage(unsigned long loop, char* msg);
 extern bool getFiles(const char* rootFolder, const char* pattern, int maxFiles, bool cutExtension, char* files);
 extern void testRun(String fname);
+extern void moveFeeder(float distanceMM);
+extern void overrideStepX();
+extern void overrideStepY();
+extern void overrideStepZ();
+extern bool stallCheckX();
+extern bool stallCheckY();
+extern bool stallCheckZ();
+extern void endstopEventY();
+extern void endstopEventZ();
+extern void endstopEventZ2();
+extern bool checkDuetEndstop();
+extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);
+extern void isrStepperHandler();
+extern void isrGPTimerHandler();
+extern void refreshStatus(bool withLogo, bool feedOnly);
+extern void every10ms();
+extern void every20ms();
+extern void every50ms();
+extern void every100ms();
+extern void every250ms();
+extern void every500ms();
+extern void every1s();
+extern void every2s();
+extern void every5s();
+extern void blinkLED();
 
 extern void printEndstopState(int serial);
 extern void printPos(int index, int serial);
@@ -298,6 +414,7 @@ extern bool parse_PMMU2(char cmd, const String& buf, int serial);
 extern bool parse_Action(const String& buf, int serial);
 extern int  getParam(String buf, char* token);
 extern long getParamL(String buf, char* token);
+extern float getParamF(String buf, char* token);
 extern int  hasParam(String buf, char* token);
 extern bool getParamString(String buf, char* token, char* dest, int bufLen);
 extern void prepStepping(int index, long param, bool Millimeter = true, bool ignoreEndstop = false);
@@ -308,6 +425,7 @@ extern void printResponseP(const char* response, int serial);
 extern void printOffsets(int serial);
 extern void maintainTool();
 extern void printPeriodicalState(int serial);
+extern void playSequence(const char* sequence);
 
 extern void showLed(int mode, int count);
 extern void setBacklightIndex(int color);
@@ -318,4 +436,9 @@ extern void setFastLED(int index, CRGB color);
 extern void setFastLEDIndex(int index, int color);
 extern void setFastLEDIntensity(int intensity);
 extern void testFastLED();
+
+extern void showDuetLS();
+extern void switchFeederStepper(int stepper);
+extern void removeFirmwareBin();
+
 #endif

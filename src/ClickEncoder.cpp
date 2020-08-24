@@ -11,6 +11,9 @@
 
 #include "ClickEncoder.h"
 
+extern void __debug(const char* fmt, ...);
+extern void encoderBeep(int);
+
 // ----------------------------------------------------------------------------
 // Button configuration (values for 1ms timer service calls)
 //
@@ -56,6 +59,7 @@ ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNo
     pinB = B;
     pinBTN = BTN;
     pinsActive = active;
+    enableSound = false;
 
 #if defined (__STM32F1__)
   WiringPinMode configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT_PULLDOWN;
@@ -116,7 +120,6 @@ void ClickEncoder::service(void)
   if (digitalRead(pinB) == pinsActive) {
     curr ^= 1;
   }
-
   int8_t diff = last - curr;
 
   if (diff & 1) {            // bit 0 = step
@@ -195,17 +198,19 @@ int16_t ClickEncoder::getValue(void)
 #else
   cli();
 #endif
+
   val = delta;
 
   if (steps == 2) delta = val & 1;
   else if (steps == 4) delta = val & 3;
   else delta = 0; // default to 1 step per notch
+
 #if defined (__STM32F1__)	
   interrupts();
 #else
   sei();
 #endif
-  
+
   if (steps == 4) val >>= 2;
   if (steps == 2) val >>= 1;
 

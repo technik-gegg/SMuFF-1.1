@@ -37,7 +37,6 @@
 extern void __debug(const char* fmt, ...);
 
 void isrServoTimerHandler();
-static ZTimer  servoTimer;
 static volatile bool timerSet = false;
 
 class ZServo {
@@ -59,7 +58,8 @@ public:
   void setPulseWidthMinMax(int min, int max) { _minPw = min; _maxPw = max; }
   void setPulseWidthMin(int min) { _minPw = min; }
   void setPulseWidthMax(int max) { _maxPw = max; }
-  void stop() { if(_useTimer) servoTimer.stopTimer(); }
+  void stop(bool state) { _timerStopped = state; }
+  bool isTimerStopped() { return _timerStopped; }
   bool hasTimer() { return _useTimer; }
   void setMaxCycles(int val) { _maxCycles = val;}
   int  getMaxCycles() { return _maxCycles;}
@@ -72,6 +72,7 @@ private:
   void setServoPin(int state); 
   int _pin;
   bool _useTimer = false;
+  bool _timerStopped = false;
   int _servoIndex;
   int _degree;
   int _lastDegree;
@@ -84,7 +85,6 @@ private:
 #endif
   volatile int _dutyCnt;
   int _maxCycles;
-  int _loopCnt;
   int _pulseLen;
   int _minPw = US_PER_PULSE_0DEG;
   int _maxPw = US_PER_PULSE_180DEG;

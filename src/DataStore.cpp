@@ -93,3 +93,22 @@ void recoverStore() {
     }
   }
 }
+
+void readTune() {
+#if defined(__ESP32__)
+  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
+#else
+  if (SD.begin()) {
+#endif
+    FsFile tune;
+    if (!tune.open(TUNE_FILE)){
+      __debug(PSTR("Tune file '%s' not found!\n"), TUNE_FILE);
+    } 
+    else {
+      String tmp = tune.readString();
+      if(tmp.length() > 0)
+        tuneSequence = tmp;
+      tune.close();
+    }
+  }
+}

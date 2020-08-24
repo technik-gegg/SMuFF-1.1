@@ -27,7 +27,7 @@
 SdFs SD;
 
 #if defined(__STM32F1__)
-const size_t capacity = 2400;
+const size_t capacity = 3000;
 #elif defined(__ESP32__)
 const size_t capacity = 4800;     // since the ESP32 has more memory, we can do this
 #else
@@ -94,6 +94,17 @@ void readConfig()
       smuffConfig.endstopTrigger_X =    jsonDoc[selector][endstopTrig];
       smuffConfig.stepDelay_X =         jsonDoc[selector][stepDelay];
       smuffConfig.maxSpeedHS_X =        jsonDoc[selector][maxSpeedHS];
+      smuffConfig.stepperPower[SELECTOR] =      jsonDoc[selector]["Power"];
+      smuffConfig.stepperMode[SELECTOR] =       jsonDoc[selector]["Mode"];
+      smuffConfig.stepperRSense[SELECTOR] =     jsonDoc[selector]["RSense"];
+      smuffConfig.stepperMicrosteps[SELECTOR] = jsonDoc[selector]["Microsteps"];
+      smuffConfig.stepperStall[SELECTOR] =      jsonDoc[selector]["Stall"];
+      smuffConfig.stepperCSmin[SELECTOR] =      jsonDoc[selector]["CoolStepMin"];
+      smuffConfig.stepperCSmax[SELECTOR] =      jsonDoc[selector]["CoolStepMax"];
+      smuffConfig.stepperCSdown[SELECTOR] =     jsonDoc[selector]["CoolStepDown"];
+      smuffConfig.stepperAddr[SELECTOR] =       jsonDoc[selector]["DriverAddress"];
+      smuffConfig.stepperToff[SELECTOR] =       jsonDoc[selector]["TOff"];
+
       smuffConfig.stepsPerRevolution_Y= jsonDoc[revolver]["StepsPerRevolution"];
       smuffConfig.firstRevolverOffset = jsonDoc[revolver]["Offset"];
       smuffConfig.revolverSpacing =     smuffConfig.stepsPerRevolution_Y / 10;
@@ -111,6 +122,16 @@ void readConfig()
       smuffConfig.revolverOnPos =       jsonDoc[revolver]["ServoOnPos"];
       smuffConfig.servoCycles1 =        jsonDoc[revolver]["Servo1Cycles"];
       smuffConfig.servoCycles2 =        jsonDoc[revolver]["Servo2Cycles"];
+      smuffConfig.stepperPower[REVOLVER] =      jsonDoc[revolver]["Power"];
+      smuffConfig.stepperMode[REVOLVER] =       jsonDoc[revolver]["Mode"];
+      smuffConfig.stepperRSense[REVOLVER] =     jsonDoc[revolver]["RSense"];
+      smuffConfig.stepperMicrosteps[REVOLVER] = jsonDoc[revolver]["Microsteps"];
+      smuffConfig.stepperStall[REVOLVER] =      jsonDoc[revolver]["Stall"];
+      smuffConfig.stepperCSmin[REVOLVER] =      jsonDoc[revolver]["CoolStepMin"];
+      smuffConfig.stepperCSmax[REVOLVER] =      jsonDoc[revolver]["CoolStepMax"];
+      smuffConfig.stepperCSdown[REVOLVER] =     jsonDoc[revolver]["CoolStepDown"];
+      smuffConfig.stepperAddr[REVOLVER] =       jsonDoc[revolver]["DriverAddress"];
+      smuffConfig.stepperToff[REVOLVER] =       jsonDoc[revolver]["TOff"];
 
       smuffConfig.externalControl_Z =   jsonDoc[feeder]["ExternalControl"];
       smuffConfig.stepsPerMM_Z =        jsonDoc[feeder]["StepsPerMillimeter"];
@@ -135,24 +156,37 @@ void readConfig()
         smuffConfig.insertLength = 5;
       smuffConfig.maxSpeedHS_Z =        jsonDoc[feeder][maxSpeedHS];
       smuffConfig.useDuetLaser =        jsonDoc[feeder]["DuetLaser"];
+      smuffConfig.isSharedStepper =     jsonDoc[feeder]["SharedStepper"];
+      smuffConfig.stepperPower[FEEDER] =      jsonDoc[feeder]["Power"];
+      smuffConfig.stepperMode[FEEDER] =       jsonDoc[feeder]["Mode"];
+      smuffConfig.stepperRSense[FEEDER] =     jsonDoc[feeder]["RSense"];
+      smuffConfig.stepperMicrosteps[FEEDER] = jsonDoc[feeder]["Microsteps"];
+      smuffConfig.stepperStall[FEEDER] =      jsonDoc[feeder]["Stall"];
+      smuffConfig.stepperCSmin[FEEDER] =      jsonDoc[feeder]["CoolStepMin"];
+      smuffConfig.stepperCSmax[FEEDER] =      jsonDoc[feeder]["CoolStepMax"];
+      smuffConfig.stepperCSdown[FEEDER] =     jsonDoc[feeder]["CoolStepDown"];
+      smuffConfig.stepperAddr[FEEDER] =       jsonDoc[feeder]["DriverAddress"];
+      smuffConfig.stepperToff[FEEDER] =       jsonDoc[feeder]["TOff"];
 
+      smuffConfig.sendPeriodicalStats = jsonDoc["SendPeriodicalStats"];
       int contrast =                    jsonDoc["LCDContrast"];
       smuffConfig.lcdContrast = (contrast >= MIN_CONTRAST && contrast <= MAX_CONTRAST) ? contrast : DSP_CONTRAST;
       int backlightColor =              jsonDoc["BacklightColor"];
       smuffConfig.backlightColor = (backlightColor == 0 ? 7 : backlightColor);   // set backlight color to white if not set
+      smuffConfig.encoderTickSound =    jsonDoc["EncoderTicks"];
 
       smuffConfig.bowdenLength =        jsonDoc["BowdenLength"];
       smuffConfig.selectorDistance =    jsonDoc["SelectorDist"];
       int i2cAdr =                      jsonDoc["I2CAddress"];
       smuffConfig.i2cAddress = (i2cAdr > 0 && i2cAdr < 255) ? i2cAdr : I2C_SLAVE_ADDRESS;
       smuffConfig.menuAutoClose =       jsonDoc["MenuAutoClose"];
-      smuffConfig.delayBetweenPulses =  jsonDoc["DelayBetweenPulses"];
+      smuffConfig.serial0Baudrate =     jsonDoc["Serial0Baudrate"];
       smuffConfig.serial1Baudrate =     jsonDoc["Serial1Baudrate"];
       smuffConfig.serial2Baudrate =     jsonDoc["Serial2Baudrate"];
-      smuffConfig.serialDueBaudrate =   jsonDoc["SerialDueBaudrate"];
+      smuffConfig.serial3Baudrate =     jsonDoc["Serial3Baudrate"];
       smuffConfig.fanSpeed =            jsonDoc["FanSpeed"];
       smuffConfig.powerSaveTimeout =    jsonDoc["PowerSaveTimeout"];
-      smuffConfig.duetDirect =          jsonDoc["Duet3DDirect"];
+      smuffConfig.sendActionCmds =      jsonDoc["SendActionCmds"];
       const char* p1 =                  jsonDoc["UnloadCommand"];
       const char* p2 =                  jsonDoc["WipeSequence"];
       if(p1 != NULL && strlen(p1) > 0) {
@@ -177,7 +211,6 @@ void readConfig()
         smuffConfig.servoMinPwm = 550;
       if(smuffConfig.servoMaxPwm == 0)
         smuffConfig.servoMaxPwm = 2400;
-      smuffConfig.sendPeriodicalStats = jsonDoc["SendPeriodicalStats"];
 
       // read materials if running on 32-Bit MCU
 #if defined(__STM32F1__) || defined(__ESP32__)
@@ -234,9 +267,10 @@ bool writeConfig(Print* dumpTo)
     }
   }
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
+  jsonDoc["Serial0Baudrate"]      = smuffConfig.serial0Baudrate;
   jsonDoc["Serial1Baudrate"]      = smuffConfig.serial1Baudrate;
   jsonDoc["Serial2Baudrate"]      = smuffConfig.serial2Baudrate;
-  jsonDoc["SerialDueBaudrate"]    = smuffConfig.serialDueBaudrate;
+  jsonDoc["Serial3Baudrate"]      = smuffConfig.serial3Baudrate;
   jsonDoc["ToolCount"]            = smuffConfig.toolCount;
   jsonDoc["BowdenLength"]         = smuffConfig.bowdenLength;
   jsonDoc["SelectorDist"]         = smuffConfig.selectorDistance;
@@ -244,9 +278,8 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["I2CAddress"]           = smuffConfig.i2cAddress;
   jsonDoc["MenuAutoClose"]        = smuffConfig.menuAutoClose;
   jsonDoc["FanSpeed"]             = smuffConfig.fanSpeed;
-  jsonDoc["DelayBetweenPulses"]   = smuffConfig.delayBetweenPulses;
   jsonDoc["PowerSaveTimeout"]     = smuffConfig.powerSaveTimeout;
-  jsonDoc["Duet3DDirect"]         = smuffConfig.duetDirect;
+  jsonDoc["SendActionCmds"]       = smuffConfig.sendActionCmds;
   jsonDoc["EmulatePrusa"]         = smuffConfig.prusaMMU2;
   jsonDoc["UnloadCommand"]        = smuffConfig.unloadCommand;
   jsonDoc["HasPanelDue"]          = smuffConfig.hasPanelDue;
@@ -255,6 +288,7 @@ bool writeConfig(Print* dumpTo)
   jsonDoc["SendPeriodicalStats"]  = smuffConfig.sendPeriodicalStats;
   jsonDoc["WipeSequence"]         = smuffConfig.wipeSequence;
   jsonDoc["BacklightColor"]       = smuffConfig.backlightColor;
+  jsonDoc["EncoderTicks"]         = smuffConfig.encoderTickSound;
 
 
   JsonObject node = jsonObj.createNestedObject("Selector");
@@ -267,6 +301,16 @@ bool writeConfig(Print* dumpTo)
   node["Acceleration"]        = smuffConfig.acceleration_X;
   node["InvertDir"]           = smuffConfig.invertDir_X;
   node["EndstopTrigger"]      = smuffConfig.endstopTrigger_X;
+  node["Power"]               = smuffConfig.stepperPower[SELECTOR];
+  node["Mode"]                = smuffConfig.stepperMode[SELECTOR];
+  node["RSense"]              = smuffConfig.stepperRSense[SELECTOR];
+  node["Microsteps"]          = smuffConfig.stepperMicrosteps[SELECTOR];
+  node["Stall"]               = smuffConfig.stepperStall[SELECTOR];
+  node["CoolStepMin"]         = smuffConfig.stepperCSmin[SELECTOR];
+  node["CoolStepMax"]         = smuffConfig.stepperCSmax[SELECTOR];
+  node["CoolStepDown"]        = smuffConfig.stepperCSdown[SELECTOR];
+  node["DriverAddress"]       = smuffConfig.stepperAddr[SELECTOR];
+  node["TOff"]                = smuffConfig.stepperToff[SELECTOR];
 
   node = jsonObj.createNestedObject("Revolver");
   node["Offset"]              = smuffConfig.firstRevolverOffset;
@@ -285,6 +329,16 @@ bool writeConfig(Print* dumpTo)
   node["ServoOnPos"]          = smuffConfig.revolverOnPos;
   node["Servo1Cycles"]        = smuffConfig.servoCycles1;
   node["Servo2Cycles"]        = smuffConfig.servoCycles2;
+  node["Power"]               = smuffConfig.stepperPower[REVOLVER];
+  node["Mode"]                = smuffConfig.stepperMode[REVOLVER];
+  node["RSense"]              = smuffConfig.stepperRSense[REVOLVER];
+  node["Microsteps"]          = smuffConfig.stepperMicrosteps[REVOLVER];
+  node["Stall"]               = smuffConfig.stepperStall[REVOLVER];
+  node["CoolStepMin"]         = smuffConfig.stepperCSmin[REVOLVER];
+  node["CoolStepMax"]         = smuffConfig.stepperCSmax[REVOLVER];
+  node["CoolStepDown"]        = smuffConfig.stepperCSdown[REVOLVER];
+  node["DriverAddress"]       = smuffConfig.stepperAddr[REVOLVER];
+  node["TOff"]                = smuffConfig.stepperToff[REVOLVER];
 
   node = jsonObj.createNestedObject("Feeder");
   node["ExternalControl"]     = smuffConfig.externalControl_Z;
@@ -305,6 +359,18 @@ bool writeConfig(Print* dumpTo)
   node["EnableChunks"]        = smuffConfig.enableChunks;
   node["FeedChunks"]          = smuffConfig.feedChunks;
   node["InsertLength"]        = smuffConfig.insertLength;
+  node["DuetLaser"]           = smuffConfig.useDuetLaser;
+  node["SharedStepper"]       = smuffConfig.isSharedStepper;
+  node["Power"]               = smuffConfig.stepperPower[FEEDER];
+  node["Mode"]                = smuffConfig.stepperMode[FEEDER];
+  node["RSense"]              = smuffConfig.stepperRSense[FEEDER];
+  node["Microsteps"]          = smuffConfig.stepperMicrosteps[FEEDER];
+  node["Stall"]               = smuffConfig.stepperStall[FEEDER];
+  node["CoolStepMin"]         = smuffConfig.stepperCSmin[FEEDER];
+  node["CoolStepMax"]         = smuffConfig.stepperCSmax[FEEDER];
+  node["CoolStepDown"]        = smuffConfig.stepperCSdown[FEEDER];
+  node["DriverAddress"]       = smuffConfig.stepperAddr[FEEDER];
+  node["TOff"]                = smuffConfig.stepperToff[FEEDER];
 
 #if defined(__STM32F1__) || defined(__ESP32__)
   node = jsonObj.createNestedObject("Materials");

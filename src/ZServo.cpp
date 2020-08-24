@@ -21,37 +21,25 @@
 
 static ZServo* servoInstances[MAX_SERVOS]; 
 
+/*
+  To use the servo with an timer (interrupt), you have to setup an timer
+  externally, call the attach method with useTimer = true and call the 
+  isrServoTimerHandler() method down below from within the timers
+  own interrupt routine.
+  The external timer has to run at 50uS (20kHz) in order to get the correct
+  timing for the servos.
+  Otherwise, as in case of the ESP32, the servos will be handled by  
+  PWM on the give pin.
+
+  Had to realize it this way because I was running out of precious timers
+  on the STM32 MCU.
+*/
 void ZServo::attach(int pin, bool useTimer, int servoIndex) { 
   _useTimer = useTimer;
   attach(pin);
   setIndex(servoIndex);
 
-  // To set up an independent timer, you have to use the attach()-method above
-  // with useTimer = true. Otherwise you'll have to call setServo() in a 20 ms
-  // period to get the servo running, which is a bit more complex but saves 
-  // on timers.  
-  if(!timerSet && _useTimer) {
-    timerSet = true;
-    #ifdef __STM32F1__
-    servoTimer.setupTimer(ZTimer::ZTIMER5, 1800);       // equals to 25 us on 72 MHz CPU
-    // timers on STM32 are killing me...
-    // it's supposed to be 50us but with 50us in the timer each
-    // PWM signal it twice as long - therefore 25us.
-    // Need to investigate in that some day.
-    #elif __ESP32__
-    servoTimer.setupTimer(ZTimer::ZTIMER3, 80, 50);     // equals to 50 us
-    #else
-    servoTimer.setupTimer(ZTimer::ZTIMER5, ZTimer::PRESCALER1024);
-    #endif
-    servoTimer.setupTimerHook(isrServoTimerHandler);
-    #if defined(__ESP32__)
-    servoTimer.setNextInterruptInterval(50);
-    #else
-    servoTimer.setNextInterruptInterval(1);
-    #endif
-    //__debug(PSTR("Servo with timer initialized"));
-  }
-  else {
+  if(!_useTimer) {
     #if defined(__ESP32__)
     ledcSetup(SERVO_CHANNEL+_servoIndex, SERVO_FREQ, 16);
     ledcAttachPin(pin, SERVO_CHANNEL+_servoIndex);
@@ -63,7 +51,7 @@ void ZServo::attach(int pin, bool useTimer, int servoIndex) {
 
 void ZServo::attach(int pin) { 
   _pin = pin;
-#if defined(__STM32F1__) && defined(SMUFF_V5)
+#if defined(SMUFF_V5) && defined(__BRD_SKR_MINI)
   pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set tp Open Drain for the +5V pullup resistor
 #else
   pinMode(_pin, OUTPUT); 
@@ -152,17 +140,17 @@ void ZServo::setServo() {
       ledcWrite(SERVO_CHANNEL+_servoIndex, _pulseLen);
   #else
       digitalWrite(_pin, HIGH);
-      delay_us(_pulseLen);
+      delayMicroseconds(_pulseLen);
       digitalWrite(_pin, LOW);
   #endif
       _lastDegree = _degree;
     }
   }
   else {
-    // this method increments every 50 us and when the _pulseLen is reached 
-    // it sets the output to low.
-    // Using this method will prevent blocking the whole CPU while the delay 
-    // is being active, as it's in the method above.
+    // this method increments with every call by 50 (uS) and when the _pulseLen is reached it'll
+    // sets the output to low.
+    // This way, blocking the whole CPU while the delay is being active as it's in the method above
+    // isn't happening.
     _tickCnt += 50;
 
     if(_tickCnt <= (uint32_t)_pulseLen)
@@ -173,7 +161,6 @@ void ZServo::setServo() {
       if(_maxCycles == 0 || (++_dutyCnt < _maxCycles))  // but no more cycles than defined to avoid jitter on the servo
         _tickCnt = 0;
     }
-   
   }
 }
 
@@ -181,15 +168,19 @@ void ZServo::setServoPin(int state) {
   digitalWrite(_pin, state);
 }
 
-bool state;
 void isrServoTimerHandler() {
+
+  #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
+  // used for internal hardware debugging only
+  //if(DEBUG_PIN != -1) digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
+  #endif
+
   // call all handlers for all servos periodically if the
   // internal timer is being used.
-  //digitalWrite(SERVO2_PIN, state = !state);
-  
   for(int i=0;  i< MAX_SERVOS; i++) {
-    if(servoInstances[i] != NULL)
-      servoInstances[i]->setServo();
+    if(servoInstances[i] != NULL) {
+      if(!servoInstances[i]->isTimerStopped())
+        servoInstances[i]->setServo();
+    }
   }
-  
 }

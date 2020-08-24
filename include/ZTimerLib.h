@@ -40,6 +40,13 @@ public:
     } IsrTimer;
 
     typedef enum {
+      CH1 = 1,
+      CH2 = 2,
+      CH3 = 3,
+      CH4 = 4
+    } IsrTimerChannel;
+
+    typedef enum {
       PRESCALER1      = 1,
       PRESCALER8      = 2,
       PRESCALER64     = 3,

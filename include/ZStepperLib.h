@@ -43,7 +43,7 @@ public:
   ZStepper();
   ZStepper(int number, char* descriptor, int stepPin, int dirPin, int enablePin, unsigned int accelaration, unsigned int minStepInterval);
 
-  void prepareMovement(long steps, boolean ignoreEndstop = false);
+  void prepareMovement(long steps, bool ignoreEndstop = false);
   void handleISR();
   void home();
 
@@ -51,6 +51,7 @@ public:
   void          (*endstopFunc)() = NULL;
   void          (*endstop2Func)() = NULL;
   bool          (*endstopCheck)() = NULL;
+  bool          (*stallCheck)() = NULL;
   void          (*runAndWaitFunc)(int number) = NULL;
   void          (*runNoWaitFunc)(int number) = NULL;
   void          defaultStepFunc();                    // default step method, uses digitalWrite on _stepPin

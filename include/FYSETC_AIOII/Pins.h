@@ -56,17 +56,23 @@
 #define HEATBED_PIN         PC6      // END
 
 #define NEOPIXEL_PIN        -1
+#define DEBUG_PIN           -1     
+#define RELAIS_PIN          -1      // Relais for stepper motor switching
 
 #define SDCS_PIN            PA4
-#define DSP_CS_PIN          PB5
-#define DSP_DC_PIN          PA15
-#define DSP_RESET_PIN       PB4
+#define DSP_CS_PIN          PB5     // DOGLCD-CS
+#define DSP_DC_PIN          PA15    // DOGLCD-A0
+#define DSP_RESET_PIN       PB4     // DOGLCD-RST
 
 #define ENCODER1_PIN        PC10
 #define ENCODER2_PIN        PC11
 #define ENCODER_BUTTON_PIN  PC12
 
 #define DEBUG_OFF_PIN       -1
+
+#define CAN_USE_SERIAL1     true
+#define CAN_USE_SERIAL2     false
+#define CAN_USE_SERIAL3     true
 
 #define TX3_PIN             PB10     // P4-7
 #define RX3_PIN             PB11     // P4-5
