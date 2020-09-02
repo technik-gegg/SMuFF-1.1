@@ -105,7 +105,6 @@ typedef struct {
   bool  invertDir_X         = false;
   int   endstopTrigger_X    = HIGH;
   int   stepDelay_X         = 10;
-  unsigned maxSpeedHS_X     = 10;
   unsigned accelDistance_X  = 21;          
   
   long  stepsPerRevolution_Y= 9600;
@@ -116,7 +115,6 @@ typedef struct {
   bool  invertDir_Y         = false;
   int   endstopTrigger_Y    = HIGH;
   int   stepDelay_Y         = 10;
-  unsigned maxSpeedHS_Y     = 10;
   bool  wiggleRevolver      = false;
   bool  revolverIsServo     = false;
   int   revolverOffPos      = 0;
@@ -137,7 +135,6 @@ typedef struct {
   int   feedChunks          = 20;
   bool  enableChunks        = false;
   float insertLength        = 5.0;
-  unsigned maxSpeedHS_Z     = 10;          
   unsigned accelDistance_Z  = 5;          
   // values for TMC drivers via UART or SPI
   int   stepperPower[NUM_STEPPERS+1]      = { 700, 700, 700, 700 };    
@@ -149,9 +146,10 @@ typedef struct {
   int   stepperCSmax[NUM_STEPPERS+1]      = { 0, 0, 0, 0 };
   int   stepperCSdown[NUM_STEPPERS+1]     = { 0, 0, 0, 0 };
   int   stepperAddr[NUM_STEPPERS+1]       = { 0, 0, 0, 0 };
-  int   stepperToff[NUM_STEPPERS+1]       = { 2, 2, 2, 2 };
-  bool  stepperSpread[NUM_STEPPERS+1]     = { true, true, true, true };
-
+  int   stepperToff[NUM_STEPPERS+1]       = { -1, -1, -1, -1 };
+  bool  stepperStopOnStall[NUM_STEPPERS+1]= { false, false, false, false };
+  int   stepperMaxStallCnt[NUM_STEPPERS+1]= { 5, 5, 5, 5};
+ 
   float unloadRetract       = -20.0f;
   float unloadPushback      = 5.0f;
   float pushbackDelay       = 1.5f;
@@ -183,6 +181,7 @@ typedef struct {
   bool  isSharedStepper     = false;
   bool  externalStepper     = false;
   bool  encoderTickSound    = false;
+  bool  speedInMMS          = true;
 } SMuFFConfig;
 
 
@@ -196,7 +195,7 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   #elif USE_ANET_DISPLAY
   extern U8G2_ST7920_128X64_F_2ND_HW_SPI display; 
   // extern U8G2_ST7920_128X64_F_SW_SPI display;
-  #elif USE_MINI12864_PANEL_V21
+  #elif USE_MINI12864_PANEL_V21 || USE_MINI12864_PANEL_V20
   extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
   #elif USE_CREALITY_DISPLAY
     extern U8G2_ST7920_128X64_F_SW_SPI display;
@@ -242,6 +241,10 @@ extern byte           toolSelected;
 extern PositionMode   positionMode;
 extern String         serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
 extern String         tuneSequence; 
+extern String         tuneBeep; 
+extern String         tuneLongBeep; 
+extern String         tuneUser; 
+extern String         tuneEncoder; 
 extern bool           displayingUserMessage;
 extern unsigned int   userMessageTime;
 extern bool           testMode;
@@ -265,10 +268,7 @@ extern volatile bool  interval1s;
 extern volatile bool  interval2s; 
 extern volatile bool  interval5s; 
 
-extern TMC2209Stepper* driverX;
-extern TMC2209Stepper* driverY;
-extern TMC2209Stepper* driverZ;
-extern TMC2209Stepper* driverE;
+extern TMC2209Stepper* drivers[];
 
 
 extern void setupSerial();
@@ -310,6 +310,8 @@ extern bool moveHome(int index, bool showMessage = true, bool checkFeeder = true
 extern bool loadFilament(bool showMessage = true);
 extern bool loadFilamentPMMU2(bool showMessage = true);
 extern bool unloadFilament();
+extern bool nudgeBackFilament();
+extern void handleStall(int axis);
 extern void runAndWait(int index);
 extern void runNoWait(int index);
 extern bool selectTool(int ndx, bool showMessage = true);
@@ -344,7 +346,8 @@ extern bool setServoMS(int servoNum, int microseconds);
 extern void setServoMinPwm(int servoNum, int pwm);
 extern void setServoMaxPwm(int servoNum, int pwm);
 extern void getStoredData();
-extern void readTune();
+extern String readTune(const char* filename);
+extern void readSequences();
 extern void readConfig();
 extern bool writeConfig(Print* dumpTo = NULL);
 extern bool checkAutoClose();
@@ -363,7 +366,7 @@ extern void positionRevolver();
 extern bool feedToEndstop(bool showMessage);
 extern void feedToNozzle();
 extern void unloadFromNozzle();
-extern int splitStringLines(char* lines[], int maxLines, const char* message);
+extern int splitStringLines(char* lines[], int maxLines, const char* message, const char* token="\n");
 extern void debounceButton();
 extern bool checkStopMenu(unsigned startTime);
 extern void drawTestrunMessage(unsigned long loop, char* msg);
@@ -373,9 +376,6 @@ extern void moveFeeder(float distanceMM);
 extern void overrideStepX();
 extern void overrideStepY();
 extern void overrideStepZ();
-extern bool stallCheckX();
-extern bool stallCheckY();
-extern bool stallCheckZ();
 extern void endstopEventY();
 extern void endstopEventZ();
 extern void endstopEventZ2();
@@ -383,6 +383,9 @@ extern bool checkDuetEndstop();
 extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);
 extern void isrStepperHandler();
 extern void isrGPTimerHandler();
+extern void isrStallDetectedX();
+extern void isrStallDetectedY();
+extern void isrStallDetectedZ();
 extern void refreshStatus(bool withLogo, bool feedOnly);
 extern void every10ms();
 extern void every20ms();
@@ -394,6 +397,7 @@ extern void every1s();
 extern void every2s();
 extern void every5s();
 extern void blinkLED();
+extern void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, int stallThrs, int csmin=0, int csmax=0, int csdown=0);
 
 extern void printEndstopState(int serial);
 extern void printPos(int index, int serial);
@@ -415,7 +419,7 @@ extern bool parse_Action(const String& buf, int serial);
 extern int  getParam(String buf, char* token);
 extern long getParamL(String buf, char* token);
 extern float getParamF(String buf, char* token);
-extern int  hasParam(String buf, char* token);
+extern bool hasParam(String buf, char* token);
 extern bool getParamString(String buf, char* token, char* dest, int bufLen);
 extern void prepStepping(int index, long param, bool Millimeter = true, bool ignoreEndstop = false);
 extern void saveSettings(int serial);
@@ -423,6 +427,9 @@ extern void reportSettings(int serial);
 extern void printResponse(const char* response, int serial);
 extern void printResponseP(const char* response, int serial);
 extern void printOffsets(int serial);
+extern void printDriverMode(int serial);
+extern void printDriverRms(int serial);
+extern void printDriverStallThrs(int serial);
 extern void maintainTool();
 extern void printPeriodicalState(int serial);
 extern void playSequence(const char* sequence);
@@ -440,5 +447,8 @@ extern void testFastLED();
 extern void showDuetLS();
 extern void switchFeederStepper(int stepper);
 extern void removeFirmwareBin();
+
+extern unsigned int translateTicks(unsigned long ticks, int stepsPerMM);
+extern long translateSpeed(unsigned int speed, int stepsPerMM);
 
 #endif

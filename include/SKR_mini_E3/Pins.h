@@ -112,8 +112,12 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 
 #define X_SERIAL_TX_PIN     PB15    // XUART - SPI2 MOSI
 #define Y_SERIAL_TX_PIN     PC6     // YUART - I2S2_MCK / TIM8_CH1 / SDIO_D6
-#define Z_SERIAL_TX_PIN     PC10    // ZUART - SERIAL4 TX
-#define E_SERIAL_TX_PIN     PC11    // EUART - SERIAL4 RX
+#define Z_SERIAL_TX_PIN     PC11    // EUART - SERIAL4 RX
+//#define E_SERIAL_TX_PIN     PC10    // ZUART - SERIAL4 TX
+
+#define STALL_X_PIN         PA13    // SWDIO
+#define STALL_Y_PIN         -1      // 
+#define STALL_Z_PIN         PA14    // SWCLK
 
 // SERIAL1 - Cannot be used for serial comm.
 #define CAN_USE_SERIAL1     false

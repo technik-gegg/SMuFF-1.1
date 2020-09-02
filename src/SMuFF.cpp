@@ -36,7 +36,7 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE); 
   // if the hardware SPI doesn't work, you may try software SPI instead
   //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE);
-  #elif USE_MINI12864_PANEL_V21
+  #elif USE_MINI12864_PANEL_V21 || USE_MINI12864_PANEL_V20
   U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #elif USE_CREALITY_DISPLAY
     // works only with software SPI, hence it's remarkably slower than hardware SPI
@@ -99,10 +99,7 @@ USBMassStorage          MassStorage;
 USBCompositeSerial      CompositeSerial;
 #endif
 
-TMC2209Stepper* driverX = NULL;
-TMC2209Stepper* driverY = NULL;
-TMC2209Stepper* driverZ = NULL;
-TMC2209Stepper* driverE = NULL;
+TMC2209Stepper* drivers[NUM_STEPPERS] { NULL, NULL, NULL };
 
 
 String                          wirelessHostname = "";
@@ -196,32 +193,24 @@ void endstopEventZ2() {
 }
 
 /*
-  Used as a callback from ZStepper library to check stall on stepper
-  while moving (if TMC drivers are being used).
-  Returns true if a stall was detected, false otherwise.
-*/
-bool stallCheckX() {
-  if(driverX != NULL) {
-    bool stat = driverX->SG_RESULT() < driverX->SGTHRS();
-    return stat;
-  }
-  return false;
+  Interrupt handler for StallGuard on TMC2209 (X-Axis/Selector)
+ */
+void isrStallDetectedX() {
+  steppers[SELECTOR].stallDetected();
 }
 
-bool stallCheckY() {
-  if(driverY != NULL) {
-    bool stat = driverY->SG_RESULT() < driverY->SGTHRS();
-    return stat;
-  }
-  return false;
+/*
+  Interrupt handler for StallGuard on TMC2209 (Y-Axis/Revolver)
+ */
+void isrStallDetectedY() {
+  steppers[REVOLVER].stallDetected();
 }
 
-bool stallCheckZ() {
-  if(driverZ != NULL) {
-    bool stat = driverZ->SG_RESULT() < driverZ->SGTHRS();
-    return stat;
-  }
-  return false;
+/*
+  Interrupt handler for StallGuard on TMC2209 (Z-Axis/Feeder)
+ */
+void isrStallDetectedZ() {
+  steppers[FEEDER].stallDetected();
 }
 
 bool checkDuetEndstop() {
@@ -306,7 +295,7 @@ void setup() {
   setupPortExpander();
   setupI2C();
   getStoredData();                    // read EEPROM.DAT from SD-Card; this call must happen after setupSteppers()
-  readTune();
+  readSequences();
 
   if(smuffConfig.homeAfterFeed) {
     moveHome(REVOLVER, false, false);
@@ -415,6 +404,38 @@ void refreshStatus(bool withLogo, bool feedOnly) {
   lastDisplayRefresh = millis();
 }
 
+void monitorTMC(int axis) {
+  int temp;
+  if(drivers[axis] != NULL) {
+    if(drivers[axis]->otpw()) {
+      __debug(PSTR("Driver %c reports 'Overtemperature Warning'"), 'X'+axis);
+    }
+    if(drivers[axis]->ot()) {
+      if(drivers[axis]->t157())
+        temp = 157;
+      if(drivers[axis]->t150())
+        temp = 150;
+      if(drivers[axis]->t143())
+        temp = 143;
+      if(drivers[axis]->t120())
+        temp = 120;
+      __debug(PSTR("Driver %c reports 'Overtemperature' => %d°C"), 'X'+axis, temp);
+    }
+    if(drivers[axis]->ola()) {
+      __debug(PSTR("Driver %c reports 'Open Phase A'"), 'X'+axis);
+    }
+    if(drivers[axis]->olb()) {
+      __debug(PSTR("Driver %c reports 'Open Phase B'"), 'X'+axis);
+    }
+    if(drivers[axis]->s2ga()) {
+      __debug(PSTR("Driver %c reports 'Short to GND on Phase A'"), 'X'+axis);
+    }
+    if(drivers[axis]->s2gb()) {
+      __debug(PSTR("Driver %c reports 'Short to GND on Phase B'"), 'X'+axis);
+    }
+  }
+}
+
 void loop() {
   
   // Call periodical functions as the timeout has reached. 
@@ -509,6 +530,16 @@ void loop() {
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
     //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
     setPwrSave(1);
+  }
+
+  if(smuffConfig.stepperStall[SELECTOR]) {
+    monitorTMC(SELECTOR);
+  }
+  if(smuffConfig.stepperStall[REVOLVER]) {
+    monitorTMC(REVOLVER);
+  }
+  if(smuffConfig.stepperStall[FEEDER]) {
+    monitorTMC(FEEDER);
   }
 
 #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)

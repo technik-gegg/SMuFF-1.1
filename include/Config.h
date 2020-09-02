@@ -21,13 +21,17 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.10"
+#define VERSION_STRING    "V2.11"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-08-24"
+#define VERSION_DATE      "2020-09-02"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 #define TUNE_FILE         "TUNE.DAT"
+#define BEEP_FILE         "BEEP.DAT"
+#define LONGBEEP_FILE     "LBEEP.DAT"
+#define USERBEEP_FILE     "UBEEP.DAT"
+#define ENCBEEP_FILE      "EBEEP.DAT"
 #if defined(__STM32F1__)
 #define MAX_JSON          2048              // 2K of temporary buffer for the JSON data
 #elif defined(__ESP32__)
@@ -42,39 +46,46 @@
 #define MIN_TOOLS         2
 #define MAX_TOOLS         15
 
-#define BEEPER_FREQUENCY    1760
-#define BEEPER_DURATION     90
-#define BEEPER_UFREQUENCY   440
-#define BEEPER_UDURATION    90
-
 #define DSP_CONTRAST        200
 #define MIN_CONTRAST        60
 #define MAX_CONTRAST        250
 
 #define I2C_SLAVE_ADDRESS   0x88
-#define I2C_DISPLAY_ADDRESS 0x3c
+#define I2C_DISPLAY_ADDRESS 0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
 
 #define SERVO_WIPER         0
 #define SERVO_LID           1
 
-#include "Pins.h"               // path is defined in build environment of platformio.ini (-I)
+#if defined(__STM32F1__)
+#define STEPPER_PSC         9           // 8MHz on STM32 (72MHz MCU)
+#elif defined(__ESP32__)
+#define STEPPER_PSC         10          // 8MHz on ESP32 (80MHz MCU)
+#else 
+#define STEPPER_PSC         2           // 8MHz on AVR (16MHz MCU)
+#endif
+#define MIN_MMS             1           // minimum moving speed for stepper in mm/s
+#define MAX_MMS             400         // maximum moving speed for stepper in mm/s
+#define MAX_POWER           2000        // maximum allowed power for rms_current()
+#define MAX_STALL_COUNT     100         // maximum stall counter for stepper
 
-#define FIRST_TOOL_OFFSET       1.2   // value in millimeter
-#define TOOL_SPACING            21.0  // value im millimeter
-#define FIRST_REVOLVER_OFFSET   320   // value in steps
-#define REVOLVER_SPACING        320   // value im steps
-#define USER_MESSAGE_RESET      15    // value in seconds
+#include "Pins.h"                       // path is defined in build environment of platformio.ini (-I)
+
+#define FIRST_TOOL_OFFSET       1.2     // value in millimeter
+#define TOOL_SPACING            21.0    // value im millimeter
+#define FIRST_REVOLVER_OFFSET   320     // value in steps
+#define REVOLVER_SPACING        320     // value im steps
+#define USER_MESSAGE_RESET      15      // value in seconds
 #define MAX_LINES               5
 #define MAX_LINE_LENGTH         80
-#define POWER_SAVE_TIMEOUT      15    // value in seconds
+#define POWER_SAVE_TIMEOUT      15      // value in seconds
 
 #if !defined(NUM_LEDS)
-#define NUM_LEDS                1     // number of Neopixel LEDS
+#define NUM_LEDS                1       // number of Neopixel LEDS
 #define BRIGHTNESS              64
 #define LED_TYPE                WS2812B
 #define COLOR_ORDER             GRB
 #endif
-#define LED_BLACK_COLOR         0
+#define LED_BLACK_COLOR         0       // color codes for RGB LEDs
 #define LED_RED_COLOR           1
 #define LED_GREEN_COLOR         2
 #define LED_BLUE_COLOR          3
@@ -90,5 +101,6 @@
 #define LOGO_FONT               u8g2_font_helvR08_tf
 #define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
 #define SYMBOL_FONT             u8g2_font_unifont_t_symbols
+
 
 #endif

@@ -43,7 +43,7 @@ void parseGcode(const String& serialBuffer, int serial) {
   if(line.length()==0)
     return;
 
-  if(line.startsWith("//ACTION:")) {
+  if(line.startsWith("//ACTION:")) {    // check for //action commands sent from controller
     line = line.substring(9);
     parse_Action(line, serial);
     return;
@@ -81,7 +81,7 @@ void parseGcode(const String& serialBuffer, int serial) {
             !line.startsWith("P") && 
             !line.startsWith("T") && 
             !line.startsWith("C") && 
-            !line.startsWith("U") ) { // only Abort or FINDA command is being processed while parser is busy 
+            !line.startsWith("U") ) { // only ABORT or FINDA commands are being processed while parser is busy 
             //__debug(PSTR("NO valid PMMU GCode"));
       return;
     }
@@ -252,7 +252,7 @@ bool parse_Action(const String& buf, int serial) {
     }
   }
   else if(buf.startsWith("PING")) {
-    printResponse("//action: PONG", serial);
+    printResponseP(P_ActionPong, serial);
   }
   return false;
 }
@@ -429,35 +429,54 @@ bool parse_PMMU2(char cmd, const String& buf, int serial) {
   return stat;
 }
 
-int hasParam(String buf, char* token) {
-  int pos = buf.indexOf(token);
+int findTokenPos(String buf, char* token) {
+  bool isQuote = false;
+  for(unsigned int i=0; i< buf.length(); i++) {
+    if(buf.charAt(i) == '\"' && !isQuote) {
+      isQuote = true;
+      continue;
+    }
+    if(buf.charAt(i) == '\"' && isQuote) {
+      isQuote = false;
+      continue;
+    }
+    if(buf.charAt(i) == *token && !isQuote) {
+      //__debug(PSTR("Token found @: %d"), i);
+      return (int)i;
+    }
+  }
+  return -1;
+}
+
+bool hasParam(String buf, char* token) {
+  int pos = findTokenPos(buf, token);
   //__debug(PSTR("hasParam: %s\n"),buf.c_str());
-  return pos;
+  return pos != -1;
 }
 
 int getParam(String buf, char* token) {
-  int pos = buf.indexOf(token);
+  int pos = findTokenPos(buf, token);
   //__debug(PSTR("getParam: %s\n"),buf.c_str());
   if(pos != -1) {
     //__debug(PSTR("getParam:pos: %d"),pos);
     if(buf.charAt(pos+1)=='-') {
-      int val = buf.substring(pos+2).toInt();
+      int val = atoi(buf.substring(pos+2).c_str());
       //__debug(PSTR("Negative: %d"), 0-val);
       return 0-val;
     }
-    return buf.substring(pos+1).toInt();
+    return atoi(buf.substring(pos+1).c_str());
   }
   else 
     return -1; 
 }
 
 float getParamF(String buf, char* token) {
-  int pos = buf.indexOf(token);
+  int pos = findTokenPos(buf, token);
   //__debug(PSTR("getParam: %s\n"),buf.c_str());
   if(pos != -1) {
     //__debug(PSTR("getParam:pos: %d"),pos);
     if(buf.charAt(pos+1)=='-') {
-      int val = buf.substring(pos+2).toInt();
+      int val = atof(buf.substring(pos+2).c_str());
       //__debug(PSTR("Negative: %d"), 0-val);
       return 0-val;
     }
@@ -468,33 +487,33 @@ float getParamF(String buf, char* token) {
 }
 
 long getParamL(String buf, char* token) {
-  int pos = buf.indexOf(token);
+  int pos = findTokenPos(buf, token);
   //__debug(PSTR("getParam: %s\n"),buf.c_str());
   if(pos != -1) {
     //__debug(PSTR("getParam:pos: %d"),pos);
     if(buf.charAt(pos+1)=='-') {
-      long val = buf.substring(pos+2).toInt();
+      long val = atol(buf.substring(pos+2).c_str());
       //__debug(PSTR("Negative: %d"), 0-val);
       return 0-val;
     }
-    return buf.substring(pos+1).toInt();
+    return atol(buf.substring(pos+1).c_str());
   }
   else 
     return -1; 
 }
 
 bool getParamString(String buf, char* token, char* dest, int bufLen) {
-  int pos = buf.indexOf(token);
+  int pos = findTokenPos(buf, token);
   //__debug(PSTR("getParamString: %s\n"),buf.c_str());
   if(pos != -1) {
     if(buf.substring(pos+1).startsWith("\"")) {
       int endPos = buf.substring(pos+2).indexOf("\"");
-      //__debug(PSTR("End of string: %d\n"), endPos);
+      //__debug(PSTR("String @: %d-%d\n"), pos, endPos);
       if(endPos != -1) {
         memset(dest, 0, bufLen);
         if(endPos+1 < bufLen) {
           if(dest != NULL) {
-            buf.substring(pos+2, endPos+3).toCharArray(dest, endPos+1);
+            buf.substring(pos+2, pos+endPos+3).toCharArray(dest, endPos+1);
             //__debug(PSTR("ptmp: >%s< (%d)\n"), dest, strlen(dest));
           }
           return true;

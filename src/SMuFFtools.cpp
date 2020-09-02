@@ -63,6 +63,10 @@ bool                  isWarning;
 unsigned long         feederErrors = 0;
 bool                  ignoreHoming = false;
 String                tuneSequence = "F440D120P150.F523D120P80.F196D220P80.F196D120P80.F587D400P120.F349D80P240.F349D80P160.";
+String                tuneUser     = "F1760D90P90.F440D90P90.F440D90P90.";
+String                tuneBeep     = "F1760D90P200.";
+String                tuneLongBeep = "F1760D450P500.";
+String                tuneEncoder  = "F330D7P7."; 
 // the "old" tune
 //String                tuneSequence = "F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50.";
 
@@ -226,14 +230,14 @@ void showDuetLS() {
 TMC2209Stepper* showDriver = NULL;
 
 void drawStallCallback() {
-  uint16_t symbols[] = { 0x0020, 0x21af, 0x0020, 0x21a0 };
+  uint16_t symbols[] = { 0x0020, 0x21af, 0x0020, 0x2607 };
   if(showDriver == NULL)
     return;
   bool stat = showDriver->diag();
   display.setFont(SYMBOL_FONT);
-  display.drawGlyph(50, 8, symbols[stat]);
-  stat = showDriver->SG_RESULT() > showDriver->SGTHRS();
-  display.drawGlyph(61, 8, symbols[stat+2]);
+  display.drawGlyph(100, 11, symbols[stat]);
+  stat = showDriver->SG_RESULT() < showDriver->SGTHRS()*2;
+  display.drawGlyph(114, 11, symbols[stat+2]);
 }
 
 void showTMCStatus(int axis) {
@@ -241,17 +245,7 @@ void showTMCStatus(int axis) {
 
   debounceButton();
   encoder.setAccelerationEnabled(true);
-  switch(axis) {
-    case SELECTOR:
-      showDriver = driverX; 
-      break;
-    case REVOLVER:
-      showDriver = driverY; 
-      break;
-    case FEEDER:
-      showDriver = driverZ; 
-      break;
-  }
+  showDriver = drivers[axis];
   if(showDriver == NULL) {
     debounceButton();
     drawUserMessage(P_StepperNotCfg);
@@ -260,10 +254,23 @@ void showTMCStatus(int axis) {
   }
   steppers[axis].setEnabled(true);
   displayingUserMessage = true;
+  int n=0;
   while(1) {
     checkSerialPending();
     if(encoder.getButton() == ClickEncoder::Clicked)
       break;
+    
+    const char* ot_stat = P_No;
+    if(showDriver->ot()) {
+      if(showDriver->t157())
+        ot_stat = P_OT_157;
+      else if(showDriver->t150())
+        ot_stat = P_OT_150;
+      else if(showDriver->t143())
+        ot_stat = P_OT_143;
+      else if(showDriver->t120())
+        ot_stat = P_OT_120;
+    }
     sprintf_P(_msg, P_TMC_Status,
                 showDriver->stealth() ? P_Stealth : P_Spread,
                 showDriver->rms_current(),
@@ -271,9 +278,20 @@ void showTMCStatus(int axis) {
                 showDriver->olb() ? P_Yes : P_No, 
                 showDriver->s2ga() ? P_Yes : P_No, 
                 showDriver->s2gb() ? P_Yes : P_No, 
-                showDriver->ot() ? P_Yes : P_No);
-    drawUserMessage(_msg, true, false, drawStallCallback);
+                ot_stat);
+	
+    drawUserMessage(_msg, true, false, showDriver->stealth() ? drawStallCallback : NULL);
     delay(100);
+    if(showDriver->diag()) {
+      if(n==0)
+        __debug(PSTR("Stepper stall detected @ %ld"), showDriver->SG_RESULT());
+      n++;
+    }
+    // reset stall flag after 3 secs.
+    if(n % 30 == 0 && showDriver->diag()) {
+      n = 0;
+      __debug(PSTR("Stall has been reset!"));
+    }
   }
   displayingUserMessage = false;
 }
@@ -326,9 +344,9 @@ void drawTestrunMessage(unsigned long loop, char* msg) {
   } while(display.nextPage());
 }
 
-int splitStringLines(char* lines[], int maxLines, const char* message) {
+int splitStringLines(char* lines[], int maxLines, const char* message, const char* token) {
 
-  char* tok = strtok((char*)message, "\n");
+  char* tok = strtok((char*)message, token);
   char* lastTok = NULL;
   int cnt = -1;
   
@@ -338,7 +356,7 @@ int splitStringLines(char* lines[], int maxLines, const char* message) {
     //__debug(PSTR("Line: %s"), lines[cnt]);
     if(cnt >= maxLines-1)
       break;
-    tok = strtok(NULL, "\n");
+    tok = strtok(NULL, token);
   }
   if(lastTok != NULL && *lastTok != 0 && cnt <= maxLines-1) {
     lines[cnt] = lastTok;   // copy the last line as well 
@@ -1182,6 +1200,7 @@ int setUnloadParams(int* n1, int* n2) {
   return n;
 }
 
+
 bool unloadFilament() {
   if (toolSelected == 255) {
     signalNoTool();
@@ -1293,6 +1312,75 @@ bool unloadFilament() {
   return true;
 }
 
+bool nudgeBackFilament() {
+  if (toolSelected == 255) {
+    return false;
+  }
+  if(smuffConfig.externalControl_Z && !smuffConfig.isSharedStepper) {
+    positionRevolver();
+    signalUnloadFilament();
+    return true;
+  }
+  else if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(INTERNAL);
+  }
+  steppers[FEEDER].setStepsTaken(0);
+  if(!steppers[FEEDER].getEnabled())
+    steppers[FEEDER].setEnabled(true);
+
+  positionRevolver();  
+
+  unsigned int curSpeed = steppers[FEEDER].getMaxSpeed();
+  steppers[FEEDER].setMaxSpeed(smuffConfig.insertSpeed_Z);
+  prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
+  runAndWait(FEEDER);
+  steppers[FEEDER].setMaxSpeed(curSpeed);
+
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
+  saveStore();
+
+  steppers[FEEDER].setAbort(false);
+  if(smuffConfig.homeAfterFeed) {
+    if(smuffConfig.revolverIsServo) {
+      setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
+    }
+    else 
+      steppers[REVOLVER].home();
+  }
+  if(smuffConfig.externalControl_Z && smuffConfig.isSharedStepper) {
+    switchFeederStepper(EXTERNAL);
+  }
+  return true;
+}
+
+void handleStall(int axis) {
+  __debug(PSTR("Stall handler: Triggered on %c-axis"), 'X'+axis);
+  // check if stall must be handled
+  if(steppers[axis].getStopOnStallDetected()) {
+    __debug(PSTR("Stall handler: Stopped on stall"));
+    nudgeBackFilament();
+    __debug(PSTR("Stall handler: Feeder nudged back"));
+    delay(1000);
+    if(axis != FEEDER) {    // Feeder can't be homed
+      // save speed/acceleration settings
+      unsigned int maxSpeed = steppers[axis].getMaxSpeed();
+      unsigned int accel = steppers[axis].getAcceleration();
+      // slow down speed/acceleration for homing
+      steppers[axis].setMaxSpeed(accel*2);
+      steppers[axis].setAcceleration(accel*2);
+      moveHome(axis, false, false);
+      __debug(PSTR("Stall handler: %c-Axis Homed"), 'X'+axis);
+      // reset speed/acceleration
+      steppers[axis].setMaxSpeed(maxSpeed);
+      steppers[axis].setAcceleration(accel);
+      delay(1000);
+    }
+    else {
+      // TODO: add stall handling for Feeder
+    }
+  }
+}
+
 bool selectTool(int ndx, bool showMessage) {
 
   char _msg1[256];
@@ -1347,7 +1435,7 @@ bool selectTool(int ndx, bool showMessage) {
       if(smuffConfig.sendActionCmds) {
         // send action command to indicate a jam has happend and 
         // the controller shall wait
-        sprintf_P(_tmp, PSTR("//action: WAIT\n"));
+        sprintf_P(_tmp, P_ActionWait);
         printResponse(_tmp, 0);
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);
@@ -1368,7 +1456,7 @@ bool selectTool(int ndx, bool showMessage) {
       }
       if(smuffConfig.sendActionCmds) {
         // send action command to indicate jam cleared, continue printing
-        sprintf_P(_tmp, PSTR("//action: CONTINUE\n"));
+        sprintf_P(_tmp, P_ActionCont);
         printResponse(_tmp, 0);
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);
@@ -1385,51 +1473,62 @@ bool selectTool(int ndx, bool showMessage) {
   //__debug(PSTR("Message shown"));
   unsigned speed = steppers[SELECTOR].getMaxSpeed();
   // if the distance between two tools is more than 3 (tools), use higher speed to move
+  /*
   if(abs(toolSelected-ndx) >=3)
     steppers[SELECTOR].setMaxSpeed(steppers[SELECTOR].getMaxHSpeed());
-  
-  prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
-  remainingSteppersFlag |= _BV(SELECTOR);
-  #if !defined(SMUFF_V5)
-  if(!smuffConfig.resetBeforeFeed_Y) {
-    prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (ndx *smuffConfig.revolverSpacing), true);
-    remainingSteppersFlag |= _BV(REVOLVER);
-  }
-  runAndWait(-1);
-  #else
-  runAndWait(SELECTOR);
-  #endif
-  //__debug(PSTR("Selector in position: %d"), ndx);
-
-  steppers[SELECTOR].setMaxSpeed(speed);
-  toolSelected = ndx;
-
-  dataStore.tool = toolSelected;
-  dataStore.stepperPos[SELECTOR] = steppers[SELECTOR].getStepPosition();
-  dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
-  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
-  saveStore();
-  //__debug(PSTR("Data stored"));
-
-  if (!smuffConfig.externalControl_Z && showMessage) {
-    showFeederLoadMessage();
-  }
-  if(smuffConfig.externalControl_Z) {
-    //__debug(PSTR("Resetting Revolver"));
-    resetRevolver();
-    signalSelectorReady();
-    //__debug(PSTR("Revolver reset done"));
-  }
-  // Attn: if testMode is set, it'll echo the selected tool to Serial2
-  /*
-  if(testMode && CAN_USE_SERIAL2) {
-    Serial2.print("T");
-    Serial2.println(ndx); 
-  }
   */
+  
+  int retry = 3;
+  bool posOk = false;
+  do {
+    steppers[SELECTOR].resetStallDetected();
+    prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
+    remainingSteppersFlag |= _BV(SELECTOR);
+    #if !defined(SMUFF_V5)
+    if(!smuffConfig.resetBeforeFeed_Y) {
+      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (ndx *smuffConfig.revolverSpacing), true);
+      remainingSteppersFlag |= _BV(REVOLVER);
+    }
+    runAndWait(-1);
+    #else
+    runAndWait(SELECTOR);
+    #endif
+    //__debug(PSTR("Selector in position: %d"), ndx);
+    if(smuffConfig.stepperStall[SELECTOR] > 0)
+      __debug(PSTR("Selector stall count: %d"), steppers[SELECTOR].getStallCount());
+    if(steppers[SELECTOR].getStallDetected()) {
+        posOk = false;
+        handleStall(SELECTOR);
+    }
+    else 
+      posOk = true;
+    retry--;
+    if(!retry)
+      break;
+  } while(!posOk);
+  steppers[SELECTOR].setMaxSpeed(speed);
+  if(posOk) {
+    toolSelected = ndx;
+    dataStore.tool = toolSelected;
+    dataStore.stepperPos[SELECTOR] = steppers[SELECTOR].getStepPosition();
+    dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
+    dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
+    saveStore();
+    //__debug(PSTR("Data stored"));
+
+    if (!smuffConfig.externalControl_Z && showMessage) {
+      showFeederLoadMessage();
+    }
+    if(smuffConfig.externalControl_Z) {
+      //__debug(PSTR("Resetting Revolver"));
+      resetRevolver();
+      signalSelectorReady();
+      //__debug(PSTR("Revolver reset done"));
+    }
+  }
   parserBusy = false;
   //__debug(PSTR("Finished selecting tool"));
-  return true;
+  return posOk;
 }
 
 void resetRevolver() {
@@ -1494,45 +1593,81 @@ void printPeriodicalState(int serial) {
   printResponse(tmp, serial);
 }
 
+void printDriverMode(int serial) {
+  sprintf_P(tmp, P_TMC_StatusAll,
+          drivers[SELECTOR] == NULL ? P_Unknown : drivers[SELECTOR]->stealth() ? P_Stealth : P_Spread,
+          drivers[REVOLVER] == NULL ? P_Unknown : drivers[REVOLVER]->stealth() ? P_Stealth : P_Spread,
+          drivers[FEEDER] == NULL ? P_Unknown : drivers[FEEDER]->stealth() ? P_Stealth : P_Spread);
+  printResponse(tmp, serial);
+}
+
+void printDriverRms(int serial) {
+  sprintf_P(tmp, P_TMC_StatusAll,
+          drivers[SELECTOR] == NULL ? P_Unknown : (String(drivers[SELECTOR]->rms_current()) + String(P_MilliAmp)).c_str(),
+          drivers[REVOLVER] == NULL ? P_Unknown : (String(drivers[REVOLVER]->rms_current()) + String(P_MilliAmp)).c_str(),
+          drivers[FEEDER] == NULL ? P_Unknown : (String(drivers[FEEDER]->rms_current()) + String(P_MilliAmp)).c_str());
+  printResponse(tmp, serial);
+}
+
+void printDriverStallThrs(int serial) {
+  sprintf_P(tmp, P_TMC_StatusAll,
+          drivers[SELECTOR] == NULL ? P_Unknown : String(drivers[SELECTOR]->SGTHRS()).c_str(),
+          drivers[REVOLVER] == NULL ? P_Unknown : String(drivers[REVOLVER]->SGTHRS()).c_str(),
+          drivers[FEEDER] == NULL ? P_Unknown : String(drivers[FEEDER]->SGTHRS()).c_str());
+  printResponse(tmp, serial);
+}
+
 void printEndstopState(int serial) {
   const char* _triggered = "triggered";
   const char* _open      = "open";
-  sprintf_P(tmp, PSTR("Selector: %s\tRevolver: %s\tFeeder: %s\n"),
+  sprintf_P(tmp, P_TMC_StatusAll,
           selectorEndstop()  ? _triggered : _open,
           revolverEndstop()  ? _triggered : _open,
-          feederEndstop()    ? _triggered : _open);
+          feederEndstop()    ? _triggered : _open,
+          "");
   printResponse(tmp, serial);
 }
 
 void printSpeeds(int serial) {
+
+  long speedX = translateTicks(steppers[SELECTOR].getMaxSpeed(), steppers[SELECTOR].getStepsPerMM());
+  long speedY = translateTicks(steppers[REVOLVER].getMaxSpeed(), steppers[REVOLVER].getStepsPerDegree());
+  long speedZ = translateTicks(steppers[FEEDER].getMaxSpeed(), steppers[FEEDER].getStepsPerMM());
+  
   sprintf_P(tmp, P_AccelSpeed,
-          String(steppers[SELECTOR].getMaxSpeed()).c_str(),
-          String(smuffConfig.stepDelay_X).c_str(),
-          String(steppers[REVOLVER].getMaxSpeed()).c_str(),
-          String(smuffConfig.stepDelay_Y).c_str(),
-          String(steppers[FEEDER].getMaxSpeed()).c_str(),
+          speedX,
+          smuffConfig.stepDelay_X,
+          speedY,
+          smuffConfig.stepDelay_Y,
+          speedZ,
           smuffConfig.externalControl_Z ? " (E)" : " (I)",
-          String(smuffConfig.stepDelay_Z).c_str());
+          smuffConfig.stepDelay_Z);
   printResponse(tmp, serial);
 }
 
 void printAcceleration(int serial) {
+  
+  long speedX = translateTicks(steppers[SELECTOR].getAcceleration(), steppers[SELECTOR].getStepsPerMM());
+  long speedY = translateTicks(steppers[REVOLVER].getAcceleration(), steppers[REVOLVER].getStepsPerDegree());
+  long speedZ = translateTicks(steppers[FEEDER].getAcceleration(), steppers[FEEDER].getStepsPerMM());
+  
   sprintf_P(tmp, P_AccelSpeed,
-          String(steppers[SELECTOR].getAcceleration()).c_str(),
-          String(smuffConfig.stepDelay_X).c_str(),
-          String(steppers[REVOLVER].getAcceleration()).c_str(),
-          String(smuffConfig.stepDelay_Y).c_str(),
-          String(steppers[FEEDER].getMaxSpeed()).c_str(),
+          speedX,
+          smuffConfig.stepDelay_X,
+          speedY,
+          smuffConfig.stepDelay_Y,
+          speedZ,
           smuffConfig.externalControl_Z ? " (E)" : " (I)",
-          String(smuffConfig.stepDelay_Z).c_str());
+          smuffConfig.stepDelay_Z);
   printResponse(tmp, serial);
 }
 
 void printOffsets(int serial) {
-  sprintf_P(tmp, P_Positions,
+  sprintf_P(tmp, P_TMC_StatusAll,
           String((int)(smuffConfig.firstToolOffset*10)).c_str(),
           String(smuffConfig.firstRevolverOffset).c_str(),
-          "--");
+          "--",
+          "");
   printResponse(tmp, serial);
 }
 
@@ -1576,8 +1711,7 @@ void beep(int count) {
   if(BEEPER_PIN == -1)
     return;
   for (int i = 0; i < count; i++) {
-    _tone(BEEPER_PIN, BEEPER_FREQUENCY, BEEPER_DURATION);
-    delayMicroseconds(BEEPER_DURATION*200);
+    playSequence(tuneBeep.c_str());
   }
   _noTone(BEEPER_PIN);
 }
@@ -1587,9 +1721,7 @@ void longBeep(int count) {
   if(BEEPER_PIN == -1)
     return;
   for (int i = 0; i < count; i++) {
-    _tone(BEEPER_PIN, BEEPER_FREQUENCY, BEEPER_DURATION*5);
-    delay(BEEPER_DURATION*5+50);
-    _noTone(BEEPER_PIN);
+    playSequence(tuneLongBeep.c_str());
   }
 }
 
@@ -1597,23 +1729,13 @@ void userBeep() {
   showLed(3, 1);
   if(BEEPER_PIN == -1)
     return;
-  _tone(BEEPER_PIN, BEEPER_FREQUENCY, BEEPER_DURATION);
-  delay(BEEPER_DURATION*2);
-  _noTone(BEEPER_PIN);
-  _tone(BEEPER_PIN, BEEPER_UFREQUENCY, BEEPER_UDURATION);
-  delay(BEEPER_UDURATION*2);
-  _noTone(BEEPER_PIN);
-  _tone(BEEPER_PIN, BEEPER_UFREQUENCY, BEEPER_UDURATION);
-  delay(BEEPER_UDURATION*2);
-  _noTone(BEEPER_PIN);
+  playSequence(tuneUser.c_str());
 }
 
 void encoderBeep(int count) {
   if(BEEPER_PIN == -1)
     return;
-  _tone(BEEPER_PIN, 330, 5);
-  delayMicroseconds(5);
-  _noTone(BEEPER_PIN);
+  playSequence(tuneEncoder.c_str());
 }
 
 /*
@@ -1910,7 +2032,7 @@ void testRun(String fname) {
             if(mode > 3)
               mode = 0;
           }
-          __debug(PSTR("GCode: %-25s\t[ Elapsed: %d:%02d:%02d  Loops: %-4ld  Cmds: %5ld  ToolChanges: %5ld  Feeder Errors: %3d  Feeds ok/miss: %d/%d ]"), gCode.c_str(), (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60), loopCnt, cmdCnt, toolChanges, feederErrors, endstop2Hit, endstop2Miss);
+          __debug(PSTR("GCode: %-25s [ Elapsed: %d:%02d:%02d  Loops: %-4ld  Cmds: %5ld  ToolChanges: %5ld  Feeder Errors: %3d  Feeds ok/miss: %d/%d ]"), gCode.c_str(), (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60), loopCnt, cmdCnt, toolChanges, feederErrors, endstop2Hit, endstop2Miss);
         }
         else {
           // restart from begin and increment loop count
@@ -1982,6 +2104,30 @@ void blinkLED() {
   if(LED_PIN != -1)
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
+}
+
+/*
+  Translates speeds from MCU timer ticks to mm/s.
+  Same algorithm as in translateSpeed. Uses a different 
+  name just to point explicitly to the intent.
+*/
+unsigned int translateTicks(unsigned long ticks, int stepsPerMM) {
+  unsigned int speed = 0;
+  speed = (long)((F_CPU/STEPPER_PSC) / (ticks * stepsPerMM))/2;
+  //__debug(PSTR("F_CPU: %ld  STEPPER_PSC: %d  TICKS: %6ld  StepsMM: %4d  SPEED: %d mm/s"), F_CPU, STEPPER_PSC, ticks, stepsPerMM, speed);
+  return speed;
+}
+
+/*
+  Translates speeds from mm/s into MCU timer ticks.
+  Same algorithm as in translateTicks. Uses a different 
+  name just to point explicitly to the intent.
+*/
+long translateSpeed(unsigned int speed, int stepsPerMM) {
+  long ticks = 0;
+  ticks = (long)((F_CPU/STEPPER_PSC) / (speed * stepsPerMM))/2;
+  //__debug(PSTR("F_CPU: %ld  STEPPER_PSC: %d  SPEED: %4d  StepsMM: %4d  TICKS: %ld"), F_CPU, STEPPER_PSC, speed, stepsPerMM, ticks);
+  return ticks;
 }
 
 

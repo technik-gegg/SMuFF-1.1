@@ -118,8 +118,12 @@
 
 #define X_SERIAL_TX_PIN     PC10    // XUART - UART4 TX
 #define Y_SERIAL_TX_PIN     PC11    // YUART - UART4 RX
-#define Z_SERIAL_TX_PIN     PC12    // ZUART - UART5 TX
-#define E_SERIAL_TX_PIN     PD2     // EUART - UART5 RX
+#define Z_SERIAL_TX_PIN     PD2     // EUART - UART5 RX
+//#define E_SERIAL_TX_PIN     PC12     // ZUART - UART5 TX
+
+#define STALL_X_PIN         PA13    // SWDIO
+#define STALL_Y_PIN         -1      // 
+#define STALL_Z_PIN         PA14    // SWCLK
 
 // SERIAL1 - Cannot be used for serial comm.
 #define CAN_USE_SERIAL1     false   // used for encoder on EXP1

@@ -28,6 +28,8 @@ extern ZServo   servo, servoRevolver;
 extern int      toolSelections[];
 TMC2209Stepper* setupDriver = NULL;
 
+#define SPEED_INCREMENT 5
+
 char* extractTitle(const char* menu PROGMEM, int index) {
   char* tok = strtok((char*)menu, "\n");
   int cnt = -1;
@@ -123,9 +125,9 @@ void setupStatusInfoMenu(char* menu) {
   char items[120];
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items, P_StatusInfoMenuItems, 
-                  /* driverX == NULL ? "" : */ P_StatusInfoMenuItemsX,
-                  /* driverY == NULL ? "" : */ P_StatusInfoMenuItemsY,
-                  /* driverZ == NULL ? "" : */ P_StatusInfoMenuItemsZ);
+                   P_StatusInfoMenuItemsX,
+                   P_StatusInfoMenuItemsY,
+                   P_StatusInfoMenuItemsZ);
   strcat(menu, items);
 }
 
@@ -208,7 +210,7 @@ void setupSteppersMenu(char *menu) {
 }
 
 void setupTMCMenu(char* menu, int axis) {
-  char items1[250];
+  char items1[350];
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items1, P_TMCMenuItems,     
     translateTMCDriverMode(smuffConfig.stepperMode[axis]),
@@ -220,35 +222,10 @@ void setupTMCMenu(char* menu, int axis) {
     String(smuffConfig.stepperCSmax[axis]).c_str(),
     String(smuffConfig.stepperCSdown[axis]).c_str(),
     String(smuffConfig.stepperAddr[axis]).c_str(),
-    String(smuffConfig.stepperToff[axis]).c_str());
+    String(smuffConfig.stepperToff[axis]).c_str(),
+    smuffConfig.stepperStopOnStall[axis] ? P_Yes : P_No,
+    smuffConfig.stepperMaxStallCnt[axis]);
   strcat(menu, items1);
-}
-
-void setupRevolverMenu(char* menu) {
-  char items1[200];
-  char items2[240];
-
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_AllSteppersMenuItems,
-    translateTMCDriverMode(smuffConfig.stepperMode[REVOLVER]),
-    smuffConfig.invertDir_Y ? P_Yes : P_No,
-    smuffConfig.endstopTrigger_Y ? P_High : P_Low,
-    String(smuffConfig.stepDelay_Y).c_str(),
-    String(smuffConfig.maxSpeed_Y).c_str(),
-    String(smuffConfig.maxSpeedHS_Y).c_str(),
-    String(smuffConfig.acceleration_Y).c_str());
-  sprintf_P(items2, P_RevolverMenuItems,
-    String(smuffConfig.stepsPerRevolution_Y).c_str(),
-    smuffConfig.homeAfterFeed ? P_Yes : P_No,
-    smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
-    smuffConfig.wiggleRevolver ? P_Yes : P_No,
-    smuffConfig.revolverIsServo ? P_Yes : P_No,
-    String(smuffConfig.revolverOffPos).c_str(),
-    String(smuffConfig.revolverOnPos).c_str(),
-    String(smuffConfig.servoCycles1).c_str(),
-    String(smuffConfig.servoCycles2).c_str());
-  strcat(menu, items1);
-  strcat(menu, items2);
 }
 
 void setupServoMenu(char* menu) {
@@ -259,35 +236,65 @@ void setupServoMenu(char* menu) {
   smuffConfig.homeAfterFeed ? P_Yes : P_No,
   smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
   smuffConfig.revolverIsServo ? P_Yes : P_No,
-  String(smuffConfig.revolverOffPos).c_str(),
-  String(smuffConfig.revolverOnPos).c_str(),
-  String(smuffConfig.servoCycles1).c_str(),
-  String(smuffConfig.servoCycles2).c_str());
+  smuffConfig.revolverOffPos,
+  smuffConfig.revolverOnPos,
+  smuffConfig.servoCycles1,
+  smuffConfig.servoCycles2);
   strcat(menu, items1);
+}
+
+void setupRevolverMenu(char* menu) {
+  char items1[200];
+  char items2[240];
+
+  long maxSpeed = translateTicks(smuffConfig.maxSpeed_Y, smuffConfig.stepsPerRevolution_Y/360);
+  long accel = translateTicks(smuffConfig.acceleration_Y, smuffConfig.stepsPerRevolution_Y/360);
+
+  sprintf_P(menu, P_MenuItemBack);
+  sprintf_P(items1, P_AllSteppersMenuItems,
+    translateTMCDriverMode(smuffConfig.stepperMode[REVOLVER]),
+    smuffConfig.invertDir_Y ? P_Yes : P_No,
+    smuffConfig.endstopTrigger_Y ? P_High : P_Low,
+    smuffConfig.stepDelay_Y,
+    maxSpeed,
+    accel);
+  sprintf_P(items2, P_RevolverMenuItems,
+    smuffConfig.firstRevolverOffset,
+    smuffConfig.stepsPerRevolution_Y,
+    smuffConfig.homeAfterFeed ? P_Yes : P_No,
+    smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
+    smuffConfig.wiggleRevolver ? P_Yes : P_No,
+    smuffConfig.revolverIsServo ? P_Yes : P_No);
+  strcat(menu, items1);
+  strcat(menu, items2);
 }
 
 void setupFeederMenu(char* menu) {
   char items1[256];
   char items2[256];
+
+  long maxSpeed = translateTicks(smuffConfig.maxSpeed_Z, smuffConfig.stepsPerMM_Z);
+  long accel = translateTicks(smuffConfig.acceleration_Z, smuffConfig.stepsPerMM_Z);
+  long insertSpeed = translateTicks(smuffConfig.insertSpeed_Z, smuffConfig.stepsPerMM_Z);
+
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items1, P_AllSteppersMenuItems,
     translateTMCDriverMode(smuffConfig.stepperMode[FEEDER]),
     smuffConfig.invertDir_Z ? P_Yes : P_No,
     smuffConfig.endstopTrigger_Z ? P_High : P_Low,
-    String(smuffConfig.stepDelay_Z).c_str(),
-    String(smuffConfig.maxSpeed_Z).c_str(),
-    String(smuffConfig.maxSpeedHS_Z).c_str(),
-    String(smuffConfig.acceleration_Z).c_str());
+    smuffConfig.stepDelay_Z,
+    maxSpeed,
+    accel);
   sprintf_P(items2, P_FeederMenuItems,
-    String(smuffConfig.stepsPerMM_Z).c_str(),
+    smuffConfig.stepsPerMM_Z,
     smuffConfig.enableChunks ? P_Yes : P_No,
-    String(smuffConfig.feedChunks).c_str(),
+    smuffConfig.feedChunks,
     String(smuffConfig.insertLength).c_str(),
-    String(smuffConfig.insertSpeed_Z).c_str(),
+    insertSpeed,
     String(smuffConfig.reinforceLength).c_str(),
     smuffConfig.externalControl_Z ? P_Yes : P_No,
     smuffConfig.isSharedStepper ? P_Yes : P_No
-);
+  );
   strcat(menu, items1);
   strcat(menu, items2);
 }
@@ -295,15 +302,18 @@ void setupFeederMenu(char* menu) {
 void setupSelectorMenu(char* menu) {
   char items1[250];
   char items2[60];
+
+  long maxSpeed = translateTicks(smuffConfig.maxSpeed_X, smuffConfig.stepsPerMM_X);
+  long accel = translateTicks(smuffConfig.acceleration_X, smuffConfig.stepsPerMM_X);
+  
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(items1, P_AllSteppersMenuItems,
     translateTMCDriverMode(smuffConfig.stepperMode[SELECTOR]),
     smuffConfig.invertDir_X ? P_Yes : P_No,
     smuffConfig.endstopTrigger_X ? P_High : P_Low,
-    String(smuffConfig.stepDelay_X).c_str(),
-    String(smuffConfig.maxSpeed_X).c_str(),
-    String(smuffConfig.maxSpeedHS_X).c_str(),
-    String(smuffConfig.acceleration_X).c_str());
+    smuffConfig.stepDelay_X,
+    maxSpeed,
+    accel);
   sprintf_P(items2, P_SelectorMenuItems,
     String(smuffConfig.firstToolOffset).c_str(),
     String(smuffConfig.stepsPerMM_X).c_str());
@@ -338,7 +348,7 @@ void showMainMenu() {
   uint8_t current_selection = 0;
   char tmp[128];
   char _title[40];
-  char _menu[512];
+  char _menu[700];
   int menuIdx[20];
   
   do {
@@ -621,7 +631,7 @@ void showTMCMenu(char* menuTitle, int axis) {
 
         case 3: // Power
             iVal = smuffConfig.stepperPower[axis];
-            if(showInputDialog(title, P_InMilliAmpere, &iVal, 0, 1400, NULL, 10)) {
+            if(showInputDialog(title, P_InMilliAmpere, &iVal, 0, MAX_POWER, NULL, 10)) {
               smuffConfig.stepperPower[axis] = iVal;
               if(setupDriver != NULL)
                 setupDriver->rms_current(iVal);
@@ -707,148 +717,27 @@ void showTMCMenu(char* menuTitle, int axis) {
             }
             startTime = millis();
             break;
+
+        case 12: // Stop on stall
+            bVal = smuffConfig.stepperStopOnStall[axis];
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.stepperStopOnStall[axis] = bVal;
+              if(setupDriver != NULL) {
+                steppers[axis].setStopOnStallDetected(bVal);
+              }
+            }
+            startTime = millis();
+            break;
+
+        case 13: // Stall trigger count
+            iVal = smuffConfig.stepperMaxStallCnt[axis];
+            if(showInputDialog(title, P_Value, &iVal, 0, MAX_STALL_COUNT)) {
+              smuffConfig.stepperMaxStallCnt[axis] = iVal;
+              steppers[axis].setStallThreshold(iVal);
+            }
+            startTime = millis();
+            break;
         
-        case 12: // SpreadCycle
-            bVal = smuffConfig.stepperSpread[axis];
-            if(showInputDialog(title, P_YesNo, &bVal)) {
-              smuffConfig.stepperSpread[axis] = bVal;
-              if(setupDriver != NULL)
-                setupDriver->en_spreadCycle(bVal);
-            }
-            startTime = millis();
-            break;
-      }
-    }
-  } while(!stopMenu);
-}
-
-void showRevolverMenu(char* menuTitle) {
-  bool stopMenu = false;
-  unsigned int startTime = millis();
-  uint8_t current_selection = 0;
-  char* title;
-  bool bVal;
-  int iVal;
-  char _menu[350];
-
-  do {
-    setupRevolverMenu(_menu);
-    //__debug(PSTR("Revolver Menu: %s\nLen: %d"), _menu, strlen(_menu));
-    resetAutoClose();
-    stopMenu = checkStopMenu(startTime);
-
-    current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
-
-    if(current_selection == 0)
-      return;
-    else {
-      title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
-        case 1:
-            stopMenu = true;
-            break;
-
-        case 2: // TMC-Paramters
-            setupDriver = driverY;
-            showTMCMenu(title, REVOLVER);
-            startTime = millis();
-            break;
-
-        case 3: // Invert dir
-            bVal = smuffConfig.invertDir_Y;
-            if(showInputDialog(title, P_YesNo, &bVal)) {
-              smuffConfig.invertDir_Y = bVal;
-              steppers[REVOLVER].setInvertDir(bVal);
-            }
-            startTime = millis();
-            break;
-
-        case 4: // Endstop trigger
-            iVal = smuffConfig.endstopTrigger_Y;
-            if(showInputDialog(title, P_TriggerOn, &iVal, 0, 1)) {
-              smuffConfig.endstopTrigger_Y = iVal;
-              steppers[REVOLVER].setEndstopState(iVal);
-            }
-            startTime = millis();
-            break;
-
-        case 5: // Step Delay
-            iVal = smuffConfig.stepDelay_Y;
-            if(showInputDialog(title, P_InMicroseconds, &iVal, 0, 100)) {
-              smuffConfig.stepDelay_Y = iVal;
-            }
-            startTime = millis();
-            break;
-
-        case 6: // Max. Speed
-            iVal = smuffConfig.maxSpeed_Y;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 50000, NULL, 50)) {
-              smuffConfig.maxSpeed_Y = iVal;
-              steppers[REVOLVER].setMaxSpeed(iVal);
-            }
-            startTime = millis();
-            break;
-
-        case 7: // Max. Speed HS
-            iVal = smuffConfig.maxSpeedHS_Y;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 50000, NULL, 50)) {
-              smuffConfig.maxSpeedHS_Y = iVal;
-              steppers[REVOLVER].setMaxHSpeed(iVal);
-            }
-            startTime = millis();
-            break;
-
-        case 8: // Acceleration
-            iVal = smuffConfig.acceleration_Y;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000, NULL, 50)) {
-              smuffConfig.acceleration_Y = iVal;
-              steppers[REVOLVER].setAcceleration(iVal);
-            }
-            startTime = millis();
-            break;
-
-        case 9: // Offset
-            changeOffset(REVOLVER);
-            startTime = millis();
-            break;
-
-        case 10: // Steps Per Rev
-            iVal = smuffConfig.stepsPerRevolution_Y;
-            if(showInputDialog(title, P_InSteps, &iVal, 1, 10000)) {
-              smuffConfig.stepsPerRevolution_Y = iVal;
-              steppers[REVOLVER].setMaxStepCount(iVal);
-              steppers[REVOLVER].setStepsPerDegree(iVal/360);
-            }
-            startTime = millis();
-            break;
-
-        case 11: // Home after feed
-            bVal = smuffConfig.homeAfterFeed;
-            if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.homeAfterFeed = bVal;
-            startTime = millis();
-            break;
-
-        case 12: // Reset before feed
-            bVal = smuffConfig.resetBeforeFeed_Y;
-            if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.resetBeforeFeed_Y = bVal;
-            startTime = millis();
-            break;
-
-        case 13: // Wiggle
-            bVal = smuffConfig.wiggleRevolver;
-            if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.wiggleRevolver = bVal;
-            startTime = millis();
-            break;
-
-        case 14: // Use Servo
-            bVal = smuffConfig.revolverIsServo;
-            if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.revolverIsServo = bVal;
-            startTime = millis();
-            break;
       }
     }
   } while(!stopMenu);
@@ -937,6 +826,129 @@ void showServoMenu(char* menuTitle) {
   } while(!stopMenu);
 }
 
+void showRevolverMenu(char* menuTitle) {
+  bool stopMenu = false;
+  unsigned int startTime = millis();
+  uint8_t current_selection = 0;
+  char* title;
+  bool bVal;
+  int iVal;
+  char _menu[350];
+
+  do {
+    setupRevolverMenu(_menu);
+    //__debug(PSTR("Revolver Menu: %s\nLen: %d"), _menu, strlen(_menu));
+    resetAutoClose();
+    stopMenu = checkStopMenu(startTime);
+
+    current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+
+    if(current_selection == 0)
+      return;
+    else {
+      title = extractTitle(_menu, current_selection-1);
+      switch(current_selection) {
+        case 1:
+            stopMenu = true;
+            break;
+
+        case 2: // TMC-Paramters
+            setupDriver = drivers[REVOLVER];
+            showTMCMenu(title, REVOLVER);
+            startTime = millis();
+            break;
+
+        case 3: // Invert dir
+            bVal = smuffConfig.invertDir_Y;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.invertDir_Y = bVal;
+              steppers[REVOLVER].setInvertDir(bVal);
+            }
+            startTime = millis();
+            break;
+
+        case 4: // Endstop trigger
+            iVal = smuffConfig.endstopTrigger_Y;
+            if(showInputDialog(title, P_TriggerOn, &iVal, 0, 1)) {
+              smuffConfig.endstopTrigger_Y = iVal;
+              steppers[REVOLVER].setEndstopState(iVal);
+            }
+            startTime = millis();
+            break;
+
+        case 5: // Step Delay
+            iVal = smuffConfig.stepDelay_Y;
+            if(showInputDialog(title, P_InMicroseconds, &iVal, 0, 100)) {
+              smuffConfig.stepDelay_Y = iVal;
+            }
+            startTime = millis();
+            break;
+
+        case 6: // Max. Speed
+            iVal = translateTicks(smuffConfig.maxSpeed_Y, smuffConfig.stepsPerRevolution_Y/360);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.maxSpeed_Y = translateTicks(iVal, smuffConfig.stepsPerRevolution_Y/360);
+              steppers[REVOLVER].setMaxSpeed(smuffConfig.maxSpeed_Y);
+            }
+            startTime = millis();
+            break;
+
+        case 7: // Acceleration
+            iVal = translateTicks(smuffConfig.acceleration_Y, smuffConfig.stepsPerRevolution_Y/360);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.acceleration_Y = translateTicks(iVal, smuffConfig.stepsPerRevolution_Y/360);
+              steppers[REVOLVER].setAcceleration(smuffConfig.acceleration_Y);
+            }
+            startTime = millis();
+            break;
+
+        case 8: // Offset
+            changeOffset(REVOLVER);
+            startTime = millis();
+            break;
+
+        case 9: // Steps Per Rev
+            iVal = smuffConfig.stepsPerRevolution_Y;
+            if(showInputDialog(title, P_InSteps, &iVal, 1, 20000, NULL, 50)) {
+              smuffConfig.stepsPerRevolution_Y = iVal;
+              steppers[REVOLVER].setMaxStepCount(iVal);
+              steppers[REVOLVER].setStepsPerDegree(iVal/360);
+            }
+            startTime = millis();
+            break;
+
+        case 10: // Home after feed
+            bVal = smuffConfig.homeAfterFeed;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.homeAfterFeed = bVal;
+            startTime = millis();
+            break;
+
+        case 11: // Reset before feed
+            bVal = smuffConfig.resetBeforeFeed_Y;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.resetBeforeFeed_Y = bVal;
+            startTime = millis();
+            break;
+
+        case 12: // Wiggle
+            bVal = smuffConfig.wiggleRevolver;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.wiggleRevolver = bVal;
+            startTime = millis();
+            break;
+
+        case 13: // Use Servo
+            bVal = smuffConfig.revolverIsServo;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.revolverIsServo = bVal;
+            startTime = millis();
+            break;
+      }
+    }
+  } while(!stopMenu);
+}
+
 void showSelectorMenu(char* menuTitle) {
   bool stopMenu = false;
   unsigned int startTime = millis();
@@ -964,7 +976,7 @@ void showSelectorMenu(char* menuTitle) {
             break;
 
         case 2: // TMC-Paramters
-            setupDriver = driverX;
+            setupDriver = drivers[SELECTOR];
             showTMCMenu(title, SELECTOR);
             startTime = millis();
             break;
@@ -996,38 +1008,29 @@ void showSelectorMenu(char* menuTitle) {
             break;
 
         case 6: // Max. Speed
-            iVal = smuffConfig.maxSpeed_X;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 50000, NULL, 50)) {
-              smuffConfig.maxSpeed_X = iVal;
-              steppers[SELECTOR].setMaxSpeed(iVal);
+            iVal = translateTicks(smuffConfig.maxSpeed_X, smuffConfig.stepsPerMM_X);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.maxSpeed_X = translateTicks(iVal, smuffConfig.stepsPerMM_X);
+              steppers[SELECTOR].setMaxSpeed(smuffConfig.maxSpeed_X);
             }
             startTime = millis();
             break;
 
-        case 7: // Max. Speed HS
-            iVal = smuffConfig.maxSpeedHS_X;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 50000, NULL, 50)) {
-              smuffConfig.maxSpeedHS_X = iVal;
-              steppers[SELECTOR].setMaxHSpeed(iVal);
-            }
-            startTime = millis();
-            break;
-
-        case 8: // Acceleration
-            iVal = smuffConfig.acceleration_X;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000, NULL, 50)) {
-              smuffConfig.acceleration_X = iVal;
-              steppers[SELECTOR].setAcceleration(iVal);
+        case 7: // Acceleration
+            iVal = translateTicks(smuffConfig.acceleration_X, smuffConfig.stepsPerMM_X);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.acceleration_X = translateTicks(iVal, smuffConfig.stepsPerMM_X);
+              steppers[SELECTOR].setAcceleration(smuffConfig.acceleration_X);
             }
             startTime = millis();
             break;
         
-        case 9: // Offset
+        case 8: // Offset
             changeOffset(SELECTOR);
             startTime = millis();
             break;
 
-        case 10: // Steps Per MM
+        case 9: // Steps Per MM
             iVal = smuffConfig.stepsPerMM_X;
             if(showInputDialog(title, P_InSteps, &iVal, 1, 10000)) {
               smuffConfig.stepsPerMM_X = iVal;
@@ -1068,7 +1071,7 @@ void showFeederMenu(char* menuTitle) {
             break;
 
         case 2: // TMC-Paramters
-            setupDriver = driverZ;
+            setupDriver = drivers[FEEDER];
             showTMCMenu(title, FEEDER);
             startTime = millis();
             break;
@@ -1100,35 +1103,24 @@ void showFeederMenu(char* menuTitle) {
             break;
 
         case 6: // Max. Speed
-            iVal = smuffConfig.maxSpeed_Z;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 50000, NULL, 50)) {
-              smuffConfig.maxSpeed_Z = iVal;
-              steppers[FEEDER].setMaxSpeed(iVal);
+            iVal = translateTicks(smuffConfig.maxSpeed_Z, smuffConfig.stepsPerMM_Z);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.maxSpeed_Z = translateTicks(iVal, smuffConfig.stepsPerMM_Z);
+              steppers[FEEDER].setMaxSpeed(smuffConfig.maxSpeed_Z);
             }
             startTime = millis();
             break;
 
-        case 7: // Max. Speed HS
-            iVal = smuffConfig.maxSpeedHS_Z;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 50000, NULL, 50)) {
-              smuffConfig.maxSpeedHS_Z = iVal;
-              steppers[FEEDER].setMaxHSpeed(iVal);
+        case 7: // Acceleration
+            iVal = translateTicks(smuffConfig.acceleration_Z, smuffConfig.stepsPerMM_Z);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.acceleration_Z = translateTicks(iVal, smuffConfig.stepsPerMM_Z);
+              steppers[FEEDER].setAcceleration(smuffConfig.acceleration_Z);
             }
             startTime = millis();
             break;
 
-        case 8: // Acceleration
-            iVal = smuffConfig.acceleration_Z;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000, NULL, 50)) {
-              smuffConfig.acceleration_Z = iVal;
-              if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
-                smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
-              steppers[FEEDER].setAcceleration(iVal);
-            }
-            startTime = millis();
-            break;
-
-        case 9: // Steps Per MM
+        case 8: // Steps Per MM
             iVal = smuffConfig.stepsPerMM_Z;
             if(showInputDialog(title, P_InSteps, &iVal, 1, 10000)) {
               smuffConfig.stepsPerMM_Z = iVal;
@@ -1137,14 +1129,14 @@ void showFeederMenu(char* menuTitle) {
             startTime = millis();
             break;
 
-        case 10: // Enable chunks
+        case 9: // Enable chunks
             bVal = smuffConfig.enableChunks;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.enableChunks = bVal;
             startTime = millis();
             break;
 
-        case 11: // Feed chunks
+        case 10: // Feed chunks
             iVal = smuffConfig.feedChunks;
             if(showInputDialog(title, P_NoOfChunks, &iVal, 0, 100))
               smuffConfig.feedChunks = iVal;
@@ -1153,38 +1145,38 @@ void showFeederMenu(char* menuTitle) {
             startTime = millis();
             break;
 
-        case 12: // Insert length
+        case 11: // Insert length
             fVal = smuffConfig.insertLength;
             if(showInputDialog(title, P_InMillimeter, &fVal, 1, smuffConfig.selectorDistance))
               smuffConfig.insertLength = fVal;
             startTime = millis();
             break;
 
-        case 13: // Insert Speed
-            iVal = smuffConfig.insertSpeed_Z;
-            if(showInputDialog(title, P_InTicks, &iVal, 1, 60000, NULL, 50)) {
-              smuffConfig.insertSpeed_Z = iVal;
+        case 12: // Insert Speed
+            iVal = translateTicks(smuffConfig.insertSpeed_Z, smuffConfig.stepsPerMM_Z);
+            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
+              smuffConfig.insertSpeed_Z = translateTicks(iVal, smuffConfig.stepsPerMM_Z);
               if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
                 smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
             }
             startTime = millis();
             break;
 
-        case 14: // Reinforce length
+        case 13: // Reinforce length
             fVal = smuffConfig.reinforceLength;
             if(showInputDialog(title, P_InMillimeter, &fVal, 0, 10))
               smuffConfig.reinforceLength = fVal;
             startTime = millis();
             break;
 
-        case 15: // Ext. Feeder Ctl
+        case 14: // Ext. Feeder Ctl
             bVal = smuffConfig.externalControl_Z;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.externalControl_Z = bVal;
             startTime = millis();
             break;
 
-        case 16: // Shared Stepper
+        case 15: // Shared Stepper
             bVal = smuffConfig.isSharedStepper;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.isSharedStepper = bVal;
@@ -1747,7 +1739,7 @@ void showToolsMenu() {
       }
       else {
         // send "Tool Change" action to controller
-        sprintf(_tmp, "//action: T%d\n", tool);
+        sprintf_P(_tmp, P_ActionTool, tool);
         printResponse(_tmp, 0);
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);

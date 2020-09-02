@@ -46,6 +46,7 @@ public:
   void prepareMovement(long steps, bool ignoreEndstop = false);
   void handleISR();
   void home();
+  void stallDetected() { _stallCount++; }
 
   void          (*stepFunc)() = NULL;
   void          (*endstopFunc)() = NULL;
@@ -111,12 +112,19 @@ public:
   void          setAbort(bool state) { _abort = state; }
   bool          getIgnoreAbort() { return _ignoreAbort; }
   void          setIgnoreAbort(bool state) { _ignoreAbort = state; }
-  bool          getStepsTaken() { return _stepsTaken; }
+  long          getStepsTaken() { return _stepsTaken; }
   float         getStepsTakenMM() { return (float)_stepsTaken / _stepsPerMM; }
   void          setStepsTaken(long count) { _stepsTaken = count; }
   unsigned int  getAccelDistance() { return _accelDistance; }
   void          setAccelDistance(unsigned dist) { _accelDistance = dist; }
-  
+  bool          getStallDetected() { return _stallDetected; }
+  void          resetStallDetected() { _stallDetected = false; }
+  bool          getStopOnStallDetected() { return _stopOnStallDetected; }
+  void          setStopOnStallDetected(bool state) { _stopOnStallDetected = state; }
+  int           getStallThreshold() { return _stallCountThreshold; }
+  void          setStallThreshold(int max) { _stallCountThreshold = max; }
+  int           getStallCount() { return _stallCount; }
+
 private:
   int             _number = 0;                  // index of this stepper
   char*           _descriptor = (char*)"";      // display name for this stepper
@@ -151,6 +159,10 @@ private:
   bool            _abort = false;               // flag signals abortion of operation  
   bool            _ignoreAbort = false;         // flag signals abort not possible
   long int        _stepsTaken = 0;              // counter for steps currently taken
+  bool            _stallDetected = false;       // flag for TMC2209 drivers
+  bool            _stopOnStallDetected = false; // flag for TMC2209 drivers
+  int             _stallCount = 0;              // counter for stalls detected
+  int             _stallCountThreshold = 5;     // threshold for serious stall detection
 
   // per iteration variables (potentially changed every interrupt)
   volatile float          _duration;            // current interval length

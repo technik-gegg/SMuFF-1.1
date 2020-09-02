@@ -19,6 +19,7 @@
 #include "SMuFF.h"
 
 #if defined(__STM32F1__)
+#include <../stm32f1/include/series/nvic.h>
 #define PRODUCT_ID   0x29                     // for CompositeSerial
 #endif
 
@@ -81,6 +82,23 @@ void setupBuzzer() {
   }
 }
 
+void readSequences() {
+  String tmp = readTune(TUNE_FILE);
+  if(tmp.length() > 0)
+    tuneSequence = tmp;
+  tmp = readTune(BEEP_FILE);
+  if(tmp.length() > 0)
+    tuneBeep = tmp;
+  tmp = readTune(LONGBEEP_FILE);
+  if(tmp.length() > 0)
+    tuneLongBeep = tmp;
+  tmp = readTune(USERBEEP_FILE);
+  if(tmp.length() > 0)
+    tuneUser = tmp;
+  tmp = readTune(ENCBEEP_FILE);
+  if(tmp.length() > 0)
+    tuneEncoder = tmp;
+}
 
 /*
   Initialize FastLED library for NeoPixels.
@@ -294,10 +312,14 @@ void setupSteppers() {
   steppers[SELECTOR].setMaxStepCount(smuffConfig.maxSteps_X);
   steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM_X);
   steppers[SELECTOR].setInvertDir(smuffConfig.invertDir_X);
-  steppers[SELECTOR].setMaxHSpeed(smuffConfig.maxSpeedHS_X);
   steppers[SELECTOR].setAccelDistance(smuffConfig.accelDistance_X);
-  if(smuffConfig.stepperStall[SELECTOR] > 0)
-    steppers[SELECTOR].stallCheck = stallCheckX;
+  steppers[SELECTOR].setStopOnStallDetected(false);
+  steppers[SELECTOR].setStallThreshold(smuffConfig.stepperMaxStallCnt[SELECTOR]);
+  if(smuffConfig.stepperStall[SELECTOR] > 0) {
+    steppers[SELECTOR].setStopOnStallDetected(smuffConfig.stepperStopOnStall[SELECTOR]);
+    if(STALL_X_PIN != -1)
+      attachInterrupt(STALL_X_PIN, isrStallDetectedX, RISING);
+  }
 
 #if !defined(SMUFF_V5)
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, smuffConfig.acceleration_Y, smuffConfig.maxSpeed_Y);
@@ -307,10 +329,14 @@ void setupSteppers() {
   steppers[REVOLVER].setStepsPerDegree(smuffConfig.stepsPerRevolution_Y/360);
   steppers[REVOLVER].endstopFunc = endstopYevent;
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir_Y);
-  steppers[REVOLVER].setMaxHSpeed(smuffConfig.maxSpeedHS_Y);
   steppers[REVOLVER].setAccelDistance(smuffConfig.accelDistance_Y);
-  if(smuffConfig.stepperStall[REVOLVER] > 0)
-    steppers[REVOLVER].stallCheck = stallCheckY;
+  steppers[REVOLVER].setStopOnStallDetected(false);
+  steppers[REVOLVER].setStallThreshold(smuffConfig.stepperMaxStallCnt[REVOLVER]);
+  if(smuffConfig.stepperStall[REVOLVER] > 0) {
+    steppers[REVOLVER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[REVOLVER]);
+    if(STALL_Y_PIN != -1)
+      attachInterrupt(STALL_Y_PIN, isrStallDetectedY, RISING);
+  }
 #else
   // we don't use the Revolver stepper but an servo instead, although
   // create a dummy instance
@@ -331,10 +357,14 @@ void setupSteppers() {
   steppers[FEEDER].endstopFunc = endstopEventZ;
   steppers[FEEDER].endstop2Func = endstopEventZ2;
   steppers[FEEDER].setInvertDir(smuffConfig.invertDir_Z);
-  steppers[FEEDER].setMaxHSpeed(smuffConfig.maxSpeedHS_Z);
   steppers[FEEDER].setAccelDistance(smuffConfig.accelDistance_Z);
-  if(smuffConfig.stepperStall[FEEDER] > 0)
-    steppers[FEEDER].stallCheck = stallCheckZ;
+  steppers[FEEDER].setStopOnStallDetected(false);
+  steppers[FEEDER].setStallThreshold(smuffConfig.stepperMaxStallCnt[FEEDER]);
+  if(smuffConfig.stepperStall[FEEDER] > 0) {
+    steppers[FEEDER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[FEEDER]);
+    if(STALL_Z_PIN != -1)
+      attachInterrupt(STALL_Z_PIN, isrStallDetectedZ, RISING);
+  }
 
   for(int i=0; i < NUM_STEPPERS; i++) {
       steppers[i].runAndWaitFunc = runAndWait;
@@ -360,8 +390,7 @@ TMC2209Stepper* initDriver(int axis, int rx_pin, int tx_pin) {
   int csdown  = smuffConfig.stepperCSdown[axis];
   float rsense= smuffConfig.stepperRSense[axis];
   int drvrAdr = smuffConfig.stepperAddr[axis];
-  int toff    = stall == 0 ? 4 : 3; // smuffConfig.stepperToff[axis];
-  bool spread = smuffConfig.stepperSpread[axis];
+  int toff    = smuffConfig.stepperToff[axis]==-1 ? (stall == 0 ? 3 : 4) : smuffConfig.stepperToff[axis];
 
   if(mode == 0) {
     //__debug(PSTR("Driver for %c-axis skipped"), 'X'+axis);
@@ -378,10 +407,12 @@ TMC2209Stepper* initDriver(int axis, int rx_pin, int tx_pin) {
   driver->blank_time(24);
   driver->internal_Rsense(true);
   driver->Rsense = rsense;
-  driver->I_scale_analog(true);     // set external Vref
+  driver->I_scale_analog(false);    // set internal Vref
   driver->rms_current(current);     // set current in mA
   driver->mstep_reg_select(1);      // set microstepping
   driver->microsteps(msteps);       
+  driver->pwm_autoscale(true);
+  driver->irun(25);
   
   // setup StallGuard only if stepperStall value is between 1 and 255
   // otherwise put it in SpreadCycle mode
@@ -389,36 +420,55 @@ TMC2209Stepper* initDriver(int axis, int rx_pin, int tx_pin) {
     #if defined(TMC_TYPE_2130)
     stall = (int)map(stall, 1,  255, -63, 63);  // remap values for TMC2130 (not tested yet!)
     #endif
-    driver->pwm_autoscale(true);
+    setDriverSpreadCycle(driver, false, stall); // set StealthChop (enable StallGuard)
+  }
+  else {
+    setDriverSpreadCycle(driver, true, stall, csmin, csmax, csdown); // set SpreadCycle (disable StallGuard)
+  }
+  return driver;
+}
+
+void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, int stallThrs, int csmin, int csmax, int csdown) {
+  if(!spread) {
     driver->TCOOLTHRS(0xFFFFF); 
+    driver->TPWMTHRS(0);
+    driver->SGTHRS(stallThrs);
+    driver->en_spreadCycle(false);   // set StealthChop (enable StallGuard)
+  }
+  else {
+    driver->SGTHRS(0);
+    driver->TCOOLTHRS(0); 
+    driver->en_spreadCycle(true);   // set SpreadCycle (disable StallGuard)
     if(csmin >0 && csmax >0) {
       driver->semin(csmin);
       driver->semax(csmax);
       driver->sedn(csdown);
     }
-    driver->SGTHRS(0);
-    driver->en_spreadCycle(false);   // set StealthChop (enable StallGuard)
   }
-  else {
-    driver->TCOOLTHRS(0); 
-    driver->en_spreadCycle(true);   // set SpreadCycle (disable StallGuard)
-  }
-  return driver;
 }
 
 void setupTMCDrivers() {
 
   #if defined(X_SERIAL_TX_PIN)
-  driverX = initDriver(SELECTOR, X_SERIAL_TX_PIN, X_SERIAL_TX_PIN);
+  drivers[SELECTOR] = initDriver(SELECTOR, X_SERIAL_TX_PIN, X_SERIAL_TX_PIN);
   #endif
   #if defined(Y_SERIAL_TX_PIN)
-  driverY = initDriver(REVOLVER, Y_SERIAL_TX_PIN, Y_SERIAL_TX_PIN);
+  drivers[REVOLVER] = initDriver(REVOLVER, Y_SERIAL_TX_PIN, Y_SERIAL_TX_PIN);
   #endif
   #if defined(Z_SERIAL_TX_PIN)
-  driverZ = initDriver(FEEDER,   Z_SERIAL_TX_PIN, Z_SERIAL_TX_PIN);
+  drivers[FEEDER] = initDriver(FEEDER,   Z_SERIAL_TX_PIN, Z_SERIAL_TX_PIN);
   #endif
-  #if defined(E_SERIAL_TX_PIN)
-  driverE = initDriver(FEEDER,   E_SERIAL_TX_PIN, E_SERIAL_TX_PIN);
+  #if defined(STALL_X_PIN)
+    if(STALL_X_PIN != -1)
+      pinMode(STALL_X_PIN, INPUT);
+  #endif
+  #if defined(STALL_Y_PIN)
+    if(STALL_Y_PIN != -1)
+      pinMode(STALL_Y_PIN, INPUT);
+  #endif
+  #if defined(STALL_Z_PIN)
+    if(STALL_Z_PIN != -1)
+      pinMode(STALL_Z_PIN, INPUT);
   #endif
   __debug(PSTR("DONE initializing TMC Steppers"));
 }
@@ -431,7 +481,7 @@ void setupTimers() {
   //    Steppers use:       TIMER4
   //    Encoder uses:       gpTimer 
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER4, ZTimer::PRESCALER1);
+  stepperTimer.setupTimer(ZTimer::ZTIMER4, STEPPER_PSC);            // prescaler set to 4MHz, timer will be calculated as needed
   gpTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256);      // round about 1ms on 16MHz CPU
 
 #elif defined(__ESP32__)
@@ -442,13 +492,13 @@ void setupTimers() {
   //    Steppers use:       TIMER1
   //    Encoder uses:       gpTimer
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER1, 4);          // prescaler set to 20MHz, timer will be calculated as needed
-  gp.setupTimer(ZTimer::ZTIMER2, 80);                   // 1ms on 80MHz timer clock
+  stepperTimer.setupTimer(ZTimer::ZTIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
+  gp.setupTimer(ZTimer::ZTIMER2, 80);                     // 1ms on 80MHz timer clock
 #else
   // *****
   // Attn: 
   //    PA8 (Fan) uses:     TIMER1 CH1 (predefined by libmaple for PWM)
-  //    Steppers use:       TIMER5 CH1 (may corrupt TH0 readings)
+  //    Steppers use:       TIMER2 CH1 (may corrupt TH0 readings)
   //    GP timer uses:      TIMER8 CH1 (general, encoder, servo)
   //    Beeper uses:        TIMER4 CH3
   //    SW-Serial uses:     TIMER3 CH4 (see SoftwareSerialM library)
@@ -460,9 +510,12 @@ void setupTimers() {
   //          communication interrupts/breaks. Read the STM32F1 MCU spec. and check
   //          the libmaple library settings before you do so.
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER2, ZTimer::CH1, 1, 1);    // prescaler set to 72MHz, timer will be calculated as needed
-  gpTimer.setupTimer(ZTimer::ZTIMER8, ZTimer::CH1, 8, 0);         // prescaler set to 9MHz, timer will be set to 50uS
-  setToneTimerChannel(ZTimer::ZTIMER4, ZTimer::CH3);              // force TIMER4 / CH3 on STM32F1x for tone library
+  stepperTimer.setupTimer(ZTimer::ZTIMER2, ZTimer::CH1, STEPPER_PSC, 1);   // prescaler set to 4MHz, timer will be calculated as needed
+  gpTimer.setupTimer(ZTimer::ZTIMER8, ZTimer::CH1, 8, 0);                  // prescaler set to 9MHz, timer will be set to 50uS
+  setToneTimerChannel(ZTimer::ZTIMER4, ZTimer::CH3);                       // force TIMER4 / CH3 on STM32F1x for tone library
+  nvic_irq_set_priority(NVIC_TIMER8_CC, 1);
+  nvic_irq_set_priority(NVIC_TIMER2, 0);
+  nvic_irq_set_priority(NVIC_TIMER3, 0);
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers

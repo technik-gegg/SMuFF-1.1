@@ -26,9 +26,8 @@
       "Offset":               0.5,
       "Spacing":              21.0,
       "StepsPerMillimeter":   80,
-	   "Acceleration":         12000,
-	   "MaxSpeed":             2000,
-	   "MaxSpeedHS":           2500,
+	   "Acceleration":         10,
+	   "MaxSpeed":             300,
 	   "InvertDir":            false,
 	   "EndstopTrigger":       1,
       "StepDelay":            10,
@@ -40,13 +39,16 @@
       "CoolStepMin":          5,
       "CoolStepMax":          2,
       "CoolStepDown":         1,
-      "DriverAddress":        0
+      "DriverAddress":        0,
+      "TOff":                 -1,
+      "StopOnStall":          false,
+      "MaxStallCount":        25
    },
    "Revolver": {
 	   "StepsPerRevolution":   9600,
       "Offset":               1275,
-	   "Acceleration":         22000,
-	   "MaxSpeed":             10000,
+	   "Acceleration":         10,
+	   "MaxSpeed":             20,
 	   "ResetBeforeFeed":      true,
 	   "HomeAfterFeed":        true,
 	   "InvertDir":            false,
@@ -64,14 +66,17 @@
       "CoolStepMin":          5,
       "CoolStepMax":          2,
       "CoolStepDown":         1,
-      "DriverAddress":        0
+      "DriverAddress":        0,
+      "TOff":                 -1,
+      "StopOnStall":          false,
+      "MaxStallCount":        25
    },
    "Feeder": {
 	   "ExternalControl":      true,
       "StepsPerMillimeter":   410,
-	   "Acceleration":         20000,
-	   "MaxSpeed":             1400,
-	   "InsertSpeed":          20000,
+	   "Acceleration":         10,
+	   "MaxSpeed":             150,
+	   "InsertSpeed":          10,
 	   "ReinforceLength":      0,
       "UnloadRetract":        0,
 	   "UnloadPushback":       0,
@@ -92,7 +97,10 @@
       "CoolStepMin":          5,
       "CoolStepMax":          2,
       "CoolStepDown":         1,
-      "DriverAddress":        0
+      "DriverAddress":        0,
+      "TOff":                 -1,
+      "StopOnStall":          false,
+      "MaxStallCount":        25
    },
    "Materials": {
       "T0": "PLA Green",

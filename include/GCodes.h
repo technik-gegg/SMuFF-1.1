@@ -75,4 +75,6 @@ extern bool G28(const char* msg, String buf, int serial);
 extern bool G90(const char* msg, String buf, int serial);
 extern bool G91(const char* msg, String buf, int serial);
 
+extern void handleFeedSpeed(String buf, int axis);
+
 #endif

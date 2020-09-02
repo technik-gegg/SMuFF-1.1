@@ -68,7 +68,11 @@
 _DEFPIN_ARM(PC12, 12, C);           // needed to compensate "Invalid pin specified" while compiling
 _DEFPIN_ARM(PB9, 9, B);
 
-#if defined(USE_MINI12864_PANEL_V21)
+#if defined(USE_MINI12864_PANEL_V20)
+#define RGB_LED_R_PIN       PB7
+#define RGB_LED_G_PIN       PC14
+#define RGB_LED_B_PIN       PC15
+#elif defined(USE_MINI12864_PANEL_V21)
 #define NEOPIXEL_PIN        PB7
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #elif defined(USE_TWI_DISPLAY)
@@ -98,7 +102,7 @@ _DEFPIN_ARM(PB9, 9, B);
 #define ENCODER2_PIN        PC15
 #define ENCODER_BUTTON_PIN  PB6
 
-#elif defined(USE_MINI12864_PANEL_V21)
+#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
 #define DSP_CS_PIN          PB6     // CS
 #define DSP_DC_PIN          PC12    // CLK
 #define DSP_RESET_PIN       PC13 
@@ -121,6 +125,9 @@ _DEFPIN_ARM(PB9, 9, B);
 #define ENCODER_BUTTON_PIN  PC11
 #endif
 
+#define STALL_X_PIN         -1      // 
+#define STALL_Y_PIN         -1      // 
+#define STALL_Z_PIN         -1      // 
 
 #ifdef USE_TWI_DISPLAY
 #define DEBUG_OFF_PIN       -1       // not needed on TWI display

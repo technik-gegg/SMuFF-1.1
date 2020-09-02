@@ -59,6 +59,8 @@ void ZStepper::resetStepper() {
   //_stepsTaken = 0;
   _movementDone = false;
   _endstopHit = false;
+  _stallDetected = false;
+  _stallCount = 0;
 }
 
 void ZStepper::prepareMovement(long steps, bool ignoreEndstop /*= false */) {
@@ -132,6 +134,15 @@ void ZStepper::handleISR() {
     setMovementDone(true);
     return;
   }
+  // check stepper motor stall on TMC2209 if configured likewise
+  if(_stallCount > _stallCountThreshold) {
+    _stallDetected = true;
+    if(_stopOnStallDetected) {
+      setMovementDone(true);
+      return;
+    }
+  }
+
   bool hit = false;
   if((_endstopType == MIN && _dir == CCW) ||
      (_endstopType == MAX && _dir == CW) ||
@@ -142,8 +153,6 @@ void ZStepper::handleISR() {
      else {
       if(endstopCheck != NULL)
         hit = endstopCheck();
-      //if(stallCheck != NULL)
-        //hit = stallCheck();
     }
     setEndstopHit(hit);
   }

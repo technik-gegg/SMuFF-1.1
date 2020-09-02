@@ -26,6 +26,15 @@ If you like this project and find it useful, feel free to place a donation via P
 
 ## Recent changes
 
+**2.11** - More streamlining / bug fixing
+
++ **changed the speed settings** in configuration file, menus and GCode interface to **mm/s**. The timer tick value was kind of confusing and misleading.
++ dumped **MaxSpeedHS** parameter since it's not really needed and confuses people.
++ fixed a couple of bugs induced in 2.10.
++ optimized code for TMC2209 stepper driver and stall detection/handling.
++ all sounds can now be modified and are contained in the **.DAT* files of the **Tunes** folder.
++ added new parameters to [M205 GCode](https://sites.google.com/view/the-smuff/tips-hints/talk-to-the-smuff?authuser=0#h.g5l7kws0923c) command.
+
 **2.10** - A lot of changes, such as TMC driver support; **Please read on**
 
 + finished the implementation of the Duet3D Laser Sensor (V2) which can be used as the Feeder endstop and is able to monitor filament jams.
