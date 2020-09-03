@@ -51,11 +51,15 @@ void ZServo::attach(int pin, bool useTimer, int servoIndex) {
 
 void ZServo::attach(int pin) { 
   _pin = pin;
-#if defined(SMUFF_V5) && defined(__BRD_SKR_MINI)
-  pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set tp Open Drain for the +5V pullup resistor
-#else
-  pinMode(_pin, OUTPUT); 
-#endif
+  #if defined(__STM32F1__)
+    #if SERVO_OPEN_DRAIN == 1
+    pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set to Open Drain for the +5V pullup resistor
+    #else
+    pinMode(_pin, OUTPUT);
+    #endif
+  #else
+    pinMode(_pin, OUTPUT);
+  #endif
   digitalWrite(_pin, 0);
 }
 

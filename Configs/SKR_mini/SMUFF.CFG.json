@@ -42,7 +42,7 @@
       "DriverAddress":        0,
       "TOff":                 -1,
       "StopOnStall":          false,
-      "MaxStallCount":        25
+      "MaxStallCount":        10
    },
    "Revolver": {
 	   "StepsPerRevolution":   9600,
@@ -69,7 +69,7 @@
       "DriverAddress":        0,
       "TOff":                 -1,
       "StopOnStall":          false,
-      "MaxStallCount":        25
+      "MaxStallCount":        10
    },
    "Feeder": {
 	   "ExternalControl":      true,
@@ -100,7 +100,7 @@
       "DriverAddress":        0,
       "TOff":                 -1,
       "StopOnStall":          false,
-      "MaxStallCount":        25
+      "MaxStallCount":        10
    },
    "Materials": {
       "T0": "PLA Green",

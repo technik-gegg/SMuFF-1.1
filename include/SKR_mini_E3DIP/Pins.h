@@ -59,10 +59,18 @@
 
 #define BEEPER_PIN          PA15    // EXP1.10 
 
-#define RELAIS_PIN          PC14    // PROBE (Relais for stepper motor switching)
+#define RELAIS_PIN          PC14    // PROBE (Relay for stepper motor switching)
 
+#if !defined(SMUFF_V5)
+#define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PC2     // E0-STOP
 #define SERVO2_PIN          PA1     // SERVO
+#else
+#define SERVO_OPEN_DRAIN    1
+#define SERVO1_PIN          PB13     // Y STEP pin used because of 5V tolerance
+#define SERVO2_PIN          PB12     // Y DIR pin 
+#endif
+
 
 #define FAN_PIN             PA8     // FAN0
 #define HEATER0_PIN         PC8     // HE0

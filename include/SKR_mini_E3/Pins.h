@@ -57,8 +57,9 @@
 #define BEEPER_PIN          PB5     // EXP1.10 
 
 #define DEBUG_PIN           PB9     // EXP1.5 
-#define RELAIS_PIN          PC14    // PROBE (Relais for stepper motor switching)
+#define RELAIS_PIN          PC14    // PROBE (Relay for stepper motor switching)
 
+#define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PC12    // PT-DET
 #define SERVO2_PIN          PA1     // SERVO
 
