@@ -19,22 +19,22 @@
 
 #include "ZServo.h"
 
-static ZServo* servoInstances[MAX_SERVOS]; 
+static ZServo* servoInstances[MAX_SERVOS];
 
 /*
   To use the servo with an timer (interrupt), you have to setup an timer
-  externally, call the attach method with useTimer = true and call the 
+  externally, call the attach method with useTimer = true and call the
   isrServoTimerHandler() method down below from within the timers
   own interrupt routine.
   The external timer has to run at 50uS (20kHz) in order to get the correct
   timing for the servos.
-  Otherwise, as in case of the ESP32, the servos will be handled by  
+  Otherwise, as in case of the ESP32, the servos will be handled by
   PWM on the give pin.
 
   Had to realize it this way because I was running out of precious timers
   on the STM32 MCU.
 */
-void ZServo::attach(int pin, bool useTimer, int servoIndex) { 
+void ZServo::attach(int pin, bool useTimer, int servoIndex) {
   _useTimer = useTimer;
   attach(pin);
   setIndex(servoIndex);
@@ -49,14 +49,10 @@ void ZServo::attach(int pin, bool useTimer, int servoIndex) {
   }
 }
 
-void ZServo::attach(int pin) { 
+void ZServo::attach(int pin) {
   _pin = pin;
-  #if defined(__STM32F1__)
-    #if SERVO_OPEN_DRAIN == 1
+  #if SERVO_OPEN_DRAIN
     pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set to Open Drain for the +5V pullup resistor
-    #else
-    pinMode(_pin, OUTPUT);
-    #endif
   #else
     pinMode(_pin, OUTPUT);
   #endif
@@ -64,9 +60,9 @@ void ZServo::attach(int pin) {
 }
 
 void ZServo::detach() {
-  servoInstances[_servoIndex] = NULL;
+  servoInstances[_servoIndex] = nullptr;
   #if defined(__ESP32__)
-    if(!_useTimer)
+    if (!_useTimer)
       ledcDetachPin(_pin);
   #endif
   _pin = 0;
@@ -78,7 +74,7 @@ void ZServo::detach() {
   Values above 180 will be treated as milliseconds (usually in the range of 500-2400 us).
 */
 void ZServo::write(int val) {
-  if(val >= 0 && val <= 180)
+  if (val >= 0 && val <= 180)
     setServoPos(val);
   else
     setServoMS(val);
@@ -88,8 +84,8 @@ void ZServo::writeMicroseconds(int microseconds) {
   setServoMS(microseconds);
 }
 
-void ZServo::setIndex(int servoIndex) { 
-  if(servoIndex != -1 && servoIndex < MAX_SERVOS) {
+void ZServo::setIndex(int servoIndex) {
+  if (servoIndex != -1 && servoIndex < MAX_SERVOS) {
     _servoIndex = servoIndex;
     servoInstances[_servoIndex] = this;
   }
@@ -97,19 +93,19 @@ void ZServo::setIndex(int servoIndex) {
 
 bool ZServo::setServoPos(int degree) {
   bool stat = false;
-  if(_pin > 0) {
-    #if defined(__ESP32__)
-    if(!_useTimer) {
-      _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
-      //__debug(PSTR("Servo %d: %d° = %d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
-    }
-    else {
+  if (_pin > 0) {
+    #if defined(__AVR__) || defined(__STM32F1__)
       _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-      //__debug(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
-    }
+      //__debug(PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
     #else
-    _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-    //__debug(PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
+      if (!_useTimer) {
+        _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
+        //__debug(PSTR("Servo %d: %d° = %d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
+      }
+      else {
+        _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
+        //__debug(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
+      }
     #endif
     stat = true;
     _degree = degree;
@@ -128,25 +124,21 @@ void ZServo::setServoMS(int microseconds) {
 }
 
 /*
-  This method has to be called every 20 milliseconds to refresh or 
+  This method has to be called every 20 milliseconds to refresh or
   to set the servo position if the internal timer is not being used.
   If the internal timer is being used, it'll call this method quite
   more often.
 */
 void ZServo::setServo() {
-  if(!_useTimer) {
-    if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call 
-  #if defined(__AVR__)
-      digitalWrite(_pin, HIGH);
-      delayMicroseconds(_pulseLen);
-      digitalWrite(_pin, LOW);
-  #elif defined(__ESP32__)
-      ledcWrite(SERVO_CHANNEL+_servoIndex, _pulseLen);
-  #else
-      digitalWrite(_pin, HIGH);
-      delayMicroseconds(_pulseLen);
-      digitalWrite(_pin, LOW);
-  #endif
+  if (!_useTimer) {
+    if (_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call
+      #if defined(__AVR__) || defined(__STM32F1__)
+        digitalWrite(_pin, HIGH);
+        delayMicroseconds(_pulseLen);
+        digitalWrite(_pin, LOW);
+      #elif defined(__ESP32__)
+        ledcWrite(SERVO_CHANNEL+_servoIndex, _pulseLen);
+      #endif
       _lastDegree = _degree;
     }
   }
@@ -157,12 +149,12 @@ void ZServo::setServo() {
     // isn't happening.
     _tickCnt += 50;
 
-    if(_tickCnt <= (uint32_t)_pulseLen)
+    if (_tickCnt <= (uint32_t)_pulseLen)
       setServoPin(HIGH);
     else
       setServoPin(LOW);
-    if(_tickCnt >= (uint32_t)(DUTY_CYCLE)) {
-      if(_maxCycles == 0 || (++_dutyCnt < _maxCycles))  // but no more cycles than defined to avoid jitter on the servo
+    if (_tickCnt >= (uint32_t)(DUTY_CYCLE)) {
+      if (_maxCycles == 0 || (++_dutyCnt < _maxCycles))  // but no more cycles than defined to avoid jitter on the servo
         _tickCnt = 0;
     }
   }
@@ -173,17 +165,16 @@ void ZServo::setServoPin(int state) {
 }
 
 void isrServoTimerHandler() {
-
   #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
-  // used for internal hardware debugging only
-  //if(DEBUG_PIN != -1) digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
+    // used for internal hardware debugging only
+    //if(DEBUG_PIN != -1) digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
   #endif
 
   // call all handlers for all servos periodically if the
   // internal timer is being used.
-  for(int i=0;  i< MAX_SERVOS; i++) {
-    if(servoInstances[i] != NULL) {
-      if(!servoInstances[i]->isTimerStopped())
+  for (int i = 0;  i< MAX_SERVOS; i++) {
+    if (servoInstances[i] != nullptr) {
+      if (!servoInstances[i]->isTimerStopped())
         servoInstances[i]->setServo();
     }
   }

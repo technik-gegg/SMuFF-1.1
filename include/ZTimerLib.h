@@ -16,18 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
+#include <CommonMacros.h>
 #include <stdlib.h>
 #include <Arduino.h>
 #include "Config.h"
 
-#ifndef _ZTIMER_H
-#define _ZTIMER_H 1
-
 extern void __debug(const char* fmt, ...);
 
 class ZTimer {
-public:
+  public:
     typedef enum {
       ZTIMER1 = 1,
       ZTIMER2 = 2,
@@ -47,42 +46,34 @@ public:
     } IsrTimerChannel;
 
     typedef enum {
-      PRESCALER1      = 1,
-      PRESCALER8      = 2,
-      PRESCALER64     = 3,
-      PRESCALER256    = 4,
-      PRESCALER1024   = 5
+      PRESCALER1    = 1,
+      PRESCALER8    = 2,
+      PRESCALER64   = 3,
+      PRESCALER256  = 4,
+      PRESCALER1024 = 5
     } TimerPrescaler;
 
-    ZTimer() { };
+    ZTimer() {};
 
-#if defined(__AVR__)
-    void           setupTimer(IsrTimer timer, TimerPrescaler prescaler);
-#endif
-#if defined(__STM32F1__)
-    void           setupTimer(IsrTimer timer, unsigned int prescaler);
-    void           setupTimer(IsrTimer timer, int channel, unsigned int prescaler, unsigned int compare = 1);
-#elif defined(__ESP32__)
-    void           setupTimer(IsrTimer timer, unsigned int prescaler);
-    void           setupTimer(IsrTimer timer, unsigned int prescaler, uint64_t compare);
-    uint64_t       getOverflow();
-    void           setOverflow(uint64_t value);
-    void           setNextInterruptInterval(uint64_t interval);
-#endif
-    void           setupTimerHook(void (*function)(void));
-#if !defined(__ESP32__)
-    void           setNextInterruptInterval(unsigned int interval);
-    unsigned int   getOverflow();
-    void           setOverflow(unsigned int value);
-    void           setCompare(unsigned int value);
-#endif
-    void           setCounter(unsigned int value);
-    void           startTimer();
-    void           stopTimer();
+    #ifdef __AVR__
+      void setupTimer(IsrTimer timer, TimerPrescaler prescaler);
+    #elif defined(__STM32F1__)
+      void setupTimer(IsrTimer timer, unsigned int prescaler);
+      void setupTimer(IsrTimer timer, int channel, unsigned int prescaler, timerInterval_t compare = 1);
+    #elif defined(__ESP32__)
+      void setupTimer(IsrTimer timer, unsigned int prescaler);
+      void setupTimer(IsrTimer timer, unsigned int prescaler, timerInterval_t compare);
+    #endif
+    timerInterval_t getOverflow();
+    void setOverflow(timerInterval_t value);
+    void setNextInterruptInterval(timerInterval_t interval);
+    void setupTimerHook(void (*function)(void));
+    void setCompare(timerInterval_t value);
+    void setCounter(timerInterval_t value);
+    void startTimer();
+    void stopTimer();
 
-private:
+  private:
     IsrTimer      _timer;
     int           _channel;
 };
-
-#endif
