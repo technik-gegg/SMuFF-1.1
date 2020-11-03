@@ -22,6 +22,7 @@
 	#include <avr/pgmspace.h>
 #endif
 #include "Arduino.h"
+#include "ButtonState.h"
 
 // ----------------------------------------------------------------------------
 
@@ -45,18 +46,6 @@
 class ClickEncoder
 {
 public:
-  typedef enum Button_e {
-    Open = 0,
-    Closed,
-
-    Pressed,
-    Held,
-    Released,
-
-    Clicked,
-    DoubleClicked
-
-  } Button;
 
 private:  
   uint8_t pinA;
@@ -71,7 +60,7 @@ private:
   bool enableSound;
 
 #ifndef WITHOUT_BUTTON
-  volatile Button button;
+  volatile ButtonState button;
   unsigned long lastButtonCheck = 0;
   uint8_t doubleClickTicks = 0;     
   bool doubleClickEnabled;  
@@ -90,8 +79,8 @@ public:
 
 #ifndef WITHOUT_BUTTON
 public:
-  Button getButton(void);
-  void resetButton(void) { button = Open; lastButtonCheck = millis(); doubleClickTicks = 0; }
+  ButtonState getButton(uint8_t which = 0);   // which is not being used here
+  void resetButton(uint8_t which = 0) { button = Open; lastButtonCheck = millis(); doubleClickTicks = 0; }
 #endif
 
 #ifndef WITHOUT_BUTTON

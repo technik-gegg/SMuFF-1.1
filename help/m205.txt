@@ -1,0 +1,37 @@
+Parameter Name          Option:
+-------------------------------
+ToolCount           	S n
+ToolSpacing         	S n.n
+BowdenLength        	S n.n
+InsertLength        	S n.n
+ReinforceLength     	S n.n
+SelectorDist        	S n.n
+HomeAfterFeed       	S 0|1
+ResetBeforeFeed     	S 0|1
+EmulatePrusa        	S 0|1
+UseServo            	S 0|1
+ServoOffPos         	S 0..180
+ServoOnPos          	S 0..180
+WipeSequence        	S "..."
+StepsPerMillimeter  	S n      X | Z
+StepsPerRevolution  	S n
+MenuAutoClose       	S n
+PowerSaveTimeout    	S n
+SendActionCmds      	S 0|1
+BacklightColor      	S n
+HasPanelDue         	S 0|1
+EncoderTicks        	S 0|1
+SendPeriodicalStats 	S 0|1
+SharedStepper       	S 0|1
+DuetLaser           	S 0|1
+InvertDir           	S 0|1    X | Y | Z
+EndstopTrigger      	S 0|1    X | Y | Z
+RSense              	S n.n    X | Y | Z
+Mode                	S 0|1|2  X | Y | Z
+CoolStepMin         	S n      X | Y | Z
+CoolStepMax         	S n      X | Y | Z
+CoolStepDown        	S n      X | Y | Z
+DriverAddress       	S n      X | Y | Z
+TOff                	S n      X | Y | Z
+MaxStallCount       	S n      X | Y | Z
+StopOnStall         	S 0|1    X | Y | Z

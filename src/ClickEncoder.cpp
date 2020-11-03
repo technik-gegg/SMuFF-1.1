@@ -12,7 +12,6 @@
 #include "ClickEncoder.h"
 
 extern void __debug(const char* fmt, ...);
-extern void encoderBeep(int);
 
 // ----------------------------------------------------------------------------
 // Button configuration (values for 1ms timer service calls)
@@ -230,11 +229,11 @@ int16_t ClickEncoder::getValue(void)
 // ----------------------------------------------------------------------------
 
 #ifndef WITHOUT_BUTTON
-ClickEncoder::Button ClickEncoder::getButton(void)
+ButtonState ClickEncoder::getButton(uint8_t which)
 {
-  ClickEncoder::Button ret = button;
-  if (button != ClickEncoder::Held) {
-    button = ClickEncoder::Open; // reset
+  ButtonState ret = button;
+  if (button != Held) {
+    button = Open;    // reset
   }
   return ret;
 }

@@ -36,33 +36,33 @@ void timerServiceTask(void* parameter) {
     for(;;) {
         xTaskNotifyWait(0, ULONG_MAX, &val, portMAX_DELAY);
         if(val == 0xAFFE) {
-            for(int i=0; i < MAX_SERIAL; i++) {
-                if(peSerials[i].getParent() != NULL) {
+            for(uint8_t i=0; i < MAX_SERIAL; i++) {
+                if(peSerials[i].getParent() != nullptr) {
                     peSerials[i].receive();
                     peSerials[i].transmit();
                 }
             }
         }
     }
-    vTaskDelete(NULL);
+    vTaskDelete(nullptr);
 }
 #endif
 
-void ZPortExpander::begin(int i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate) { 
-    
+void ZPortExpander::begin(uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate) {
+
     _pcf857x.begin(i2cAddress, is8575 ? CHIP_PCF8575 : CHIP_PCF8574);
     _maxPin = is8575 ? 15 : 7;
     _baudrate = baudrate;
 
     //__debug(PSTR("Baud rate timing: %d"), (uint16_t)_baudrate);
 #if defined(__ESP32__)
-    // xTaskCreate(timerServiceTask, "ZPEServiceTask", 10000, this, 1, &taskHandle); 
+    // xTaskCreate(timerServiceTask, "ZPEServiceTask", 10000, this, 1, &taskHandle);
 
     serialTimer.setupTimer(ZTimer::ZTIMER3, 80);                // 1us on 80MHz Timer Clock
     serialTimer.setupTimerHook(isrSerialTimerHandler);
     serialTimer.setNextInterruptInterval((uint16_t)_baudrate); // run serial timer to generate clock for baud rate
 #endif
-    for(int i=0; i < MAX_SERIAL; i++) {
+    for(uint8_t i=0; i < MAX_SERIAL; i++) {
         peSerials[i] = ZPESerial();
     }
 }
@@ -71,13 +71,13 @@ void ZPortExpander::begin(int i2cAddress, bool is8575, ZPortExpanderBaudrate bau
 * This method must be called from within the main loop()
 * if a serial port has been set up for communication.
 * It checks whether the timer has triggered a bit clock
-* and calls transmit() and receive() on all assigned 
+* and calls transmit() and receive() on all assigned
 * serial ports.
 */
 void ZPortExpander::service() {
     if(timerAction) {
-        for(int i=0; i < MAX_SERIAL; i++) {
-            if(peSerials[i].getParent() != NULL) {
+        for(uint8_t i=0; i < MAX_SERIAL; i++) {
+            if(peSerials[i].getParent() != nullptr) {
                 peSerials[i].receive();
                 peSerials[i].transmit();
             }
@@ -91,25 +91,25 @@ void ZPortExpander::service() {
     Setup as: TX pin 4, RX on pin 3
 */
 void ZPortExpander::testSerial(const char* string) {
-    
-    if(beginSerial(0) != -1) { 
+
+    if(beginSerial(0) != -1) {
         serialWrite(0, string);
     }
 }
 
 /**
- * Convenience method to set up a virtual serial Port on 
- * the Port Expander. 
+ * Convenience method to set up a virtual serial Port on
+ * the Port Expander.
  * Pass in the index of the serial port (up to 4 allowed).
  * The index is needed in send and read operations.
- * For each serial port a pair of pins are used on the port 
- * expander. Even pin numbers are TX lines (0,2,4,6), odd pin numbers 
+ * For each serial port a pair of pins are used on the port
+ * expander. Even pin numbers are TX lines (0,2,4,6), odd pin numbers
  * are RX lines (1,3,5,7).
  * If you need a different pin assignment, use addSerial() instead.
  */
-int ZPortExpander::beginSerial(int index) {
-    
-    int retVal = 0;
+int8_t ZPortExpander::beginSerial(uint8_t index) {
+
+    int8_t retVal = 0;
     switch(index) {
         case 0:
             retVal = addSerial(index, SERIAL0_TX, SERIAL0_RX);
@@ -129,16 +129,16 @@ int ZPortExpander::beginSerial(int index) {
 
 /**
  * Adds a virtual serial port on the Port Expander.
- * Define the index (number) of the port and assign the 
+ * Define the index (number) of the port and assign the
  * receive and transmit pins. If you only need to transmit,
  * assign the receive pin to -1 and vice versa.
 */
-int ZPortExpander::addSerial(int index, int txPin, int rxPin) {
+int8_t ZPortExpander::addSerial(uint8_t index, int8_t txPin, int8_t rxPin) {
     if(index < 0 || index > MAX_SERIAL) {
-        // wrong serial index 
+        // wrong serial index
         return E_WRONG_SERIAL_INDEX;
     }
-    if(peSerials[index].getParent() != NULL) {
+    if(peSerials[index].getParent() != nullptr) {
         // serial already added
         return E_SERIAL_IN_USE;
     }
@@ -147,7 +147,7 @@ int ZPortExpander::addSerial(int index, int txPin, int rxPin) {
     return 0;
 }
 
-int ZPortExpander::removeSerial(int index) {
+int8_t ZPortExpander::removeSerial(uint8_t index) {
     ZPESerial serial = ZPESerial();
     peSerials[index] = serial;
     return 0;
@@ -161,7 +161,7 @@ int ZPortExpander::removeSerial(int index) {
  * Otherwise you'll get 0 as an results.
  * Returns a character from the buffer.
  */
-char ZPortExpander::serialRead(int index) {
+char ZPortExpander::serialRead(uint8_t index) {
     return peSerials[index].read();
 }
 
@@ -170,20 +170,20 @@ char ZPortExpander::serialRead(int index) {
  * given channel (index).
  * Returns the number of characters available.
 */
-int ZPortExpander::serialAvailable(int index) {
+uint16_t ZPortExpander::serialAvailable(uint8_t index) {
     return peSerials[index].available();
 }
 
 /**
  * Writes data to the transmit buffer for sending.
- * The buffer is being copied character wise. If 
+ * The buffer is being copied character wise. If
  * a buffer overflow occurs, it may not send the whole
  * buffer but stop somewhere in the middle.
- * To prevent this, make sure you're not sending overly 
- * large strings. 
+ * To prevent this, make sure you're not sending overly
+ * large strings.
  * Returns the amount of bytes copied to the transmit buffer.
  */
-int ZPortExpander::serialWrite(int index, const char* buffer) {
+uint16_t ZPortExpander::serialWrite(uint8_t index, const char* buffer) {
     if(index >=0 && index < MAX_SERIAL) {
         if(strlen(buffer) > 0) {
             int cnt = peSerials[index].write(buffer);
@@ -196,21 +196,21 @@ int ZPortExpander::serialWrite(int index, const char* buffer) {
 /**
  * Subordinate class to mimic a serial communication over the pins
  * of the Port Expander.
- * PLEASE NOTE: 
- * This method allows a reliable serial communication with up to 600 baud 
+ * PLEASE NOTE:
+ * This method allows a reliable serial communication with up to 600 baud
  * in the 8,N,1 format (8 data bits, no parity, 1 stop bit).
  * It'll work up to 1200 baud in case your main thread ain't to busy and
- * you have some higher-level protocol which recognizes and filters transmission 
+ * you have some higher-level protocol which recognizes and filters transmission
  * errors.
  * So it's feasible for a serial data exchange where the amount of data is
  * very little and speed doesn't matter much (i.e. sending/receiving temperature
- * or humidity data to/from a subsystem). 
+ * or humidity data to/from a subsystem).
  * If you need something faster than this, you'll have to use a
  *  hardware based I2C to UART solution.
- * The bit clock for this serial interface is being generated through a timer, 
+ * The bit clock for this serial interface is being generated through a timer,
  * which guarantees a decent implementation of the timing for the serial protocol.
  */
-ZPESerial::ZPESerial(ZPortExpander* parent, int txPin, int rxPin) {
+ZPESerial::ZPESerial(ZPortExpander* parent, int8_t txPin, int8_t rxPin) {
     _parent = parent;
     _txPin = txPin;
     _rxPin = rxPin;
@@ -239,7 +239,7 @@ ZPESerial::ZPESerial(ZPortExpander* parent, int txPin, int rxPin) {
  * and maintain the underlying ring buffer accordingly.
  * Returns the amount of bytes copied to the transmit buffer.
  */
-int ZPESerial::write(const char* buffer) {
+uint16_t ZPESerial::write(const char* buffer) {
     // copy everything into the transmit buffer
     size_t cnt=0;
     for(size_t i=0; i < strlen(buffer); i++) {
@@ -260,7 +260,7 @@ int ZPESerial::write(const char* buffer) {
 /**
  * This method is similar to the usual Serial.read().
  * It'll return the next character from the receive.
- * To figure out whether or not received data is pending, 
+ * To figure out whether or not received data is pending,
  * use the available() method.
  * For the ZPortExpander you don't access this method
  * directly, you rather use serialWrite()
@@ -273,18 +273,18 @@ char ZPESerial::read() {
     return c;
 }
 
-static int syncCnt = 0;
+static uint8_t syncCnt = 0;
 /**
  * Main receiver method.
- * This method is being called periodically by service() 
+ * This method is being called periodically by service()
  * for each bit to read at the given bit clock speed
  * in order to collect a byte from the RX line.
  */
 void ZPESerial::receive() {
-    
+
     int8_t curState = _parent->digitalRead(_rxPin);
     // loop until we get at least 10 highs in a row just
-    // to make sure we don't read something in the middle 
+    // to make sure we don't read something in the middle
     // of an ongoing transmission
     if(!_rxReady) {
         syncCnt = (curState == HIGH) ? syncCnt+1 : 0;
@@ -329,7 +329,7 @@ void ZPESerial::receive() {
 
 /**
  * Main transmitter method.
- * This method is being called periodically by service() 
+ * This method is being called periodically by service()
  * for each bit to send at the given bit clock speed
  * in order to transmitt all data in the transmit buffer.
  */
@@ -363,15 +363,15 @@ void ZPESerial::transmit() {
 /*
  This ISR is called periodically from the timer to generate
  a bit clock for the software serial.
- Would have been much nicer to process sending in 
+ Would have been much nicer to process sending in
  this ISR, but unfortunatelly this causes a panic
  when I2C is being accessed within an ISR on ESP32.
- Hence, we only set a flag in here, which gets processed 
- by the service() method, which is also responsible to reset 
+ Hence, we only set a flag in here, which gets processed
+ by the service() method, which is also responsible to reset
  the flag.
  */
 void isrSerialTimerHandler() {
-/*    
+/*
 #if defined(__ESP32__)
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTaskNotifyFromISR(taskHandle, 0xAFFE, eSetValueWithOverwrite, &xHigherPriorityTaskWoken);

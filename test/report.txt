@@ -1,0 +1,8 @@
+{ESC:01;01f}GCode: {ESC:30m}{ESC:42m}{GCO}{ESC:40m}{ESC:37m}
+{ESC:02;01f}Elapsed:      {ESC:35m}{TIME}{ESC:37m}
+{ESC:02;28f}Loops:         {ESC:35m}{LOOP}{ESC:37m}
+{ESC:02;50f}Cmds:    {ESC:35m}{CMDS}{ESC:37m}
+{ESC:03;01f}Tool Changes:      {ESC:36m}{TC}{ESC:37m}
+{ESC:03;28f}Feeder Errors: {ESC:31m}{ERR}{ESC:37m}
+{ESC:03;50f}Stalls:   {ESC:31m}{STALL}{ESC:37m}
+{ESC:04;01f}Feeds ok/miss: {ESC:35m}{HIT}{ESC:37m}/{ESC:31m}{MISS}{ESC:37m}

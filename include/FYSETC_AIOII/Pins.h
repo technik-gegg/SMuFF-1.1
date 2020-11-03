@@ -25,7 +25,7 @@
 #define BOARD_INFO          "FYSETC AIO II V3.2"
 // SELECTOR (X)
 #define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
-#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW); 
+#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
 #define X_STEP_PIN          PB8
 #define X_DIR_PIN           PB9
 #define X_ENABLE_PIN        PA8
@@ -56,10 +56,14 @@
 #define HEATBED_PIN         PC6      // END
 
 #define NEOPIXEL_PIN        -1
-#define DEBUG_PIN           -1     
-#define RELAIS_PIN          -1      // Relais for stepper motor switching
+#define DEBUG_PIN           -1
+#define RELAY_PIN          -1      // Relais for stepper motor switching
 
 #define SDCS_PIN            PA4
+
+#define USB_CONNECT_PIN     -1
+#define SD_DETECT_PIN       -1
+
 #define DSP_CS_PIN          PB5     // DOGLCD-CS
 #define DSP_DC_PIN          PA15    // DOGLCD-A0
 #define DSP_RESET_PIN       PB4     // DOGLCD-RST
@@ -69,6 +73,10 @@
 #define ENCODER_BUTTON_PIN  PC12
 
 #define DEBUG_OFF_PIN       -1
+
+#define STALL_X_PIN         -1
+#define STALL_Y_PIN         -1
+#define STALL_Z_PIN         -1
 
 #define CAN_USE_SERIAL1     true
 #define CAN_USE_SERIAL2     false

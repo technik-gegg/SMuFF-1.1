@@ -19,28 +19,28 @@
 
 #include "ZFan.h"
 
-static ZFan* fanInstances[MAX_FANS]; 
+static ZFan* fanInstances[MAX_FANS];
 
-void ZFan::attach(int pin) { 
+void ZFan::attach(int8_t pin) {
   _pin = pin;
-  pinMode(_pin, OUTPUT); 
+  pinMode(_pin, OUTPUT);
   digitalWrite(_pin, 0);
 }
 
 void ZFan::detach() {
   digitalWrite(_pin, 0);
-  fanInstances[_fanIndex] = NULL;
+  fanInstances[_fanIndex] = nullptr;
   _pin = 0;
 }
 
-void ZFan::setIndex(int fanIndex) { 
+void ZFan::setIndex(int8_t fanIndex) {
   if(fanIndex != -1 && fanIndex < MAX_FANS) {
     _fanIndex = fanIndex;
     fanInstances[_fanIndex] = this;
   }
 }
 
-void ZFan::setFanSpeed(int speed) {
+void ZFan::setFanSpeed(uint8_t speed) {
   _speed = speed;
   _pulseLen = map(speed, 0, 100, _minSpeed, _maxSpeed);
 }
@@ -56,15 +56,15 @@ void ZFan::setFan() {
   }
 }
 
-void ZFan::setFanPin(int state) {
+void ZFan::setFanPin(int8_t state) {
   digitalWrite(_pin, state);
 }
 
 void isrFanTimerHandler() {
   // call all handlers for all fans periodically if the
   // internal timer is being used.
-  for(int i=0;  i< MAX_FANS; i++) {
-    if(fanInstances[i] != NULL) {
+  for(uint8_t i=0;  i< MAX_FANS; i++) {
+    if(fanInstances[i] != nullptr) {
       fanInstances[i]->setFan();
     }
   }

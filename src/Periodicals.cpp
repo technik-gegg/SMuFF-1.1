@@ -18,105 +18,66 @@
  */
 #include "SMuFF.h"
 
-volatile bool       interval10ms;     // set each time when function is called; reset yourself if needed 
-volatile bool       interval20ms;
-volatile bool       interval50ms; 
-volatile bool       interval100ms; 
-volatile bool       interval250ms; 
-volatile bool       interval500ms; 
-volatile bool       interval1s; 
-volatile bool       interval2s; 
-volatile bool       interval5s; 
-static volatile uint32_t last10ms;
-static volatile uint32_t last20ms;
-static volatile uint32_t last50ms;
-static volatile uint32_t last100ms; 
-static volatile uint32_t last250ms; 
-static volatile uint32_t last500ms; 
-static volatile uint32_t last1s; 
-static volatile uint32_t last2s; 
-static volatile uint32_t last5s; 
-
 void every10ms() {
-  if(millis()-last10ms < 10)
-    return;
-  last10ms = millis();
-  interval10ms = true;
   // Add your periodical code here
 }
 
 void every20ms() {
-  if(millis()-last20ms < 20)
-    return;
-  last20ms = millis();
-  interval20ms = true;
   // Add your periodical code here
 }
 
 void every50ms() {
-  if(millis()-last50ms < 50)
-    return;
-  last50ms = millis();
-  interval50ms = true;
   // Add your periodical code here
 }
 
 void every100ms() {
-  if(millis()-last100ms < 100)
-    return;
-  last100ms = millis();
-  interval100ms = true;
-  // Add your periodical code here 
+  // Add your periodical code here
 }
 
 void every250ms() {
-  if(millis()-last250ms < 250)
-    return;
-  last250ms = millis();
-  interval250ms = true;
   // Add your periodical code here
 }
 
 void every500ms() {
-  if(millis()-last500ms < 500)
-    return;
-  last500ms = millis();
-  interval500ms = true;
-  // Add your periodical code here 
+  // Add your periodical code here
 }
 
+bool leoNerdBlinkState  = false;
+bool LeoNerdBlinkGreen  = false;
+bool LeoNerdBlinkRed    = false;
+
 void every1s() {
-  if(millis()-last1s < 1000)
-    return;
-  last1s = millis();
-  interval1s = true;
-  // Add your periodical code here 
+  #if defined(USE_LEONERD_DISPLAY)
+  if(LeoNerdBlinkGreen || LeoNerdBlinkRed) {
+    leoNerdBlinkState = !leoNerdBlinkState;
+    encoder.setLED((LeoNerdBlinkGreen ? LED_GREEN : LED_RED), leoNerdBlinkState);
+  }
+  else {
+    if(leoNerdBlinkState) {
+      leoNerdBlinkState = false;
+      encoder.setLED(LED_GREEN, false);
+      encoder.setLED(LED_RED, false);
+    }
+  }
+  #endif
+  // Add your periodical code here
 }
 
 void every2s() {
-  if(millis()-last2s < 2000)
-    return;
-  last2s = millis();
-  interval2s = true;
-
   if(parserBusy || sendingResponse) {
     __debug(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
   }
   // send status of endstops and current tool to all listeners, if configured
-  if(!sendingResponse && smuffConfig.sendPeriodicalStats && enablePeriStat && !parserBusy) {
+  if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone && !parserBusy) {
     printPeriodicalState(0);
     if(CAN_USE_SERIAL1)                                   printPeriodicalState(1);
     if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)   printPeriodicalState(2);
     if(CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)   printPeriodicalState(3);
   }
-  // Add your periodical code here 
+  // Add your periodical code here
 }
 
 void every5s() {
-  if(millis()-last5s < 5000)
-    return;
-  last5s = millis();
-  interval5s = true;
   // Add your periodical code here
 }
 

@@ -37,13 +37,13 @@ extern void showSettingsMenu(char* menuTitle);
 extern void showBaudratesMenu(char* menuTitle);
 extern void showOptionsMenu(char* menuTitle);
 extern void showTestrunMenu(char* menuTitle);
-extern void showTMCStatus(int axis);
-extern void changeOffset(int index);
-extern void drawOffsetPosition(int index);
-extern bool selectBaudrate(int port, char* menuTitle);
+extern void showTMCStatus(uint8_t axis);
+extern void changeOffset(uint8_t index);
+extern bool selectBaudrate(uint8_t port, char* menuTitle);
 extern void selectPanelDuePort(char* menuTitle);
 
-extern const char* translateColor(int color);
-extern const char* translatePanelDuePort(int port);
-extern const char* translateTMCDriverMode(int mode);
+extern const char* translateColor(uint8_t color);
+extern const char* translatePanelDuePort(uint8_t port);
+extern const char* translateTMCDriverMode(uint8_t mode);
+extern const char* translateMS3State(uint8_t state);
 #endif

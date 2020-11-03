@@ -1,30 +1,76 @@
-# SMuFF-1.1
-
-This is the latest version of the SMuFF firmware to be compiled using PlatformIO.
-
-This is the software package for the Smart Multi Filament Feeder (SMuFF) project as published on [Thingiverse](https://www.thingiverse.com/thing:3431438).
+# Welcome to the SMuFF project
 
 ![The SMuFF](images/SMuFF-V5.png)
 
-You have to compile and install this firmware on the Wanhao i3 duplicator mini board (i.e. [AliExpress Wanhao i3-Mini](https://www.aliexpress.com/item/motherboard-i3mini-0ne-motherboard-New-2017-Wanhao-printer-i3-Mini/32849200836.html?spm=a2g0x.10010108.1000001.12.20c22a870NKth9&pvid=f20ef7d9-21cb-4600-b3eb-75382e0c6661&gps-id=pcDetailBottomMoreOtherSeller&scm=1007.13338.122670.0&scm-url=1007.13338.122670.0&scm_id=1007.13338.122670.0])) or on the SKR mini V1.1 board [AliExpress SKR mini](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53).
+Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story here on the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
 
-The Wanhao i3 mini is a very small but powerful controller, usually used to drive a 3D printer. It can handle up to 4 stepper motors, has it's own LC display and SD-Card / rotary encoder and runs on 12V as well as on 24V, it's the ideal tool for this project.  
-The SKR mini v1.1 is also very small and yet more powerful because of the 32-Bit STM micro controller chip. On a downside, it comes with no display nor a rotary encoder but you can utilize any stepper drivers you like or have laying around.
-
-This firmware can be adopted to run on other boards as well. Make sure your board of choice has all the components needed, then adopt the settings according to the hardware being used in your *platformio.ini* and *pins.h* files.
-
-The basic configuration (SMuFF.cfg) must to be located on the SD-Card. Thus, changing parameters doesn't require recompiling the firmware. Just edit the configuration JSON file and reboot.
-From version 1.6 on, the firmware has been enhanced in order to enable you making changes directly from the UI, which means: No more fiddling in the JSON file.
-Also new in the 1.6 version is the option to run GCode scripts from the SD-Card for testing purposes. In the **test** folder you'll find some sample scripts. Copy those to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly and can be stopped by clicking the encoder button.
-
-For more information head over to [the SMuFF website](https://sites.google.com/view/the-smuff/).
-
-## What else?
-
-If you like this project and find it useful, feel free to place a donation via PayPal.Me.
+If you like this project and find it useful, please consider donating.
 [![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
 
+
+
+To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
++ the [SKR mini V1.1](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53)
++ the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)
++ the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)
++ the [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r).
+
+The SKR mini series boards are very small and yet more powerful because of the 32-Bit STM micro controller unit.
+
+Of course, this firmware can be configured to run on any other controller board, as long as it meats the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. It's recommended using a 32 bit controller board instead.
+Make sure your board of choice has least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are (at least):
+
++ two stepper motor driver (sockets)
++ two endstop connectors
++ one servo connector
++ an onboard SD-Card
++ a 128 x 64 pixel display (connector)
++ a rotary encoder (connector)
+
+Simply create a new build environment in your **platformio.ini** and adopt the settings according to your controllers hardware in your custom **pins.h** file.
+
+The configuration file **SMuFF.cfg** has to be copied to the SD-Card of the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the menus, save them and reboot.
+
+From version 1.6 on, I've added the option to run GCode scripts for automated testing of your hardware.
+In the **test** folder you'll find some sample scripts. Copy those over to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly until you hit the encoder button.
+Each test result will be displayed on the LCD and also sent to the log serial port (USB).
+
+For more information about building the SMuFF and some more detailed stuff, head over to the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
+
+---
+
 ## Recent changes
+
+**2.12** - mostly code refactoring and a couple of new features
+
++ overhauled the intro in this README
++ added the [SKR mini E3 **V2.0**](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r) controller board to the build environments. Keep in mind that this controller board uses one hardware serial (Serial4) for communication with the TMC2209 stepper drivers and thus, the drivers are enumerated through the MS1/MS2 pins. Hence, you must setup the *DriverAddress* in the TMC configuration accordingly.
++ added support for the [LeoNerd OLED Module](https://www.tindie.com/products/leonerd/oled-front-panel-module/) as an replacement for my DIY display/encoder board.
+This PCB is an out-of-the-box solution and is controlled completely through the TWI/I2C interface. Hence, it'll need only 4 wires to connect with (5 if RESET gets wired up too).
+The slightly bigger OLED display (1.3") is also an improvement in terms of readability.
+To activate it, set the **USE_LEONERD_DISPLAY** definition instead of **USE_xxx_DISPLAY** in platformio.ini.
+*If you order one at the tindie store, make sure you to refer to the SMuFF project since you'll need a slightly modified firmware on the module.*
++ moved Materials from **SMUFF.CFG** into **MATERIALS.CFG** due to low memory issues when reading/writing the configuration file.
++ moved TMC settings from **SMUFF.CFG** into **TMCDRVR.CFG** due to low memory issues when reading/writing the configuration file.
++ added the F"*filename*" parameter to **M300**, which enables you to play a tune directly from SD-Card via GCode command.
++ added cursor keys evaluation (*Up*, *Down*, *Left*, *Right*) to the serial interface for controlling the menus via terminal (mainly for testing). *Up* and *Down* emulate the encoder wheel, *Right* the encoder wheel button and *Left* emulates clicking the "**Back**" option.
++ moved U8G2 library wrappers into a separate file (see U8G2Wrappers.cpp).
++ changed the behaviour in the menus UI so that separators will be skipped automatically.
++ moved list of available commands into files (mcmds.txt and gcmds.txt) to save memory. Therefore, you have to copy the **help** folder to your SD-Card.
++ moved menus and menu options into files located in the **menus** and **options** folders. Therefore, you have to copy those folders to your SD-Card.
++ moved the tune files into the **sounds** folder. Copy this folder to your SD-Card as well.
++ added I2C devices scanner at startup. If you compile for debug, you'll get a list of recognized I2C devices. Known devices will be shown by their names.
++ added support for the Adafruit Multiservo controller for up to 16 servos. Might come in handy in future versions (V5.x). To use this feature, you have to compile with the **-D MULTISERVO** option defined. **Please notice**: In version 2.4.0, this library will compile with error when using on the STM32 framework. You have to change the code manually and remove the 3rd parameter in call of *requestFrom* in the line that the compiler complains about.
++ refactored the source code quite heavily in order to keep the memory footprint (RAM) as low as possible.
+**Please notice**: If you're about to add your own extensions in the firmware, try keeping the RAM usage **well below 90%**. Otherwise you may experience random hangs/resets because heap memory will colide with stack memory!
++ added *LBtnDown*, *LBtnHold*, *RBtnDown*, *RBtnHold* settings in SMUFF.CFG for **LeoNerd's OLED module**. Theses will take any GCode, which will be processed as the event occurs. This will enable you to configure the two soft buttons as you need them (i.e. Motors Off - M18 or Reset M999). The *RBtnHold* is predefined to open/close the lid servo if no other GCode has been applied to.
++ renamed **servoRevolver** to **servoLid** for better understanding.
++ renamed **Acceleration** to **AccelSpeed** in **SMUFF.CFG**.
++ added **MS3** to stepper sections of **SMUFF.CFG**. This setting is needed on the SKR E3-DIP, since the MS3 signal (used to setup the micro stepping) is connected to the MCU and thus needs to be set via software in case you have to. The setting can be either **0** (don't care), **1** (for setting it to LOW) or **2** (for setting it to HIGH).
++ refactored *smuffConfig* structure in SMuFF.h.
++ added individual servo closed position to each tool. This makes it easier to apply the right amount of pressure to each lid, especially when using the new levered lid closing mechanism. Changing the closed position from within the menu will take the currently selected tool into account.
++ replaced *NULL* with *nullptr* to avoid any compiler ambiguity in future releases.
++ added stall detection logic to the feeder as well. If you're going to use this feature, be aware that it'll slow down the feed speed to about a third of the normal speed. Though, it'll reduce feed errors and thus make the SMuFF more reliable. Read all about the setup [here](https://sites.google.com/view/the-smuff/how-to/tutorials/set-up-the-tmc2209?authuser=0).
 
 **2.11** - More streamlining / bug fixing
 
@@ -41,20 +87,20 @@ If you like this project and find it useful, feel free to place a donation via P
 + added GCode **M412** which will switch on/off runout/jam detection or report its status, when using a Duet3D Laser Sensor.
 + removed configuration file variants. There's only one general config file left.
 + renamed configuration file from **.CFG** to **.CFG.json**. This makes it easier for some after market *VS-Code extensions* to validate and format its content. **Please notice:** This file is meant as a template for your initial configuration. Make sure you rename the template file to "**SMuFF.CFG**" after you've copied it onto the SMuFF's SD-Card.
-+ added GCode **M17** which enables you to switch a relay in order to switch from external stepper (3D-Printer) to internal stepper (SMuFF). The parameter must either be **E** for the **external** or **I** for the **internal** stepper. The relay is controlled over the **RELAIS_PIN** in Pins.h. Read more about this [new feature here](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.qbpb6pvlq20x).
++ added GCode **M17** which enables you to switch a relay in order to switch from external stepper (3D-Printer) to internal stepper (SMuFF). The parameter must either be **E** for the **external** or **I** for the **internal** stepper. The relay is controlled over the **RELAY_PIN** in Pins.h. Read more about this [new feature here](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.qbpb6pvlq20x).
 + overhauled Settings Menu (moved additional settings into Options menu).
 + added **Serial0Baudrate** (for USB port) to config files, renamed **SerialDueBaudrate** to **Serial3Baudrate**.
 + fixed a bug for the old Revolver version where it refused to home correctly.
 + added defines for SERVO_LID and SERVO_WIPER for better code readability.
 + changed the behavior of boolean inputs (YES/NO and HI/LO) in the menus (they're single click now).
-+ changed the increments on all stepper speeds (they'll now increment/decrement by 50).
++ changed the increments on all stepper speeds (they'll now increment/decrement by 5).
 + moved some of the most common build flags (i.e. USE_xxx_DISPLAY) to the top of [platformio.ini](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0#h.3e6724efr6vl).
 + moved all initializing functions into **SetupInit.cpp**. SMuFF.cpp and setup() got much more streamlined now.
 + moved all periodical functions into **Periodicals.cpp**.
 + periodicals are now called from within **loop()**, which makes them more stable when handling serial I/O.
 + added the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4) and [SKR mini E3 DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3) to the collection of usable boards.
-+ rewrote the timers code. Encoder, Servos and Fans are now being served by one general purpose timer only. Servos are far more stable now.
-+ added TMC-Stepper library for being able to support TMC2209 stepper drivers.
++ rewrote the timers code. Encoder, Servos and Fans are now being served by one general purpose timer only. Servos are far less jittery now.
++ added *TMC-Stepper library* for being able to support TMC2209 stepper drivers.
 + added TMC-Params to the stepper menus. You'll need those settings at least on the SKR mini **E3**, on the SKR mini **E3DIP** when using TMC2209s.
 + added GCodes **M122**, **M350**, **M569**, **M906** and **M914** for handling TMC stepper driver settings (see Marlin GCode what they're used for).
 + got the USB port working on E3 and E3 DIP on Windows.
@@ -63,8 +109,8 @@ If you like this project and find it useful, feel free to place a donation via P
 **2.09** - Bugfix for PMMU mode
 
 + fixed the bug which didn't realize the **A**(bort) command comming from Marlins MMU code
-+ added SOFTRESET option for Marlin in MMU2 mode. This will not initiate a hard reset on the SMuFF, instead it'll pretend to have been resetted. This option is needed because some bootloaders will send various information at boot up and thus confuse the MMU2 code in Marlin.
-+ added build flag MARLIN2_ONLY to overcome incompatibilities between Marlin 2.0 and Prusa firmware. Remove this build flag **only** when you're intending to run the SMuFF on a Prusa MK2/3/S.
++ added **SOFTRESET** option for Marlin in MMU2 mode. This will not initiate a hard reset on the SMuFF, instead it'll pretend to have been reset. This option was needed because some bootloaders will send various information over the serial interface at boot and thus confuse the MMU2 code in Marlin.
++ added build flag **MARLIN2_ONLY** to overcome incompatibilities between Marlin 2.0 and Prusa firmware. Remove this build flag **only** when you're intending to run the SMuFF on a Prusa MK2/3/S.
 
 **2.08** - Added Display menu in settings
 
@@ -119,6 +165,8 @@ This setting defines how the wiper servo will run. The sequence is a string in t
 + cleaned up platformio.ini. Be aware that from V2.xx on 8 bit controllers (such as the ATMega2560) will not be supported for this project anymore and the firmware code might not compile correctly.
 + tested configurations for other boards like the SKR 1.3/1.4. Theses boards can't yet be used as controller boards for the SMuFF because the framework for LPC176x MCUs do not support the Arduino standard and compiling will fail without adding some sort of HAL to it. Though, as the development of these platforms improve rapidly, this might not be an issue in the future anymore.
 
+---
+
 **1.67** - Bugfix for SKR in Duet3D mode
 
 + fixed sending endstop states to wrong serial port for Duet3D. Please notice: In Duet3D mode you **must use** the Serial 1 (the one labeled TFT on the board). Serial 3 will not receive the endstop states, which are needed to make the scripts on the Duet3D work correctly.
@@ -153,10 +201,6 @@ This setting defines how the wiper servo will run. The sequence is a string in t
 + Modified the servo module, so that it can handle more than one servo. Also, redefined the pins for the servo in the Pins.h. Servos are now driven by the endstops Y+ and Z+ ports.
 + Added experimental code to replace the Revolver stepper motor with an standard sized servo. This is still work in progress.
 
-**1.62** - Not been published
-
-**1.61** - Not been published
-
 **1.60** - New enhancements
 
 + restructured the Main Menu.
@@ -179,12 +223,6 @@ For example: The only way to reach the *Settings Menu* screen is the long click 
 Hence, I've decided to focus on the 32-Bit devices in future versions.
 If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's fine. There's no need to switch over to the SKR mini unless you *really badly need* some of the enhancements and extensions that may come in the future.
 
-**1.59** - Not been published
-
-**1.58** - Not been published
-
-**1.57** - Not been published
-
 **1.56** - Optimization
 
 + added resetting the "Feder Jammed" state by double clicking the encoder button.
@@ -198,8 +236,6 @@ If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's 
 + added Cancel / Retry option when loading fails.
 + sound (beeper) now works flawlessly on SKR (STM32).
 + SKR still has issues with the fan (it's either full speed or no speed).
-
-**1.54** - Not been published
 
 **1.53** - This version has got some major changes:
 
@@ -218,17 +254,9 @@ If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's 
 + Added *StepDelay* setting to SMUFF.CFG for the SKR Mini. This is needed because of the speed of an 32 bit board to keep the steppers from stalling.
 + Added schematics of the SKR Mini LCD board.
 
-**1.52** - Not been published
-
-**1.51** - Not been published
-
-**1.50**  - Not been published
-
-**1.4x** - Not been published
-
-**1.4**  - Major changes to gain better compatibility for Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet. 
+**1.4**  - Major changes to gain better compatibility for Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet.
 The configuration file (SMUFF.CFG) has got a new setting which defines the distance from the filament guide to the Selector (see *SelectorDist* setting).
 
 **1.3**  - Some modifications to gain Prusa MMU2 compatibility
 
-**1.2**  - Initial published version
+**1.2**  - Initialy published version

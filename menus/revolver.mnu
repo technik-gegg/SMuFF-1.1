@@ -1,0 +1,15 @@
+◀ BACK|1
+TMC Settings	%s▶|2
+Invert DIR	%s|3
+Endstop Trigger	%s|4
+Step Delay	%d|5
+Max. Speed	%d|6
+Accel. Speed	%d|7
+Accel. Distance	%d|8
+1st Tool Offset	%d|9
+Steps per Rev.	%d|10
+Home After Feed	%s|11
+Reset Bef. Feed	%s|12
+Wiggle	%s|13
+Use Lid Servo	%s|14
+MS3 Pin State	%s|15

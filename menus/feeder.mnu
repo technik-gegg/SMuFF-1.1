@@ -1,0 +1,18 @@
+◀ BACK|1
+TMC Settings	%s▶|2
+Invert DIR	%s|3
+Endstop Trigger	%s|4
+Step Delay	%d|5
+Max. Speed	%d|6
+Accel. Speed	%d|7
+Accel. Distance	%d|8
+Steps per mm	%d|9
+Enable Chunks	%s|10
+Feed Chunks	%d|11
+Insert Length	%s|12
+Insert Speed	%d|13
+Reinforce Len.	%s|14
+External Ctrl.	%s|15
+Is Shared	%s|16
+MS3 Pin State	%s|17
+Endstop2 Trigger	%s|18

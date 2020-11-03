@@ -25,43 +25,33 @@ static CRGB ColorsFastLED[8];
 static CRGB ColorsFastLED[8] = { CRGB::Black, CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Cyan, CRGB::Magenta, CRGB::Yellow, CRGB::White };
 #endif
 
-// old function - meant to simulate beeps with 
-// different colors
-void showLed(int mode, int count) {
-  
-  /*
-  CRGB color;
+// simulate beeps with different LEDs on LeoNerd display
+void showLed(uint8_t mode, uint8_t count) {
+#if defined(USE_LEONERD_DISPLAY)
   switch(mode) {
-    case 0: // off
-      color = CRGB::Black;
+    case 1: encoder.setLED(1, true); break;
+    case 2: encoder.setLED(2, true); break;
+    case 3: encoder.setLED(1, true); encoder.setLED(2, true); break;
+    case 4:
+      encoder.setLED(LED_GREEN, false);
+      encoder.setLED(LED_RED, false);
+      encoder.setLED(LED_GREEN, true);
+      delay(500);
+      encoder.setLED(LED_GREEN, false);
+      encoder.setLED(LED_RED, true);
+      delay(500);
+      encoder.setLED(LED_RED, false);
       break;
-    case 1: // beep
-      color = CRGB::Red;
-      break;
-    case 2: // longBeep
-      color = CRGB::Cyan;
-      break;
-    case 3: // userBeep
-      color = CRGB::Orange;
-      break;
-    case 4: // initBeep
-      color = CRGB::Pink;
-      break;
-    default: // unknown
-      color = CRGB::Yellow;
-      break;
+    default: encoder.setLED(LED_GREEN, false); encoder.setLED(LED_RED, false); break;
   }
-  for(int i=0; i< NUM_LEDS; i++)
-    leds[i] = color;
-  FastLED.show();
-  */
+#endif
 }
 
 void setBacklightRGB(byte R, byte G, byte B) {
   setBacklightRGB((int)(R&1) | (G&1)<<1 | (B&1)<<2);
 }
 
-void setBacklightRGB(int color) {
+void setBacklightRGB(uint8_t color) {
 #if defined(RGB_LED_R_PIN)
   pinMode(RGB_LED_R_PIN, OUTPUT);
   digitalWrite(RGB_LED_R_PIN, color & 1);
@@ -82,21 +72,21 @@ void setBacklightCRGB(CRGB color) {
 #endif
 }
 
-void setFastLED(int index, CRGB color) {
+void setFastLED(uint8_t index, CRGB color) {
 #if defined(USE_FASTLED_BACKLIGHT)
   leds[index] = color;
   FastLED.show();
 #endif
 }
 
-void setFastLEDIndex(int index, int color) {
+void setFastLEDIndex(uint8_t index, uint8_t color) {
 #if defined(USE_FASTLED_BACKLIGHT)
     leds[index] = ColorsFastLED[color];
     FastLED.show();
 #endif
 }
 
-void setFastLEDIntensity(int intensity) {
+void setFastLEDIntensity(uint8_t intensity) {
 #if defined(USE_FASTLED_BACKLIGHT)
     FastLED.setBrightness(intensity);
 #endif
@@ -112,7 +102,7 @@ void setBacklightIndex(int color) {
 
 void testFastLED() {
 #if defined(USE_FASTLED_BACKLIGHT)
-  for(int i=0; i< NUM_LEDS; i++) {
+  for(uint8_t i=0; i< NUM_LEDS; i++) {
     leds[i] = ColorsFastLED[1];
     FastLED.show();
     delay(250);

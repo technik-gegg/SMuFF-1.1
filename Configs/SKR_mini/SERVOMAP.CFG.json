@@ -1,0 +1,8 @@
+{
+   "T0": { "Close": 90, "Output": 15 },
+   "T1": { "Close": 90, "Output": 11 },
+   "T2": { "Close": 90, "Output": 8 },
+   "T3": { "Close": 90, "Output": 6 },
+   "T4": { "Close": 90, "Output": 3 },
+   "Wiper": { "Output": 1 }
+}

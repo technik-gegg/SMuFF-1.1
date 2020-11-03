@@ -21,11 +21,14 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.11"
+#define VERSION_STRING    "V2.12"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-09-02"
+#define VERSION_DATE      "2020-10-31"
 #define CONFIG_FILE       "SMUFF.CFG"
+#define MATERIALS_FILE    "MATERIALS.CFG"
+#define TMC_CONFIG_FILE   "TMCDRVR.CFG"
+#define SERVOMAP_FILE     "SERVOMAP.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 #define TUNE_FILE         "TUNE.DAT"
 #define BEEP_FILE         "BEEP.DAT"
@@ -38,35 +41,56 @@
 #define MAX_JSON          4096              // 4K of temporary buffer for the JSON data
 #endif
 
+#define MAX_MATERIAL_LEN  12                // max. length of material names
+
 #define NUM_STEPPERS      3
 #define SELECTOR          0
 #define REVOLVER          1
 #define FEEDER            2
 
 #define MIN_TOOLS         2
-#define MAX_TOOLS         15
+#define MAX_TOOLS         12
 
 #define DSP_CONTRAST        200
 #define MIN_CONTRAST        60
 #define MAX_CONTRAST        250
 
-#define I2C_SLAVE_ADDRESS   0x88
-#define I2C_DISPLAY_ADDRESS 0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
+#define I2C_SLAVE_ADDRESS    0x88
+#define I2C_DISPLAY_ADDRESS  0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
+#define I2C_ENCODER_ADDRESS  0x3D        // default address for the LeoNerd Encoder
+#define I2C_SERVOCTL_ADDRESS 0x40        // default address for multi servo controller
+#define I2C_SERVOBCAST_ADDRESS 0x70      // default address for multi servo controller (Broadcast Address)
 
 #define SERVO_WIPER         0
 #define SERVO_LID           1
 
+#define SERVO_CLOSED_OFS    55           // for Multiservo
+
+#define REMOTE_NONE         0
+#define REMOTE_UP           1
+#define REMOTE_DOWN         2
+#define REMOTE_SELECT       3
+#define REMOTE_ESCAPE       4
+#define REMOTE_HOME         5
+#define REMOTE_END          6
+#define REMOTE_PGUP         7
+#define REMOTE_PGDN         8
+
 #if defined(__STM32F1__)
 #define STEPPER_PSC         9           // 8MHz on STM32 (72MHz MCU)
+//#define STEPPER_PSC         6           // 12MHz on STM32 (72MHz MCU)
 #elif defined(__ESP32__)
 #define STEPPER_PSC         10          // 8MHz on ESP32 (80MHz MCU)
-#else 
+#else
 #define STEPPER_PSC         2           // 8MHz on AVR (16MHz MCU)
 #endif
-#define MIN_MMS             1           // minimum moving speed for stepper in mm/s
-#define MAX_MMS             400         // maximum moving speed for stepper in mm/s
 #define MAX_POWER           2000        // maximum allowed power for rms_current()
 #define MAX_STALL_COUNT     100         // maximum stall counter for stepper
+#define MAX_MMS             700         // maximum mm/s for in menus
+#define MAX_TICKS           32000       // maximum ticks in menus
+#define INC_MMS             5           // speed increment for mm/s
+#define INC_TICKS           50          // speed increment for ticks
+#define MAX_MENU_ORDINALS   40
 
 #include "Pins.h"                       // path is defined in build environment of platformio.ini (-I)
 
@@ -95,12 +119,13 @@
 #define LED_WHITE_COLOR         7
 
 #define BASE_FONT               u8g2_font_6x12_t_symbols
-#define BASE_FONT_BIG           u8g2_font_7x14B_tf
-#define SMALL_FONT              u8g2_font_6x10_mr
-#define STATUS_FONT             u8g2_font_7x14_tf
-#define LOGO_FONT               u8g2_font_helvR08_tf
+#define BASE_FONT_BIG           u8g2_font_7x14_tf
+#define SMALL_FONT              u8g2_font_6x10_tr
+#define STATUS_FONT             BASE_FONT_BIG
+#define LOGO_FONT               BASE_FONT
 #define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
-#define SYMBOL_FONT             u8g2_font_unifont_t_symbols
+#define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x
+//#define SYMBOL_FONT             u8g2_font_unifont_t_symbols
 
 
 #endif

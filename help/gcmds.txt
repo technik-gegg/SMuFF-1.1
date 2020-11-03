@@ -1,0 +1,8 @@
+Available G Commands 
+  G0	-	Move 
+  G1	-	Move 
+  G4	-	Dwell 
+  G12	-	Wipe filament 
+  G28	-	Home 
+  G90	-	Absolute positioning 
+  G91	-	Relative positioning

@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 #include <stdlib.h>
 #include <Arduino.h>
@@ -42,55 +43,54 @@ static volatile bool timerSet = false;
 class ZServo {
 public:
   ZServo() { _pin = 0; };
-  ZServo(int servoIndex, int pin) { attach(pin); setIndex(servoIndex); }
+  ZServo(int8_t servoIndex, int8_t pin) { attach(pin); setIndex(servoIndex); }
 
-  void attach(int pin);
-  void attach(int pin, bool useTimer, int servoIndex = -1);
-  void attach(int pin, int servoIndex) { attach(pin); setIndex(servoIndex); }
-  void setIndex(int servoIndex);
-  void detach();
-  void write(int val);                     
-  void writeMicroseconds(int microseconds);
-  bool setServoPos(int val);                  // sets the servo position if val is between 0 and 180, otherwise it sets the frequency (ms)
-  void setServoMS(int microseconds);          // sets the frequency in milliseconds
-  void setServo();                            // method called cyclically from an interrupt to refresh the servo position
-  void setDegreeMinMax(int min, int max) { _minDegree = min; _maxDegree = max; }
-  void setPulseWidthMinMax(int min, int max) { _minPw = min; _maxPw = max; }
-  void setPulseWidthMin(int min) { _minPw = min; }
-  void setPulseWidthMax(int max) { _maxPw = max; }
-  void stop(bool state) { _timerStopped = state; }
-  bool isTimerStopped() { return _timerStopped; }
-  bool hasTimer() { return _useTimer; }
-  void setMaxCycles(int val) { _maxCycles = val;}
-  int  getMaxCycles() { return _maxCycles;}
+  void    attach(int8_t pin);
+  void    attach(int8_t pin, bool useTimer, int8_t servoIndex = -1);
+  void    attach(int8_t pin, int8_t servoIndex) { attach(pin); setIndex(servoIndex); }
+  void    setIndex(int8_t servoIndex);
+  void    detach();
+  void    write(uint16_t val);
+  void    writeMicroseconds(uint16_t microseconds);
+  bool    setServoPos(uint8_t degree);           // sets the servo position in degree (between 0 and 180)
+  void    setServoMS(uint16_t microseconds);     // sets the frequency in milliseconds
+  void    setServo();                            // method called cyclically from an interrupt to refresh the servo position
+  void    setDegreeMinMax(uint8_t min, uint8_t max) { _minDegree = min; _maxDegree = max; }
+  void    setPulseWidthMinMax(uint16_t min, uint16_t max) { _minPw = min; _maxPw = max; }
+  void    setPulseWidthMin(uint16_t min) { _minPw = min; }
+  void    setPulseWidthMax(uint16_t max) { _maxPw = max; }
+  void    stop(bool state) { _timerStopped = state; }
+  bool    isTimerStopped() { return _timerStopped; }
+  bool    hasTimer() { return _useTimer; }
+  void    setMaxCycles(uint8_t val) { _maxCycles = val;}
+  uint8_t getMaxCycles() { return _maxCycles;}
 
-  int getDegree() { return _degree; }
-  void getDegreeMinMax(int* min, int* max) { *min = _minDegree; *max = _maxDegree; }
-  void getPulseWidthMinMax(int* min, int* max) { *min = _minPw; *max = _maxPw; }
+  uint8_t getDegree() { return _degree; }
+  void    getDegreeMinMax(uint8_t* min, uint8_t* max) { *min = _minDegree; *max = _maxDegree; }
+  void    getPulseWidthMinMax(uint16_t* min, uint16_t* max) { *min = _minPw; *max = _maxPw; }
 
 private:
-  void setServoPin(int state); 
-  int _pin;
-  bool _useTimer = false;
-  bool _timerStopped = false;
-  int _servoIndex;
-  int _degree;
-  int _lastDegree;
+  void    setServoPin(int8_t state);
+  int8_t            _pin;
+  int8_t            _pinState;
+  bool              _useTimer = false;
+  bool              _timerStopped = false;
+  int8_t            _servoIndex;
+  uint8_t           _degree;
+  uint8_t           _lastDegree;
 #ifdef __STM32F1__
-  uint32_t _lastUpdate;
+  uint32_t          _lastUpdate;
   volatile uint32_t _tickCnt;
 #else
-  unsigned int _lastUpdate;
-  volatile int _tickCnt;
+  unsigned uint32_t _lastUpdate;
+  volatile uint32_t _tickCnt;
 #endif
-  volatile int _dutyCnt;
-  int _maxCycles;
-  int _pulseLen;
-  int _minPw = US_PER_PULSE_0DEG;
-  int _maxPw = US_PER_PULSE_180DEG;
-  int _minDegree = 0;
-  int _maxDegree = 180;
-  int _toggle = 0;
-
+  volatile uint8_t  _dutyCnt;
+  uint8_t           _maxCycles;
+  uint16_t          _pulseLen;
+  uint16_t          _minPw = US_PER_PULSE_0DEG;
+  uint16_t          _maxPw = US_PER_PULSE_180DEG;
+  uint8_t           _minDegree = 0;
+  uint8_t           _maxDegree = 180;
 };
 #endif

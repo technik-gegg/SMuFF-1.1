@@ -6,7 +6,7 @@ static int PCintMode[24];
 
 typedef void (*voidFuncPtr)(void);
 
-volatile static voidFuncPtr PCintFunc[24] = { NULL };
+volatile static voidFuncPtr PCintFunc[24] = { nullptr };
 
 volatile static uint8_t PCintLast[3];
 
@@ -40,7 +40,7 @@ void PCattachInterrupt(uint8_t pin, void (*userFunc)(void), int mode) {
 	*pcmask |= bit;
 	// enable the interrupt
 	PCICR |= 0x01 << port;
-	
+
 	// Fix init by SkyWodd
 	PCintLast[0] = *portInputRegister(2);
 	PCintLast[1] = *portInputRegister(3);
@@ -94,7 +94,7 @@ static void PCint(uint8_t port) {
 			if ((PCintMode[pin] == CHANGE
 					|| ((PCintMode[pin] == RISING) && (curr & bit))
 					|| ((PCintMode[pin] == FALLING) && !(curr & bit)))
-					&& (PCintFunc[pin] != NULL)) {
+					&& (PCintFunc[pin] != nullptr)) {
 				PCintFunc[pin]();
 			}
 		}

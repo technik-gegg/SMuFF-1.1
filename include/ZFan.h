@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 #include <stdlib.h>
 #include <Arduino.h>
@@ -35,32 +36,32 @@ class ZFan {
 public:
   ZFan() { _pin = 0; };
 
-  void attach(int pin);
-  void attach(int pin, int fanIndex) { attach(pin); setIndex(fanIndex); }
-  void setIndex(int fanIndex);
+  void attach(int8_t pin);
+  void attach(int8_t pin, int8_t fanIndex) { attach(pin); setIndex(fanIndex); }
+  void setIndex(int8_t fanIndex);
   void detach();
-  void setFanSpeed(int speed);
+  void setFanSpeed(uint8_t speed);
   void setFan();
-  void setFanPin(int state);
-  void setPulseWidthMinMax(int min, int max) { _minSpeed = min; _maxSpeed = max; }
-  void setPulseWidthMin(int min) { _minSpeed = min; }
-  void setPulseWidthMax(int max) { _maxSpeed = max; }
+  void setFanPin(int8_t state);
+  void setPulseWidthMinMax(uint8_t min, uint8_t max) { _minSpeed = min; _maxSpeed = max; }
+  void setPulseWidthMin(uint8_t min) { _minSpeed = min; }
+  void setPulseWidthMax(uint8_t max) { _maxSpeed = max; }
 
 private:
-  int   _pin;
-  bool  _useTimer = false;
-  bool  _timerStopped = false;
-  int   _fanIndex;
-  int   _speed;
-  int   _minSpeed = 0;
-  int   _maxSpeed = FAN_DUTY_CYCLE;
+  int8_t    _pin;
+  bool      _useTimer = false;
+  bool      _timerStopped = false;
+  int8_t    _fanIndex;
+  int8_t    _speed;
+  uint8_t   _minSpeed = 0;
+  uint8_t   _maxSpeed = FAN_DUTY_CYCLE;
 #ifdef __STM32F1__
   volatile uint32_t _tickCnt;
 #else
-  volatile int _tickCnt;
+  volatile uint16_t _tickCnt;
 #endif
-  volatile int _dutyCnt;
-  int   _loopCnt;
-  int   _pulseLen;
+  volatile uint8_t _dutyCnt;
+  uint16_t   _loopCnt;
+  uint16_t   _pulseLen;
 };
 #endif

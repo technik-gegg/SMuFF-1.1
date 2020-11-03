@@ -60,69 +60,69 @@ typedef enum {
 class ZPortExpander {
 public:
     ZPortExpander() { }
-    ZPortExpander(int i2cAddress) { begin(i2cAddress, false); }
-    ZPortExpander(int i2cAddress, bool is8575) { begin(i2cAddress, is8575); }
+    ZPortExpander(uint8_t i2cAddress) { begin(i2cAddress, false); }
+    ZPortExpander(uint8_t i2cAddress, bool is8575) { begin(i2cAddress, is8575); }
 
-    void    begin(int i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate = BAUD_600_TIM);
-    void    pinMode(int pin, int mode)          { _pcf857x.pinMode(pin, mode); }
-    int     digitalRead(int pin)                { return readPin(pin); }
-    void    digitalWrite(int pin, int state)    { writePin(pin, state); }
-    int     readPin(int pin)                    { return (pin == -1 || pin > _maxPin) ? 0 : _pcf857x.digitalRead(pin); }
-    void    writePin(int pin, int state)        { if(pin != -1) _pcf857x.digitalWrite(pin, state); }
-    void    setPin(int pin)                     { writePin(pin, HIGH); }
-    void    resetPin(int pin)                   { writePin(pin, LOW); }
-    void    togglePin(int pin)                  { _pcf857x.toggle(pin); }
-    int     addSerial(int index = 0, int txPin = SERIAL0_TX, int rxPin = SERIAL0_RX);
-    int     removeSerial(int index);
-    int     beginSerial(int index);
-    int     serialWrite(int index, const char* buffer);
-    char    serialRead(int index);
-    int     serialAvailable(int index);
-    void    service();
-    void    testSerial(const char* string);
+    void        begin(uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate = BAUD_600_TIM);
+    void        pinMode(uint8_t pin, uint8_t mode)     { _pcf857x.pinMode(pin, mode); }
+    uint8_t     digitalRead(int8_t pin)                { return readPin(pin); }
+    void        digitalWrite(int8_t pin, int8_t state) { writePin(pin, state); }
+    uint8_t     readPin(int8_t pin)                    { return (pin == -1 || pin > _maxPin) ? 0 : _pcf857x.digitalRead(pin); }
+    void        writePin(int8_t pin, uint8_t state)    { if(pin != -1) _pcf857x.digitalWrite(pin, state); }
+    void        setPin(int8_t pin)                     { writePin(pin, HIGH); }
+    void        resetPin(int8_t pin)                   { writePin(pin, LOW); }
+    void        togglePin(int8_t pin)                  { _pcf857x.toggle(pin); }
+    int8_t      addSerial(uint8_t index = 0, int8_t txPin = SERIAL0_TX, int8_t rxPin = SERIAL0_RX);
+    int8_t      removeSerial(uint8_t index);
+    int8_t      beginSerial(uint8_t index);
+    uint16_t    serialWrite(uint8_t index, const char* buffer);
+    char        serialRead(uint8_t index);
+    uint16_t    serialAvailable(uint8_t index);
+    void        service();
+    void        testSerial(const char* string);
     ZPortExpanderBaudrate getBaudrate() { return _baudrate; }
 
 private:
     PCF857X _pcf857x = PCF857X();
-    int     _maxPin = 7;
+    int8_t  _maxPin = 7;
     ZPortExpanderBaudrate _baudrate;
 };
 
 class ZPESerial {
 public:
-    ZPESerial() { _txPin = -1; _rxPin = -1; _parent = NULL;}
-    ZPESerial(ZPortExpander* parent, int txPin, int rxPin);
+    ZPESerial() { _txPin = -1; _rxPin = -1; _parent = nullptr;}
+    ZPESerial(ZPortExpander* parent, int8_t txPin, int8_t rxPin);
 
-    void    receive();
-    void    transmit();
-    int     write(const char* buffer);
-    char    read();
+    void        receive();
+    void        transmit();
+    uint16_t    write(const char* buffer);
+    char        read();
     ZPortExpander* getParent() { return _parent; }
-    int     getRxPin() { return _rxPin; }
-    int     getTxPin() { return _txPin; }
-    int     available() { return availableRx(); }
-    int     availableRx() { return (_rxBufferH < _rxBufferL) ? _rxBufferL - _rxBufferH : _rxBufferH - _rxBufferL; }
-    int     availableTx() { return (_txBufferH < _txBufferL) ? _txBufferL - _txBufferH : _txBufferH - _txBufferL; }
+    int8_t      getRxPin() { return _rxPin; }
+    int8_t      getTxPin() { return _txPin; }
+    uint16_t    available() { return availableRx(); }
+    uint16_t    availableRx() { return (_rxBufferH < _rxBufferL) ? _rxBufferL - _rxBufferH : _rxBufferH - _rxBufferL; }
+    uint16_t    availableTx() { return (_txBufferH < _txBufferL) ? _txBufferL - _txBufferH : _txBufferH - _txBufferL; }
 
 private:
     ZPortExpander* _parent;
-    byte    _txBuffer[MAX_TX_BUFFER];
-    byte    _rxBuffer[MAX_RX_BUFFER];
-    int     _txBufferH;
-    int     _txBufferL;
-    int     _rxBufferH;
-    int     _rxBufferL;
-    int     _rxPin;
-    int     _txPin;
-    bool    _rxReady;
-    bool    _txReady;
-    int8_t  _bitCntRx;
-    int8_t  _bitCntTx;
-    int8_t  _dataRx;
-    int16_t _dataTx;
-    bool    _gotStart;
-    bool    _gotStop;
-    int8_t  _prevState;
+    byte        _txBuffer[MAX_TX_BUFFER];
+    byte        _rxBuffer[MAX_RX_BUFFER];
+    uint16_t    _txBufferH;
+    uint16_t    _txBufferL;
+    uint16_t    _rxBufferH;
+    uint16_t    _rxBufferL;
+    int8_t      _rxPin;
+    int8_t      _txPin;
+    bool        _rxReady;
+    bool        _txReady;
+    int8_t      _bitCntRx;
+    int8_t      _bitCntTx;
+    int8_t      _dataRx;
+    int16_t     _dataTx;
+    bool        _gotStart;
+    bool        _gotStop;
+    int8_t      _prevState;
 };
 
 static ZPESerial        peSerials[MAX_SERIAL];

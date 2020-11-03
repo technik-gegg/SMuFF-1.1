@@ -24,6 +24,8 @@
 #endif
 
 #if defined(USE_COMPOSITE_SERIAL)
+extern SdFs SD;
+
 bool writeSDCard(const uint8_t *writebuff, uint32_t startSector, uint16_t numSectors) {
   return SD.card()->writeSectors(startSector, writebuff, numSectors);
 }
@@ -38,27 +40,23 @@ void initUSB() {
   if(USB_CONNECT_PIN != -1) {
     pinMode(USB_CONNECT_PIN, OUTPUT);
     digitalWrite(USB_CONNECT_PIN, HIGH);      // USB clear connection
-    delay(1000);                              // give OS time to notice
+    delay(250);                               // give OS time to notice
     digitalWrite(USB_CONNECT_PIN, LOW);       // USB reestablish connection
   }
 
   #if defined(USE_COMPOSITE_SERIAL)
   /* Not tested yet */
-  bool sdStat;
-  if(SDCS_PIN != -1) {
-    sdStat = SD.begin(SDCS_PIN, SD_SCK_MHZ(4));
-  }
-  else {
-    sdStat = SD.begin();
-  }
+  bool sdStat = initSD(false);
+  __debug(PSTR("SD status"), sdStat);
   if(sdStat) {
     USBComposite.setProductId(PRODUCT_ID);
     MassStorage.setDriveData(0, SD.card()->sectorCount(), readSDCard, writeSDCard);
     MassStorage.registerComponent();
     CompositeSerial.registerComponent();
     USBComposite.begin();
+    __debug(PSTR("USB Composite started"));
     delay(2000);
-  }  
+  }
   #endif
 #endif
 }
@@ -83,21 +81,21 @@ void setupBuzzer() {
 }
 
 void readSequences() {
-  String tmp = readTune(TUNE_FILE);
-  if(tmp.length() > 0)
-    tuneSequence = tmp;
+  const char* tmp = readTune(TUNE_FILE);
+  if(tmp != nullptr)
+    strncpy(tuneStartup, tmp, ArraySize(tuneStartup));
   tmp = readTune(BEEP_FILE);
-  if(tmp.length() > 0)
-    tuneBeep = tmp;
+  if(tmp != nullptr)
+    strncpy(tuneBeep, tmp, ArraySize(tuneBeep));
   tmp = readTune(LONGBEEP_FILE);
-  if(tmp.length() > 0)
-    tuneLongBeep = tmp;
+  if(tmp != nullptr)
+    strncpy(tuneLongBeep, tmp, ArraySize(tuneLongBeep));
   tmp = readTune(USERBEEP_FILE);
-  if(tmp.length() > 0)
-    tuneUser = tmp;
+  if(tmp != nullptr)
+    strncpy(tuneUser, tmp, ArraySize(tuneUser));
   tmp = readTune(ENCBEEP_FILE);
-  if(tmp.length() > 0)
-    tuneEncoder = tmp;
+  if(tmp != nullptr)
+    strncpy(tuneEncoder, tmp, ArraySize(tuneEncoder));
 }
 
 /*
@@ -125,7 +123,7 @@ void initHwDebug() {
 void setupDuetLaserSensor() {
   // Duet Laser Sensor is being used as the Feeder endstop
   if(smuffConfig.useDuetLaser) {
-    duetLS.attach(Z_END_DUET_PIN); 
+    duetLS.attach(Z_END_DUET_PIN);
   }
 }
 
@@ -137,24 +135,54 @@ void setupSerialBT() {
 }
 
 void setupSerial() {
-  // special case: 
+  //__debug(PSTR("Setting up serial"));
+  // special case:
   // if the baudrate is set to 0, the board is running out of memory
-  if(smuffConfig.serial0Baudrate != 0) { 
-    if(smuffConfig.serial0Baudrate != 115200) {
+  if(smuffConfig.serialBaudrates[0] != 0) {
+    if(smuffConfig.serialBaudrates[0] != 115200) {
+      //__debug(PSTR("End SERIAL0 -> %ld"), smuffConfig.serialBaudrates[0]);
+      #if defined(USE_COMPOSITE_SERIAL)
+      CompositeSerial.end();
+      delay(250);
+      CompositeSerial.begin(smuffConfig.serialBaudrate[0]);
+      #else
       Serial.end();
-      Serial.begin(smuffConfig.serial0Baudrate);
+      delay(250);
+      Serial.begin(smuffConfig.serialBaudrates[0]);
+      #endif
     }
   }
   else {
-    writeConfig(&Serial);
+    __debug(PSTR("Config error for serial"));
+    writeConfig((Print*)debugSerial);
     longBeep(3);
     showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail4, P_OkButtonOnly);
   }
-  
-  Serial.begin(smuffConfig.serial0Baudrate);
-  if(CAN_USE_SERIAL1) Serial1.begin(smuffConfig.serial1Baudrate);
-  if(CAN_USE_SERIAL2) Serial2.begin(smuffConfig.serial2Baudrate);
-  if(CAN_USE_SERIAL3) Serial3.begin(smuffConfig.serial3Baudrate);
+
+  if(CAN_USE_SERIAL1 && smuffConfig.serialBaudrates[1] != 115200 && smuffConfig.serialBaudrates[1] >= 4800 && smuffConfig.serialBaudrates[1] <= 230400) {
+    //__debug(PSTR("End SERIAL1 -> %ld"), smuffConfig.serialBaudrates[1]);
+    Serial1.end();
+    delay(150);
+    Serial1.begin(smuffConfig.serialBaudrates[1]);
+    delay(250);
+    //__debug(PSTR("DONE init SERIAL1"));
+  }
+  if(CAN_USE_SERIAL2 && smuffConfig.serialBaudrates[2] != 115200 && smuffConfig.serialBaudrates[2] >= 4800 && smuffConfig.serialBaudrates[2] <= 230400) {
+     //__debug(PSTR("End SERIAL2 -> %ld"), smuffConfig.serialBaudrates[2]);
+     Serial2.end();
+    delay(150);
+     Serial2.begin(smuffConfig.serialBaudrates[2]);
+     delay(250);
+     //__debug(PSTR("DONE init SERIAL2"));
+  }
+  if(CAN_USE_SERIAL3 && smuffConfig.serialBaudrates[3] != 115200 && smuffConfig.serialBaudrates[3] >= 4800 && smuffConfig.serialBaudrates[3] <= 230400) {
+    //__debug(PSTR("End SERIAL3 -> %ld"), smuffConfig.serialBaudrates[3]);
+    Serial3.end();
+    delay(150);
+    Serial3.begin(smuffConfig.serialBaudrates[3]);
+    delay(250);
+    //__debug(PSTR("DONE init SERIAL3"));
+  }
   //__debug(PSTR("DONE init SERIAL"));
 }
 
@@ -165,12 +193,12 @@ void setupSwSerial0() {
 }
 
 void setupRelay() {
-  if(RELAIS_PIN != -1 && smuffConfig.revolverIsServo) {
+  if(RELAY_PIN != -1 && smuffConfig.revolverIsServo) {
     // Relay mode will only work on servo variants
-    pinMode(RELAIS_PIN, OUTPUT);
+    pinMode(RELAY_PIN, OUTPUT);
     // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
     // switch on the external stepper by default. Otherwise, use the interal stepper.
-    if(smuffConfig.externalControl_Z)
+    if(smuffConfig.extControlFeeder)
       switchFeederStepper(EXTERNAL);
     else
       switchFeederStepper(INTERNAL);
@@ -191,36 +219,60 @@ void setupServos() {
     #else
       servo.attach(SERVO1_PIN, true, 0);
     #endif
-    int resetPos = 90, param;
-    // try to find out the default reset position of the wiper servo from 
+    uint8_t resetPos = 90, param;
+    // try to find out the default reset position of the wiper servo from
     // within the wipe sequence
     if((param = getParam(String(smuffConfig.wipeSequence), (char*)"P")) != -1) {
-      resetPos = param;
+      resetPos = (uint8_t)param;
     }
     setServoPos(SERVO_WIPER, resetPos);
   }
-  
+
+  #if !defined(MULTISERVO)
   // setup the Lid servo (replaces the Revolver stepper motor)
   if(SERVO2_PIN != -1) {
-    servoRevolver.setMaxCycles(smuffConfig.servoCycles2);
-    servoRevolver.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
+    servoLid.setMaxCycles(smuffConfig.servoCycles2);
+    servoLid.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
-      servoRevolver.attach(SERVO2_PIN, false, 1);
+      servoLid.attach(SERVO2_PIN, false, 1);
     #elif defined(__STM32F1__)
-      servoRevolver.attach(SERVO2_PIN, true, 1);
+      servoLid.attach(SERVO2_PIN, true, 1);
     #else
-      servoRevolver.attach(SERVO2_PIN, true, 1);  
+      servoLid.attach(SERVO2_PIN, true, 1);
     #endif
-    setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
+    setServoLid(SERVO_OPEN);
   }
+  #else
+  servoPwm.begin();
+  servoPwm.setOscillatorFrequency(27000000);
+  servoPwm.setPWMFreq(50);
+  for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
+    setServoPos(i+10, servoPosClosed[i]);
+    delay(400);
+    setServoPos(i+10, servoPosClosed[i]+SERVO_CLOSED_OFS);
+  }
+  #endif
+}
+
+void setupHBridge() {
+  #if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
+  if(MOTOR_IN1_PIN != -1) {
+    pinMode(MOTOR_IN1_PIN, OUTPUT);
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+  }
+  if(MOTOR_IN2_PIN != -1) {
+    pinMode(MOTOR_IN2_PIN, OUTPUT);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+  }
+  #endif
 }
 
 void setupHeaterBed() {
   // Please note: All the PWM pins on the SKR are not working as
-  // expected. Maybe it's a common libmaple issue, maybe it's a 
+  // expected. Maybe it's a common libmaple issue, maybe it's a
   // STM32 timer related thing or maybe it's the
-  // hardware design of the board itself. 
+  // hardware design of the board itself.
   // Can't tell for sure, need some more investigation.
   if(HEATER0_PIN != -1) {
     pinMode(HEATER0_PIN, OUTPUT);
@@ -228,8 +280,8 @@ void setupHeaterBed() {
 #if defined(__STM32F1__) || defined(__ESP32__)
   if(HEATBED_PIN != -1) {
     #if defined(__STM32F1__)
-      pinMode(HEATBED_PIN, PWM); 
-    #else 
+      pinMode(HEATBED_PIN, PWM);
+    #else
       pinMode(HEATBED_PIN, OUTPUT);
     #endif
   }
@@ -241,21 +293,21 @@ void setupFan() {
   if(FAN_PIN != -1) {
   #ifdef __STM32F1__
     fan.attach(FAN_PIN, 0);
-  #elif defined(__ESP32__) 
+  #elif defined(__ESP32__)
     ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
     ledcAttachPin(FAN_PIN, FAN_CHANNEL);
     //__debug(PSTR("DONE FAN PIN CONFIG"));
   #else
     pinMode(FAN_PIN, OUTPUT);
-  #endif      
+  #endif
     if(smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100) {
       #if defined (__ESP32__)
       ledcWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));
       #elif defined(__STM32F1__)
-      //pwmWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));    
+      //pwmWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 65535));
       fan.setFanSpeed(smuffConfig.fanSpeed);
       #else
-      analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));    
+      analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
       #endif
     }
   }
@@ -266,7 +318,7 @@ void setupPortExpander() {
   #if defined(__ESP32__)
   // init the PCF8574 port expander and set pin modes (0-5 OUTPUT, 6-7 INPUT)
   portEx.begin(PORT_EXPANDER_ADDRESS, false);
-  for(int i=0; i< 6; i++) {
+  for(uint8_t i=0; i< 6; i++) {
     portEx.pinMode(i, OUTPUT);
     portEx.setPin(i);
   }
@@ -279,7 +331,7 @@ void setupPortExpander() {
 
 void setupI2C() {
   #ifdef __AVR__
-  // We can't do Master and Slave on this device. 
+  // We can't do Master and Slave on this device.
   // Slave mode is used for the I2C OLE Display on SKR mini
   if(smuffConfig.i2cAddress != 0) {
     Wire.begin(smuffConfig.i2cAddress);
@@ -291,7 +343,7 @@ void setupI2C() {
 
 void setupBacklight() {
   #if defined(USE_RGB_BACKLIGHT) || defined(USE_FASTLED_BACKLIGHT)
-  for(int i=0; i< 8; i++) {
+  for(uint8_t i=0; i< 8; i++) {
     setBacklightIndex(i);                                 // flip through all colors
     delay(250);
   }
@@ -300,186 +352,259 @@ void setupBacklight() {
 }
 
 void setupEncoder() {
+  #if defined(USE_LEONERD_DISPLAY)
+  encoder.begin();
+  uint8_t ver = encoder.queryVersion();
+  if(ver < 2) {
+    __debug(PSTR("Warning: Encoder version mismatch! Version is: %d"), ver);
+  }
+  else {
+    encoder.setKeyBeepMask(BEEP_NONE);
+    encoder.setButtonHoldTime(120);
+    /*
+    // check whether or not the left soft button is mapped to GPIO 2 (RESET)
+    uint8_t tmp = encoder.queryButtonMapping(LeftButton);
+    const char P_Reprog[] PROGMEM = { "Reprogramming Encoder button mapping %s" };
+    if(tmp != 1) {
+      // if not, program the ecnoder accordingly
+      __debug(P_Reprog,"");
+      encoder.setEepromValue(REG_EEPROM_BTN_MAPPING, 4);
+
+    }
+    tmp = encoder.queryButtonMappingPolarity(LeftButton);
+    if(tmp != 1) {
+      __debug(P_Reprog,"polarity");
+      encoder.setEepromValue(REG_EEPROM_BTN_POLARITY, 4);
+    }
+    */
+  }
+  encoder.setDoubleClickEnabled(true);
+  #else
   encoder.setDoubleClickEnabled(true);                    // enable doubleclick on the rotary encoder
-  encoder.setEnableSound(smuffConfig.encoderTickSound);
+  #endif
 }
 
 void setupSteppers() {
 
-  steppers[SELECTOR] = ZStepper(SELECTOR, (char*)"Selector", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, smuffConfig.acceleration_X, smuffConfig.maxSpeed_X);
-  steppers[SELECTOR].setEndstop(X_END_PIN, smuffConfig.endstopTrigger_X, ZStepper::MIN);
+  uint16_t maxSpeed = translateSpeed(smuffConfig.maxSpeed[SELECTOR], smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]);
+  uint16_t accelSpeed = translateSpeed(smuffConfig.accelSpeed[SELECTOR], smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]);
+  steppers[SELECTOR] = ZStepper(SELECTOR, (char*)"Selector", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, accelSpeed, maxSpeed);
+  steppers[SELECTOR].setEndstop(X_END_PIN, smuffConfig.endstopTrg[SELECTOR], ZStepper::MIN);
   steppers[SELECTOR].stepFunc = overrideStepX;
-  steppers[SELECTOR].setMaxStepCount(smuffConfig.maxSteps_X);
-  steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM_X);
-  steppers[SELECTOR].setInvertDir(smuffConfig.invertDir_X);
-  steppers[SELECTOR].setAccelDistance(smuffConfig.accelDistance_X);
+  steppers[SELECTOR].setMaxStepCount(smuffConfig.maxSteps[SELECTOR]);
+  steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM[SELECTOR]);
+  steppers[SELECTOR].setInvertDir(smuffConfig.invertDir[SELECTOR]);
+  steppers[SELECTOR].setAccelDistance(smuffConfig.accelDist[SELECTOR]);
   steppers[SELECTOR].setStopOnStallDetected(false);
   steppers[SELECTOR].setStallThreshold(smuffConfig.stepperMaxStallCnt[SELECTOR]);
-  if(smuffConfig.stepperStall[SELECTOR] > 0) {
+  if(smuffConfig.stepperStealth[SELECTOR]) {
     steppers[SELECTOR].setStopOnStallDetected(smuffConfig.stepperStopOnStall[SELECTOR]);
     if(STALL_X_PIN != -1)
-      attachInterrupt(STALL_X_PIN, isrStallDetectedX, RISING);
+      attachInterrupt(STALL_X_PIN, isrStallDetectedX, FALLING);
+  }
+  if(smuffConfig.stepperMode[SELECTOR] == 0 && smuffConfig.ms3config[SELECTOR] > 0) {
+    #if defined(MS3_X) && MS3_X != -1
+      pinMode(MS3_X, OUTPUT);
+      digitalWrite(MS3_X, smuffConfig.ms3config[SELECTOR] == 1 ? LOW : HIGH);
+    #endif
   }
 
 #if !defined(SMUFF_V5)
-  steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, smuffConfig.acceleration_Y, smuffConfig.maxSpeed_Y);
-  steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrigger_Y, ZStepper::ORBITAL);
+  maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], smuffConfig.stepsPerMM[REVOLVER], smuffConfig.stepDelay[REVOLVER]);
+  accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], smuffConfig.stepsPerMM[REVOLVER], smuffConfig.stepDelay[REVOLVER]);
+  steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
+  steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::ORBITAL);
   steppers[REVOLVER].stepFunc = overrideStepY;
-  steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerRevolution_Y);
-  steppers[REVOLVER].setStepsPerDegree(smuffConfig.stepsPerRevolution_Y/360);
+  steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerRevolution);
+  steppers[REVOLVER].setStepsPerDegree(smuffConfig.stepsPerRevolution/360);
   steppers[REVOLVER].endstopFunc = endstopYevent;
-  steppers[REVOLVER].setInvertDir(smuffConfig.invertDir_Y);
-  steppers[REVOLVER].setAccelDistance(smuffConfig.accelDistance_Y);
+  steppers[REVOLVER].setInvertDir(smuffConfig.invertDir[REVOLVER]);
+  steppers[REVOLVER].setAccelDistance(smuffConfig.accelDist[REVOLVER]);
   steppers[REVOLVER].setStopOnStallDetected(false);
   steppers[REVOLVER].setStallThreshold(smuffConfig.stepperMaxStallCnt[REVOLVER]);
-  if(smuffConfig.stepperStall[REVOLVER] > 0) {
+  if(smuffConfig.stepperStealth[REVOLVER]) {
     steppers[REVOLVER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[REVOLVER]);
     if(STALL_Y_PIN != -1)
-      attachInterrupt(STALL_Y_PIN, isrStallDetectedY, RISING);
+      attachInterrupt(STALL_Y_PIN, isrStallDetectedY, FALLING);
   }
+  if(smuffConfig.stepperMode[REVOLVER] == 0 && smuffConfig.ms3config[REVOLVER] > 0) {
+    #if defined(MS3_Y) && MS3_Y != -1
+      pinMode(MS3_Y, OUTPUT);
+      digitalWrite(MS3_Y, smuffConfig.ms3config[REVOLVER] == 1 ? LOW : HIGH);
+    #endif
+  }
+
 #else
   // we don't use the Revolver stepper but an servo instead, although
   // create a dummy instance
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", -1, -1, Y_ENABLE_PIN, 0, 0);
 #endif
 
-  steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, smuffConfig.acceleration_Z, smuffConfig.maxSpeed_Z);
+  maxSpeed = translateSpeed(smuffConfig.maxSpeed[FEEDER], smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
+  accelSpeed = translateSpeed(smuffConfig.accelSpeed[FEEDER], smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
+  steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, accelSpeed, maxSpeed);
   if(smuffConfig.useDuetLaser) {
-    steppers[FEEDER].setEndstop(-1, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
+    steppers[FEEDER].setEndstop(-1, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
     steppers[FEEDER].endstopCheck = checkDuetEndstop;
   }
   else
-    steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN);
+    steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
   if(Z_END2_PIN != -1)
-    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrigger_Z, ZStepper::MIN, 2); // optional; used for testing only
+    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2); // optional; used for testing only
   steppers[FEEDER].stepFunc = overrideStepZ;
-  steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM_Z);
+  steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM[FEEDER]);
   steppers[FEEDER].endstopFunc = endstopEventZ;
   steppers[FEEDER].endstop2Func = endstopEventZ2;
-  steppers[FEEDER].setInvertDir(smuffConfig.invertDir_Z);
-  steppers[FEEDER].setAccelDistance(smuffConfig.accelDistance_Z);
+  steppers[FEEDER].setInvertDir(smuffConfig.invertDir[FEEDER]);
+  steppers[FEEDER].setAccelDistance(smuffConfig.accelDist[FEEDER]);
   steppers[FEEDER].setStopOnStallDetected(false);
   steppers[FEEDER].setStallThreshold(smuffConfig.stepperMaxStallCnt[FEEDER]);
-  if(smuffConfig.stepperStall[FEEDER] > 0) {
+  if(smuffConfig.stepperStealth[FEEDER]) {
     steppers[FEEDER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[FEEDER]);
     if(STALL_Z_PIN != -1)
-      attachInterrupt(STALL_Z_PIN, isrStallDetectedZ, RISING);
+      attachInterrupt(STALL_Z_PIN, isrStallDetectedZ, FALLING);
+  }
+  if(smuffConfig.stepperMode[FEEDER] == 0 && smuffConfig.ms3config[FEEDER] > 0) {
+    #if defined(MS3_Z) && MS3_Z != -1
+      pinMode(MS3_Z, OUTPUT);
+      digitalWrite(MS3_Z, smuffConfig.ms3config[FEEDER] == 1 ? LOW : HIGH);
+    #endif
   }
 
-  for(int i=0; i < NUM_STEPPERS; i++) {
+  for(uint8_t i=0; i < NUM_STEPPERS; i++) {
       steppers[i].runAndWaitFunc = runAndWait;
       steppers[i].runNoWaitFunc = runNoWait;
       steppers[i].setEnabled(true);
   }
-  
-  __debug(PSTR("DONE init/enabling steppers"));
-  for(int i=0; i < MAX_TOOLS; i++) {
+
+  //__debug(PSTR("DONE init/enabling steppers"));
+  for(uint8_t i=0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
   //__debug(PSTR("DONE initializing swaps"));
 }
 
 
-TMC2209Stepper* initDriver(int axis, int rx_pin, int tx_pin) {
-  int mode    = smuffConfig.stepperMode[axis];
-  int stall   = smuffConfig.stepperStall[axis];
-  int current = smuffConfig.stepperPower[axis];
-  int msteps  = smuffConfig.stepperMicrosteps[axis];
-  int csmin   = smuffConfig.stepperCSmin[axis];
-  int csmax   = smuffConfig.stepperCSmax[axis];
-  int csdown  = smuffConfig.stepperCSdown[axis];
-  float rsense= smuffConfig.stepperRSense[axis];
-  int drvrAdr = smuffConfig.stepperAddr[axis];
-  int toff    = smuffConfig.stepperToff[axis]==-1 ? (stall == 0 ? 3 : 4) : smuffConfig.stepperToff[axis];
+TMC2209Stepper* initDriver(uint8_t axis, int8_t rx_pin, int8_t tx_pin) {
+  uint8_t mode        = smuffConfig.stepperMode[axis];
+  bool tmode          = smuffConfig.stepperStealth[axis];
+  int8_t stall        = smuffConfig.stepperStall[axis];
+  uint16_t current    = smuffConfig.stepperPower[axis];
+  uint16_t msteps     = smuffConfig.stepperMicrosteps[axis];
+  int8_t csmin        = smuffConfig.stepperCSmin[axis];
+  int8_t csmax        = smuffConfig.stepperCSmax[axis];
+  int8_t csdown       = smuffConfig.stepperCSdown[axis];
+  float rsense        = smuffConfig.stepperRSense[axis];
+  int8_t drvrAdr      = smuffConfig.stepperAddr[axis];
+  int8_t toff         = smuffConfig.stepperToff[axis]==-1 ? (tmode ? 4 : 3) : smuffConfig.stepperToff[axis];
 
   if(mode == 0) {
     //__debug(PSTR("Driver for %c-axis skipped"), 'X'+axis);
-    return NULL;
+    return nullptr;
   }
-
+  #if defined(TMC_SERIAL) && defined(TMC_HW_SERIAL)
+  TMC2209Stepper* driver = new TMC2209Stepper(TMC_SERIAL, rsense, drvrAdr);
+  #else
   TMC2209Stepper* driver = new TMC2209Stepper(rx_pin, tx_pin, rsense, drvrAdr);
+  #endif
   //__debug(PSTR("Driver for %c-axis initialized"), 'X'+axis);
 
   steppers[axis].setEnabled(true);
-  driver->beginSerial(TMC_BAUDRATE);
+  #if defined(TMC_SERIAL) && defined(TMC_HW_SERIAL)
+  driver->beginSerial(TMC_HW_BAUDRATE);
+  #else
+  driver->beginSerial(TMC_SW_BAUDRATE);
+  #endif
   delay(50);
-  driver->toff(toff);
-  driver->blank_time(24);
+  driver->blank_time(36);
   driver->internal_Rsense(true);
   driver->Rsense = rsense;
   driver->I_scale_analog(false);    // set internal Vref
   driver->rms_current(current);     // set current in mA
   driver->mstep_reg_select(1);      // set microstepping
-  driver->microsteps(msteps);       
-  driver->pwm_autoscale(true);
-  driver->irun(25);
-  
-  // setup StallGuard only if stepperStall value is between 1 and 255
+  driver->microsteps(msteps);
+  driver->irun(31);
+  driver->pdn_disable(true);
+
+  // setup StallGuard only if TMode is set to true
   // otherwise put it in SpreadCycle mode
-  if(stall >= 1 && stall <= 255) {
+  if(tmode) {
     #if defined(TMC_TYPE_2130)
-    stall = (int)map(stall, 1,  255, -63, 63);  // remap values for TMC2130 (not tested yet!)
+    stall = (uint8_t)map(stall, 1,  255, -63, 63);  // remap values for TMC2130 (not tested yet!)
     #endif
-    setDriverSpreadCycle(driver, false, stall); // set StealthChop (enable StallGuard)
+    setDriverSpreadCycle(driver, false, stall, csmin, csmax, csdown, toff); // set StealthChop (enable StallGuard)
   }
   else {
-    setDriverSpreadCycle(driver, true, stall, csmin, csmax, csdown); // set SpreadCycle (disable StallGuard)
+    setDriverSpreadCycle(driver, true, stall, csmin, csmax, csdown, toff);  // set SpreadCycle (disable StallGuard)
   }
   return driver;
 }
 
-void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, int stallThrs, int csmin, int csmax, int csdown) {
-  if(!spread) {
-    driver->TCOOLTHRS(0xFFFFF); 
-    driver->TPWMTHRS(0);
-    driver->SGTHRS(stallThrs);
-    driver->en_spreadCycle(false);   // set StealthChop (enable StallGuard)
-  }
-  else {
+void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t stallThrs, uint8_t csmin, uint8_t csmax, uint8_t csdown, uint8_t toff) {
+  if(spread) {  // set SpreadCycle (disable StallGuard)
     driver->SGTHRS(0);
-    driver->TCOOLTHRS(0); 
-    driver->en_spreadCycle(true);   // set SpreadCycle (disable StallGuard)
-    if(csmin >0 && csmax >0) {
-      driver->semin(csmin);
-      driver->semax(csmax);
-      driver->sedn(csdown);
-    }
+    driver->TCOOLTHRS(0);
+    driver->TPWMTHRS(0);
+    driver->en_spreadCycle(true);
+    driver->pwm_autoscale(false);
+    driver->pwm_ofs(0);
+    driver->toff(toff);
+  }
+  else {      // set StealthChop (enable StallGuard)
+    driver->TCOOLTHRS(0xFFFFF);
+    driver->SGTHRS(stallThrs);
+    driver->en_spreadCycle(false);
+    driver->pwm_ofs(1);
+    driver->pwm_autoscale(true);
+    driver->toff(toff);
+  }
+  if(csmin >0 && csmax >0) {
+    driver->semin(csmin);
+    driver->semax(csmax);
+    driver->sedn(csdown);
   }
 }
 
 void setupTMCDrivers() {
 
-  #if defined(X_SERIAL_TX_PIN)
-  drivers[SELECTOR] = initDriver(SELECTOR, X_SERIAL_TX_PIN, X_SERIAL_TX_PIN);
+  #if defined(TMC_HW_SERIAL)
+    drivers[SELECTOR] = initDriver(SELECTOR, -1, -1);
+    drivers[REVOLVER] = initDriver(REVOLVER, -1, -1);
+    drivers[FEEDER]   = initDriver(FEEDER,   -1, -1);
+  #else
+    #if defined(X_SERIAL_TX_PIN)
+    drivers[SELECTOR] = initDriver(SELECTOR, X_SERIAL_TX_PIN, X_SERIAL_TX_PIN);
+    #endif
+    #if defined(Y_SERIAL_TX_PIN)
+    drivers[REVOLVER] = initDriver(REVOLVER, Y_SERIAL_TX_PIN, Y_SERIAL_TX_PIN);
+    #endif
+    #if defined(Z_SERIAL_TX_PIN)
+    drivers[FEEDER] = initDriver(FEEDER,   Z_SERIAL_TX_PIN, Z_SERIAL_TX_PIN);
+    #endif
   #endif
-  #if defined(Y_SERIAL_TX_PIN)
-  drivers[REVOLVER] = initDriver(REVOLVER, Y_SERIAL_TX_PIN, Y_SERIAL_TX_PIN);
-  #endif
-  #if defined(Z_SERIAL_TX_PIN)
-  drivers[FEEDER] = initDriver(FEEDER,   Z_SERIAL_TX_PIN, Z_SERIAL_TX_PIN);
-  #endif
+
   #if defined(STALL_X_PIN)
     if(STALL_X_PIN != -1)
-      pinMode(STALL_X_PIN, INPUT);
+      pinMode(STALL_X_PIN, INPUT_PULLUP);
   #endif
   #if defined(STALL_Y_PIN)
     if(STALL_Y_PIN != -1)
-      pinMode(STALL_Y_PIN, INPUT);
+      pinMode(STALL_Y_PIN, INPUT_PULLUP);
   #endif
   #if defined(STALL_Z_PIN)
     if(STALL_Z_PIN != -1)
-      pinMode(STALL_Z_PIN, INPUT);
+      pinMode(STALL_Z_PIN, INPUT_PULLUP);
   #endif
-  __debug(PSTR("DONE initializing TMC Steppers"));
+  //__debug(PSTR("DONE initializing TMC Steppers"));
 }
 
 void setupTimers() {
 #if defined(__AVR__)
   // *****
-  // Attn: 
+  // Attn:
   //    Servo uses:         TIMER5 (if it's setup to create its own timer)
   //    Steppers use:       TIMER4
-  //    Encoder uses:       gpTimer 
+  //    Encoder uses:       gpTimer
   // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER4, STEPPER_PSC);            // prescaler set to 4MHz, timer will be calculated as needed
   gpTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256);      // round about 1ms on 16MHz CPU
@@ -496,7 +621,7 @@ void setupTimers() {
   gp.setupTimer(ZTimer::ZTIMER2, 80);                     // 1ms on 80MHz timer clock
 #else
   // *****
-  // Attn: 
+  // Attn:
   //    PA8 (Fan) uses:     TIMER1 CH1 (predefined by libmaple for PWM)
   //    Steppers use:       TIMER2 CH1 (may corrupt TH0 readings)
   //    GP timer uses:      TIMER8 CH1 (general, encoder, servo)
@@ -512,19 +637,21 @@ void setupTimers() {
   // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER2, ZTimer::CH1, STEPPER_PSC, 1);   // prescaler set to 4MHz, timer will be calculated as needed
   gpTimer.setupTimer(ZTimer::ZTIMER8, ZTimer::CH1, 8, 0);                  // prescaler set to 9MHz, timer will be set to 50uS
+  #if !defined(USE_LEONERD_DISPLAY)
   setToneTimerChannel(ZTimer::ZTIMER4, ZTimer::CH3);                       // force TIMER4 / CH3 on STM32F1x for tone library
+  #endif
   nvic_irq_set_priority(NVIC_TIMER8_CC, 1);
   nvic_irq_set_priority(NVIC_TIMER2, 0);
   nvic_irq_set_priority(NVIC_TIMER3, 0);
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers
-  gpTimer.setupTimerHook(isrGPTimerHandler);              // setup the ISR for rotary encoder, servo and general timers 
+  gpTimer.setupTimerHook(isrGPTimerHandler);              // setup the ISR for rotary encoder, servo and general timers
 
 #if defined(__STM32F1__)
-  gpTimer.setNextInterruptInterval(450);                  // run general purpose (gp)timer on 50uS (STM32) 
+  gpTimer.setNextInterruptInterval(450);                  // run general purpose (gp)timer on 50uS (STM32)
 #elif defined(__ESP32__)
-  gpTimer.setNextInterruptInterval(50);                   // run general purpose (gp)timer on 50uS (ESP32) 
+  gpTimer.setNextInterruptInterval(50);                   // run general purpose (gp)timer on 50uS (ESP32)
 #else
   gpTimer.setNextInterruptInterval(3);                    // run general purpose (gp)timer on 48uS (AVR)
 #endif

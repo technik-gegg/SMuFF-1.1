@@ -23,8 +23,8 @@
 
 #define BOARD_INFO          "SKR mini E3 V1.2"
 // SELECTOR (X)
-#define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH); 
-#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);  
+#define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
+#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
 #define X_STEP_PIN          PB13
 #define X_DIR_PIN           PB12
 #define X_ENABLE_PIN        PB14
@@ -44,9 +44,9 @@
 #define Z_ENABLE_PIN        PB1
 #define Z_END_PIN           PC2     // Z-STOP
 #define Z_END2_PIN          PC15    // E0-STOP
-#define Z_END_DUET_PIN      Z_END2_PIN     
+#define Z_END_DUET_PIN      Z_END2_PIN
 
-// (E) - Not used yet, just in case 
+// (E) - Not used yet, just in case
 #define STEP_HIGH_E         digitalWrite(E_STEP_PIN, HIGH);
 #define STEP_LOW_E          digitalWrite(E_STEP_PIN, LOW);
 #define E_STEP_PIN          PB3
@@ -54,10 +54,10 @@
 #define E_ENABLE_PIN        PD2
 #define E_END_PIN           PC15    // E0-STOP
 
-#define BEEPER_PIN          PB5     // EXP1.10 
+#define BEEPER_PIN          PB5     // EXP1.10
 
-#define DEBUG_PIN           PB9     // EXP1.5 
-#define RELAIS_PIN          PC14    // PROBE (Relay for stepper motor switching)
+#define DEBUG_PIN           PB9     // EXP1.5
+#define RELAY_PIN          PC14    // PROBE (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PC12    // PT-DET
@@ -91,7 +91,7 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define DSP_DATA_PIN        PB7     // EXP1.3
 #define DSP_CS_PIN          PB8     // EXP1.4
 #define DSP_DC_PIN          PB9     // EXP1.5
-#define DSP_RESET_PIN       -1     
+#define DSP_RESET_PIN       -1
 
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
@@ -102,7 +102,7 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 
 #define DSP_CS_PIN          -1
 #define DSP_DC_PIN          -1
-#define DSP_RESET_PIN       -1 
+#define DSP_RESET_PIN       -1
 
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
@@ -117,7 +117,7 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 //#define E_SERIAL_TX_PIN     PC10    // ZUART - SERIAL4 TX
 
 #define STALL_X_PIN         PA13    // SWDIO
-#define STALL_Y_PIN         -1      // 
+#define STALL_Y_PIN         -1      //
 #define STALL_Z_PIN         PA14    // SWCLK
 
 // SERIAL1 - Cannot be used for serial comm.

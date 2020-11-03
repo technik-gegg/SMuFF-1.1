@@ -18,6 +18,7 @@
  */
 #include "SMuFF.h"
 #include "Config.h"
+#include "InputDialogs.h"
 
 // Please notice: If you make any changes / additions here, you'll have to add
 // an "external" declaration in SMuFF.h as well
@@ -26,19 +27,21 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
 #endif
 
 #if defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
-  #ifdef USE_TWI_DISPLAY
-  U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE); 
-  #elif USE_ANET_DISPLAY
+  #if defined(USE_TWI_DISPLAY)
+  U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(USE_LEONERD_DISPLAY)
+  U8G2_SH1106_128X64_NONAME_F_HW_I2C display(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(USE_ANET_DISPLAY)
   //
   //  Attn.: Instructions to modify the ANET display can be found here: https://www.thingiverse.com/thing:4009810
   //
   #pragma error "Before you use this display, you have to make some heavy modifications on the wiring for the display connector! Please check, then comment out this line."
-  U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE); 
+  U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE);
   // if the hardware SPI doesn't work, you may try software SPI instead
   //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE);
-  #elif USE_MINI12864_PANEL_V21 || USE_MINI12864_PANEL_V20
+  #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
   U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
-  #elif USE_CREALITY_DISPLAY
+  #elif defined(USE_CREALITY_DISPLAY)
     // works only with software SPI, hence it's remarkably slower than hardware SPI
     U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cc=*/ DSP_CS_PIN, /* reset=*/ DSP_RESET_PIN);
   #else
@@ -49,8 +52,10 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
 #endif
 
 #ifdef __BRD_ESP32
-  #ifdef USE_TWI_DISPLAY
-  U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #if defined(USE_TWI_DISPLAY)
+  U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(USE_LEONERD_DISPLAY)
+  U8G2_SH1106_128X64_NONAME_F_HW_I2C display(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
   #else
   // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
   U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
@@ -62,13 +67,13 @@ U8G2_UC1701_MINI12864_F_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/
 #endif
 
 #if defined(__ESP32__)
-BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue 
+BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue
 #if defined(__DEBUG_BT__)
-Stream*                 debugSerial = &SerialBT;  // decide which serial port to use for debug outputs 
+Stream*                 debugSerial = &SerialBT;  // decide which serial port to use for debug outputs
 #else
-Stream*                 debugSerial = &Serial;    // decide which serial port to use for debug outputs 
+Stream*                 debugSerial = &Serial;    // decide which serial port to use for debug outputs
 #endif
-HardwareSerial          Serial3(1);               // dummy declaration to keep the compiler happy, 
+HardwareSerial          Serial3(1);               // dummy declaration to keep the compiler happy,
                                                   // won't be used though because of the CAN_USE_SERIAL3 definition
 #elif defined(__STM32F1__)
   #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
@@ -77,17 +82,22 @@ Stream*                 debugSerial = &Serial2;
 Stream*                 debugSerial = &Serial1;
   #endif
 #else
-Stream*                 debugSerial = &Serial;   
+Stream*                 debugSerial = &Serial;
 #endif
+Stream*                 logSerial = &Serial;
 
 ZStepper                steppers[NUM_STEPPERS];
 ZTimer                  stepperTimer;
 ZTimer                  gpTimer;
 ZServo                  servo;
-ZServo                  servoRevolver;
+ZServo                  servoLid;
 ZFan                    fan;
 DuetLaserSensor         duetLS;
+#if defined(USE_LEONERD_DISPLAY)
+LeoNerdEncoder          encoder(I2C_ENCODER_ADDRESS, -1);
+#else
 ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
+#endif
 #if defined(USE_SW_SERIAL)
 SoftwareSerial          swSer0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);
 #endif
@@ -95,37 +105,58 @@ SoftwareSerial          swSer0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);
 ZPortExpander           portEx;
 #endif
 #if defined(__STM32F1__)
+#if defined(USE_COMPOSITE_SERIAL)
 USBMassStorage          MassStorage;
 USBCompositeSerial      CompositeSerial;
 #endif
+#endif
 
-TMC2209Stepper* drivers[NUM_STEPPERS] { NULL, NULL, NULL };
+TMC2209Stepper* drivers[NUM_STEPPERS] { nullptr, nullptr, nullptr };
 
+#if defined(MULTISERVO)
+Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
+uint8_t servoMapping[17]         = {   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, -1 }; // last one is used for the Wiper mapping
+uint8_t servoPosClosed[16]       = {  90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90 };
+#else
+uint8_t servoPosClosed[MAX_TOOLS];
+#endif
 
 String                          wirelessHostname = "";
 volatile byte                   nextStepperFlag = 0;
 volatile byte                   remainingSteppersFlag = 0;
 volatile unsigned long          lastEncoderButtonTime = 0;
 bool                            testMode = false;
-int                             toolSelections[MAX_TOOLS]; 
+bool                            timerRunning = false;
+int8_t                          toolSelections[MAX_TOOLS];
 volatile unsigned long          pwrSaveTime;
 volatile bool                   isPwrSave = false;
-volatile bool                   showMenu = false; 
+volatile bool                   showMenu = false;
 volatile bool                   lastZEndstopState = false;
 volatile bool                   lastZEndstop2State = false;
 unsigned long                   endstopZ2HitCnt = 0;
 static unsigned long            lastDisplayRefresh = 0;
-static volatile unsigned long   generalCounter = 0;
-static volatile unsigned long   tickCounter = 0;
-volatile int                    bracketCnt = 0;
-volatile int                    jsonPtr = 0;
-//char                            jsonData[MAX_JSON];           // temporary buffer for json data coming from Duet3D (not used yet)
-volatile bool                   enablePeriStat = false;       // enables sending periodical status information to serial ports
+static volatile unsigned        generalCounter = 0;
+static volatile unsigned        tickCounter = 0;
+volatile uint16_t               bracketCnt = 0;
+volatile uint16_t               jsonPtr = 0;
+volatile bool                   initDone = false;             // enables sending periodical status information to serial ports
 volatile bool                   processingSerial0;            // set when GCode is incoming on a serial port
 volatile bool                   processingSerial1;
 volatile bool                   processingSerial2;
 volatile bool                   processingSerial3;
-String                          serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3, serialBuffer9, traceSerial2;
+String                          serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3;
+uint8_t                         remoteKey = REMOTE_NONE;
+volatile bool                   sdRemoved = false;
+uint16_t                        mmsMin = 1;               // minimum moving speed for stepper in mm/s
+uint16_t                        mmsMax = 800;             // maximum moving speed for stepper in mm/s
+uint16_t                        speedIncrement = 5;       // increment for speeds in menus
+
+
+static volatile uint16_t        intervalMask;  // bit-mask for interval reached
+IntervalHandler intervalHandlers[] = {
+  {   10,   10, every10ms },  {   20,   20, every20ms },  {   50,   50, every50ms },
+  {  100,  100, every100ms }, {  250,  250, every250ms }, {  500,  500, every500ms },
+  { 1000, 1000, every1s },    { 2000, 2000, every2s },    { 5000, 5000, every5s } };
 
 #ifdef __STM32F1__
 volatile uint32_t *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
@@ -133,19 +164,19 @@ volatile uint32_t *stepper_reg_Y = &((PIN_MAP[Y_STEP_PIN].gpio_device)->regs->BS
 volatile uint32_t *stepper_reg_Z = &((PIN_MAP[Z_STEP_PIN].gpio_device)->regs->BSRR);
 uint32_t pinMask_X = BIT(PIN_MAP[X_STEP_PIN].gpio_bit);
 uint32_t pinMask_Y = BIT(PIN_MAP[Y_STEP_PIN].gpio_bit);
-uint32_t pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit); 
-#endif 
+uint32_t pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit);
+#endif
 
 void overrideStepX() {
 #ifdef __STM32F1__
   *stepper_reg_X = pinMask_X;
-  if(smuffConfig.stepDelay_X > 0)
-    delayMicroseconds(smuffConfig.stepDelay_X);
+  if(smuffConfig.stepDelay[SELECTOR] > 0)
+    delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
   *stepper_reg_X = pinMask_X << 16;
 #else
   STEP_HIGH_X
-  if(smuffConfig.stepDelay_X > 0)
-    delayMicroseconds(smuffConfig.stepDelay_X);
+  if(smuffConfig.stepDelay[SELECTOR] > 0)
+    delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
   STEP_LOW_X
 #endif
 }
@@ -153,13 +184,13 @@ void overrideStepX() {
 void overrideStepY() {
 #ifdef __STM32F1__
   *stepper_reg_Y = pinMask_Y;
-  if(smuffConfig.stepDelay_Y > 0)
-    delayMicroseconds(smuffConfig.stepDelay_Y);
+  if(smuffConfig.stepDelay[REVOLVER] > 0)
+    delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
   *stepper_reg_Y = pinMask_Y << 16;
 #else
   STEP_HIGH_Y
-  if(smuffConfig.stepDelay_Y > 0)
-    delayMicroseconds(smuffConfig.stepDelay_Y);
+  if(smuffConfig.stepDelay[REVOLVER] > 0)
+    delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
   STEP_LOW_Y
 #endif
 }
@@ -167,13 +198,13 @@ void overrideStepY() {
 void overrideStepZ() {
 #ifdef __STM32F1__
   *stepper_reg_Z = pinMask_Z;
-  if(smuffConfig.stepDelay_Z > 0)
-    delayMicroseconds(smuffConfig.stepDelay_Z);
+  if(smuffConfig.stepDelay[FEEDER] > 0)
+    delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
   *stepper_reg_Z = pinMask_Z << 16;
 #else
   STEP_HIGH_Z
-  if(smuffConfig.stepDelay_Z > 0)
-    delayMicroseconds(smuffConfig.stepDelay_Z);
+  if(smuffConfig.stepDelay[FEEDER] > 0)
+    delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
   STEP_LOW_Z
 #endif
 }
@@ -227,23 +258,62 @@ bool checkDuetEndstop() {
   Also serves as a handler dispatcher for servos / encoder.
 */
 void isrGPTimerHandler() {
-  cli();
+  noInterrupts();
+  timerRunning = true;
   tickCounter++;                      // increment tick counter
-  if(tickCounter % 20) {              // after one ms
-    generalCounter++;                 // increment milliseconds counter
-    encoder.service();                // service the rotary encoder
+  if(tickCounter % 20 == 0) {         // each millisecond...
+    // decrement all milliseconds counters for periodic functions and
+    // set a flag when the timeout has been reached
+    for(uint8_t i=0; i< LAST_INTERVAL; i++) {
+      intervalHandlers[i].val--;
+      if(intervalHandlers[i].val <= 0) {
+        intervalMask  |= _BV(i);
+        intervalHandlers[i].val = intervalHandlers[i].period;
+      }
+    }
+    #if !defined(USE_LEONERD_DISPLAY)
+    if(initDone)
+      encoder.service();                // service the rotary encoder
+    #endif
     if(smuffConfig.useDuetLaser) {
       duetLS.service();               // service the Duet3D laser Sensor reader
     }
-    #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
-    // used for internal hardware debugging only - will produce a 500Hz signal on the output pin
-    if(DEBUG_PIN != -1) digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
-    #endif
+    playSequenceBackgnd();            // handle background playing of a sequence
+    FLIPDBG
+    isrFanTimerHandler();             // call the fan interrupt routines also every 1ms
   }
-  // call the servos & fan interrupt routines also every 50uS
+  if(tickCounter == 1000)             // reset counter to avoid overrun
+    tickCounter = 0;
+  #if !defined(MULTISERVO)
+  // call the servos interrupt routines also every 50uS
   isrServoTimerHandler();
-  isrFanTimerHandler();
-  sei();
+  #endif
+  interrupts();
+}
+
+void enumI2cDevices() {
+  uint8_t devs[40];   // unlikey, that there are more devices than that on the bus
+  const char* name;
+  bool encoder = false;
+  uint8_t deviceCnt = scanI2CDevices(devs);
+  if(deviceCnt > 0) {
+    for(uint8_t i=0; i< ArraySize(devs); i++) {
+      if(devs[i]==0)
+        break;
+      switch(devs[i]) {
+        case I2C_ENCODER_ADDRESS:     name = PSTR("Encoder"); encoder = true; break;
+        case I2C_DISPLAY_ADDRESS:     name = PSTR("Display"); break;
+        case I2C_SERVOCTL_ADDRESS:
+        case I2C_SERVOBCAST_ADDRESS:  name = PSTR("MultiServo"); break;
+        default: name = PSTR("n.a."); break;
+      }
+      __debug(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
+    }
+  }
+  #if defined(USE_LEONERD_DISPLAY)
+  if(!encoder)
+    __debug(PSTR("LeoNerd's OLED configured but no encoder was found!"));
+  #endif
 }
 
 void setup() {
@@ -252,7 +322,6 @@ void setup() {
   serialBuffer1.reserve(40);
   serialBuffer2.reserve(40);
   serialBuffer3.reserve(40);
-  traceSerial2.reserve(40);
 
   #if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI)
   // Disable JTAG for these boards!
@@ -261,41 +330,64 @@ void setup() {
   disableDebugPorts();
   #endif
 
-  initUSB();                          // init the USB serial so it's being recognized by the Windows-PC
-  delay(500);
-  initFastLED();                      // init FastLED if configured
-  testFastLED();                      // run a test sequence on FastLEDs
-  initHwDebug();                      // init hardware debugging
-  
   // Setup a fixed baudrate until the config file was read.
   // This baudrate is the default setting on the ESP32 while
   // booting up, so exceptions thrown can be shown in terminal app
-  Serial.begin(115200);        
-  if(CAN_USE_SERIAL1) Serial1.begin(115200);       
+  #if !defined(USE_COMPOSITE_SERIAL)
+  Serial.begin(115200);
+  #endif
+  if(CAN_USE_SERIAL1) Serial1.begin(115200);
   if(CAN_USE_SERIAL2) Serial2.begin(115200);
   if(CAN_USE_SERIAL3) Serial3.begin(115200);
-  //__debug(PSTR("[ setup() ]"));
+
+  initUSB();                          // init the USB serial so it's being recognized by the Windows-PC
+  #if defined(USE_COMPOSITE_SERIAL)
+  CompositeSerial.begin(115200);
+  #endif
+  initFastLED();                      // init FastLED if configured
+  testFastLED();                      // run a test sequence on FastLEDs
+  initHwDebug();                      // init hardware debugging
+
+  __debug(PSTR("[ setup start ]"));
+  enumI2cDevices();
   setupBuzzer();                      // setup buzzer before reading config
   setupDeviceName();                  // used for SerialBT on ESP32 only
   setupSerialBT();                    // used for debugging on ESP32 only
   setupDisplay();                     // setup display first in order to show error messages if neccessary
-  readConfig();                       // read SMUFF.CFG from SD-Card
+  // __debug(PSTR("[ after setupDisplay ]"));
+  setupEncoder();                     // setup encoder - only relevant on LeoNerd display
+  // __debug(PSTR("[ after setupEncoder ]"));
+  if(readConfig()) {                  // read SMUFF.CFG from SD-Card
+    readTmcConfig();                  // read TMCDRVR.CFG from SD-Card
+    readServoMapping();               // read SERVOMAP.CFG from SD-Card
+    readMaterials();                  // read MATERIALS.CFG from SD-Card
+  }
+  // __debug(PSTR("[ after readConfig ]"));
   setupSerial();                      // setup all components according to the values in SMUFF.CFG
+  // __debug(PSTR("[ after setupSerial ]"));
   setupSteppers();
+  // __debug(PSTR("[ after setupSteppers ]"));
   setupTimers();
+  // __debug(PSTR("[ after setupTimers ]"));
   setupServos();
+  // __debug(PSTR("[ after setupServos ]"));
   setupRelay();
+  // __debug(PSTR("[ after setupRelay ]"));
   setupTMCDrivers();                  // setup TMC drivers if any were used
+  // __debug(PSTR("[ after setupTMCdrivers ]"));
   setupSwSerial0();                   // used only for testing purposes
   setupBacklight();
   setupDuetLaserSensor();             // setup other peripherials
-  setupEncoder();
   setupHeaterBed();
   setupFan();
   setupPortExpander();
   setupI2C();
+  setupHBridge();
   getStoredData();                    // read EEPROM.DAT from SD-Card; this call must happen after setupSteppers()
-  readSequences();
+  //__debug(PSTR("readSequences start"));
+  uint16_t now = millis();
+  //readSequences();
+  //__debug(PSTR("readSequences took %d ms"), millis()-now);
 
   if(smuffConfig.homeAfterFeed) {
     moveHome(REVOLVER, false, false);
@@ -303,10 +395,10 @@ void setup() {
   else {
     resetRevolver();
   }
-  //__debug(PSTR("DONE reset Revolver"));
-  
+  // __debug(PSTR("DONE reset Revolver"));
+
   sendStartResponse(0);       // send "start<CR><LF>" to USB serial interface
-  if(CAN_USE_SERIAL1) 
+  if(CAN_USE_SERIAL1)
     sendStartResponse(1);     // send "start<CR><LF>" to all serial interfaces allowed to use
   if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)
     sendStartResponse(2);
@@ -314,22 +406,23 @@ void setup() {
     sendStartResponse(3);
 
   removeFirmwareBin();      // deletes the firmware.bin file to prevent re-flashing on each boot
-  enablePeriStat = true;    // enable periodically sending status, if configured
+  initDone = true;          // mark init done; enable periodically sending status, if configured
+  refreshStatus(true, false);
   startupBeep();            // signal startup has finished
   pwrSaveTime = millis();   // init value for LCD screen timeout
 }
 
 void startStepperInterval() {
-  unsigned int minDuration = 65535;
-  for(int i = 0; i < NUM_STEPPERS; i++) {
+  uint16_t minDuration = 65535;
+  for(uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration ) {
       minDuration = steppers[i].getDuration();
     }
   }
 
   nextStepperFlag = 0;
-  for(int i = 0; i < NUM_STEPPERS; i++) {
-    if ( (_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() == minDuration )
+  for(uint8_t i = 0; i < NUM_STEPPERS; i++) {
+    if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() == minDuration )
       nextStepperFlag |= _BV(i);
   }
 
@@ -345,10 +438,10 @@ void startStepperInterval() {
 
 void isrStepperHandler() {
   stepperTimer.stopTimer();
-  unsigned int tmp = stepperTimer.getOverflow(); 
+  uint16_t tmp = stepperTimer.getOverflow();
   stepperTimer.setOverflow(65534);
 
-  for (int i = 0; i < NUM_STEPPERS; i++) {
+  for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if(!(_BV(i) & remainingSteppersFlag))
       continue;
 
@@ -356,32 +449,32 @@ void isrStepperHandler() {
       steppers[i].setDuration(steppers[i].getDuration() - tmp);
       continue;
     }
-    
+
     steppers[i].handleISR();
     if(steppers[i].getMovementDone()) {
       remainingSteppersFlag &= ~_BV(i);
       //__debug(PSTR("ISR(): movement of %d done; Flag %d"), i, remainingSteppersFlag);
-    } 
+    }
   }
   //__debug(PSTR("ISR(): %d"), remainingSteppersFlag);
   startStepperInterval();
 }
 
-void runNoWait(int index) {
+void runNoWait(int8_t index) {
   if(index != -1)
     remainingSteppersFlag |= _BV(index);
   startStepperInterval();
   //__debug(PSTR("Started stepper %d"), index);
 }
 
-void runAndWait(int index) {
+void runAndWait(int8_t index) {
   runNoWait(index);
   while(remainingSteppersFlag) {
     checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
 
 #if defined(__STM32F1__) // || defined(__ESP32__)
     if((remainingSteppersFlag & _BV(FEEDER)) && !showMenu) {
-      refreshStatus(false, true);
+      //refreshStatus(false, true);
     }
 #endif
   }
@@ -396,151 +489,66 @@ void refreshStatus(bool withLogo, bool feedOnly) {
   else {
     display.firstPage();
     do {
-      if(withLogo) 
+      if(withLogo)
         drawLogo();
       drawStatus();
+      drawSDRemoved(sdRemoved);
     } while(display.nextPage());
   }
   lastDisplayRefresh = millis();
 }
 
-void monitorTMC(int axis) {
-  int temp;
-  if(drivers[axis] != NULL) {
-    if(drivers[axis]->otpw()) {
-      __debug(PSTR("Driver %c reports 'Overtemperature Warning'"), 'X'+axis);
-    }
-    if(drivers[axis]->ot()) {
-      if(drivers[axis]->t157())
-        temp = 157;
-      if(drivers[axis]->t150())
-        temp = 150;
-      if(drivers[axis]->t143())
-        temp = 143;
-      if(drivers[axis]->t120())
-        temp = 120;
-      __debug(PSTR("Driver %c reports 'Overtemperature' => %d°C"), 'X'+axis, temp);
-    }
-    if(drivers[axis]->ola()) {
-      __debug(PSTR("Driver %c reports 'Open Phase A'"), 'X'+axis);
-    }
-    if(drivers[axis]->olb()) {
-      __debug(PSTR("Driver %c reports 'Open Phase B'"), 'X'+axis);
-    }
-    if(drivers[axis]->s2ga()) {
-      __debug(PSTR("Driver %c reports 'Short to GND on Phase A'"), 'X'+axis);
-    }
-    if(drivers[axis]->s2gb()) {
-      __debug(PSTR("Driver %c reports 'Short to GND on Phase B'"), 'X'+axis);
+void reportTMC(uint8_t axis, const char* PROGMEM msg) {
+  // for now, only debug message, subject to change in the future
+  __debug(PSTR("Driver %c: reports '%s'"), 'X'+axis, msg);
+}
+
+void monitorTMC(uint8_t axis) {
+
+  uint16_t temp;
+  if(drivers[axis] != nullptr) {
+    // has any error occured?
+    if(drivers[axis]->drv_err()) {
+      // check overtemp. warning
+      if(drivers[axis]->otpw()) {
+        reportTMC(axis, P_TMC_Status09);
+      }
+      // check overtemp.
+      if(drivers[axis]->ot()) {
+        if(drivers[axis]->t157())
+          temp = 157;
+        if(drivers[axis]->t150())
+          temp = 150;
+        if(drivers[axis]->t143())
+          temp = 143;
+        if(drivers[axis]->t120())
+          temp = 120;
+        char msg[80];
+        sprintf_P(msg, PSTR("Overtemp. >= %d°C"), temp);
+        reportTMC(axis, msg);
+      }
+      // check open lines
+      if(drivers[axis]->ola()) {
+        reportTMC(axis, P_TMC_Status03);
+      }
+      if(drivers[axis]->olb()) {
+        reportTMC(axis, P_TMC_Status04);
+      }
+      // check short to grounds
+      if(drivers[axis]->s2ga()) {
+        reportTMC(axis, P_TMC_Status05);
+      }
+      if(drivers[axis]->s2gb()) {
+        reportTMC(axis, P_TMC_Status06);
+      }
     }
   }
 }
 
-void loop() {
-  
-  // Call periodical functions as the timeout has reached. 
-  // Add your specific code there, if you need to have something 
-  // managed periodically.
-  // The main loop is the better choice for dispatching, since it'll
-  // allow uninterrupted serial I/O.
-  if(generalCounter % 20 == 0)    every20ms(); 
-  if(generalCounter % 50 == 0)    every50ms(); 
-  if(generalCounter % 100 == 0)   every100ms();
-  if(generalCounter % 250 == 0)   every250ms();
-  if(generalCounter % 500 == 0)   every500ms();
-  if(generalCounter % 1000 == 0)  every1s();
-  if(generalCounter % 2000 == 0)  every2s();
-  if(generalCounter % 5000 == 0)  every5s();
-  
-  #if defined(USE_COMPOSITE_SERIAL)
-  MassStorage.loop();
-  #endif
-
-  #if defined(__STM32F1__) || defined(__ESP32__)
-  checkSerialPending();
-  #endif
-  if(feederEndstop() != lastZEndstopState) {
-    lastZEndstopState = feederEndstop();
-    bool state = feederEndstop();
-    setSignalPort(FEEDER_SIGNAL, state);
-    delay(200);
-    setSignalPort(FEEDER_SIGNAL, !state);
-    delay(200);
-    setSignalPort(FEEDER_SIGNAL, state);
-  }
-  if(feederEndstop(2) != lastZEndstop2State) {
-    lastZEndstop2State = feederEndstop(2);
-    endstopZ2HitCnt++;
-    //__debug(PSTR("Endstop Z2: %d"), endstopZ2HitCnt);
-  }
-  //__debug(PSTR("Mem: %d"), freeMemory());
-
-  checkUserMessage();
-  
-  if(!displayingUserMessage) {
-    if(!isPwrSave && !showMenu) {
-      unsigned long elapsed = millis()-lastDisplayRefresh;
-#if defined(__STM32F1__)
-      if(elapsed > 250)   // refresh display every 250ms
-#else
-      if(elapsed > 500)   // refresh display every 500ms
-#endif  
-      {
-        refreshStatus(true, false);
-      }
-    }
-  }
-
-  if(!showMenu) {
-    int button = encoder.getButton();
-    if(button == ClickEncoder::Pressed && isPwrSave) {
-      setPwrSave(0);
-    }
-    else if(button == ClickEncoder::Held) {
-      setPwrSave(0);
-      showMenu = true;
-      char title[] = {"Settings"};
-      showSettingsMenu(title);
-      showMenu = false;
-      debounceButton();
-#ifdef __STM32F1__
-#endif
-    }
-    else {
-      int turn = encoder.getValue();
-      if(turn != 0) {
-        if(isPwrSave) {
-          setPwrSave(0);
-        }
-        else {
-          displayingUserMessage = false;
-          showMenu = true;
-          if(turn == -1) {
-            showMainMenu();
-          }
-          else {
-            showToolsMenu();
-          }
-          showMenu = false;
-        }
-      }
-    }
-  }
-  
-  if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
-    //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
-    setPwrSave(1);
-  }
-
-  if(smuffConfig.stepperStall[SELECTOR]) {
-    monitorTMC(SELECTOR);
-  }
-  if(smuffConfig.stepperStall[REVOLVER]) {
-    monitorTMC(REVOLVER);
-  }
-  if(smuffConfig.stepperStall[FEEDER]) {
-    monitorTMC(FEEDER);
-  }
+/*
+* For testing only
+*/
+void loopEx() {
 
 #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
   /*
@@ -557,7 +565,7 @@ void loop() {
 #endif
 
 #if defined(__ESP32__)
-  // call this method only if you have serial ports assigned 
+  // call this method only if you have serial ports assigned
   // to the Port Expander
   //portEx.service();
 
@@ -565,16 +573,180 @@ void loop() {
   // if(interval500ms) { portEx.togglePin(1); interval500ms = false; }
   /*
   if(interval5s) { portEx.testSerial("Testing PortExpander serial...\n"); interval5s = false; }
-  while(portEx.serialAvailable(0)) { 
-    char c = portEx.serialRead(0); 
+  while(portEx.serialAvailable(0)) {
+    char c = portEx.serialRead(0);
     char cc = (c >= 0x20 && c < 0x7F) ? c : '.';
-    __debug(PSTR("Got: %3d - '%c' - 0x%02x"), c, cc, c);  
+    __debug(PSTR("Got: %3d - '%c' - 0x%02x"), c, cc, c);
   }
   */
-#endif 
+#endif
 }
 
-void setPwrSave(int state) {
+void loop() {
+  // Call periodical functions as the timeout has reached.
+  // Add your specific code there, if you need to have something
+  // managed periodically.
+  // The main loop is the better choice for dispatching, since it'll
+  // allow uninterrupted serial I/O.
+  for(uint8_t i=0; i < LAST_INTERVAL; i++) {
+    if(_BV(i) & intervalMask) {
+      intervalHandlers[i].func();
+      intervalMask &= ~_BV(i);
+    }
+  }
+
+  #if defined(USE_COMPOSITE_SERIAL)
+  MassStorage.loop();
+  #endif
+
+  #if defined(SD_DETECT_PIN)
+  if(digitalRead(SD_DETECT_PIN) == HIGH) {
+    if(!sdRemoved) {
+      userBeep();
+      LeoNerdBlinkRed = true;
+    }
+    sdRemoved = true;
+    char tmp[128];
+    sprintf_P(tmp, P_SDCardRemoved);
+    drawUserMessage(tmp);
+    return;
+  }
+  else {
+    if(sdRemoved) {
+      if(initSD(false)) {
+        sdRemoved = false;
+        refreshStatus(true, false);
+        LeoNerdBlinkRed = false;
+      }
+    }
+    else
+      sdRemoved = false;
+  }
+  #endif
+
+  if(feederEndstop() != lastZEndstopState) {
+    lastZEndstopState = feederEndstop();
+    bool state = feederEndstop();
+    refreshStatus(true, false);
+    setSignalPort(FEEDER_SIGNAL, state);
+    delay(200);
+    setSignalPort(FEEDER_SIGNAL, !state);
+    delay(200);
+    setSignalPort(FEEDER_SIGNAL, state);
+  }
+
+  if(feederEndstop(2) != lastZEndstop2State) {
+    lastZEndstop2State = feederEndstop(2);
+    endstopZ2HitCnt++;
+  }
+
+  checkUserMessage();
+
+  if(!isPwrSave && !showMenu && !displayingUserMessage && ((generalCounter % 250) == 0)) {
+    refreshStatus(true, false);   // refresh display every 250ms
+  }
+
+
+  if(!showMenu) {
+    int16_t turn;
+    uint8_t button;
+    bool isHeld, isClicked;
+
+    if(remoteKey == REMOTE_HOME)
+      remoteKey = REMOTE_NONE;
+
+    getInput(&turn, &button, &isHeld, &isClicked);
+
+    if(isClicked && isPwrSave) {
+      setPwrSave(0);
+      refreshStatus(true, false);
+    }
+    else if((button == MainButton && isClicked) || (button == WheelButton && isHeld)) {
+      setPwrSave(0);
+      showMenu = true;
+      char title[] = {"Settings"};
+      showSettingsMenu(title);
+      showMenu = false;
+      debounceButton();
+    }
+    else if(button == LeftButton) {
+      if(isClicked) {
+        if(strlen(smuffConfig.lButtonDown)>0) {
+          parseGcode(String(smuffConfig.lButtonDown), -1);
+        }
+      }
+      else if(isHeld) {
+        if(strlen(smuffConfig.lButtonHold)>0) {
+          parseGcode(String(smuffConfig.lButtonHold), -1);
+        }
+      }
+    }
+    else if(button == RightButton) {
+      if(isClicked) {
+        if(strlen(smuffConfig.rButtonDown)>0) {
+          parseGcode(String(smuffConfig.rButtonDown), -1);
+        }
+      }
+      else if(isHeld) {
+        if(strlen(smuffConfig.rButtonHold)>0) {
+          parseGcode(String(smuffConfig.rButtonHold), -1);
+        }
+        else {
+          // open / close LID servo by default
+          if(lidOpen)
+            setServoLid(SERVO_CLOSED);
+          else
+            setServoLid(SERVO_OPEN);
+        }
+      }
+    }
+    else {
+      if(turn != 0) {
+        resetAutoClose();
+        if(isPwrSave) {
+          setPwrSave(0);
+          refreshStatus(true, false);
+        }
+        else {
+          displayingUserMessage = false;
+          showMenu = true;
+          if(turn == -1) {
+            showMainMenu();
+          }
+          else {
+            showToolsMenu();
+          }
+          pwrSaveTime = millis();
+          forceStopMenu = false;
+          showMenu = false;
+          refreshStatus(true, false);
+        }
+      }
+    }
+  }
+
+  if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
+    //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
+    forceStopMenu = true;
+    refreshStatus(true, false);
+    setPwrSave(1);
+  }
+
+  if(smuffConfig.stepperStall[SELECTOR]) {
+    monitorTMC(SELECTOR);
+  }
+  if(smuffConfig.stepperStall[REVOLVER]) {
+    monitorTMC(REVOLVER);
+  }
+  if(smuffConfig.stepperStall[FEEDER]) {
+    monitorTMC(FEEDER);
+  }
+  // For testing only
+  // loopEx();
+}
+
+
+void setPwrSave(int8_t state) {
   display.setPowerSave(state);
   isPwrSave = state == 1;
   if(!isPwrSave) {
@@ -584,8 +756,8 @@ void setPwrSave(int state) {
 }
 
 bool checkUserMessage() {
-  int button = digitalRead(ENCODER_BUTTON_PIN);
-  if(button == LOW && displayingUserMessage) {
+  bool button = getEncoderButton(false);
+  if(button && displayingUserMessage) {
     displayingUserMessage = false;
   }
   //__debug(PSTR("%ld"), (millis()-userMessageTime)/1000);
@@ -596,45 +768,75 @@ bool checkUserMessage() {
 }
 
 
-#ifndef __AVR__
-void serialEventRun() {
-  if(Serial.available()) serialEvent();
-  if(CAN_USE_SERIAL1)
-    if(Serial1.available()) serialEvent1();
-  if(CAN_USE_SERIAL2)
-    if(Serial2.available()) serialEvent2();
-  if(CAN_USE_SERIAL3)
-    if(Serial3.available()) serialEvent3();
-}
-#endif
-
 void checkSerialPending() {
-  serialEventRun(); 
+#ifndef __AVR__
+  if(Serial.available()) {
+    serialEvent();
+  }
+  if(CAN_USE_SERIAL1) {
+    if(Serial1.available())
+      serialEvent1();
+  }
+  if(CAN_USE_SERIAL2) {
+    if(Serial2.available()) {
+      serialEvent2();
+    }
+  }
+  if(CAN_USE_SERIAL3) {
+    if(Serial3.available())
+      serialEvent3();
+  }
+#endif
 }
 
-void resetSerialBuffer(int serial) {
+void resetSerialBuffer(int8_t serial) {
   switch(serial) {
     case 0: serialBuffer0 = ""; break;
     case 1: serialBuffer1 = ""; break;
     case 2: serialBuffer2 = ""; break;
     case 3: serialBuffer3 = ""; break;
-    case 9: serialBuffer9 = ""; break;
   }
 }
 
 bool isQuote = false;
+bool isFuncKey = false;
+
 void filterSerialInput(String& buffer, char in) {
+  // function key sequence starts with 'ESC['
+  if(!isFuncKey && in == 0x1b) {
+    isFuncKey = true;
+    return;
+  }
+  if(isFuncKey) {
+    //__debug(PSTR("%02x"), in);
+    if(in == '[')  // second escape char '[' - swallow that
+      return;
+    isFuncKey = false;
+    switch(in) {
+      case 0x42: remoteKey = REMOTE_UP;     return;   // CursorUp   = turn right
+      case 0x41: remoteKey = REMOTE_DOWN;   return;   // CursorDown  = turn left
+      case 0x43: remoteKey = REMOTE_SELECT; return;   // CursorRight = wheel click
+      case 0x1b:                                      // ESC Key
+      case 0x44: remoteKey = REMOTE_ESCAPE; return;   // CursorLeft = main click
+      case 0x31: remoteKey = REMOTE_HOME; return;     // Home Key
+      case 0x34: remoteKey = REMOTE_END; return;      // End Key  (not used yet)
+      case 0x35: remoteKey = REMOTE_PGUP; return;     // PageUp Key (not used yet)
+      case 0x36: remoteKey = REMOTE_PGDN; return;     // PageDown Key (not used yet)
+      default:  return;                               // ignore any other code not in the list
+    }
+  }
+  isFuncKey = false;
   if(in >= 'a' && in <='z') {
     if(!isQuote)
       in = in - 0x20;
   }
   switch(in) {
-    case '\b': 
+    case '\b':
       {
         buffer = buffer.substring(0, buffer.length()-1);
       }
       break;
-    case '\r': 
+    case '\r':
       break;
     case '"':
       isQuote = !isQuote;
@@ -697,12 +899,9 @@ bool isJsonData(char in) {
 
 
 void serialEvent() {
-  
-  if(processingSerial0)
-    if(!smuffConfig.prusaMMU2)
-      return;
-    
-  while(Serial.available()) {
+
+  uint16_t avail = 0;
+  while((avail = Serial.available())) {
     processingSerial0 = true;
     char in = (char)Serial.read();
     // check for JSON data first
@@ -722,15 +921,12 @@ void serialEvent() {
 }
 
 void serialEvent2() {
-  
-  if(processingSerial2)
-    if(!smuffConfig.prusaMMU2)
-      return;
-  
-  while(Serial2.available()) {
+  uint16_t avail = 0;
+  while((avail = Serial2.available())) {
     processingSerial2 = true;
     char in = (char)Serial2.read();
-    // in case of PanelDue connected, route everthing to Duet3D - do not process it any further 
+    //__log(PSTR("Avail %d 0x%02x\n"), avail, in);
+    // in case of PanelDue connected, route everthing to Duet3D - do not process it any further
     if(smuffConfig.hasPanelDue == 1) {
       if(CAN_USE_SERIAL1) Serial1.write(in);
     }
@@ -751,12 +947,9 @@ void serialEvent2() {
 
 #ifndef __AVR__
 void serialEvent1() {
-  
-  if(processingSerial1)
-    if(!smuffConfig.prusaMMU2)
-      return;
-  
-  while(Serial1.available()) {
+
+  uint16_t avail = 0;
+  while((avail = Serial1.available())) {
     processingSerial1 = true;
     char in = (char)Serial1.read();
     // check for JSON data first
@@ -777,12 +970,9 @@ void serialEvent1() {
 }
 
 void serialEvent3() {
-  
-  if(processingSerial3)
-    if(!smuffConfig.prusaMMU2)
-      return;
-  
-  while(Serial3.available()) {
+
+  uint16_t avail = 0;
+  while((avail = Serial3.available())) {
     processingSerial3 = true;
     char in = (char)Serial3.read();
     if(smuffConfig.hasPanelDue == 2) {
@@ -803,19 +993,3 @@ void serialEvent3() {
   processingSerial3 = false;
 }
 #endif
-
-
-#ifdef __AVR__
-// not really used anymore; Kept only to not break compatibility
-void wireReceiveEvent(int numBytes) {
-  while (Wire.available()) {
-    char in = (char)Wire.read();
-    if (in == '\n') {
-      parseGcode(serialBuffer9, 9);
-    }
-    else
-        serialBuffer9 += in;
-  }
-}
-#endif
-

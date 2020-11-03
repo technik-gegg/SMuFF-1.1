@@ -22,43 +22,94 @@
 #include "ZServo.h"
 #include "InputDialogs.h"
 
-extern int      swapTools[];
+extern uint8_t  swapTools[];
 extern ZStepper steppers[];
-extern ZServo   servo, servoRevolver;
-extern int      toolSelections[];
-TMC2209Stepper* setupDriver = NULL;
+extern ZServo   servo, servoLid;
+extern int8_t   toolSelections[];
+TMC2209Stepper* setupDriver = nullptr;
+bool            forceStopMenu = false;
 
-#define SPEED_INCREMENT 5
+char            colorName[10];
+char            duePort[10];
+char            driverMode[10];
+char            ms3State[10];
 
-char* extractTitle(const char* menu PROGMEM, int index) {
+uint8_t        menuOrdinals[MAX_MENU_ORDINALS];
+
+#define CHECK_MENU      1
+
+void checkMenuSize(const char* PROGMEM name, char* menu, size_t size) {
+  #if defined(CHECK_MENU)
+  if(strlen(menu) > size) {
+    char tmp[80];
+    sprintf_P(tmp, name);
+    __debug(PSTR("Overrun in %s Menu: size=%d len=%d\n"), tmp, size, strlen(menu));
+  }
+  #endif
+}
+
+/*
+  Checks if the related speed (destVal) is beyond the percentage of the
+  initial value. If so, the related speed will be set to the calculated value.
+  Used to check whether the acceleration is faster than max. speed for example.
+*/
+void validateSpeed(int current, uint16_t* destVal, uint8_t percent) {
+  unsigned percentVal = (unsigned)round(((float)(current / 100) * percent));
+  if(smuffConfig.speedsInMMS) {
+    if(percentVal < *destVal)
+      *destVal = percentVal;
+    if(*destVal == 0)
+      *destVal = 1;
+  }
+  else {
+    if(*destVal < current+percentVal)
+      *destVal = current+percentVal;
+  }
+}
+
+/*
+  Extract title from current menu entry for sub-dialogs
+*/
+char* extractTitle(const char* menu, uint8_t index) {
   char* tok = strtok((char*)menu, "\n");
-  int cnt = -1;
-  while(tok != NULL) {
+  int8_t cnt = -1;
+  // find the line with given index
+  while(tok != nullptr) {
     if(++cnt == index)
       break;
-    tok = strtok(NULL, "\n");
+    tok = strtok(nullptr, "\n");
   }
-  
-  if(tok != NULL) {
-    char* tok2 = tok+strlen(tok)-1;
-    if(tok2 != NULL) {
-      while(*--tok2 != ' ')
-        *tok2 = 0;
-      while(*--tok2 == ' ')
-        *tok2 = 0;
+  // cut off all extra characters after tab
+  if(tok != nullptr) {
+    char* tok2 = tok;
+    while(*tok2 != '\t') {
+      tok2++;
     }
-    //__debug(PSTR("Menu: %s tok:%s"), menu, tok);
+    *tok2 = 0;
+    //__debug(PSTR("Menu: %s tok: %s @index: %d"), menu, tok, index);
     return tok;
   }
-  return NULL;
+  return nullptr;
+}
+
+char* extractFile(const char* files, uint8_t index) {
+  char* tok = strtok((char*)files, "\n");
+  int8_t cnt = -1;
+  // find the line with given index
+  while(tok != nullptr) {
+    if(++cnt == index)
+      break;
+    tok = strtok(nullptr, "\n");
+  }
+  return tok;
 }
 
 void setupToolsMenu(char* menu) {
   char tmp[50];
   sprintf_P(menu, P_MenuItemBack);
   memset(toolSelections, 0, sizeof(int)*MAX_TOOLS);
-  int n = 0;
-  for(int i=0; i< smuffConfig.toolCount; i++) {
+  uint8_t n = 0;
+  for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
     if(i == toolSelected)
       continue;
     toolSelections[n] = i;
@@ -70,65 +121,32 @@ void setupToolsMenu(char* menu) {
   menu[strlen(menu)-1] = '\0';
 }
 
-int menuVariant = 0;
-int mainMenuIndex[4][20] =  {
-      { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 },
-      { 0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16 },
-      { 0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16 },
-      { 0,1,2,3,5,6,7,8,10,11,12,13,14,15,16 }
-};
-
 void setupMainMenu(char* menu) {
-    char items[450];
-#ifndef __AVR__
-    char items2[200];
-#endif
     char motors[10];
     char servo[30];
     char maint[10];
     char pmmu[30] = "";
-    
+
     steppers[SELECTOR].getEnabled() ? sprintf_P(motors, P_Off) : sprintf_P(motors, P_On);
-    servoRevolver.getDegree() == smuffConfig.revolverOnPos ? sprintf_P(servo, P_MenuItemsServo, P_Open) : sprintf_P(servo, P_MenuItemsServo, P_Close);
+    lidOpen ? sprintf_P(servo, P_Close) : sprintf_P(servo, P_Open);
     maintainingMode ? sprintf_P(maint, P_Off) : sprintf_P(maint, P_On);
 
-    if(smuffConfig.prusaMMU2) {
-      sprintf_P(pmmu, P_MenuItemsPMMU);
-    }
-    sprintf_P(menu, P_MenuItemBack);
-#ifndef __AVR__
-    sprintf_P(items2, P_MenuItemsDefault, P_MenuItemSeparator, P_MenuItemSeparator, P_MenuItemSeparator);
-    if(smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
-      sprintf_P(items, P_MenuItems, motors, servo, maint, pmmu, items2);
-      menuVariant = 0;
-    }
-    else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2) {
-      sprintf_P(items, P_MenuItems, motors, servo, maint, "", items2);
-      menuVariant = 1;
-    }
-    else if(!smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
-      sprintf_P(items, P_MenuItems, motors, "", maint, pmmu, items2);
-      menuVariant = 2;
-    }
-    else {
-      sprintf_P(items, P_MenuItems, motors, "", maint, "", items2);
-      menuVariant = 3;
-    }
-#else
-    // need two different menus because of low memory issues on the ATMEGA
-    sprintf_P(items, P_MenuItems, stat, opt);
-#endif
-    strcat(menu, items);
+  if(smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
+    sprintf(menu, loadMenu(P_MnuMain0, menuOrdinals), motors, servo, maint);
+  }
+  else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2) {
+    sprintf(menu, loadMenu(P_MnuMain1, menuOrdinals), motors, servo, maint);
+  }
+  else if(!smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
+    sprintf(menu, loadMenu(P_MnuMain2, menuOrdinals), motors, maint);
+  }
+  else {
+    sprintf(menu, loadMenu(P_MnuMain3, menuOrdinals), motors, maint);
+  }
 }
 
 void setupStatusInfoMenu(char* menu) {
-  char items[120];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items, P_StatusInfoMenuItems, 
-                   P_StatusInfoMenuItemsX,
-                   P_StatusInfoMenuItemsY,
-                   P_StatusInfoMenuItemsZ);
-  strcat(menu, items);
+  sprintf(menu, loadMenu(P_MnuStatus, menuOrdinals));
 }
 
 void setupSwapMenu(char* menu) {
@@ -136,7 +154,7 @@ void setupSwapMenu(char* menu) {
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(tmp, P_SwapReset);
   strcat(menu, tmp);
-  for(int i=0; i< smuffConfig.toolCount; i++) {
+  for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
     sprintf_P(tmp, P_SwapMenu, i, swapTools[i]);
     strcat(menu, tmp);
     strcat(menu, (char*)"\n");
@@ -145,220 +163,173 @@ void setupSwapMenu(char* menu) {
 }
 
 void setupSettingsMenu(char* menu) {
-  char items[400];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items, P_SettingsMenuItems, 
-    String(smuffConfig.toolCount).c_str(),
+  sprintf(menu, loadMenu(P_MnuSettings, menuOrdinals),
+    smuffConfig.toolCount,
     String(smuffConfig.bowdenLength).c_str(),
-    String(smuffConfig.selectorDistance).c_str(),
-    P_MenuItemSeparator,
-#ifndef __AVR__
-    "\u25b8",
-    "\u25b8",
-    "\u25b8",
-    "\u25b8",
-#else
-    ">",
-    ">",
-    ">",
-#endif
-    P_MenuItemSeparator);
-  strcat(menu, items);
+    String(smuffConfig.selectorDistance).c_str()
+  );
 }
 
 void setupOptionsMenu(char* menu) {
-  char items[400];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items, P_OptionsMenuItems, 
-    String(smuffConfig.menuAutoClose).c_str(),
-    String(smuffConfig.fanSpeed).c_str(),
+  sprintf(menu, loadMenu(P_MnuOptions, menuOrdinals),
+    smuffConfig.menuAutoClose,
+    smuffConfig.fanSpeed,
     smuffConfig.prusaMMU2 ? P_Yes : P_No,
     smuffConfig.sendPeriodicalStats ? P_Yes : P_No,
     smuffConfig.useDuetLaser ? P_Yes : P_No,
-    smuffConfig.hasPanelDue==0 ? P_None : translatePanelDuePort(smuffConfig.hasPanelDue)
-    );
-  strcat(menu, items);
+    smuffConfig.hasPanelDue==0 ? P_None : translatePanelDuePort(smuffConfig.hasPanelDue),
+    smuffConfig.speedsInMMS ? P_Yes : P_No,
+    smuffConfig.servoMinPwm,
+    smuffConfig.servoMaxPwm
+  );
 }
 
 void setupBaudrateMenu(char* menu) {
-  char items[128];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items, P_BaudMenuItems,
-    String(smuffConfig.serial0Baudrate).c_str(),
-    CAN_USE_SERIAL1 ? String(smuffConfig.serial1Baudrate).c_str() : "---",
-    CAN_USE_SERIAL2 ? String(smuffConfig.serial2Baudrate).c_str() : "---",
-    CAN_USE_SERIAL3 ? String(smuffConfig.serial3Baudrate).c_str() : "---");
-  strcat(menu, items);
+  char none[] = { "n.a." };
+  sprintf(menu, loadMenu(P_MnuBaudrates, menuOrdinals),
+    String(smuffConfig.serialBaudrates[0]).c_str(),
+    CAN_USE_SERIAL1 ? String(smuffConfig.serialBaudrates[1]).c_str() : none,
+    CAN_USE_SERIAL2 ? String(smuffConfig.serialBaudrates[2]).c_str() : none,
+    CAN_USE_SERIAL3 ? String(smuffConfig.serialBaudrates[3]).c_str() : none);
 }
 
 void setupSteppersMenu(char *menu) {
-  char items[128];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items, P_SteppersMenuItems,
-#ifndef __AVR__
-    "\u25b8",
-    "\u25b8",
-    (smuffConfig.revolverIsServo) ? "Servo" : "Revolver",
-    "\u25b8");
-#else
-    ">",
-    ">",
-    (smuffConfig.revolverIsServo) ? "Servo" : "Revolver",
-    ">");
-#endif
-  strcat(menu, items);
+  sprintf(menu, loadMenu((smuffConfig.revolverIsServo) ? P_MnuSteppersServo : P_MnuSteppers, menuOrdinals));
 }
 
-void setupTMCMenu(char* menu, int axis) {
-  char items1[350];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_TMCMenuItems,     
+void setupTMCMenu(char* menu, uint8_t axis) {
+  sprintf(menu, loadMenu(P_MnuTmc, menuOrdinals),
     translateTMCDriverMode(smuffConfig.stepperMode[axis]),
-    String(smuffConfig.stepperPower[axis]).c_str(),
+    smuffConfig.stepperStealth[axis] ? P_Yes : P_No,
+    smuffConfig.stepperPower[axis],
     String(smuffConfig.stepperRSense[axis]).c_str(),
-    String(smuffConfig.stepperMicrosteps[axis]).c_str(),
-    String(smuffConfig.stepperStall[axis]).c_str(),
-    String(smuffConfig.stepperCSmin[axis]).c_str(),
-    String(smuffConfig.stepperCSmax[axis]).c_str(),
-    String(smuffConfig.stepperCSdown[axis]).c_str(),
-    String(smuffConfig.stepperAddr[axis]).c_str(),
-    String(smuffConfig.stepperToff[axis]).c_str(),
+    smuffConfig.stepperMicrosteps[axis],
+    smuffConfig.stepperStall[axis],
+    smuffConfig.stepperCSmin[axis],
+    smuffConfig.stepperCSmax[axis],
+    smuffConfig.stepperCSdown[axis],
+    smuffConfig.stepperAddr[axis],
+    smuffConfig.stepperToff[axis],
     smuffConfig.stepperStopOnStall[axis] ? P_Yes : P_No,
-    smuffConfig.stepperMaxStallCnt[axis]);
-  strcat(menu, items1);
+    smuffConfig.stepperMaxStallCnt[axis]
+  );
 }
 
 void setupServoMenu(char* menu) {
-  char items1[170];
-
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_ServoMenuItems,
-  smuffConfig.homeAfterFeed ? P_Yes : P_No,
-  smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
-  smuffConfig.revolverIsServo ? P_Yes : P_No,
-  smuffConfig.revolverOffPos,
-  smuffConfig.revolverOnPos,
-  smuffConfig.servoCycles1,
-  smuffConfig.servoCycles2);
-  strcat(menu, items1);
+  sprintf(menu, loadMenu(P_MnuServo, menuOrdinals),
+    smuffConfig.homeAfterFeed ? P_Yes : P_No,
+    smuffConfig.resetBeforeFeed ? P_Yes : P_No,
+    smuffConfig.revolverIsServo ? P_Yes : P_No,
+    #if defined(MULTISERVO)
+    servoPosClosed[toolSelected]+SERVO_CLOSED_OFS,
+    servoPosClosed[toolSelected],
+    #else
+    smuffConfig.revolverOffPos,
+    smuffConfig.revolverOnPos,
+    #endif
+    smuffConfig.servoCycles1,
+    smuffConfig.servoCycles2
+  );
 }
 
 void setupRevolverMenu(char* menu) {
-  char items1[200];
-  char items2[240];
-
-  long maxSpeed = translateTicks(smuffConfig.maxSpeed_Y, smuffConfig.stepsPerRevolution_Y/360);
-  long accel = translateTicks(smuffConfig.acceleration_Y, smuffConfig.stepsPerRevolution_Y/360);
-
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_AllSteppersMenuItems,
+  sprintf(menu, loadMenu(P_MnuRevolver, menuOrdinals),
     translateTMCDriverMode(smuffConfig.stepperMode[REVOLVER]),
-    smuffConfig.invertDir_Y ? P_Yes : P_No,
-    smuffConfig.endstopTrigger_Y ? P_High : P_Low,
-    smuffConfig.stepDelay_Y,
-    maxSpeed,
-    accel);
-  sprintf_P(items2, P_RevolverMenuItems,
+    smuffConfig.invertDir[REVOLVER] ? P_Yes : P_No,
+    smuffConfig.endstopTrg[REVOLVER] ? P_High : P_Low,
+    smuffConfig.stepDelay[REVOLVER],
+    smuffConfig.maxSpeed[REVOLVER],
+    smuffConfig.accelSpeed[REVOLVER],
+    smuffConfig.accelDist[REVOLVER],
     smuffConfig.firstRevolverOffset,
-    smuffConfig.stepsPerRevolution_Y,
+    smuffConfig.stepsPerRevolution,
     smuffConfig.homeAfterFeed ? P_Yes : P_No,
-    smuffConfig.resetBeforeFeed_Y ? P_Yes : P_No,
+    smuffConfig.resetBeforeFeed ? P_Yes : P_No,
     smuffConfig.wiggleRevolver ? P_Yes : P_No,
-    smuffConfig.revolverIsServo ? P_Yes : P_No);
-  strcat(menu, items1);
-  strcat(menu, items2);
+    smuffConfig.revolverIsServo ? P_Yes : P_No,
+    translateMS3State(smuffConfig.ms3config[REVOLVER])
+    );
 }
 
 void setupFeederMenu(char* menu) {
-  char items1[256];
-  char items2[256];
-
-  long maxSpeed = translateTicks(smuffConfig.maxSpeed_Z, smuffConfig.stepsPerMM_Z);
-  long accel = translateTicks(smuffConfig.acceleration_Z, smuffConfig.stepsPerMM_Z);
-  long insertSpeed = translateTicks(smuffConfig.insertSpeed_Z, smuffConfig.stepsPerMM_Z);
-
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_AllSteppersMenuItems,
+  sprintf(menu, loadMenu(P_MnuFeeder, menuOrdinals),
     translateTMCDriverMode(smuffConfig.stepperMode[FEEDER]),
-    smuffConfig.invertDir_Z ? P_Yes : P_No,
-    smuffConfig.endstopTrigger_Z ? P_High : P_Low,
-    smuffConfig.stepDelay_Z,
-    maxSpeed,
-    accel);
-  sprintf_P(items2, P_FeederMenuItems,
-    smuffConfig.stepsPerMM_Z,
+    smuffConfig.invertDir[FEEDER] ? P_Yes : P_No,
+    smuffConfig.endstopTrg[FEEDER] ? P_High : P_Low,
+    smuffConfig.stepDelay[FEEDER],
+    smuffConfig.maxSpeed[FEEDER],
+    smuffConfig.accelSpeed[FEEDER],
+    smuffConfig.accelDist[FEEDER],
+    smuffConfig.stepsPerMM[FEEDER],
     smuffConfig.enableChunks ? P_Yes : P_No,
     smuffConfig.feedChunks,
     String(smuffConfig.insertLength).c_str(),
-    insertSpeed,
+    smuffConfig.insertSpeed,
     String(smuffConfig.reinforceLength).c_str(),
-    smuffConfig.externalControl_Z ? P_Yes : P_No,
-    smuffConfig.isSharedStepper ? P_Yes : P_No
+    smuffConfig.extControlFeeder ? P_Yes : P_No,
+    smuffConfig.isSharedStepper ? P_Yes : P_No,
+    translateMS3State(smuffConfig.ms3config[FEEDER]),
+    smuffConfig.endstopTrg[3] ? P_High : P_Low
   );
-  strcat(menu, items1);
-  strcat(menu, items2);
 }
 
 void setupSelectorMenu(char* menu) {
-  char items1[250];
-  char items2[60];
-
-  long maxSpeed = translateTicks(smuffConfig.maxSpeed_X, smuffConfig.stepsPerMM_X);
-  long accel = translateTicks(smuffConfig.acceleration_X, smuffConfig.stepsPerMM_X);
-  
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_AllSteppersMenuItems,
+  sprintf(menu, loadMenu(P_MnuSelector, menuOrdinals),
     translateTMCDriverMode(smuffConfig.stepperMode[SELECTOR]),
-    smuffConfig.invertDir_X ? P_Yes : P_No,
-    smuffConfig.endstopTrigger_X ? P_High : P_Low,
-    smuffConfig.stepDelay_X,
-    maxSpeed,
-    accel);
-  sprintf_P(items2, P_SelectorMenuItems,
+    smuffConfig.invertDir[SELECTOR] ? P_Yes : P_No,
+    smuffConfig.endstopTrg[SELECTOR] ? P_High : P_Low,
+    smuffConfig.stepDelay[SELECTOR],
+    smuffConfig.maxSpeed[SELECTOR],
+    smuffConfig.accelSpeed[SELECTOR],
+    smuffConfig.accelDist[SELECTOR],
     String(smuffConfig.firstToolOffset).c_str(),
-    String(smuffConfig.stepsPerMM_X).c_str());
-  strcat(menu, items1);
-  strcat(menu, items2);
+    String(smuffConfig.stepsPerMM[SELECTOR]).c_str(),
+    translateMS3State(smuffConfig.ms3config[SELECTOR])
+  );
+
 }
 
 void setupDisplayMenu(char* menu) {
-  char items1[200];
-  sprintf_P(menu, P_MenuItemBack);
-  sprintf_P(items1, P_DisplayMenuItems,
-    String(smuffConfig.powerSaveTimeout).c_str(),
-    String(smuffConfig.lcdContrast).c_str(),
+  sprintf(menu, loadMenu(P_MnuDisplay, menuOrdinals),
+    smuffConfig.powerSaveTimeout,
+    smuffConfig.lcdContrast,
     translateColor(smuffConfig.backlightColor),
-    smuffConfig.encoderTickSound ? P_Yes : P_No);
-  strcat(menu, items1);
+    smuffConfig.encoderTickSound ? P_Yes : P_No
+  );
 }
 
-void setupTestrunMenu(char* menu) {
-  char items[410];
+void setupTestrunMenu(char* menu, uint8_t maxFiles) {
+  char items[maxFiles*30];
 
   sprintf_P(menu, P_MenuItemBack);
-  memset(items, 0, sizeof(items));
-  if(getFiles("/", ".gcode", 20, true, items)) {
+  memset(items, 0, ArraySize(items));
+  if(getFiles(PSTR("test/"), PSTR(".gcode"), maxFiles, true, items)) {
     strcat(menu, items);
   }
+  //__debug(PSTR("Test-Files:\n%s"), items);
 }
 
 void showMainMenu() {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char tmp[128];
   char _title[40];
   char _menu[700];
-  int menuIdx[20];
-  
-  do {
-    setupMainMenu(_menu);
-    //__debug(PSTR("MainList: %s %d"), _menu, strlen(_menu));
+  uint8_t menuIdx[20];
+
+  while(!stopMenu) {
     sprintf_P(_title, P_TitleMainMenu);
+    setupMainMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuMain0, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(_title, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
+    //__debug(PSTR("Cur now: %d -> %d"), current_selection, fnc);
 
     if(current_selection == 0)
       return;
@@ -366,38 +337,34 @@ void showMainMenu() {
       char* title = extractTitle(_menu, current_selection-1);
       bool enabled = steppers[SELECTOR].getEnabled();
 
-      switch(mainMenuIndex[menuVariant][current_selection]) {
+      switch(fnc) {
         case 1:
           stopMenu = true;
           break;
-        
+
         case 2:
           moveHome(SELECTOR);
           moveHome(REVOLVER, true, false);
-          startTime = millis();
           break;
-        
-        case 3: 
+
+        case 3:
           steppers[SELECTOR].setEnabled(!enabled);
           steppers[REVOLVER].setEnabled(!enabled);
           steppers[FEEDER].setEnabled(!enabled);
           if(smuffConfig.revolverIsServo) {
-            setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
+            setServoLid(SERVO_OPEN);
           }
-          startTime = millis();
           break;
-        
+
         case 4:
-          if(servoRevolver.getDegree() == smuffConfig.revolverOffPos)
-            setServoPos(SERVO_LID, smuffConfig.revolverOnPos);
-          else 
-            setServoPos(SERVO_LID, smuffConfig.revolverOffPos);
-          startTime = millis();
+          if(lidOpen)
+            setServoLid(SERVO_CLOSED);
+          else
+            setServoLid(SERVO_OPEN);
           break;
 
         case 5:
           maintainTool();
-          startTime = millis();
           break;
 
         case 6:
@@ -405,7 +372,6 @@ void showMainMenu() {
           beep(2);
           sprintf_P(tmp, P_JamCleared);
           drawUserMessage(tmp);
-          startTime = millis();
           break;
 
         case 7:
@@ -413,56 +379,54 @@ void showMainMenu() {
               loadFilamentPMMU2();
           else
               loadFilament();
-          startTime = millis();
           break;
-        
+
         case 8:
           unloadFilament();
-          startTime = millis();
           break;
 
         case 9:
           loadFilament();
-          startTime = millis();
           break;
 
         case 11:
           showSwapMenu(title);
-          startTime = millis();
           break;
-          
+
         case 12:
           showStatusInfoMenu(title);
-          startTime = millis();
           break;
 
         case 14:
           showSettingsMenu(title);
           current_selection = 1;
-          startTime = millis();
           break;
 
         case 16:
           showTestrunMenu(title);
           current_selection = 1;
-          startTime = millis();
           break;
       }
+      startTime = millis();
     }
     debounceButton();
-  } while(!stopMenu);
+  }
 }
 
 void showTestrunMenu(char* menuTitle) {
   bool stopMenu = false;
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
-  char _menu[400];
-  char* fnames[16];
-  String _file;
+  char _menu[600];
+  char* _file;
 
-  do {
-    setupTestrunMenu(_menu);
+  while(!stopMenu) {
+    setupTestrunMenu(_menu, 20);
+    #if defined(CHECK_MENU)
+    checkMenuSize(PSTR("Testrun"), _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
+    stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
 
@@ -472,130 +436,141 @@ void showTestrunMenu(char* menuTitle) {
       stopMenu = true;
     }
     else if(current_selection >= 2) {
-      splitStringLines(fnames, (int)ArraySize(fnames), (const char*)_menu);
-      _file = String(fnames[current_selection-1]);
-      _file.trim();
-      //__debug(PSTR("Selected file: %s"), _file.c_str());
+      _file = extractFile(_menu, current_selection-1);
+      char *p;
+      while((p = strrchr(_file,' ')) != nullptr) {
+        *p = 0;
+        p--;
+      }
+      //__debug(PSTR("Selected file: >%s<"), _file);
       testRun(_file);
     }
-  } while(!stopMenu);
+  }
 }
 
-char colorName[10];
-
-const char* translateColor(int color) {
+const char* translateColor(uint8_t color) {
   char* colorNames[16];
   char tmp[80];
-  sprintf_P(tmp, P_Colors);
+  sprintf_P(tmp, loadOptions(P_OptColors));
   splitStringLines(colorNames, (int)ArraySize(colorNames), tmp);
   if(color >= 0 && color < (int)ArraySize(colorNames))
     strcpy(colorName, colorNames[color]);
-  else sprintf(colorName, "???");
+  else sprintf_P(colorName, P_Undefined);
   return colorName;
 }
 
-char duePort[10];
-
-const char* translatePanelDuePort(int port) {
+const char* translatePanelDuePort(uint8_t port) {
   char* ports[3];
   char tmp[40];
-  sprintf_P(tmp, P_PanelDueOptions);
+  sprintf_P(tmp, loadOptions(P_OptPanelDue));
   splitStringLines(ports, (int)ArraySize(ports), tmp);
   if(port >= 0 && port < (int)ArraySize(ports))
     strcpy(duePort, ports[port]);
-  else sprintf(duePort, "???");
+  else sprintf_P(duePort, P_Undefined);
   return duePort;
 }
 
-char driverMode[10];
-
-const char* translateTMCDriverMode(int mode) {
+const char* translateTMCDriverMode(uint8_t mode) {
   char* modes[3];
   char tmp[40];
-  sprintf_P(tmp, P_TMCModeItems);
+  sprintf_P(tmp, loadOptions(P_OptTmcModes));
   splitStringLines(modes, (int)ArraySize(modes), tmp);
   if(mode >= 0 && mode < (int)ArraySize(modes))
     strcpy(driverMode, modes[mode]);
-  else sprintf(driverMode, "???");
+  else sprintf_P(driverMode, P_Undefined);
   return driverMode;
+}
+
+const char* translateMS3State(uint8_t mode) {
+  char* states[3];
+  char tmp[40];
+  sprintf_P(tmp, loadOptions(P_OptMS3States));
+  splitStringLines(states, (int)ArraySize(states), tmp);
+  if(mode >= 0 && mode < (int)ArraySize(states))
+    strcpy(ms3State, states[mode]);
+  else sprintf_P(ms3State, P_Undefined);
+  return ms3State;
 }
 
 void selectPanelDuePort(char* menuTitle) {
   int val;
   char tmp[128];
-  sprintf_P(tmp, P_PanelDueOptions);
   val = smuffConfig.hasPanelDue;
-  if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(tmp), NULL, true))
+  if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptPanelDue)), nullptr, true))
     smuffConfig.hasPanelDue = val;
 }
 
-bool selectBaudrate(int port, char* menuTitle) {
-    unsigned long val;
-    char tmp[128];
-    sprintf_P(tmp, P_Baudrates);
-    if(port == 0) {
-        val = smuffConfig.serial0Baudrate;
+bool selectBaudrate(uint8_t port, char* menuTitle) {
+  unsigned long val;
+  char tmp[128];
+  sprintf(tmp, loadOptions(P_OptBaudrates));
+  if(port == 0) {
+      val = smuffConfig.serialBaudrates[0];
+      if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
+        smuffConfig.serialBaudrates[0] = val;
+        Serial.end();
+        delay(500);
+        Serial.begin(smuffConfig.serialBaudrates[0]);
+      }
+  }
+  else if(port == 1) {
+      if(CAN_USE_SERIAL1) {
+        val = smuffConfig.serialBaudrates[1];
         if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
-          smuffConfig.serial0Baudrate = val;
-          Serial.end();
+          smuffConfig.serialBaudrates[1] = val;
+          Serial1.end();
           delay(500);
-          Serial.begin(smuffConfig.serial0Baudrate);
+          Serial1.begin(smuffConfig.serialBaudrates[1]);
         }
-    }
-    else if(port == 1) {
-        if(CAN_USE_SERIAL1) {
-          val = smuffConfig.serial1Baudrate;
-          if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
-            smuffConfig.serial1Baudrate = val;
-            Serial1.end();
-            delay(500);
-            Serial1.begin(smuffConfig.serial1Baudrate);
-          }
+      }
+  }
+  else if(port == 2) {
+      if(CAN_USE_SERIAL2) {
+        val = smuffConfig.serialBaudrates[2];
+        if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
+          smuffConfig.serialBaudrates[2] = val;
+          Serial2.end();
+          delay(500);
+          Serial2.begin(smuffConfig.serialBaudrates[2]);
         }
-    }
-    else if(port == 2) {
-        if(CAN_USE_SERIAL2) {
-          val = smuffConfig.serial2Baudrate;
-          if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
-            smuffConfig.serial2Baudrate = val;
-            Serial2.end();
-            delay(500);
-            Serial2.begin(smuffConfig.serial2Baudrate);
-          }
+      }
+  }
+  else {
+      if(CAN_USE_SERIAL3) {
+        val = smuffConfig.serialBaudrates[3];
+        if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
+          smuffConfig.serialBaudrates[3] = val;
+          Serial3.end();
+          delay(500);
+          Serial3.begin(smuffConfig.serialBaudrates[3]);
         }
-    }
-    else {
-        if(CAN_USE_SERIAL3) {
-          val = smuffConfig.serial3Baudrate;
-          if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
-            smuffConfig.serial3Baudrate = val;
-            Serial3.end();
-            delay(500);
-            Serial3.begin(smuffConfig.serial3Baudrate);
-          }
-        }
-    }
-    return true;
+      }
+  }
+  return true;
 }
 
 bool selectBacklightColor(int color, char* menuTitle) {
-    int val = color;
-    char tmp[80];
-    sprintf_P(tmp, P_Colors);
-    if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setBacklightIndex, true)) {
-      smuffConfig.backlightColor = val;
-      //__debug(PSTR("Backlight: %d"), val);
-    }
-    return true;
+  int val = color;
+  char tmp[80];
+  sprintf_P(tmp, loadOptions(P_OptColors));
+  if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setBacklightIndex, true)) {
+    smuffConfig.backlightColor = val;
+    //__debug(PSTR("Backlight: %d"), val);
+  }
+  return true;
 }
 
 void positionServoCallback(int val) {
+  #if defined(MULTISERVO)
+  setServoPos(toolSelected+10, val);
+  #else
   setServoPos(SERVO_LID, val);
+  #endif
 }
 
-void showTMCMenu(char* menuTitle, int axis) {
+void showTMCMenu(char* menuTitle, uint8_t axis) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   bool bVal;
   int iVal;
@@ -604,250 +579,264 @@ void showTMCMenu(char* menuTitle, int axis) {
   char _menu[450];
   char tmp[50];
 
-  do {
+  while(!stopMenu) {
     setupTMCMenu(_menu, axis);
-    //__debug(PSTR("Revolver Menu: %s %d"), _menu, strlen(_menu));
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuTmc, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
 
         case 2: // Mode
             iVal = smuffConfig.stepperMode[axis];
-            sprintf_P(tmp, P_TMCModeItems);
-            if(showInputDialog(title, P_DriverMode, &iVal, String(tmp), NULL, true))
-              smuffConfig.stepperMode[axis] = iVal;
-            startTime = millis();
+            sprintf_P(tmp, loadOptions(P_OptTmcModes));
+            if(showInputDialog(title, P_DriverMode, &iVal, String(tmp), nullptr, true))
+              smuffConfig.stepperMode[axis] = (uint8_t)iVal;
             break;
 
-        case 3: // Power
+        case 3: // TMode
+            bVal = smuffConfig.stepperStealth[axis];
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.stepperStealth[axis] = bVal;
+            break;
+
+        case 4: // Power
             iVal = smuffConfig.stepperPower[axis];
-            if(showInputDialog(title, P_InMilliAmpere, &iVal, 0, MAX_POWER, NULL, 10)) {
-              smuffConfig.stepperPower[axis] = iVal;
-              if(setupDriver != NULL)
-                setupDriver->rms_current(iVal);
+            if(showInputDialog(title, P_InMilliAmpere, &iVal, 0, MAX_POWER, nullptr, 10)) {
+              smuffConfig.stepperPower[axis] = (uint16_t)iVal;
+              if(setupDriver != nullptr)
+                setupDriver->rms_current(smuffConfig.stepperPower[axis]);
             }
-            startTime = millis();
             break;
 
-        case 4: // RSense
+        case 5: // RSense
             fVal = smuffConfig.stepperRSense[axis];
-            if(showInputDialog(title, P_InOhm, &fVal, 0, 1, NULL, 0.01)) {
+            if(showInputDialog(title, P_InOhm, &fVal, 0, 1, nullptr, 0.01)) {
               smuffConfig.stepperRSense[axis] = fVal;
-              if(setupDriver != NULL)
+              if(setupDriver != nullptr)
                 setupDriver->Rsense = fVal;
             }
-            startTime = millis();
             break;
 
-        case 5: // Microsteps
+        case 6: // Microsteps
             iVal = smuffConfig.stepperMicrosteps[axis];
-            sprintf_P(tmp, P_MicrostepItems);
-            if(showInputDialog(title, P_Microsteps, &iVal, String(tmp), NULL, false)) {
-              smuffConfig.stepperMicrosteps[axis] = iVal;
-              if(setupDriver != NULL)
+            sprintf_P(tmp, loadOptions(P_OptMicrosteps));
+            if(showInputDialog(title, P_Microsteps, &iVal, String(tmp), nullptr, false)) {
+              smuffConfig.stepperMicrosteps[axis] = (uint16_t)iVal;
+              if(setupDriver != nullptr)
                 setupDriver->mstep_reg_select(true);
-                setupDriver->microsteps(iVal);
+                setupDriver->microsteps(smuffConfig.stepperMicrosteps[axis]);
             }
             break;
 
-        case 6: // Stall
+        case 7: // Stall
             iVal = smuffConfig.stepperStall[axis];
             if(showInputDialog(title, P_Threshold, &iVal, 0, 255)) {
-              smuffConfig.stepperStall[axis] = iVal;
-              if(setupDriver != NULL)
-                setupDriver->SGTHRS(iVal);
+              smuffConfig.stepperStall[axis] = (int8_t)iVal;
+              if(setupDriver != nullptr)
+                setupDriver->SGTHRS(smuffConfig.stepperStall[axis]);
             }
-            startTime = millis();
             break;
 
         case 8: // CoolStep min
             iVal = smuffConfig.stepperCSmin[axis];
             if(showInputDialog(title, P_Min, &iVal, 0, 15)) {
-              smuffConfig.stepperCSmin[axis] = iVal;
-              if(setupDriver != NULL)
-                setupDriver->semin(iVal);
+              smuffConfig.stepperCSmin[axis] = (int8_t)iVal;
+              if(setupDriver != nullptr)
+                setupDriver->semin(smuffConfig.stepperCSmin[axis]);
             }
-            startTime = millis();
             break;
 
-        case 7: // CoolStep max
+        case 9: // CoolStep max
             iVal = smuffConfig.stepperCSmax[axis];
             if(showInputDialog(title, P_Max, &iVal, 0, 15)) {
-              smuffConfig.stepperCSmax[axis] = iVal;
-              if(setupDriver != NULL)
-                setupDriver->semax(iVal);
+              smuffConfig.stepperCSmax[axis] = (int8_t)iVal;
+              if(setupDriver != nullptr)
+                setupDriver->semax(smuffConfig.stepperCSmax[axis]);
             }
-            startTime = millis();
             break;
 
-        case 9: // CoolStep down
+        case 10: // CoolStep down
             iVal = smuffConfig.stepperCSdown[axis];
             if(showInputDialog(title, P_Down, &iVal, 0, 15)) {
-              smuffConfig.stepperCSdown[axis] = iVal;
-              if(setupDriver != NULL)
-                setupDriver->sedn(iVal);
+              smuffConfig.stepperCSdown[axis] = (int8_t)iVal;
+              if(setupDriver != nullptr)
+                setupDriver->sedn(smuffConfig.stepperCSdown[axis]);
             }
-            startTime = millis();
             break;
 
-        case 10: // Driver Address
+        case 11: // Driver Address
             iVal = smuffConfig.stepperAddr[axis];
             if(showInputDialog(title, P_Address, &iVal, 0, 3)) {
-              smuffConfig.stepperAddr[axis] = iVal;
+              smuffConfig.stepperAddr[axis] = (int8_t)iVal;
             }
-            startTime = millis();
-            break;
-        
-        case 11: // TOff
-            iVal = smuffConfig.stepperToff[axis];
-            if(showInputDialog(title, P_Value, &iVal, 0, 15)) {
-              smuffConfig.stepperToff[axis] = iVal;
-              if(setupDriver != NULL)
-                setupDriver->toff(iVal);
-            }
-            startTime = millis();
             break;
 
-        case 12: // Stop on stall
+        case 12: // TOff
+            iVal = smuffConfig.stepperToff[axis];
+            if(showInputDialog(title, P_Value, &iVal, 0, 15)) {
+              smuffConfig.stepperToff[axis] = (int8_t)iVal;
+              if(setupDriver != nullptr)
+                setupDriver->toff(smuffConfig.stepperToff[axis]);
+            }
+            break;
+
+        case 13: // Stop on stall
             bVal = smuffConfig.stepperStopOnStall[axis];
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.stepperStopOnStall[axis] = bVal;
-              if(setupDriver != NULL) {
+              if(setupDriver != nullptr) {
                 steppers[axis].setStopOnStallDetected(bVal);
               }
             }
-            startTime = millis();
             break;
 
-        case 13: // Stall trigger count
+        case 14: // Stall trigger count
             iVal = smuffConfig.stepperMaxStallCnt[axis];
             if(showInputDialog(title, P_Value, &iVal, 0, MAX_STALL_COUNT)) {
-              smuffConfig.stepperMaxStallCnt[axis] = iVal;
-              steppers[axis].setStallThreshold(iVal);
+              smuffConfig.stepperMaxStallCnt[axis] = (int8_t)iVal;
+              steppers[axis].setStallThreshold(smuffConfig.stepperMaxStallCnt[axis]);
             }
-            startTime = millis();
             break;
-        
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void showServoMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
   int iVal;
+  uint8_t posForTool;
   char _menu[350];
 
-  do {
+  while(!stopMenu) {
     setupServoMenu(_menu);
-    //__debug(PSTR("Revolver Menu: %s %d"), _menu, strlen(_menu));
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuServo, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
-        
+
         case 2: // Home after feed
             bVal = smuffConfig.homeAfterFeed;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.homeAfterFeed = bVal;
-            startTime = millis();
             break;
 
         case 3: // Reset before feed
-            bVal = smuffConfig.resetBeforeFeed_Y;
+            bVal = smuffConfig.resetBeforeFeed;
             if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.resetBeforeFeed_Y = bVal;
-            startTime = millis();
+              smuffConfig.resetBeforeFeed = bVal;
             break;
 
         case 4: // Use Servo
             bVal = smuffConfig.revolverIsServo;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.revolverIsServo = bVal;
-            startTime = millis();
             break;
 
         case 5: // Servo open
+            #if !defined(MULTISERVO)
             iVal = smuffConfig.revolverOffPos;
-            if(showInputDialog(title, P_OpenPos, &iVal, 0, 2400, positionServoCallback))
-              smuffConfig.revolverOffPos = iVal;
-            startTime = millis();
+            if(showInputDialog(title, P_OpenPos, &iVal, 0, 180, positionServoCallback)) {
+              smuffConfig.revolverOffPos = (uint8_t)iVal;
+            }
+            #endif
             break;
 
         case 6: // Servo closed
-            iVal = smuffConfig.revolverOnPos;
-            if(showInputDialog(title, P_ClosedPos, &iVal, 0, 2400, positionServoCallback))
-              smuffConfig.revolverOnPos = iVal;
-            startTime = millis();
+            #if defined(MULTISERVO)
+            iVal = servoPosClosed[toolSelected];
+            #else
+            posForTool = servoPosClosed[toolSelected];
+            iVal = posForTool == 0 ? smuffConfig.revolverOnPos : posForTool;
+            #endif
+            if(showInputDialog(title, P_ClosedPos, &iVal, 0, 180, positionServoCallback)) {
+              #if defined(MULTISERVO)
+              servoPosClosed[toolSelected] = (uint8_t)iVal;
+              #else
+              servoPosClosed[toolSelected] = (uint8_t)iVal;
+              smuffConfig.revolverOnPos = (uint8_t)iVal;
+              #endif
+            }
             break;
 
         case 7: // Servo 1 cycles
             iVal = smuffConfig.servoCycles1;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
-              smuffConfig.servoCycles1 = iVal;
-              servo.setMaxCycles(iVal);
+              smuffConfig.servoCycles1 = (uint8_t)iVal;
+              servo.setMaxCycles(smuffConfig.servoCycles1);
             }
-            startTime = millis();
             break;
 
         case 8: // Servo 2 cycles
             iVal = smuffConfig.servoCycles2;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
-              smuffConfig.servoCycles2 = iVal;
-              servoRevolver.setMaxCycles(iVal);
+              smuffConfig.servoCycles2 = (uint8_t)iVal;
+              servoLid.setMaxCycles(smuffConfig.servoCycles2);
             }
-            startTime = millis();
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void showRevolverMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
   int iVal;
   char _menu[350];
+  char tmp[50];
 
-  do {
+  while(!stopMenu) {
     setupRevolverMenu(_menu);
-    //__debug(PSTR("Revolver Menu: %s\nLen: %d"), _menu, strlen(_menu));
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuRevolver, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
@@ -855,122 +844,132 @@ void showRevolverMenu(char* menuTitle) {
         case 2: // TMC-Paramters
             setupDriver = drivers[REVOLVER];
             showTMCMenu(title, REVOLVER);
-            startTime = millis();
+            current_selection = 1;
             break;
 
         case 3: // Invert dir
-            bVal = smuffConfig.invertDir_Y;
+            bVal = smuffConfig.invertDir[REVOLVER];
             if(showInputDialog(title, P_YesNo, &bVal)) {
-              smuffConfig.invertDir_Y = bVal;
+              smuffConfig.invertDir[REVOLVER] = bVal;
               steppers[REVOLVER].setInvertDir(bVal);
             }
-            startTime = millis();
             break;
 
         case 4: // Endstop trigger
-            iVal = smuffConfig.endstopTrigger_Y;
+            iVal = smuffConfig.endstopTrg[REVOLVER];
             if(showInputDialog(title, P_TriggerOn, &iVal, 0, 1)) {
-              smuffConfig.endstopTrigger_Y = iVal;
-              steppers[REVOLVER].setEndstopState(iVal);
+              smuffConfig.endstopTrg[REVOLVER] = (uint8_t)iVal;
+              steppers[REVOLVER].setEndstopState(smuffConfig.endstopTrg[REVOLVER]);
             }
-            startTime = millis();
             break;
 
         case 5: // Step Delay
-            iVal = smuffConfig.stepDelay_Y;
+            iVal = smuffConfig.stepDelay[REVOLVER];
             if(showInputDialog(title, P_InMicroseconds, &iVal, 0, 100)) {
-              smuffConfig.stepDelay_Y = iVal;
+              smuffConfig.stepDelay[REVOLVER] = (uint8_t)iVal;
             }
-            startTime = millis();
             break;
 
         case 6: // Max. Speed
-            iVal = translateTicks(smuffConfig.maxSpeed_Y, smuffConfig.stepsPerRevolution_Y/360);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.maxSpeed_Y = translateTicks(iVal, smuffConfig.stepsPerRevolution_Y/360);
-              steppers[REVOLVER].setMaxSpeed(smuffConfig.maxSpeed_Y);
+            iVal = smuffConfig.maxSpeed[REVOLVER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              validateSpeed(iVal, &smuffConfig.accelSpeed[REVOLVER], 2);
+              smuffConfig.maxSpeed[REVOLVER] = (uint16_t)iVal;
+              steppers[REVOLVER].setMaxSpeed(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerRevolution/360, smuffConfig.stepDelay[REVOLVER]));
             }
-            startTime = millis();
             break;
 
         case 7: // Acceleration
-            iVal = translateTicks(smuffConfig.acceleration_Y, smuffConfig.stepsPerRevolution_Y/360);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.acceleration_Y = translateTicks(iVal, smuffConfig.stepsPerRevolution_Y/360);
-              steppers[REVOLVER].setAcceleration(smuffConfig.acceleration_Y);
+            iVal = smuffConfig.accelSpeed[REVOLVER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.accelSpeed[REVOLVER] = (uint16_t)iVal;
+              steppers[REVOLVER].setAcceleration(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerRevolution/360, smuffConfig.stepDelay[REVOLVER]));
             }
-            startTime = millis();
             break;
 
-        case 8: // Offset
+        case 8: // Acceleration Distance
+            iVal = smuffConfig.accelDist[REVOLVER];
+            if(showInputDialog(title, P_InMillimeter, &iVal, 1, 200, nullptr, 1)) {
+              smuffConfig.accelDist[REVOLVER] = (uint8_t)iVal;
+              steppers[REVOLVER].setAccelDistance(smuffConfig.accelDist[REVOLVER]);
+            }
+            break;
+
+        case 9: // Offset
             changeOffset(REVOLVER);
-            startTime = millis();
             break;
 
-        case 9: // Steps Per Rev
-            iVal = smuffConfig.stepsPerRevolution_Y;
-            if(showInputDialog(title, P_InSteps, &iVal, 1, 20000, NULL, 50)) {
-              smuffConfig.stepsPerRevolution_Y = iVal;
+        case 10: // Steps Per Rev
+            iVal = smuffConfig.stepsPerRevolution;
+            if(showInputDialog(title, P_InSteps, &iVal, 1, 20000, nullptr, 50)) {
+              smuffConfig.stepsPerRevolution = iVal;
               steppers[REVOLVER].setMaxStepCount(iVal);
               steppers[REVOLVER].setStepsPerDegree(iVal/360);
             }
-            startTime = millis();
             break;
 
-        case 10: // Home after feed
+        case 11: // Home after feed
             bVal = smuffConfig.homeAfterFeed;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.homeAfterFeed = bVal;
-            startTime = millis();
             break;
 
-        case 11: // Reset before feed
-            bVal = smuffConfig.resetBeforeFeed_Y;
+        case 12: // Reset before feed
+            bVal = smuffConfig.resetBeforeFeed;
             if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.resetBeforeFeed_Y = bVal;
-            startTime = millis();
+              smuffConfig.resetBeforeFeed = bVal;
             break;
 
-        case 12: // Wiggle
+        case 13: // Wiggle
             bVal = smuffConfig.wiggleRevolver;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.wiggleRevolver = bVal;
-            startTime = millis();
             break;
 
-        case 13: // Use Servo
+        case 14: // Use Servo
             bVal = smuffConfig.revolverIsServo;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.revolverIsServo = bVal;
-            startTime = millis();
+            break;
+
+        case 15: // MS3 Pin State
+            iVal = smuffConfig.ms3config[REVOLVER];
+            sprintf_P(tmp, loadOptions(P_OptMS3States));
+            if(showInputDialog(title, P_MS3State, &iVal, String(tmp), nullptr, true))
+              smuffConfig.ms3config[REVOLVER] = (int8_t)iVal;
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void showSelectorMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
   int iVal;
   char _menu[350];
+  char tmp[50];
 
-  do {
+  while(!stopMenu) {
     setupSelectorMenu(_menu);
-    //__debug(PSTR("Selector Menu: %s\nLen: %d"), _menu, strlen(_menu));
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuSelector, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
@@ -978,94 +977,108 @@ void showSelectorMenu(char* menuTitle) {
         case 2: // TMC-Paramters
             setupDriver = drivers[SELECTOR];
             showTMCMenu(title, SELECTOR);
-            startTime = millis();
+            current_selection = 1;
             break;
 
         case 3: // Invert dir
-            bVal = smuffConfig.invertDir_X;
+            bVal = smuffConfig.invertDir[SELECTOR];
             if(showInputDialog(title, P_YesNo, &bVal)) {
-              smuffConfig.invertDir_X = bVal;
+              smuffConfig.invertDir[SELECTOR] = bVal;
               steppers[SELECTOR].setInvertDir(bVal);
             }
-            startTime = millis();
             break;
 
         case 4: // Endstop trigger
-            iVal = smuffConfig.endstopTrigger_X;
+            iVal = smuffConfig.endstopTrg[SELECTOR];
             if(showInputDialog(title, P_TriggerOn, &iVal, 0, 1)) {
-              smuffConfig.endstopTrigger_X = iVal;
-              steppers[SELECTOR].setEndstopState(iVal);
+              smuffConfig.endstopTrg[SELECTOR] = (uint8_t)iVal;
+              steppers[SELECTOR].setEndstopState(smuffConfig.endstopTrg[SELECTOR]);
             }
-            startTime = millis();
             break;
 
         case 5: // Step Delay
-            iVal = smuffConfig.stepDelay_X;
+            iVal = smuffConfig.stepDelay[SELECTOR];
             if(showInputDialog(title, P_InMicroseconds, &iVal, 0, 100)) {
-              smuffConfig.stepDelay_X = iVal;
+              smuffConfig.stepDelay[SELECTOR] = (uint8_t)iVal;
             }
-            startTime = millis();
             break;
 
         case 6: // Max. Speed
-            iVal = translateTicks(smuffConfig.maxSpeed_X, smuffConfig.stepsPerMM_X);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.maxSpeed_X = translateTicks(iVal, smuffConfig.stepsPerMM_X);
-              steppers[SELECTOR].setMaxSpeed(smuffConfig.maxSpeed_X);
+            iVal = smuffConfig.maxSpeed[SELECTOR];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              validateSpeed(iVal, &smuffConfig.accelSpeed[SELECTOR], 5);
+              smuffConfig.maxSpeed[SELECTOR] = (uint16_t)iVal;
+              steppers[SELECTOR].setMaxSpeed(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]));
             }
-            startTime = millis();
             break;
 
         case 7: // Acceleration
-            iVal = translateTicks(smuffConfig.acceleration_X, smuffConfig.stepsPerMM_X);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.acceleration_X = translateTicks(iVal, smuffConfig.stepsPerMM_X);
-              steppers[SELECTOR].setAcceleration(smuffConfig.acceleration_X);
+            iVal = smuffConfig.accelSpeed[SELECTOR];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.accelSpeed[SELECTOR] = (uint16_t)iVal;
+              steppers[SELECTOR].setAcceleration(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]));
             }
-            startTime = millis();
-            break;
-        
-        case 8: // Offset
-            changeOffset(SELECTOR);
-            startTime = millis();
             break;
 
-        case 9: // Steps Per MM
-            iVal = smuffConfig.stepsPerMM_X;
-            if(showInputDialog(title, P_InSteps, &iVal, 1, 10000)) {
-              smuffConfig.stepsPerMM_X = iVal;
-              steppers[SELECTOR].setStepsPerMM(iVal);
+        case 8: // Acceleration Distance
+            iVal = smuffConfig.accelDist[SELECTOR];
+            if(showInputDialog(title, P_InMillimeter, &iVal, 1, 200, nullptr, 1)) {
+              smuffConfig.accelDist[SELECTOR] = (uint8_t)iVal;
+              steppers[SELECTOR].setAccelDistance(smuffConfig.accelDist[SELECTOR]);
             }
-            startTime = millis();
+            break;
+
+        case 9: // Offset
+            changeOffset(SELECTOR);
+            break;
+
+        case 10: // Steps Per MM
+            iVal = smuffConfig.stepsPerMM[SELECTOR];
+            if(showInputDialog(title, P_InSteps, &iVal, 1, 10000)) {
+              smuffConfig.stepsPerMM[SELECTOR] = (uint16_t)iVal;
+              steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM[SELECTOR]);
+            }
+            break;
+
+        case 11: // MS3 Pin State
+            iVal = smuffConfig.ms3config[SELECTOR];
+            sprintf_P(tmp, loadOptions(P_OptMS3States));
+            if(showInputDialog(title, P_MS3State, &iVal, String(tmp), nullptr, true))
+              smuffConfig.ms3config[SELECTOR] = (int8_t)iVal;
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void showFeederMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
   int iVal;
   float fVal;
-  char _menu[400];
+  char _menu[700];
+  char tmp[50];
 
-  do {
+  while(!stopMenu) {
     setupFeederMenu(_menu);
-    //__debug(PSTR("Feeder Menu: %s\nLen: %d"), _menu, strlen(_menu));
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuFeeder, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
@@ -1073,140 +1086,154 @@ void showFeederMenu(char* menuTitle) {
         case 2: // TMC-Paramters
             setupDriver = drivers[FEEDER];
             showTMCMenu(title, FEEDER);
-            startTime = millis();
+            current_selection = 1;
             break;
 
         case 3: // Invert dir
-            bVal = smuffConfig.invertDir_Z;
+            bVal = smuffConfig.invertDir[FEEDER];
             if(showInputDialog(title, P_YesNo, &bVal)) {
-              smuffConfig.invertDir_Z = bVal;
+              smuffConfig.invertDir[FEEDER] = bVal;
               steppers[FEEDER].setInvertDir(bVal);
             }
-            startTime = millis();
             break;
 
         case 4: // Endstop trigger
-            iVal = smuffConfig.endstopTrigger_Z;
+            iVal = smuffConfig.endstopTrg[FEEDER];
             if(showInputDialog(title, P_TriggerOn, &iVal, 0, 1)) {
-              smuffConfig.endstopTrigger_Z = iVal;
-              steppers[FEEDER].setEndstopState(iVal);
+              smuffConfig.endstopTrg[FEEDER] = (uint8_t)iVal;
+              steppers[FEEDER].setEndstopState(smuffConfig.endstopTrg[FEEDER]);
             }
-            startTime = millis();
             break;
 
         case 5: // Step Delay
-            iVal = smuffConfig.stepDelay_Z;
+            iVal = smuffConfig.stepDelay[FEEDER];
             if(showInputDialog(title, P_InMicroseconds, &iVal, 0, 100)) {
-              smuffConfig.stepDelay_Z = iVal;
+              smuffConfig.stepDelay[FEEDER] = (uint8_t)iVal;
             }
-            startTime = millis();
             break;
 
         case 6: // Max. Speed
-            iVal = translateTicks(smuffConfig.maxSpeed_Z, smuffConfig.stepsPerMM_Z);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.maxSpeed_Z = translateTicks(iVal, smuffConfig.stepsPerMM_Z);
-              steppers[FEEDER].setMaxSpeed(smuffConfig.maxSpeed_Z);
+            iVal = smuffConfig.maxSpeed[FEEDER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              validateSpeed(iVal, &smuffConfig.accelSpeed[FEEDER], 5);
+              validateSpeed(iVal, &smuffConfig.insertSpeed, 10);
+              smuffConfig.maxSpeed[FEEDER] = (uint16_t)iVal;
+              steppers[FEEDER].setMaxSpeed(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]));
             }
-            startTime = millis();
             break;
 
         case 7: // Acceleration
-            iVal = translateTicks(smuffConfig.acceleration_Z, smuffConfig.stepsPerMM_Z);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.acceleration_Z = translateTicks(iVal, smuffConfig.stepsPerMM_Z);
-              steppers[FEEDER].setAcceleration(smuffConfig.acceleration_Z);
+            iVal = smuffConfig.accelSpeed[FEEDER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.accelSpeed[FEEDER] = (uint16_t)iVal;
+              steppers[FEEDER].setAcceleration(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]));
             }
-            startTime = millis();
             break;
 
-        case 8: // Steps Per MM
-            iVal = smuffConfig.stepsPerMM_Z;
+        case 8: // Acceleration Distance
+            iVal = smuffConfig.accelDist[FEEDER];
+            if(showInputDialog(title, P_InMillimeter, &iVal, 1, 200, nullptr, 1)) {
+              smuffConfig.accelDist[FEEDER] = (uint8_t)iVal;
+              steppers[FEEDER].setAccelDistance(smuffConfig.accelDist[FEEDER]);
+            }
+            break;
+
+        case 9: // Steps Per MM
+            iVal = smuffConfig.stepsPerMM[FEEDER];
             if(showInputDialog(title, P_InSteps, &iVal, 1, 10000)) {
-              smuffConfig.stepsPerMM_Z = iVal;
-              steppers[FEEDER].setStepsPerMM(iVal);
+              smuffConfig.stepsPerMM[FEEDER] = (uint16_t)iVal;
+              steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM[FEEDER]);
             }
-            startTime = millis();
             break;
 
-        case 9: // Enable chunks
+        case 10: // Enable chunks
             bVal = smuffConfig.enableChunks;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.enableChunks = bVal;
-            startTime = millis();
             break;
 
-        case 10: // Feed chunks
+        case 11: // Feed chunks
             iVal = smuffConfig.feedChunks;
             if(showInputDialog(title, P_NoOfChunks, &iVal, 0, 100))
-              smuffConfig.feedChunks = iVal;
+              smuffConfig.feedChunks = (uint8_t)iVal;
             if(iVal == 0)
                 smuffConfig.enableChunks = false;
-            startTime = millis();
             break;
 
-        case 11: // Insert length
+        case 12: // Insert length
             fVal = smuffConfig.insertLength;
             if(showInputDialog(title, P_InMillimeter, &fVal, 1, smuffConfig.selectorDistance))
               smuffConfig.insertLength = fVal;
-            startTime = millis();
             break;
 
-        case 12: // Insert Speed
-            iVal = translateTicks(smuffConfig.insertSpeed_Z, smuffConfig.stepsPerMM_Z);
-            if(showInputDialog(title, P_InMMS, &iVal, MIN_MMS, MAX_MMS, NULL, SPEED_INCREMENT)) {
-              smuffConfig.insertSpeed_Z = translateTicks(iVal, smuffConfig.stepsPerMM_Z);
-              if(smuffConfig.insertSpeed_Z > smuffConfig.acceleration_Z)
-                smuffConfig.acceleration_Z = smuffConfig.insertSpeed_Z;
+        case 13: // Insert Speed
+            iVal = smuffConfig.insertSpeed;
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.insertSpeed = (uint16_t)iVal;
             }
-            startTime = millis();
             break;
 
-        case 13: // Reinforce length
+        case 14: // Reinforce length
             fVal = smuffConfig.reinforceLength;
             if(showInputDialog(title, P_InMillimeter, &fVal, 0, 10))
               smuffConfig.reinforceLength = fVal;
-            startTime = millis();
             break;
 
-        case 14: // Ext. Feeder Ctl
-            bVal = smuffConfig.externalControl_Z;
+        case 15: // Ext. Feeder Ctl
+            bVal = smuffConfig.extControlFeeder;
             if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.externalControl_Z = bVal;
-            startTime = millis();
+              smuffConfig.extControlFeeder = bVal;
             break;
 
-        case 15: // Shared Stepper
+        case 16: // Shared Stepper
             bVal = smuffConfig.isSharedStepper;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.isSharedStepper = bVal;
-            startTime = millis();
             break;
 
+        case 17: // MS3 Pin State
+            iVal = smuffConfig.ms3config[FEEDER];
+            sprintf_P(tmp, loadOptions(P_OptMS3States));
+            if(showInputDialog(title, P_MS3State, &iVal, String(tmp), nullptr, true))
+              smuffConfig.ms3config[FEEDER] = (int8_t)iVal;
+            break;
+
+        case 18: // Endstop2 trigger
+            iVal = smuffConfig.endstopTrg[3];
+            if(showInputDialog(title, P_TriggerOn, &iVal, 0, 1)) {
+              smuffConfig.endstopTrg[3] = (uint8_t)iVal;
+              steppers[FEEDER].setEndstopState(smuffConfig.endstopTrg[3], 2);
+            }
+            break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void showSteppersMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   char _menu[128];
 
-  do {
+  while(!stopMenu) {
     setupSteppersMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuSteppers, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
@@ -1214,49 +1241,53 @@ void showSteppersMenu(char* menuTitle) {
         case 2: // Selector
             showSelectorMenu(title);
             current_selection = 1;
-            startTime = millis();
             break;
 
         case 3: // Feeder
             showFeederMenu(title);
             current_selection = 1;
-            startTime = millis();
             break;
 
-        case 4: // Revolver or Servo
-            if(smuffConfig.revolverIsServo)
-              showServoMenu(title);
-            else
-              showRevolverMenu(title);
+        case 4: // Revolver
+            showRevolverMenu(title);
             current_selection = 1;
-            startTime = millis();
+            break;
+
+        case 5: // Servo
+            showServoMenu(title);
+            current_selection = 1;
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void showDisplayMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   char _menu[128];
   int iVal;
   bool bVal;
 
-  do {
+  while(!stopMenu) {
     setupDisplayMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuDisplay, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
@@ -1264,129 +1295,149 @@ void showDisplayMenu(char* menuTitle) {
         case 2: // Power Save Timeout
             iVal = smuffConfig.powerSaveTimeout;
             if(showInputDialog(title, P_InSeconds, &iVal, 0, 480))
-              smuffConfig.powerSaveTimeout = iVal;
-            startTime = millis();
+              smuffConfig.powerSaveTimeout = (uint16_t)iVal;
             break;
 
         case 3: // LCD Contrast
             iVal = smuffConfig.lcdContrast;
             if(showInputDialog(title, P_InValue, &iVal, MIN_CONTRAST, MAX_CONTRAST))
-              smuffConfig.lcdContrast = iVal;
-            startTime = millis();
+              smuffConfig.lcdContrast = (uint8_t)iVal;
             break;
 
         case 4: // Backlight Color
             selectBacklightColor(smuffConfig.backlightColor, title);
-            startTime = millis();
             break;
 
         case 5: // Encoder Ticks
             bVal = smuffConfig.encoderTickSound;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.encoderTickSound = bVal;
-            startTime = millis();
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
+void saveSettings() {
+  bool stat = false;
+  if(writeConfig()) {
+    if(writeTmcConfig()){
+      #if defined(MULTISERVO)
+      if(writeServoMapping()) {
+        stat = true;
+      }
+      #else
+        stat = true;
+      #endif
+    }
+  }
+  char msg[60];
+  if(stat) {
+    beep(1);
+    sprintf_P(msg, P_ConfigWriteSuccess);
+    settingsChanged = false;
+  }
+  else {
+    beep(3);
+    sprintf_P(msg, P_ConfigWriteFail);
+  }
+  drawUserMessage(msg);
+  delay(3000);
+}
+
+void checkSaveSettings() {
+  userBeep();
+  uint8_t button = showDialog(P_TitleWarning, P_SettingsChanged, P_AskSave, P_YesNoButtons);
+  if (button == 1) {
+    saveSettings();
+  }
+  settingsChanged = false;
+}
 
 void showSettingsMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   float fVal;
   int iVal;
   bool bVal;
   char *title;
-  char msg[128];
   char _menu[300];
 
-  do {
+  while(!stopMenu) {
     setupSettingsMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuSettings, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
-    if(current_selection == 0)
+    if(current_selection == 0) {
+      if(settingsChanged) {
+        checkSaveSettings();
+      }
       return;
+    }
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
+            if(settingsChanged) {
+              checkSaveSettings();
+            }
             stopMenu = true;
             break;
 
         case 2: // Tool count
             iVal = smuffConfig.toolCount;
             if(showInputDialog(title, P_ToolCount, &iVal, MIN_TOOLS, MAX_TOOLS))
-              smuffConfig.toolCount = iVal;
-            startTime = millis();
+              smuffConfig.toolCount = (uint8_t)iVal;
             break;
 
         case 3: // Bowden length
             fVal = smuffConfig.bowdenLength;
             if(showInputDialog(title, P_InMillimeter, &fVal, 20, 2000))
             smuffConfig.bowdenLength = fVal;
-            startTime = millis();
             break;
 
         case 4: // Selector distance
             fVal = smuffConfig.selectorDistance;
-            if(showInputDialog(title, P_InMillimeter, &fVal, 10, 50))
+            if(showInputDialog(title, P_InMillimeter, &fVal, 10, 150))
               smuffConfig.selectorDistance = fVal;
-            startTime = millis();
-            break;
-
-        case 5: // Separator
             break;
 
         case 6: // Options
             showOptionsMenu(title);
             current_selection = 1;
-            startTime = millis();
             break;
 
         case 7: // Baudrates
             showBaudratesMenu(title);
             current_selection = 1;
-            startTime = millis();
             break;
 
         case 8: // Steppers
             showSteppersMenu(title);
             current_selection = 1;
-            startTime = millis();
             break;
 
         case 9: // Display
             showDisplayMenu(title);
             current_selection = 1;
-            startTime = millis();
             break;
-        
-        case 10: // Separator
-            break;
-        
-        case 11: // STORE CONFIG
-            if(writeConfig()) {
-              beep(1);
-              sprintf_P(msg, P_ConfigWriteSuccess);
-            }
-            else {
-              beep(3);
-              sprintf_P(msg, P_ConfigWriteFail);
-            }
-            drawUserMessage(msg);
-            delay(3000);
+
+        case 11: // Save To SD-Card
+            saveSettings();
             current_selection = 1;
-            startTime = millis();
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 void setLiveFanSpeed(int val) {
@@ -1401,7 +1452,7 @@ void setLiveFanSpeed(int val) {
 
 void showOptionsMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   float fVal;
   int iVal;
@@ -1410,18 +1461,22 @@ void showOptionsMenu(char* menuTitle) {
   char msg[128];
   char _menu[300];
 
-  do {
+  while(!stopMenu) {
     setupOptionsMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuOptions, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
             stopMenu = true;
             break;
@@ -1430,48 +1485,76 @@ void showOptionsMenu(char* menuTitle) {
             iVal = smuffConfig.menuAutoClose;
             if(showInputDialog(title, P_InSeconds, &iVal, 0, 300))
               smuffConfig.menuAutoClose = iVal;
-            startTime = millis();
             break;
 
-        case 3: // Fan speed 
+        case 3: // Fan speed
             iVal = smuffConfig.fanSpeed;
             if(showInputDialog(title, P_InPercent, &iVal, 0, 100, setLiveFanSpeed)) {
               smuffConfig.fanSpeed = iVal;
             }
-            startTime = millis();
             break;
 
         case 4: // Prusa Emulation
             bVal = smuffConfig.prusaMMU2;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.prusaMMU2 = bVal;
-            startTime = millis();
             break;
 
         case 5: // Send Status Info
             bVal = smuffConfig.sendPeriodicalStats;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.sendPeriodicalStats = bVal;
-            startTime = millis();
             break;
 
         case 6: // Duet Laser Sensor
             bVal = smuffConfig.useDuetLaser;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.useDuetLaser = bVal;
-            startTime = millis();
             break;
 
         case 7: // PanelDue
             selectPanelDuePort(title);
-            startTime = millis();
+            break;
+
+        case 8: // Speeds in MMS
+            bVal = smuffConfig.speedsInMMS;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.speedsInMMS = bVal;
+              if(bVal) {
+                mmsMax = MAX_MMS;
+                speedIncrement = INC_MMS;
+              }
+              else {
+                mmsMax = MAX_TICKS;
+                speedIncrement = INC_TICKS;
+              }
+            }
+            break;
+
+        case 9: // Servo Min PWM
+            iVal = smuffConfig.servoMinPwm;
+            if(showInputDialog(title, P_InMilliseconds, &iVal, 400, 1000, nullptr, 20)) {
+              smuffConfig.servoMinPwm = iVal;
+              servo.setPulseWidthMin(iVal);
+              servoLid.setPulseWidthMin(iVal);
+            }
+            break;
+
+        case 10: // Servo Max PWM
+            iVal = smuffConfig.servoMaxPwm;
+            if(showInputDialog(title, P_InMilliseconds, &iVal, 1000, 3000, nullptr, 20)) {
+              smuffConfig.servoMaxPwm = iVal;
+              servo.setPulseWidthMax(iVal);
+              servoLid.setPulseWidthMax(iVal);
+            }
             break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
-void drawSwapTool(int from, int with) {
+void drawSwapTool(uint8_t from, uint8_t with) {
   char tmp[256];
   sprintf_P(tmp, P_SwapToolDialog, from, with);
   drawUserMessage(String(tmp));
@@ -1479,17 +1562,20 @@ void drawSwapTool(int from, int with) {
 
 uint8_t swapTool(uint8_t index) {
   uint8_t ndx = 0;
+  int16_t turn;
+  uint8_t btn;
+  bool isHeld, isClicked;
 
   debounceButton();
   delay(250);
-  
+
   drawSwapTool(index, ndx);
 
   while(1) {
-    if(digitalRead(ENCODER_BUTTON_PIN) == LOW) {
+    getInput(&turn, &btn, &isHeld, &isClicked);
+    if(isHeld || isClicked) {
       break;
     }
-    int turn = encoder.getValue();
     if(turn == 0)
       continue;
     ndx += turn;
@@ -1505,12 +1591,17 @@ uint8_t swapTool(uint8_t index) {
 
 void showSwapMenu(char* menuTitle) {
   bool stopMenu = false;
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char _menu[128];
 
-  do {
+  while(!stopMenu) {
     setupSwapMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(PSTR("Swap"), _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
+    stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
 
@@ -1520,7 +1611,7 @@ void showSwapMenu(char* menuTitle) {
       stopMenu = true;
     }
     else if(current_selection == 2) {
-      for(int i=0; i < MAX_TOOLS; i++) {
+      for(uint8_t i=0; i < MAX_TOOLS; i++) {
         swapTools[i] = i;
       }
     }
@@ -1531,83 +1622,87 @@ void showSwapMenu(char* menuTitle) {
       swapTools[tool] = tmp;
       current_selection = 1;
     }
-  } while(!stopMenu);
+  }
   saveStore();
 }
 
 void showBaudratesMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   char _menu[300];
 
-  do {
+  while(!stopMenu) {
     setupBaudrateMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuBaudrates, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
       title = extractTitle(_menu, current_selection-1);
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
           stopMenu = true;
           break;
-        
+
         case 2:
           selectBaudrate(0, title);
           current_selection = 1;
-          startTime = millis();
           break;
-        
+
         case 3:
           selectBaudrate(1, title);
           current_selection = 1;
-          startTime = millis();
           break;
 
         case 4:
           selectBaudrate(2, title);
           current_selection = 1;
-          startTime = millis();
           break;
 
         case 5:
           selectBaudrate(3, title);
           current_selection = 1;
-          startTime = millis();
           break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);  
+  }
 }
 
 void showStatusInfoMenu(char* menuTitle) {
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char _menu[120];
 
-  do {
+  while(!stopMenu) {
     setupStatusInfoMenu(_menu);
-    //__debug(PSTR("Offsets Menu: %s %d %d"), _menu, strlen(_menu), 0 /*freeMemory()*/);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuStatus, _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
 
     if(current_selection == 0)
       return;
     else {
-      switch(current_selection) {
+      switch(fnc) {
         case 1:
           stopMenu = true;
           break;
-        
+
         case 2:
           if(smuffConfig.useDuetLaser)
             showDuetLS();
@@ -1616,38 +1711,36 @@ void showStatusInfoMenu(char* menuTitle) {
             drawUserMessage(P_DuetLSDisabled);
             delay(3000);
           }
-          startTime = millis();
           break;
 
         case 3:
           showTMCStatus(SELECTOR);
-          startTime = millis();
           break;
 
         case 4:
           showTMCStatus(REVOLVER);
-          startTime = millis();
           break;
 
         case 5:
           showTMCStatus(FEEDER);
-          startTime = millis();
           break;
       }
+      startTime = millis();
     }
-  } while(!stopMenu);  
+  }
 }
 
-void changeOffset(int index) {
-  int steps = smuffConfig.stepsPerRevolution_Y/360;
+void changeOffset(uint8_t index) {
+  uint16_t steps = smuffConfig.stepsPerRevolution/360;
   float stepsF = 0.1f;
   long pos;
   float posF;
-  int turn, btn;
+  int16_t turn;
+  uint8_t btn;
   bool stat = true, isHeld, isClicked;
 
   debounceButton();
-  
+
   moveHome(index);
   if(index == REVOLVER) {
     prepSteppingRel(REVOLVER, smuffConfig.firstRevolverOffset, true);
@@ -1659,10 +1752,10 @@ void changeOffset(int index) {
   pos = steppers[index].getStepPosition();
   posF = steppers[index].getStepPositionMM();
 
-  unsigned int curSpeed = steppers[index].getMaxSpeed();
+  uint16_t curSpeed = steppers[index].getMaxSpeed();
   steppers[index].setMaxSpeed(steppers[index].getAcceleration());
   encoder.setAccelerationEnabled(true);
-  
+
   if(index == REVOLVER) {
     drawValue(steppers[index].getDescriptor(), P_InSteps, String(steppers[index].getStepPosition()));
   }
@@ -1698,7 +1791,7 @@ void changeOffset(int index) {
   if(index == REVOLVER) {
     if(stat)
       smuffConfig.firstRevolverOffset = pos;
-    else 
+    else
       moveHome(index);
   }
   if(index == SELECTOR) {
@@ -1715,69 +1808,81 @@ void changeOffset(int index) {
 void showToolsMenu() {
 
   bool stopMenu = false;
-  unsigned int startTime = millis();
+  uint32 startTime = millis();
   uint8_t current_selection = 0;
   char _title[60];
   char _menu[128];
   char _tmp[40];
 
-  do {
+  while(!stopMenu) {
     sprintf_P(_title, P_TitleToolsMenu);
     setupToolsMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(PSTR("Tools"), _menu, ArraySize(_menu));
+    #endif
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
-    uint8_t startPos = toolSelected == 255 ? 0 : toolSelected+1;
+    uint8_t startPos = toolSelected == -1 ? 0 : toolSelected+1;
     current_selection = display.userInterfaceSelectionList(_title, startPos, _menu);
 
     if(current_selection <= 1)
       stopMenu = true;
     else {
-      int tool = toolSelections[current_selection-2];
+      int8_t tool = toolSelections[current_selection-2];
       if(!smuffConfig.sendActionCmds) {
         selectTool(tool);
       }
       else {
         // send "Tool Change" action to controller
-        sprintf_P(_tmp, P_ActionTool, tool);
+        char _tool[10];
+        sprintf_P(_tool, P_Tool, tool);
+        sprintf_P(_tmp, P_Action, _tool);
         printResponse(_tmp, 0);
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);
-        // TODO: do tool change using Duet3D 
+        // TODO: do tool change using Duet3D
         // not yet possible due to Duet3D is being blocked waiting for endstop
         /*
-        sprintf_P(tmp, PSTR("T%d\n"), tool); 
+        sprintf_P(tmp, PSTR("T%d\n"), tool);
         Serial2.print(tmp);
         */
       }
       startTime = millis();
     }
-  } while(!stopMenu);
+  }
 }
 
 bool checkStopMenu(unsigned startTime) {
-    if(millis() - startTime > (unsigned long)smuffConfig.menuAutoClose * 1000) {
-      return true;
-    }
-    return false;
+  if(forceStopMenu)
+    return true;
+  if(remoteKey == REMOTE_HOME)
+    return true;
+  if(millis() - startTime > (unsigned long)smuffConfig.menuAutoClose * 1000)
+    return true;
+  return false;
+}
+
+bool checkAutoClose() {
+  if(forceStopMenu)
+    return true;
+  if(remoteKey == REMOTE_HOME)
+    return true;
+  if (millis() - lastEncoderButtonTime >= (unsigned long)smuffConfig.menuAutoClose * 1000)
+    return true;
+  return false;
 }
 
 void resetAutoClose() {
   lastEncoderButtonTime = millis();
 }
 
-bool checkAutoClose() {
-  if (millis() - lastEncoderButtonTime >= (unsigned long)smuffConfig.menuAutoClose*1000) {
-    return true;
-  }
-  return false;
-}
-
 void debounceButton() {
-  delay(150);
-  while(digitalRead(ENCODER_BUTTON_PIN) == LOW) {
+  #if !defined(USE_LEONERD_DISPLAY)
+  delay(20);
+  while(getEncoderButton()) {
       delay(20);
   }
-  encoder.resetButton();
+  #endif
 }
 

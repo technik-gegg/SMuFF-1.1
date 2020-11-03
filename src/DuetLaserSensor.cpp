@@ -26,7 +26,7 @@ extern void __debug(const char* fmt, ...);
     P = partity bit
    ==============================================================================================================================
     v1 Data word	        P00S 00pp pppp pppp	    S = switch open, pppppppppp = 10-bit filament position (50 counts/mm)
-    v1 Error word	        P010 0000 0000 0000	
+    v1 Error word	        P010 0000 0000 0000
     v1 Quality word	        P10s ssss bbbb bbbb	    sssss = shutter, bbbbbbbb = brightness
 
     v2 Data word	        P00S 1ppp pppp pppp	    S = switch open, ppppppppppp = 11-bit filament position (100 counts/mm)
@@ -37,7 +37,7 @@ extern void __debug(const char* fmt, ...);
     v2 Shutter word	        P110 0011 ssss ssss	    ssssssss = shutter
  ============================================================================================================================== */
 
-void DuetLaserSensor::attach(int pin, bool v1) {
+void DuetLaserSensor::attach(int8_t pin, bool v1) {
     _pin = pin;
     _isV1 = v1;
     pinMode(_pin, INPUT);
@@ -79,8 +79,8 @@ void DuetLaserSensor::reset() {
 void DuetLaserSensor::service() {
     if(_pin == -1)
         return;
-    
-    volatile int _b = digitalRead(_pin);
+
+    volatile uint8_t _b = digitalRead(_pin);
     // wait for idle to be signaled (=8 bits low)
     if(!_gotIdle) {
         _state = STATE_INIT;
@@ -98,7 +98,7 @@ void DuetLaserSensor::service() {
             }
         }
     }
-    // wait for startbits 
+    // wait for startbits
     if(_gotIdle && !_gotStartbit) {
         if(_b == HIGH && _bitCnt == 0) {
             _bitCnt++;
@@ -121,7 +121,7 @@ void DuetLaserSensor::service() {
     if(_gotIdle && _gotStartbit)  {
          _state = STATE_READING_DATA;
          /* FOR DEBUGGING ONLY
-        _bits += _bitCnt%5==0 ? " " : (_b ? "1" : "0"); 
+        _bits += _bitCnt%5==0 ? " " : (_b ? "1" : "0");
         _stuff += _bitCnt%5==0 ? (_b ? "1" : "0") : " ";
         */
         if(_bitCnt%5!=0) {
@@ -145,7 +145,7 @@ void DuetLaserSensor::service() {
                 }
                 else {
                     _state = STATE_PARITY_OK;
-                    int cmd = (_data & 0x6000)>>13;
+                    uint16_t cmd = (_data & 0x6000)>>13;
                     switch(cmd) {
                         case 0: {
                             _state = STATE_GOT_POSITION;
@@ -183,11 +183,11 @@ void DuetLaserSensor::service() {
                                 _error = E_INVALID_VERSION;
                             }
                             break;
-                        case 3: 
+                        case 3:
                             {
                                 _state = STATE_GOT_QUALITY_V2;
                                 _error = E_NONE;
-                                int opt = (_data & 0x0f00) >> 8;
+                                uint16_t opt = (_data & 0x0f00) >> 8;
                                 switch(opt) {
                                     case 0:
                                         _version = _data & 0xff;
@@ -201,7 +201,7 @@ void DuetLaserSensor::service() {
                                     case 3:
                                         _shutter = _data & 0xff;
                                         break;
-                                    default: 
+                                    default:
                                         _error = E_INVALID_QUALITY;
                                         break;
                                 }

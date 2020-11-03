@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 #include <stdlib.h>
 #include <Arduino.h>
@@ -54,9 +55,9 @@
 class DuetLaserSensor {
 public:
   DuetLaserSensor() { _pin = -1; };
-  DuetLaserSensor(int pin, bool v1 = false) { attach(pin, v1); }
-  
-  void attach(int pin, bool v1 = false);
+  DuetLaserSensor(int8_t pin, bool v1 = false) { attach(pin, v1); }
+
+  void attach(int8_t pin, bool v1 = false);
   void reset();
   void resetPosition();
   void service();
@@ -79,8 +80,8 @@ public:
   void      resetBits() { _bits = ""; _stuff = ""; }
 
 private:
-  int       _pin = -1;
-  bool      _switch;  
+  int8_t    _pin = -1;
+  bool      _switch;
   bool      _isV1;
   bool      _hasMoved;
   int8_t    _dir;
@@ -95,13 +96,13 @@ private:
   uint8_t   _sensorError;
   unsigned  _state;
   unsigned  _data;
-  
+
   bool      _gotIdle;
   bool      _gotStartbit;
   bool      _isValid;
-  int       _bitCnt;
+  int8_t    _bitCnt;
   uint8_t   _pbitCnt;
-  int       _dataCnt;
+  int8_t    _dataCnt;
   String    _bits;
   String    _stuff;
 };

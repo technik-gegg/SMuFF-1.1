@@ -23,8 +23,8 @@
 
 #define BOARD_INFO          "SKR mini V1.1"
 // SELECTOR (X)
-#define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH); 
-#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);  
+#define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
+#define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
 #define X_STEP_PIN          PC6
 #define X_DIR_PIN           PC7
 #define X_ENABLE_PIN        PB15
@@ -46,12 +46,12 @@
 #define Z_ENABLE_PIN        PC4
 #define Z_END_PIN           PC0     // Endstop Z-
 #define Z_END2_PIN          PA2     // Endstop X+
-#define Z_END_DUET_PIN      Z_END2_PIN     
+#define Z_END_DUET_PIN      Z_END2_PIN
 
-#define BEEPER_PIN          PC10 
+#define BEEPER_PIN          PC10
 
 #define DEBUG_PIN           PA1     // Endstop Y+
-#define RELAIS_PIN          PC1     // Endstop Y- (Relay for stepper motor switching)
+#define RELAY_PIN          PC1     // Endstop Y- (Relay for stepper motor switching)
 
 #if !defined(SMUFF_V5)
 #define SERVO_OPEN_DRAIN    0
@@ -60,7 +60,7 @@
 #else
 #define SERVO_OPEN_DRAIN    1
 #define SERVO1_PIN          PB13     // Y STEP pin used because of 5V tolerance
-#define SERVO2_PIN          PB14     // Y DIR pin 
+#define SERVO2_PIN          PB14     // Y DIR pin
 #endif
 #define FAN_PIN             PC8
 #define HEATER0_PIN         PA8
@@ -90,7 +90,7 @@ _DEFPIN_ARM(PB9, 9, B);
 
 #define SDCS_PIN            -1      // use default
 
-#define USB_CONNECT_PIN     -1      // not avail 
+#define USB_CONNECT_PIN     -1      // not avail
 #define SD_DETECT_PIN       PA3
 
 #define DSP_SCL             PB6     // By default we run the SMuFF controller display on TWI (I2C)
@@ -107,7 +107,7 @@ _DEFPIN_ARM(PB9, 9, B);
 #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
 #define DSP_CS_PIN          PB6     // CS
 #define DSP_DC_PIN          PC12    // CLK
-#define DSP_RESET_PIN       PC13 
+#define DSP_RESET_PIN       PC13
 #define ENCODER1_PIN        PD2
 #define ENCODER2_PIN        PB8
 #define ENCODER_BUTTON_PIN  PC11
@@ -115,21 +115,21 @@ _DEFPIN_ARM(PB9, 9, B);
 
 #define DSP_CS_PIN          PB7     // These pins are only valid if a SPI display is being used
 #define DSP_DC_PIN          PC15
-#define DSP_RESET_PIN       -1 
+#define DSP_RESET_PIN       -1
 
 #ifndef USE_TWI_DISPLAY
 #define ENCODER1_PIN        PD2
 #define ENCODER2_PIN        PB8
 #else
-#define ENCODER1_PIN        PC14    // moved over to EXP1 for a more convenient cabeling 
+#define ENCODER1_PIN        PC14    // moved over to EXP1 for a more convenient cabeling
 #define ENCODER2_PIN        PC15    // (only possible if TWI display is used)
 #endif
 #define ENCODER_BUTTON_PIN  PC11
 #endif
 
-#define STALL_X_PIN         -1      // 
-#define STALL_Y_PIN         -1      // 
-#define STALL_Z_PIN         -1      // 
+#define STALL_X_PIN         -1      //
+#define STALL_Y_PIN         -1      //
+#define STALL_Z_PIN         -1      //
 
 #ifdef USE_TWI_DISPLAY
 #define DEBUG_OFF_PIN       -1       // not needed on TWI display
@@ -143,8 +143,8 @@ _DEFPIN_ARM(PB9, 9, B);
 #define TX1_PIN             PA9     // TFT header TX
 #define RX1_PIN             PA10    // TFT header RX
 
-/* 
- Those pins cannot be used for serial data transfer because they're 
+/*
+ Those pins cannot be used for serial data transfer because they're
  already in use on the SKR Mini V1.1
 */
 // SERIAL2
@@ -153,7 +153,7 @@ _DEFPIN_ARM(PB9, 9, B);
 #define TX2_PIN             PA2     // on SKR Mini already used for X+ endstop (but might be reconfigured)
 #define RX2_PIN             PA3     // on SKR Mini already used for SD-Card DATA2
 
-/* 
+/*
  Those pins can be used for serial data transfer if the Z-Axis
  is not being used on the SKR Mini V1.1
 */

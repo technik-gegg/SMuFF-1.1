@@ -48,8 +48,8 @@
 
 #define LED_PIN             2       // IO2
 
-#define DEBUG_PIN           -1     
-#define RELAIS_PIN          -1     // Relais for stepper motor switching
+#define DEBUG_PIN           -1
+#define RELAY_PIN          -1     // Relais for stepper motor switching
 
 #define BEEPER_CHANNEL      1
 #define BEEPER_PIN          2       // IO2
@@ -60,15 +60,15 @@
 #define FAN_CHANNEL         1
 #define FAN_FREQ            5000
 #define FAN_PIN             13      // IO13
-#define HEATER0_PIN         -1      
+#define HEATER0_PIN         -1
 #define HEATBED_PIN         -1
 
 #define SDCS_PIN            5       // IO5
 #define DSP_CS_PIN          13      // IO13
 #define DSP_DC_PIN          19      // IO19 (MISO)
-#define DSP_RESET_PIN       -1      
+#define DSP_RESET_PIN       -1
 
-#define DSP_SCL             22      // SCL     
+#define DSP_SCL             22      // SCL
 #define DSP_SDA             21      // SDA
 
 #ifndef USE_TWI_DISPLAY
@@ -91,9 +91,9 @@
 #define RX2_PIN             18
 
 #define TX3_PIN             1       // Serial 0
-#define RX3_PIN             3    
+#define RX3_PIN             3
 
-#define NEOPIXEL_PIN        13       
+#define NEOPIXEL_PIN        13
 #define NUM_LEDS            5     // number of Neopixel LEDS
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B

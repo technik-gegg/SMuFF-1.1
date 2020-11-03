@@ -20,72 +20,65 @@
 /*
  * Module for storing/reading data as a replacement for EEPROM
  */
- 
+
 #include "SMuFF.h"
 #include "ArduinoJson.h"
+#include "ConfigNamesExt.h"
 
 DataStore dataStore;
 extern SdFs SD;
-extern int  swapTools[];
+extern uint8_t  swapTools[];
 
 void saveStore() {
-    StaticJsonDocument<512> jsonDoc;
-    JsonObject jsonObj = jsonDoc.to<JsonObject>();
+  StaticJsonDocument<512> jsonDoc;
+  JsonObject jsonObj = jsonDoc.to<JsonObject>();
 
-    jsonDoc["Tool"] = dataStore.tool;
-    JsonObject positions = jsonObj.createNestedObject("Positions");
-    positions["Selector"] = dataStore.stepperPos[SELECTOR];
-    positions["Revolver"] = dataStore.stepperPos[REVOLVER];
-    positions["Feeder"] = dataStore.stepperPos[FEEDER];
-    JsonObject swaps = jsonObj.createNestedObject("SwapTools");
-    char tmp[16];
-    for(int i=0; i < MAX_TOOLS; i++) {
-      sprintf(tmp,"T%d", i);
-      swaps[tmp] = swapTools[i];
-    }
+  jsonDoc[tool] = dataStore.tool;
+  JsonObject pos = jsonObj.createNestedObject(positions);
+  pos[selector] = dataStore.stepperPos[SELECTOR];
+  pos[revolver] = dataStore.stepperPos[REVOLVER];
+  pos[feeder] = dataStore.stepperPos[FEEDER];
+  JsonObject swps = jsonObj.createNestedObject(swaps);
+  char tmp[16];
+  for(uint8_t i=0; i < MAX_TOOLS; i++) {
+    sprintf_P(tmp, P_Tool, i);
+    swps[tmp] = swapTools[i];
+  }
 
-    //__debug(PSTR("Updating dataStore"));
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
+  //__debug(PSTR("Updating dataStore"));
+  if(initSD(false)) {
     FsFile cfg;
     if(cfg.open(DATASTORE_FILE, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
         serializeJsonPretty(jsonDoc, cfg);
     }
-    cfg.close();  
+    cfg.close();
     //__debug(PSTR("DataStore updated"));
   }
 }
 
 void recoverStore() {
   StaticJsonDocument<512> jsonDoc;
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
+  if (initSD(false)) {
     FsFile cfg;
     if (!cfg.open(DATASTORE_FILE)){
       __debug(PSTR("Data store file '%s' not found!\n"), DATASTORE_FILE);
-    } 
+    }
     else {
       auto error = deserializeJson(jsonDoc, cfg);
       if (error) {
         __debug(PSTR("Data store file possibly corrupted or too large!\n"));
-      } 
+      }
       else {
         //__debug(PSTR("Data store recovered\n"));
-        dataStore.stepperPos[SELECTOR]  = jsonDoc["Positions"]["Selector"];
-        dataStore.stepperPos[REVOLVER]  = jsonDoc["Positions"]["Revolver"];
-        dataStore.stepperPos[FEEDER]    = jsonDoc["Positions"]["Feeder"];
+        dataStore.stepperPos[SELECTOR]  = jsonDoc[positions][selector];
+        dataStore.stepperPos[REVOLVER]  = jsonDoc[positions][revolver];
+        dataStore.stepperPos[FEEDER]    = jsonDoc[positions][feeder];
         dataStore.tool = jsonDoc["Tool"];
         char tmp[16];
-        for(int i=0; i< MAX_TOOLS; i++) {
-          sprintf(tmp,"T%d", i);
-          if(jsonDoc["SwapTools"][tmp] != NULL) {
-            swapTools[i] = jsonDoc["SwapTools"][tmp];
+        for(uint8_t i=0; i< MAX_TOOLS; i++) {
+          sprintf_P(tmp, P_Tool, i);
+          if(jsonDoc[swaps][tmp] != nullptr) {
+            swapTools[i] = jsonDoc[swaps][tmp];
           }
         }
       }
@@ -94,21 +87,21 @@ void recoverStore() {
   }
 }
 
-String readTune(const char* filename) {
-#if defined(__ESP32__)
-  if (SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-#else
-  if (SD.begin()) {
-#endif
+const char* readTune(const char* filename) {
+  static char data[150];
+  char fname[80];
+
+  sprintf_P(fname, PSTR("sounds/"), filename);
+  if (initSD(false)) {
     FsFile tune;
-    if (!tune.open(filename)){
-      __debug(PSTR("Tune file '%s' not found!\n"), filename);
-    } 
+    if (!tune.open(fname)) {
+      __debug(PSTR("Tune file '%s' not found!\n"), fname);
+    }
     else {
-      String tmp = tune.readString();
+      tune.read(data, ArraySize(data)-1);
       tune.close();
-      return tmp;
+      return data;
     }
   }
-  return String("");
+  return nullptr;
 }

@@ -6,9 +6,15 @@ trim_trailing_whitespace = false
 
 [{*.c,*.cpp,*.h,*.CFG}, *.gcode]
 charset = utf-8
-
 trim_trailing_whitespace = true
 insert_final_newline = true
 end_of_line = lf
-indent_style = space
-indent_size = 2
+indent_style = tab
+indent_size = 4
+
+[*.mnu]
+charset = utf-8
+end_of_line = lf
+indent_style = tab
+tab_width = 8
+indent_size = 8
