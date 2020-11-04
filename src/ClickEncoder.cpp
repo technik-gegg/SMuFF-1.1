@@ -30,41 +30,34 @@ extern void __debug(const char* fmt, ...);
 // ----------------------------------------------------------------------------
 
 #if ENC_DECODER != ENC_NORMAL
+  const int8_t ClickEncoder::table[16] __attribute__((__progmem__)) = {
 #  ifdef ENC_HALFSTEP
      // decoding table for hardware with flaky notch (half resolution)
-     const int8_t ClickEncoder::table[16] __attribute__((__progmem__)) = {
        0, 0, -1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, -1, 0, 0
-     };
 #  else
      // decoding table for normal hardware
-     const int8_t ClickEncoder::table[16] __attribute__((__progmem__)) = {
        0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0
-     };
 #  endif
+  };
 #endif
 
 // ----------------------------------------------------------------------------
 
-ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active)
-{
-    doubleClickEnabled = true;
-    accelerationEnabled = true;
-    delta = 0;
-    last = 0; 
-    acceleration = 0;
-    button = Open;
-    steps = stepsPerNotch;
-    pinA = A;
-    pinB = B;
-    pinBTN = BTN;
-    pinsActive = active;
-    enableSound = false;
+ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active) {
+  doubleClickEnabled = true;
+  accelerationEnabled = true;
+  delta = 0;
+  last = 0;
+  acceleration = 0;
+  button = Open;
+  steps = stepsPerNotch;
+  pinA = A;
+  pinB = B;
+  pinBTN = BTN;
+  pinsActive = active;
+  enableSound = false;
 
-#if defined (__STM32F1__)
   WiringPinMode configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT_PULLDOWN;
-#else
-  uint8_t configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT;
-#endif
   pinMode(pinA, configType);
   pinMode(pinB, configType);
   pinMode(pinBTN, configType);
@@ -81,8 +74,7 @@ ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNo
 // ----------------------------------------------------------------------------
 // call this every 1 millisecond via timer ISR
 //
-void ClickEncoder::service(void)
-{
+void ClickEncoder::service(void) {
   bool moved = false;
   unsigned long now = millis();
 
@@ -176,8 +168,8 @@ void ClickEncoder::service(void)
     }
 
     if (doubleClickTicks > 0) {
-      doubleClickTicks--;
-      if (--doubleClickTicks == 0) {
+      doubleClickTicks -= 2;
+      if (doubleClickTicks == 0) {
         button = Clicked;
       }
     }
@@ -188,27 +180,16 @@ void ClickEncoder::service(void)
 
 // ----------------------------------------------------------------------------
 
-int16_t ClickEncoder::getValue(void)
-{
-  int16_t val;
-
-#if defined (__STM32F1__)	
+int16_t ClickEncoder::getValue(void) {
   noInterrupts();
-#else
-  cli();
-#endif
 
-  val = delta;
+  int16_t val = delta;
 
   if (steps == 2) delta = val & 1;
   else if (steps == 4) delta = val & 3;
   else delta = 0; // default to 1 step per notch
 
-#if defined (__STM32F1__)	
   interrupts();
-#else
-  sei();
-#endif
 
   if (steps == 4) val >>= 2;
   if (steps == 2) val >>= 1;
@@ -229,8 +210,7 @@ int16_t ClickEncoder::getValue(void)
 // ----------------------------------------------------------------------------
 
 #ifndef WITHOUT_BUTTON
-ButtonState ClickEncoder::getButton(uint8_t which)
-{
+ButtonState ClickEncoder::getButton(uint8_t which) {
   ButtonState ret = button;
   if (button != Held) {
     button = Open;    // reset

@@ -20,10 +20,8 @@
 
 #include <stdlib.h>
 #include <Arduino.h>
+#include "CommonMacros.h"
 #include "Config.h"
-
-#ifndef _ZTIMER_H
-#define _ZTIMER_H 1
 
 extern void __debug(const char* fmt, ...);
 
@@ -59,25 +57,19 @@ public:
 
 #if defined(__AVR__)
     void           setupTimer(IsrTimer timer, TimerPrescaler prescaler);
-#endif
-#if defined(__STM32F1__)
+#elif defined(__STM32F1__)
     void           setupTimer(IsrTimer timer, uint16_t prescaler);
-    void           setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, uint16_t compare = 1);
+    void           setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, timerVal_t compare = 1);
 #elif defined(__ESP32__)
     void           setupTimer(IsrTimer timer, uint16_t prescaler);
-    void           setupTimer(IsrTimer timer, uint16_t prescaler, uint64_t compare);
-    uint64_t       getOverflow();
-    void           setOverflow(uint64_t value);
-    void           setNextInterruptInterval(uint64_t interval);
+    void           setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare);
 #endif
+    timerVal_t     getOverflow();
+    void           setOverflow(timerVal_t value);
+    void           setNextInterruptInterval(timerVal_t interval);
     void           setupTimerHook(void (*function)(void));
-#if !defined(__ESP32__)
-    void           setNextInterruptInterval(uint16_t interval);
-    uint16_t       getOverflow();
-    void           setOverflow(uint16_t value);
-    void           setCompare(uint16_t value);
-#endif
-    void           setCounter(uint16_t value);
+    void           setCompare(timerVal_t value);
+    void           setCounter(timerVal_t value);
     void           startTimer();
     void           stopTimer();
 
@@ -85,5 +77,3 @@ private:
     IsrTimer      _timer;
     uint8_t       _channel;
 };
-
-#endif

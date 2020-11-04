@@ -10,10 +10,7 @@
 // Modified by Technik Gegg - added resetButton() method
 // ----------------------------------------------------------------------------
 
-#ifndef __have__ClickEncoder_h__
-#define __have__ClickEncoder_h__
-
-// ----------------------------------------------------------------------------
+#pragma once
 
 #include <stdint.h>
 #if defined (__AVR__)
@@ -22,6 +19,7 @@
 	#include <avr/pgmspace.h>
 #endif
 #include "Arduino.h"
+#include "CommonMacros.h"
 #include "ButtonState.h"
 
 // ----------------------------------------------------------------------------
@@ -47,14 +45,14 @@ class ClickEncoder
 {
 public:
 
-private:  
+private:
   uint8_t pinA;
   uint8_t pinB;
   uint8_t pinBTN;
   bool pinsActive;
   volatile int16_t delta = 0;
   volatile int16_t last = 0;
-  volatile uint16_t acceleration = 0;  
+  volatile uint16_t acceleration = 0;
   bool  accelerationEnabled;
   uint8_t steps = 0;
   bool enableSound;
@@ -62,9 +60,9 @@ private:
 #ifndef WITHOUT_BUTTON
   volatile ButtonState button;
   unsigned long lastButtonCheck = 0;
-  uint8_t doubleClickTicks = 0;     
-  bool doubleClickEnabled;  
-  uint16_t keyDownTicks = 0;    
+  uint8_t doubleClickTicks = 0;
+  bool doubleClickEnabled;
+  uint16_t keyDownTicks = 0;
 #endif
 
 #if ENC_DECODER != ENC_NORMAL
@@ -120,9 +118,4 @@ public:
     return accelerationEnabled;
   }
 
-
 };
-
-// ----------------------------------------------------------------------------
-
-#endif // __have__ClickEncoder_h__
