@@ -108,7 +108,7 @@ public:
   void setAccelerationEnabled(const bool &a)
   {
     accelerationEnabled = a;
-    if (accelerationEnabled == false) {
+    if (!accelerationEnabled) {
       acceleration = 0;
     }
   }
