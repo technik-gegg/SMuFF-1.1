@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _SMUFF_CONFIG_NAMES_H
-#define _SMUFF_CONFIG_NAMES_H
-
 // used for the JSON parameters and M205 GCode command
 const char* selector PROGMEM           = "Selector";
 const char* revolver PROGMEM           = "Revolver";
@@ -106,5 +103,3 @@ const char* rButtonHold PROGMEM        = "RBtnHold";
 const char* speedsInMMS PROGMEM        = "SpeedsInMms";
 const char* ms3Config PROGMEM          = "MS3";
 const char* motDelay PROGMEM           = "MDly";
-
-#endif

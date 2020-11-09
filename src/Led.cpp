@@ -18,10 +18,8 @@
  */
 #include "SMuFF.h"
 
+#if defined(USE_FASTLED_BACKLIGHT)
 CRGB leds[NUM_LEDS];
-#if !defined(USE_FASTLED_BACKLIGHT)
-static CRGB ColorsFastLED[8];
-#else
 static CRGB ColorsFastLED[8] = { CRGB::Black, CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Cyan, CRGB::Magenta, CRGB::Yellow, CRGB::White };
 #endif
 
@@ -47,10 +45,6 @@ void showLed(uint8_t mode, uint8_t count) {
 #endif
 }
 
-void setBacklightRGB(byte R, byte G, byte B) {
-  setBacklightRGB((int)(R&1) | (G&1)<<1 | (B&1)<<2);
-}
-
 void setBacklightRGB(uint8_t color) {
 #if defined(RGB_LED_R_PIN)
   pinMode(RGB_LED_R_PIN, OUTPUT);
@@ -64,6 +58,10 @@ void setBacklightRGB(uint8_t color) {
   pinMode(RGB_LED_B_PIN, OUTPUT);
   digitalWrite(RGB_LED_B_PIN, color & 4);
 #endif
+}
+
+void setBacklightRGB(byte R, byte G, byte B) {
+  setBacklightRGB((int)(R&1) | (G&1)<<1 | (B&1)<<2);
 }
 
 void setBacklightCRGB(CRGB color) {

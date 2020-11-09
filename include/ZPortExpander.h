@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _PORTEXPANDER_H
-#define _PORTEXPANDER_H 1
-
 #include "SMuFF.h"
 #include "ZTimerLib.h"
 #include "PCF857X.h"
@@ -126,5 +123,3 @@ private:
 };
 
 static ZPESerial        peSerials[MAX_SERIAL];
-
-#endif

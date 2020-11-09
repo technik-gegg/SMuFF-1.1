@@ -34,7 +34,7 @@ void ZFan::detach() {
 }
 
 void ZFan::setIndex(int8_t fanIndex) {
-  if(fanIndex != -1 && fanIndex < MAX_FANS) {
+  if(fanIndex >= 0 && fanIndex < MAX_FANS) {
     _fanIndex = fanIndex;
     fanInstances[_fanIndex] = this;
   }
@@ -47,16 +47,16 @@ void ZFan::setFanSpeed(uint8_t speed) {
 
 void ZFan::setFan() {
   _tickCnt += 50;
-  if(_tickCnt <= (uint32_t)_pulseLen)
+  if(_tickCnt <= _pulseLen)
     setFanPin(HIGH);
   else
     setFanPin(LOW);
-  if(_tickCnt >= (uint32_t)(FAN_DUTY_CYCLE)) {
+  if(_tickCnt >= FAN_DUTY_CYCLE) {
     _tickCnt = 0;
   }
 }
 
-void ZFan::setFanPin(int8_t state) {
+void ZFan::setFanPin(uint8_t state) {
   digitalWrite(_pin, state);
 }
 

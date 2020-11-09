@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _INPUT_DIALOGS_H
-#define _INPUT_DIALOGS_H 1
-
 #include "SMuFF.h"
 
 typedef void(*iCallback)(int val);
@@ -36,5 +33,3 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
 bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, bCallback cb = nullptr);
 bool showInputDialog(const char* title, const char* PROGMEM message, unsigned long* val, String list);
 bool showInputDialog(const char* title, const char* PROGMEM message, int* val, String list, iCallback cb = nullptr, bool valIsIndex = true);
-
-#endif

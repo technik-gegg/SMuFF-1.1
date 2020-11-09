@@ -191,8 +191,8 @@ int16_t ClickEncoder::getValue(void) {
 
   interrupts();
 
-  if (steps == 4) val >>= 2;
   if (steps == 2) val >>= 1;
+  else if (steps == 4) val >>= 2;
 
   int16_t r = 0;
   int16_t accel = ((accelerationEnabled) ? (acceleration >> 8) : 0);

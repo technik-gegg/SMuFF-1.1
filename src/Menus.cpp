@@ -430,20 +430,21 @@ void showTestrunMenu(char* menuTitle) {
 
     current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
 
-    if(current_selection == 0)
-      return;
-    else if(current_selection == 1) {
-      stopMenu = true;
-    }
-    else if(current_selection >= 2) {
-      _file = extractFile(_menu, current_selection-1);
-      char *p;
-      while((p = strrchr(_file,' ')) != nullptr) {
-        *p = 0;
-        p--;
-      }
-      //__debug(PSTR("Selected file: >%s<"), _file);
-      testRun(_file);
+    switch (current_selection) {
+      case 0:
+        return;
+      case 1:
+        stopMenu = true;
+        break;
+      default:
+        _file = extractFile(_menu, current_selection-1);
+        char *p;
+        while((p = strrchr(_file,' ')) != nullptr) {
+          *p = 0;
+        }
+        //__debug(PSTR("Selected file: >%s<"), _file);
+        testRun(_file);
+        break;
     }
   }
 }
@@ -1885,4 +1886,3 @@ void debounceButton() {
   }
   #endif
 }
-

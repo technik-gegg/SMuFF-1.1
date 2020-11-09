@@ -31,8 +31,7 @@ void drawValue(const char* title, const char* PROGMEM message, String val) {
 }
 
 bool getEncoderButton(bool encoderOnly) {
-  bool stat = false;
-  stat = encoder.getButton() == Clicked;
+  bool stat = (encoder.getButton() == Clicked);
   #if defined(USE_LEONERD_DISPLAY)
   if(!encoderOnly && encoder.getButton(MainButton) == Clicked) {
     stat = true;
@@ -152,7 +151,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, float* val,
   while(1) {
     getInput(&turn, &wheelBtn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
-      stat = isHeld ? false : true;
+      stat = !isHeld;
       break;
     }
     if(turn != 0) {
@@ -186,7 +185,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
   uint8_t wheelBtn;
   bool isHeld, isClicked;
 
-  if(cb == nullptr && (min==0 && max==1)) {
+  if(cb == nullptr && min == 0 && max == 1) {
     // if there's no callback set, and min, max equals 0,1 don't show the dialog
     // just return the inverted value (used for HI / LO)
     *val = (*val==min ? max : min);
@@ -203,7 +202,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
   while(1) {
     getInput(&turn, &wheelBtn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
-      stat = isHeld ? false : true;
+      stat = !isHeld;
       break;
     }
     if(turn != 0) {
@@ -258,7 +257,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, 
   while(1) {
     getInput(&turn, &wheelBtn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
-      stat = isHeld ? false : true;
+      stat = !isHeld;
       break;
     }
     if(turn == 0)
@@ -288,23 +287,23 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, S
   if(lineCnt==0)
     return false;
 
-    if(valIsIndex) {
-      opt = *val;
-    }
-    else {
-      for(uint8_t i=0; i< lineCnt; i++) {
-        if(String(options[i]) == String(*val)) {
-            opt = i;
-            //__debug(PSTR("Current selection: %s"), options[i]);
-        }
+  if(valIsIndex) {
+    opt = *val;
+  }
+  else {
+    for(uint8_t i=0; i< lineCnt; i++) {
+      if(String(options[i]) == String(*val)) {
+          opt = i;
+          //__debug(PSTR("Current selection: %s"), options[i]);
       }
     }
+  }
   drawValue(title, message, String(options[opt]));
 
   while(1) {
     getInput(&turn, &wheelBtn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
-      stat = isHeld ? false : true;
+      stat = !isHeld;
       break;
     }
     if(turn != 0) {
@@ -357,7 +356,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
   while(1) {
     getInput(&turn, &wheelBtn, &isHeld, &isClicked);
     if(isHeld || isClicked) {
-      stat = isHeld ? false : true;
+      stat = !isHeld;
       break;
     }
     if(turn != 0) {
@@ -378,4 +377,3 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
   settingsChanged = settingsChanged | stat;
   return stat;
 }
-
