@@ -23,9 +23,6 @@
 #include "Config.h"
 #include "ZTimerLib.h"
 
-#ifndef _ZSERVO_H
-#define _ZSERVO_H
-
 #define MAX_SERVOS              5
 #define US_PER_PULSE_0DEG       1000      // microseconds for 0 degrees
 #define US_PER_PULSE_180DEG     2000      // microseconds for 180 degrees
@@ -93,4 +90,3 @@ private:
   uint8_t           _minDegree = 0;
   uint8_t           _maxDegree = 180;
 };
-#endif

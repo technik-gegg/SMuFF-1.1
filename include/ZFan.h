@@ -22,9 +22,6 @@
 #include <Arduino.h>
 #include "Config.h"
 
-#ifndef _ZFAN_H
-#define _ZFAN_H
-
 #define MAX_FANS                2
 #define FAN_DUTY_CYCLE          150     // fan cycle in us (7500)
 
@@ -42,26 +39,17 @@ public:
   void detach();
   void setFanSpeed(uint8_t speed);
   void setFan();
-  void setFanPin(int8_t state);
+  void setFanPin(uint8_t state);
   void setPulseWidthMinMax(uint8_t min, uint8_t max) { _minSpeed = min; _maxSpeed = max; }
   void setPulseWidthMin(uint8_t min) { _minSpeed = min; }
   void setPulseWidthMax(uint8_t max) { _maxSpeed = max; }
 
 private:
-  int8_t    _pin;
-  bool      _useTimer = false;
-  bool      _timerStopped = false;
-  int8_t    _fanIndex;
-  int8_t    _speed;
-  uint8_t   _minSpeed = 0;
-  uint8_t   _maxSpeed = FAN_DUTY_CYCLE;
-#ifdef __STM32F1__
-  volatile uint32_t _tickCnt;
-#else
-  volatile uint16_t _tickCnt;
-#endif
-  volatile uint8_t _dutyCnt;
-  uint16_t   _loopCnt;
-  uint16_t   _pulseLen;
+  int8_t   _pin;
+  int8_t   _fanIndex;
+  int8_t   _speed;
+  uint8_t  _minSpeed = 0;
+  uint8_t  _maxSpeed = FAN_DUTY_CYCLE;
+  uint16_t _tickCnt;
+  uint16_t _pulseLen;
 };
-#endif

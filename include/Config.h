@@ -18,13 +18,10 @@
  */
 #pragma once
 
-#ifndef _SMUFF_CONFIG_H
-#define _SMUFF_CONFIG_H
-
 #define VERSION_STRING    "V2.13"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-11-04"
+#define VERSION_DATE      "2020-11-11"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define MATERIALS_FILE    "MATERIALS.CFG"
 #define TMC_CONFIG_FILE   "TMCDRVR.CFG"
@@ -35,11 +32,6 @@
 #define LONGBEEP_FILE     "LBEEP.DAT"
 #define USERBEEP_FILE     "UBEEP.DAT"
 #define ENCBEEP_FILE      "EBEEP.DAT"
-#if defined(__STM32F1__)
-#define MAX_JSON          2048              // 2K of temporary buffer for the JSON data
-#elif defined(__ESP32__)
-#define MAX_JSON          4096              // 4K of temporary buffer for the JSON data
-#endif
 
 #define MAX_MATERIAL_LEN  12                // max. length of material names
 
@@ -128,6 +120,3 @@
 #define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
 #define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x
 //#define SYMBOL_FONT             u8g2_font_unifont_t_symbols
-
-
-#endif

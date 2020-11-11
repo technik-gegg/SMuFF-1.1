@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _GCODES_H
-#define _GCODES_H
-
 #include <stdlib.h>
 #include <Arduino.h>
 
@@ -80,5 +77,3 @@ extern bool G91(const char* msg, String buf, int8_t serial);
 
 extern uint16_t handleFeedSpeed(String buf, uint8_t axis);
 extern void changeFeederInsertSpeed(uint16_t speed);
-
-#endif

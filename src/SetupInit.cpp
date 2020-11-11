@@ -609,17 +609,7 @@ void setupTimers() {
   stepperTimer.setupTimer(ZTimer::ZTIMER4, STEPPER_PSC);            // prescaler set to 4MHz, timer will be calculated as needed
   gpTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256);      // round about 1ms on 16MHz CPU
 
-#elif defined(__ESP32__)
-  // *****
-  // Attn:
-  //    Servo uses:         TIMER3 (if it's setup to create its own timer)
-  //    PortExpander uses:  TIMER3 (via general purpose timer)
-  //    Steppers use:       TIMER1
-  //    Encoder uses:       gpTimer
-  // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
-  gp.setupTimer(ZTimer::ZTIMER2, 80);                     // 1ms on 80MHz timer clock
-#else
+#elif  defined(__STM32F1__)
   // *****
   // Attn:
   //    PA8 (Fan) uses:     TIMER1 CH1 (predefined by libmaple for PWM)
@@ -643,17 +633,28 @@ void setupTimers() {
   nvic_irq_set_priority(NVIC_TIMER8_CC, 0);
   nvic_irq_set_priority(NVIC_TIMER2, 1);
   nvic_irq_set_priority(NVIC_TIMER3, 10);
+
+#elif defined(__ESP32__)
+  // *****
+  // Attn:
+  //    Servo uses:         TIMER3 (if it's setup to create its own timer)
+  //    PortExpander uses:  TIMER3 (via general purpose timer)
+  //    Steppers use:       TIMER1
+  //    Encoder uses:       gpTimer
+  // *****
+  stepperTimer.setupTimer(ZTimer::ZTIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
+  gp.setupTimer(ZTimer::ZTIMER2, 80);                     // 1ms on 80MHz timer clock
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers
   gpTimer.setupTimerHook(isrGPTimerHandler);              // setup the ISR for rotary encoder, servo and general timers
 
-#if defined(__STM32F1__)
+#if defined(__AVR__)
+  gpTimer.setNextInterruptInterval(3);                    // run general purpose (gp)timer on 48uS (AVR)
+#elif defined(__STM32F1__)
   gpTimer.setNextInterruptInterval(450);                  // run general purpose (gp)timer on 50uS (STM32)
 #elif defined(__ESP32__)
   gpTimer.setNextInterruptInterval(50);                   // run general purpose (gp)timer on 50uS (ESP32)
-#else
-  gpTimer.setNextInterruptInterval(3);                    // run general purpose (gp)timer on 48uS (AVR)
 #endif
   //__debug(PSTR("DONE setup timers"));
 }

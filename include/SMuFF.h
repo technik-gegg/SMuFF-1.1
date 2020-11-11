@@ -18,13 +18,9 @@
  */
 #pragma once
 
-#ifndef _SMUFF_H
-#define _SMUFF_H 1
-
-#if defined (__AVR__)
+#if defined(__AVR__)
 #include <avr/pgmspace.h>
-#endif
-#if defined (__ESP32__)
+#elif defined(__ESP32__)
 #include <pgmspace.h>
 #endif
 #include <Arduino.h>
@@ -70,15 +66,10 @@
 #undef  sprintf_P
 #define sprintf_P(s, f, ...)  sprintf(s, f, ##__VA_ARGS__)
 #define vsnprintf_P           vsnprintf
-#if !defined(cli) && !defined(sei)
-#define cli()                 noInterrupts()
-#define sei()                 interrupts()
-#endif
 extern USBMassStorage         MassStorage;
 extern USBCompositeSerial     CompositeSerial;
-#endif
 
-#if defined(__ESP32__)
+#elif defined(__ESP32__)
 #include <WiFi.h>
 #include <BluetoothSerial.h>
 #endif
@@ -201,10 +192,9 @@ typedef struct {
   char      materials[MAX_TOOLS][MAX_MATERIAL_LEN];
 } SMuFFConfig;
 
-#ifdef __BRD_I3_MINI
+#if defined(__BRD_I3_MINI)
 extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
-#endif
-#if defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
+#elif defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
   extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
   #if defined(USE_TWI_DISPLAY)
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
@@ -221,8 +211,7 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   extern U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI display;
   //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
   #endif
-#endif
-#ifdef __BRD_ESP32
+#elif defined(__BRD_ESP32)
   #if defined(USE_TWI_DISPLAY)
   extern U8G2_SH1306_128X64_NONAME_F_HW_I2C  display;
   #elif defined(USE_LEONERD_DISPLAY)
@@ -231,8 +220,7 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
   #endif
   extern HardwareSerial Serial3;
-#endif
-#ifdef __BRD_FYSETC_AIOII
+#elif defined(__BRD_FYSETC_AIOII)
   extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
 #endif
 
@@ -383,12 +371,11 @@ extern void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignor
 extern void resetRevolver();
 extern void serialEvent();
 extern void serialEvent2();
-#ifndef __AVR__
-extern void serialEvent1();
-extern void serialEvent3();
-#endif
 #ifdef __AVR__
 extern void wireReceiveEvent(int numBytes);
+#else
+extern void serialEvent1();
+extern void serialEvent3();
 #endif
 extern void beep(uint8_t count);
 extern void longBeep(uint8_t count);
@@ -506,9 +493,6 @@ extern void playSequenceBackgnd();
 
 extern void showLed(uint8_t mode, uint8_t count);
 extern void setBacklightIndex(int color);
-extern void setBacklightRGB(uint8_t color);
-extern void setBacklightRGB(byte R, byte G, byte B);
-extern void setBacklightCRGB(CRGB color);
 extern void setFastLED(uint8_t index, CRGB color);
 extern void setFastLEDIndex(uint8_t index, uint8_t color);
 extern void setFastLEDIntensity(uint8_t intensity);
@@ -529,5 +513,3 @@ extern void listTextFile(const char* filename PROGMEM, int8_t serial);
 extern const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]);
 extern const char* loadOptions(const char* filename PROGMEM);
 extern bool loadReport(const char* filename PROGMEM, char* buffer, uint16_t maxLen);
-
-#endif

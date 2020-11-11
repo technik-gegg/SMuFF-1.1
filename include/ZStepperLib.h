@@ -22,9 +22,6 @@
 #include <Arduino.h>
 #include "Config.h"
 
-#ifndef _ZSTEPPER_H
-#define _ZSTEPPER_H 1
-
 extern void __debug(const char* fmt, ...);
 
 class ZStepper {
@@ -176,5 +173,3 @@ private:
   void resetStepper();                          // method to reset work params
   void updateAcceleration();
 };
-
-#endif

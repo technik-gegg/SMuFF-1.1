@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _MENUS_H
-#define _MENUS_H 1
-
 extern void setupMainMenu(char* menu);
 extern void setupToolsMenu(char* menu);
 extern void setupStatusInfoMenu(char* menu);
@@ -46,4 +43,3 @@ extern const char* translateColor(uint8_t color);
 extern const char* translatePanelDuePort(uint8_t port);
 extern const char* translateTMCDriverMode(uint8_t mode);
 extern const char* translateMS3State(uint8_t state);
-#endif
