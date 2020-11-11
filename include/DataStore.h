@@ -25,7 +25,7 @@
 
 typedef struct {
     long stepperPos[3];
-    byte tool;
+    int8_t tool;
 } DataStore;
 
 extern DataStore      dataStore;

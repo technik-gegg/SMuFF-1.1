@@ -48,7 +48,8 @@ bool                  isWarning;
 bool                  lidOpen = true;
 unsigned long         feederErrors = 0;
 bool                  ignoreHoming = false;
-unsigned long         stallDetectedCount = 0;
+unsigned long         stallDetectedCountSelector = 0;
+unsigned long         stallDetectedCountFeeder = 0;
 //char PROGMEM          tuneStartup[]  = { "F440D120P150.F523D120P80.F196D220P80.F196D120P80.F587D400P120.F349D80P240.F349D80P160." }; // the new tune
 char PROGMEM          tuneStartup[100] = { "F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50." };   // the "old" tune
 char PROGMEM          tuneUser[40]      = { "F1760D90P90.F440D90P90.F440D90P90." };
@@ -445,7 +446,7 @@ void drawUserMessage(String message, bool smallFont /* = false */, bool center /
 void drawSDStatus(int8_t stat) {
   char tmp[80];
 
-  resetDisplay();
+  //resetDisplay();
   switch(stat) {
     case SD_ERR_INIT:
       sprintf_P(tmp, P_SD_InitError);
@@ -457,6 +458,12 @@ void drawSDStatus(int8_t stat) {
       break;
     case SD_READING_CONFIG:
       sprintf_P(tmp, P_SD_Reading, P_SD_ReadingConfig);
+      break;
+    case SD_READING_TMC:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingTmc);
+      break;
+    case SD_READING_SERVOS:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingServos);
       break;
     case SD_READING_MATERIALS:
       sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
@@ -702,7 +709,7 @@ void positionRevolver() {
 }
 
 void changeFeederInsertSpeed(uint16_t speed) {
-  unsigned long maxSpeed = translateSpeed(speed, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
+  unsigned long maxSpeed = translateSpeed(speed, FEEDER);
   //__debug(PSTR("Changing Feeder speed to %3d (%6ld ticks)"), speed, maxSpeed);
   steppers[FEEDER].setMaxSpeed(maxSpeed);
 }
@@ -746,11 +753,12 @@ bool feedToEndstop(bool showMessage) {
   //__debug(PSTR("InsertSpeed: %d"), smuffConfig.insertSpeed);
   uint16_t speed = smuffConfig.insertSpeed;
   changeFeederInsertSpeed(speed);
-  steppers[FEEDER].setAllowAccel(false);
+  if(smuffConfig.accelSpeed[FEEDER] > smuffConfig.insertSpeed)
+    steppers[FEEDER].setAllowAccel(false);
 
   uint16_t max = (uint16_t)(smuffConfig.selectorDistance*2);  // calculate a maximum distance to avoid feeding endlesly
   uint8_t n = 0;
-  int8_t retries = 3;  // max. retries for this operation
+  int8_t retries = FEED_ERROR_RETRIES;  // max. retries for this operation
 
   feederJammed = false;
 
@@ -775,20 +783,22 @@ bool feedToEndstop(bool showMessage) {
     }
     n += smuffConfig.insertLength;  // increment the position of the filament
     // did the Feeder stall (TMC2209 only)?
-    handleFeederStall(&speed, &retries);
+    bool stallStat = handleFeederStall(&speed, &retries);
     // if endstop hasn't triggered yet, feed was not successful
     if (n >= max && !feederEndstop()) {
       delay(250);
-      // retract one insertLength and reset the Revolver
-      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength), true);
+      // retract half a insertLength and reset the Revolver
+      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength/2), true);
       runAndWait(FEEDER);
       resetRevolver();
       feederErrors++;   // global counter used for testing only
-      // after 2 retries reposition the Selector
+      if(stallStat)     // did not stall means no retries decrement, though, the endstop hasn't triggered yet
+        retries--;
+      // if only two retries are left, try repositioning the Selector
       if(retries == 1) {
         repositionSelector(false);
       }
-      // after 3 retries rectract all filaments a bit and reposition the Selector
+      // if only one retry is left, rectract filaments a bit and try repositioning the Selector
       if(retries == 0) {
         repositionSelector(true);
       }
@@ -811,7 +821,7 @@ bool feedToEndstop(bool showMessage) {
           steppers[FEEDER].setEnabled(true);
           positionRevolver();
           n = 0;
-          retries = 3;
+          retries = FEED_ERROR_RETRIES;
           continue;
         }
       }
@@ -832,15 +842,29 @@ bool handleFeederStall(uint16_t* speed, int8_t* retries) {
   // did the Feeder stall?
   if(smuffConfig.stepperStopOnStall[FEEDER] && steppers[FEEDER].getStallDetected()) {
     stat = false;
+    int16_t newSpeed;
     // yes, turn the speed down by 25%
-    int16_t newSpeed = (int16_t)(*speed * 0.75);
-    if(newSpeed > 0)
-      *speed = newSpeed;
-    else
-      *speed = 1;     // set speed to absolute minimum
+    if(smuffConfig.speedsInMMS) {
+      // speeds in mm/s need to go down
+      newSpeed = (int16_t)(*speed * 0.75);
+      if(newSpeed > 0)
+        *speed = newSpeed;
+      else
+        *speed = 1;     // set speed to absolute minimum
+    }
+    else {
+      // whereas speeds in timer ticks need to go up
+      newSpeed = (int16_t)(*speed * 1.25);
+      if(newSpeed < 65500)
+        *speed = newSpeed;
+      else
+        *speed = 65500;     // set speed to absolute minimum
+    }
     *retries -= 1;
     changeFeederInsertSpeed(*speed);
     __debug(PSTR("Feeder has stalled, slowing down speed to %d"), *speed);
+    // counter used in testRun
+    stallDetectedCountFeeder++;   // for testrun only
   }
   return stat;
 }
@@ -849,7 +873,7 @@ bool feedToNozzle(bool showMessage) {
 
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
-  int8_t retries = 4;
+  int8_t retries = FEED_ERROR_RETRIES;
 
   if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
     // prepare to feed full speed in chunks
@@ -861,23 +885,37 @@ bool feedToNozzle(bool showMessage) {
     }
   }
   else {
+    float len = smuffConfig.bowdenLength * .95;
+    float remains = 0;
+    steppers[FEEDER].setStepPositionMM(0);
+    // prepare 95% to feed full speed
     do {
-      // prepare 95% to feed full speed
-      prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.95, true);
+      prepSteppingRelMillimeter(FEEDER, len-remains, true);
       runAndWait(FEEDER);
       // did the Feeder stall?
       stat = handleFeederStall(&speed, &retries);
+      if(!stat) {
+        remains = steppers[FEEDER].getStepPositionMM();
+        __debug(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+      }
     } while(!stat && retries > 0);
     if(stat) {
-      retries = 4;
+      retries = FEED_ERROR_RETRIES;
       speed = smuffConfig.insertSpeed;
+      float len = smuffConfig.bowdenLength * .05;
+      float remains = 0;
+      steppers[FEEDER].setStepPositionMM(0);
+      // rest of it feed slowly
       do {
-        // rest of it feed slowly
         changeFeederInsertSpeed(speed);
-        prepSteppingRelMillimeter(FEEDER, smuffConfig.bowdenLength*.05, true);
+        prepSteppingRelMillimeter(FEEDER, len-remains, true);
         runAndWait(FEEDER);
         // did the Feeder stall again?
         stat = handleFeederStall(&speed, &retries);
+        if(!stat) {
+          remains = steppers[FEEDER].getStepPositionMM();
+          __debug(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+        }
       }while(!stat && retries > 0);
     }
   }
@@ -1002,7 +1040,7 @@ bool loadFilamentPMMU2(bool showMessage) {
 bool unloadFromNozzle(bool showMessage) {
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
-  int8_t retries = 4;
+  int8_t retries = FEED_ERROR_RETRIES;
 
   if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
     __debug(PSTR("Unloading in %d chunks "), smuffConfig.feedChunks);
@@ -1034,7 +1072,7 @@ bool unloadFromSelector() {
   bool stat = true;
   // only if the unload hasn't been aborted yet, unload from Selector
   if(steppers[FEEDER].getAbort() == false) {
-      int8_t retries = 4;
+      int8_t retries = FEED_ERROR_RETRIES;
       uint16_t speed = smuffConfig.insertSpeed;
       do {
         // retract the selector distance
@@ -1085,7 +1123,7 @@ bool unloadFilament() {
   bool endstopState = steppers[FEEDER].getEndstopState();
   steppers[FEEDER].setEndstopState(!endstopState);
   // unload until Selector endstop gets released
-  int8_t retries = 3;
+  int8_t retries = FEED_ERROR_RETRIES;
   do {
     unloadFromNozzle(false);
     if(steppers[FEEDER].getEndstopHit())
@@ -1319,12 +1357,7 @@ bool selectTool(int8_t ndx, bool showMessage) {
   parserBusy = true;
   drawSelectingMessage(ndx);
   //__debug(PSTR("Message shown"));
-  unsigned speed = steppers[SELECTOR].getMaxSpeed();
-  // if the distance between two tools is more than 3 (tools), use higher speed to move
-  /*
-  if(abs(toolSelected-ndx) >=3)
-    steppers[SELECTOR].setMaxSpeed(steppers[SELECTOR].getMaxHSpeed());
-  */
+  uint16_t speed = steppers[SELECTOR].getMaxSpeed();
 
   uint8_t retry = 3;
   bool posOk = false;
@@ -1348,7 +1381,7 @@ bool selectTool(int8_t ndx, bool showMessage) {
     if(steppers[SELECTOR].getStallDetected()) {
         posOk = false;
         handleStall(SELECTOR);
-        stallDetectedCount++;
+        stallDetectedCountSelector++;
     }
     else
       posOk = true;
@@ -1482,9 +1515,12 @@ void printEndstopState(int8_t serial) {
   sprintf_P(tmp, P_TMC_StatusAll,
           selectorEndstop()  ? _triggered : _open,
           revolverEndstop()  ? _triggered : _open,
-          feederEndstop()    ? _triggered : _open,
-          "");
+          feederEndstop()    ? _triggered : _open);
   printResponse(tmp, serial);
+  if(Z_END2_PIN != -1) {
+    sprintf_P(tmp, PSTR("Z2 (Feeder2): %s\n"), feederEndstop(2) ? _triggered : _open);
+    printResponse(tmp, serial);
+  }
 }
 
 void printSpeeds(int8_t serial) {
@@ -1514,6 +1550,17 @@ void printAcceleration(int8_t serial) {
           smuffConfig.extControlFeeder ? " (Ext.)" : " (Int.)",
           smuffConfig.stepDelay[FEEDER],
           smuffConfig.insertSpeed);
+  printResponse(tmp, serial);
+}
+
+void printSpeedAdjust(int8_t serial) {
+  char tmp[150];
+
+  sprintf_P(tmp, P_SpeedAdjust,
+          String(smuffConfig.speedAdjust[SELECTOR]).c_str(),
+          String(smuffConfig.speedAdjust[SELECTOR]).c_str(),
+          String(smuffConfig.speedAdjust[REVOLVER]).c_str()
+  );
   printResponse(tmp, serial);
 }
 
@@ -1585,24 +1632,14 @@ void userBeep() {
 
 void encoderBeep(uint8_t count) {
   prepareSequence(tuneEncoder, false);
-  #if defined(USE_LEONERD_DISPLAY)
   playSequence(true);
-  #else
-  playSequence(false);
-  #endif
 }
 
 void startupBeep() {
   #if defined(USE_LEONERD_DISPLAY)
   showLed(4, 1);
   #endif
-  // the "new" tune
-  prepareSequence(tuneStartup, false);
-  #if defined(USE_LEONERD_DISPLAY)
-  playSequence(true);
-  #else
-  playSequence(false);
-  #endif
+  prepareSequence(tuneStartup, true);
 }
 
 
@@ -1637,16 +1674,18 @@ void prepareSequence(const char* seq, bool autoPlay) {
     }
     if(*seq=='.') {
       if(f && d) {
-        sequence[n][_F_] = f;
-        sequence[n][_D_] = d;
-        sequence[n][_P_] = 0;
+        sequence[n][_F_] = (uint16_t)f;
+        sequence[n][_D_] = (uint16_t)d;
+        sequence[n][_P_] = (uint16_t)0;
       }
       if(p) {
-        sequence[n][_P_] = p;
+        sequence[n][_P_] = (uint16_t)p;
       }
       f = d = p = 0;
-      if(n < MAX_SEQUENCE)
+      if(n < MAX_SEQUENCE-1)
         n++;
+      else
+        break;
     }
     seq++;
   }
@@ -1655,7 +1694,7 @@ void prepareSequence(const char* seq, bool autoPlay) {
   sequence[n][_D_] = 0;
   sequence[n][_P_] = 0;
   if(autoPlay)
-    playSequence();
+    playSequence(true);
 }
 
 /*
@@ -1937,12 +1976,58 @@ uint8_t getTestLine(FsFile* file, char* line, int maxLen) {
 
 extern SdFs SD;
 
+void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, long toolChanges, unsigned long secs, unsigned long endstop2Hit[], unsigned long endstop2Miss[]) {
+  char report[700];
+  char runtm[20], gco[60], err[10], lop[10], cmdc[10], tc[20], stallS[10], stallF[10];
+  char etmp[15], ehit[smuffConfig.toolCount*10], emiss[smuffConfig.toolCount*10];
+
+  sprintf_P(gco,    PSTR("%-25s"), line);
+  sprintf_P(err,    PSTR("%4lu"), feederErrors);
+  sprintf_P(lop,    PSTR("%4lu"), loopCnt);
+  sprintf_P(cmdc,   PSTR("%5lu"), cmdCnt);
+  sprintf_P(tc,     PSTR("%5ld"), toolChanges);
+  sprintf_P(stallS, PSTR("%4lu"), stallDetectedCountSelector);
+  sprintf_P(stallF, PSTR("%4lu"), stallDetectedCountFeeder);
+  sprintf_P(runtm,  PSTR("%4d:%02d:%02d"), (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
+  memset(ehit, 0, ArraySize(ehit));
+  memset(emiss, 0, ArraySize(emiss));
+  for(uint8_t tcnt=0; tcnt< smuffConfig.toolCount; tcnt++) {
+    sprintf_P(etmp,   PSTR("%5lu | "), endstop2Hit[tcnt]);
+    strcat(ehit, etmp);
+    sprintf_P(etmp,   PSTR("%5lu | "), endstop2Miss[tcnt]);
+    strcat(emiss, etmp);
+  }
+  char* lines[10];
+  // load report from SD-Card; Can contain 10 lines at max.
+  loadReport(PSTR("report"), report, ArraySize(report));
+  // format report to be sent to terminal
+  uint8_t cnt = splitStringLines(lines, ArraySize(lines), report);
+  for(uint8_t n=0; n < cnt; n++) {
+    //__debug(PSTR("LN: %s"), lines[n]);
+    String s = String(lines[n]);
+    s.replace("{TIME}", runtm);
+    s.replace("{GCO}",  gco);
+    s.replace("{ERR}",  err);
+    s.replace("{LOOP}", lop);
+    s.replace("{CMDS}", cmdc);
+    s.replace("{TC}",   tc);
+    s.replace("{STALL}",stallS);
+    s.replace("{STALLF}",stallF);
+    s.replace("{HIT}", ehit);
+    s.replace("{MISS}", emiss);
+    s.replace("{ESC:",  "\033[");
+    s.replace("f}", "f");
+    s.replace("m}", "m");
+    s.replace("J}", "J");
+    s.replace("H}", "H");
+    __log(s.c_str());
+  }
+}
+
 void testRun(const char* fname) {
   char line[80];
   char msg[80];
   char filename[80];
-  char report[500];
-  char runtm[20], gco[60], err[10], lop[10], cmdc[10], tc[20], stall[10], ehit[10], emiss[10];
   FsFile file;
   String gCode;
   unsigned long loopCnt = 1L, cmdCnt = 1L;
@@ -1950,7 +2035,7 @@ void testRun(const char* fname) {
   uint8_t mode = 1;
   long toolChanges = 0;
   unsigned long startTime = millis();
-  unsigned long endstop2Miss = 0, endstop2Hit = 0;
+  unsigned long endstop2Miss[smuffConfig.toolCount], endstop2Hit[smuffConfig.toolCount];
   int16_t turn;
   uint8_t btn;
   bool isHeld, isClicked;
@@ -1968,11 +2053,15 @@ void testRun(const char* fname) {
     sprintf(filename, "test/%s.gcode", fname);
     feederErrors = 0;
     __log(PSTR("\033[2J"));   // clear screen on VT100
+    for(uint8_t i=0; i<smuffConfig.toolCount; i++) {
+      endstop2Hit[i] = 0L;
+      endstop2Miss[i] = 0L;
+    }
 
     if(file.open(filename, O_READ)) {
       file.rewind();
 
-      stallDetectedCount = 0;
+      stallDetectedCountFeeder = stallDetectedCountSelector = 0;
 
       #if defined(USE_LEONERD_DISPLAY)
         encoder.setLED(LED_GREEN, true);
@@ -2014,9 +2103,9 @@ void testRun(const char* fname) {
           }
           if(*line=='C') {
             if(!feederEndstop(2))
-              endstop2Hit++;
+              endstop2Hit[tool]++;
             else
-              endstop2Miss++;
+              endstop2Miss[tool]++;
           }
           cmdCnt++;
           if(cmdCnt % 10 == 0) {
@@ -2024,49 +2113,7 @@ void testRun(const char* fname) {
             if(mode > 3)
               mode = 0;
           }
-          sprintf_P(gco,  PSTR("%-25s"), line);
-          sprintf_P(err,  PSTR("%4ld"), feederErrors);
-          sprintf_P(lop,  PSTR("%4ld"), loopCnt);
-          sprintf_P(cmdc, PSTR("%5ld"), cmdCnt);
-          sprintf_P(tc,   PSTR("%5ld"), toolChanges);
-          sprintf_P(stall,PSTR("%4ld"), stallDetectedCount);
-          sprintf_P(ehit, PSTR("%4ld"), endstop2Hit);
-          sprintf_P(emiss,PSTR("%4ld"), endstop2Miss);
-          sprintf_P(runtm, PSTR("%4d:%02d:%02d"), (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
-          char* lines[10];
-          loadReport(PSTR("report"), report, ArraySize(report));
-          uint8_t cnt = splitStringLines(lines, ArraySize(lines), report);
-          for(uint8_t n=0; n < cnt; n++) {
-            //__debug(PSTR("LN: %s"), lines[n]);
-            String s = String(lines[n]);
-            s.replace("{TIME}", runtm);
-            s.replace("{GCO}",  gco);
-            s.replace("{ERR}",  err);
-            s.replace("{LOOP}", lop);
-            s.replace("{CMDS}", cmdc);
-            s.replace("{TC}",   tc);
-            s.replace("{STALL}",stall);
-            s.replace("{HIT}",  ehit);
-            s.replace("{MISS}", emiss);
-            s.replace("{ESC:",  "\033[");
-            s.replace("f}", "f");
-            s.replace("m}", "m");
-            s.replace("J}", "J");
-            s.replace("H}", "H");
-            __log(s.c_str());
-          }
-          /*
-          __log(report,
-            line,
-            runtm,
-            loopCnt,
-            cmdCnt,
-            toolChanges,
-            feederErrors,
-            stallDetectedCount,
-            endstop2Hit, endstop2Miss);
-          __debug(PSTR("Report: %d"), strlen(report));
-          */
+          printReport(line, loopCnt, cmdCnt, toolChanges, secs, endstop2Hit, endstop2Miss);
         }
         else {
           // restart from begin and increment loop count
@@ -2124,6 +2171,7 @@ void listTextFile(const char* filename PROGMEM, int8_t serial) {
     sprintf_P(line, P_FileNotFound, filename);
     printResponse(line, serial);
   }
+  printResponse(delimiter, serial);
 }
 
 /*
@@ -2291,18 +2339,29 @@ void blinkLED() {
   Please notice: This method runs the stepper far slower since it's got to ensure that the
   distance/second has to match.
 */
-unsigned long translateSpeed(uint16_t speed, uint16_t stepsPerMM, uint8_t delay) {
+unsigned long translateSpeed(uint16_t speed, uint8_t axis) {
   if(!smuffConfig.speedsInMMS) {
     return speed;
   }
-  unsigned long pulses = (speed * stepsPerMM);
-  double dly = 1-(pulses * delay * 0.000001);
-  unsigned long ticks = (long)(((F_CPU/STEPPER_PSC) / pulses) * dly) / 2;
-  //__debug(PSTR("tSpeed: F_CPU: %ld  STEPPER_PSC: %d  SPEED: %4d  StepsMM: %4d  TICKS: %6ld  PULSES: %6ld   DLY: %s"), F_CPU, STEPPER_PSC, speed, stepsPerMM, ticks, pulses, String(dly).c_str());
-  if(ticks == 0) {
+  uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution/360 : smuffConfig.stepsPerMM[axis];
+  uint8_t delay = smuffConfig.stepDelay[axis];
+  float correction = smuffConfig.speedAdjust[axis];
+  unsigned long freq = F_CPU/STEPPER_PSC;
+  unsigned long pulses = speed * stepsPerMM;
+  double delayTot = pulses * (delay * 0.000001);
+  double timeTot = ((double) pulses / freq) + delayTot;
+  // if delay total is more than 1 sec. its impossible to meet speed/s, so set a save value of 40mm/s.
+  unsigned long ticks = (unsigned long)((timeTot <= 1) ? (1/(timeTot*correction)) : 500);   // 500 equals round about 40 mm/s
+  /*
+  char ttl[30], dtl[30];
+  dtostrf(timeTot, 12, 6, ttl);
+  dtostrf(delayTot, 12, 6, dtl);
+  __debug(PSTR("FREQ: %lu  SPEED: %4d  StepsMM: %4d  TICKS: %12lu  TOTAL: %s  PULSES: %6lu   DLY: %s"), freq, speed, stepsPerMM, ticks, ttl, pulses, dtl);
+  */
+  if(timeTot > 1) {
     __debug(PSTR("Too fast! Slow down speed in mm/s."));
   }
-  return ticks == 0 ? 1000 : ticks;
+  return ticks;
 }
 
 void setMotor(uint8_t pos) {
@@ -2377,9 +2436,6 @@ void __debug(const char* fmt, ...) {
   vsnprintf_P(_dbg, ArraySize(_dbg)-1, fmt, arguments);
   va_end (arguments);
   debugSerial->print(F("echo: dbg: "));
-  // debugSerial->print(F("(M: "));
-  // debugSerial->print(freeMemory());
-  // debugSerial->print(") ");
   debugSerial->println(_dbg);
 #endif
 }

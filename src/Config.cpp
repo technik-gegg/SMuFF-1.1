@@ -299,6 +299,7 @@ bool readTmcConfig()
     if (error)
       showDeserializeFailed(error, P_ConfigFail6);
     else {
+      drawSDStatus(SD_READING_TMC);
       /*
       SELECTOR
       */
@@ -376,6 +377,7 @@ bool readServoMapping() {
     if (error)
       showDeserializeFailed(error, P_ConfigFail7);
     else {
+      drawSDStatus(SD_READING_SERVOS);
       // read servo mappings
       char item[15];
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {

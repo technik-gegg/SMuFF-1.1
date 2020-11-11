@@ -1,0 +1,5 @@
+G28 [ X | Y | Z ]
+-----------------
+X 		homes X axis (Selector)
+Y 		homes Y axis (Revolver)
+Z 		homes Z axis (Feeder)

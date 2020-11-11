@@ -1,0 +1,7 @@
+M914 Xn | Yn | Zn [ Cn | Tn ]
+-----------------------------
+Xn 		the stall sensitivity for the Selector (n: 0..255)
+Yn 		the stall sensitivity for the Revolver (n: 0..255)
+Zn 		the stall sensitivity for the Feeder (n: 0..255)
+Cn 		the cool step value (n: 0..31)
+Tn 		the stall trigger value (n: 0..255)

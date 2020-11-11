@@ -30,7 +30,7 @@
 #define SD_READING_CONFIG     0
 #define SD_READING_MATERIALS  3
 #define SD_READING_TMC        4
-#define SD_READING_SERVOs     5
+#define SD_READING_SERVOS     5
 
 const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
 const char P_MenuItemSeparator [] PROGMEM   = { "\035\n"};
@@ -177,6 +177,8 @@ const char P_FreeMemory[] PROGMEM           = { "Estimated Free Memory: %d Bytes
 const char P_SD_Reading[] PROGMEM           = { "Reading %s..." };
 const char P_SD_ReadingConfig[] PROGMEM     = { "Config" };
 const char P_SD_ReadingMaterials[] PROGMEM  = { "Materials" };
+const char P_SD_ReadingTmc[] PROGMEM        = { "TMC" };
+const char P_SD_ReadingServos[] PROGMEM     = { "Servos" };
 const char P_SD_InitError[] PROGMEM         = { "SD-Card not ready!" };
 const char P_SD_NoConfig[] PROGMEM          = { "No config file found!" };
 
@@ -194,7 +196,8 @@ const char P_MResponse[] PROGMEM            = { "M%d\n" };
 const char P_M250Response[] PROGMEM         = { "M250 C%d\n" };
 const char P_Tool[] PROGMEM                 = { "T%d" };
 const char P_AccelSpeedMms[] PROGMEM        = { "X (S):\t%d mm/s, Delay: %d\nY (R):\t%d mm/s, Delay: %d\nZ (F):\t%d mm/s%s, Delay: %d, Insert: %d mm/s\n" };
-const char P_AccelSpeedTicks[] PROGMEM      = { "X (S):\t%d ticks, Delay: %d\nY (R):\t%d ticks, Delay: %d\nZ (F):\t%d ticks%s, Delay: %d, Insert: %d mm/s\n" };
+const char P_AccelSpeedTicks[] PROGMEM      = { "X (S):\t%d ticks, Delay: %d\nY (R):\t%d ticks, Delay: %d\nZ (F):\t%d ticks%s, Delay: %d, Insert: %d ticks\n" };
+const char P_SpeedAdjust[] PROGMEM          = { "X (S):\t%s\nY (R):\t%s\nZ (F):\t%s\n" };
 
 const char P_CurrentTool[] PROGMEM          = {"Tool    " };
 const char P_Feed[] PROGMEM                 = {"Feed    " };

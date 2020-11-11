@@ -1,0 +1,7 @@
+M203 [ Xn [ Dn ] | Yn [ Dn ] | Zn [ Dn Fn ] ]
+---------------------------------------------
+Xn 		the maximum speed for the X axis (Selector)
+Yn 		the maximum speed for the Y axis (Revolver)
+Zn 		the maximum speed for the Z axis (Feeder)
+Dn 		the delay between pulses in microseconds
+Fn 		the insert speed for the Z axis (Feeder)

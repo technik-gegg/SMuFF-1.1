@@ -153,6 +153,7 @@ typedef struct {
   uint8_t   stepDelay[NUM_STEPPERS]         = { 3, 3, 3 };
   uint8_t   accelDist[NUM_STEPPERS]         = { 21, 5, 5 };
   int8_t    ms3config[NUM_STEPPERS]         = { -1, -1, -1 };
+  float     speedAdjust[NUM_STEPPERS]       = { 1, 1, 1 };
   // TMC drivers via UART or SPI
   uint16_t  stepperPower[NUM_STEPPERS+1]      = { 700, 700, 700, 700 };
   uint8_t   stepperMode[NUM_STEPPERS+1]       = { 0, 0, 0, 0 };                   // 0 = NONE, 1 = UART, 2 = SPI
@@ -303,7 +304,6 @@ extern volatile bool  parserBusy;
 extern volatile bool  isPwrSave;
 extern volatile bool  actionOk;
 extern volatile bool  sendingResponse;
-extern unsigned long  endstopZ2HitCnt;
 extern volatile bool  showMenu;
 extern bool           maintainingMode;
 extern volatile double lastDuetPos;
@@ -468,6 +468,7 @@ extern void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t st
 extern void printEndstopState(int8_t serial);
 extern void printPos(int8_t index, int8_t serial);
 extern void printAcceleration(int8_t serial);
+extern void printSpeedAdjust(int8_t serial);
 extern void printSpeeds(int8_t serial);
 extern void sendGList(int8_t serial);
 extern void sendMList(int8_t serial);
@@ -520,7 +521,7 @@ extern void showMemInfo(int8_t serial);
 extern uint8_t  scanI2CDevices(uint8_t * devices);
 extern bool initSD(bool showStatus = true);
 
-extern unsigned long translateSpeed(uint16_t speed, uint16_t stepsPerMM, uint8_t delay);
+extern unsigned long translateSpeed(uint16_t speed, uint8_t axis);
 extern bool getEncoderButton(bool encoderOnly);
 extern void getEncoderButton(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked);
 

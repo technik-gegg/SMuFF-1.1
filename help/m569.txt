@@ -1,0 +1,5 @@
+M569 Xn | Yn | Zn
+-----------------
+Xn 		the driver mode on TMC drivers for Selector (n: 0=StealthChop, 1=SpreadCycle)
+Yn 		the driver mode on TMC drivers for Revolver (n: 0=StealthChop, 1=SpreadCycle)
+Zn 		the driver mode on TMC drivers for Feeder (n: 0=StealthChop, 1=SpreadCycle)

@@ -1,0 +1,6 @@
+M17 I | E
+---------
+I 		switch Feeder to internal stepper driver (if SharedStepper is configured)
+E 		switch Feeder to external stepper driver
+
+No parameter reads the current setting

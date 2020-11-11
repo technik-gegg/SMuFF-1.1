@@ -1,36 +1,36 @@
-Available M Commands 
-  M17	-	Switch feeder stepper control (Relay) 
-  M18	-	Motors off 
-  M84	-	Motors off 
-  M20	-	List SD-Card 
-  M42	-	Set pin state 
-  M98	-	Execute test run 
-  M100	-	Show memory info 
-  M106	-	Fan on 
-  M107	-	Fan off 
-  M114	-	Report current positions 
-  M115	-	Report version 
-  M117	-	Display message 
-  M119	-	Report endstop status 
-  M122	-	Report TMC driver status 
-  M150	-	Set FastLED color 
-  M201	-	Set max acceleration 
-  M203	-	Set max feedrate 
-  M205	-	Set advanced options 
-  M206	-	Set offsets 
-  M250	-	LCD contrast 
-  M412	-	JAM detection on/off 
-  M300	-	Play a tone or a tune 
-  M350	-	Set motor microstepping 
-  M500	-	Save settings 
-  M503	-	Report settings 
-  M569	-	Set TMC SpreadCycle on/off 
-  M575	-	Set serial port baudrate 
-  M700	-	Load filament 
-  M701	-	Unload filament 
-  M906	-	Set TMC motor current 
-  M914	-	Set TMC stall sensitivity 
-  M999	-	Reset 
-  M2000	-	Text to decimal 
+Available M Commands
+  M17	-	Switch feeder stepper control (Relay)
+  M18,M84	-	Motors off
+  M20	-	List SD-Card
+  M42	-	Set pin state
+  M98	-	Execute test run
+  M100	-	Show memory info
+  M106	-	Fan on
+  M107	-	Fan off
+  M114	-	Report current positions
+  M115	-	Report version
+  M117	-	Display message
+  M119	-	Report endstop status
+  M122	-	Report TMC driver status
+  M150	-	Set FastLED color
+  M201	-	Set max. acceleration
+  M203	-	Set max. feedrate
+  M205	-	Set advanced options
+  M206	-	Set offsets
+  M250	-	LCD contrast
+  M300	-	Play a tone or a tune
+  M350	-	Set motor microstepping
+  M412	-	JAM detection on/off
+  M500	-	Save settings
+  M503	-	Report settings
+  M569	-	Set TMC SpreadCycle on/off
+  M575	-	Set serial port baudrate
+  M700	-	Load filament
+  M701	-	Unload filament
+  M906	-	Set TMC motor current
+  M914	-	Set TMC stall sensitivity
+  M999	-	Reset
+  M2000	-	Text to decimal
   M2001	-	Decimal to text
-  
+
+  Use M[code]? for detailed information on parameters

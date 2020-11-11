@@ -386,8 +386,8 @@ void setupEncoder() {
 
 void setupSteppers() {
 
-  uint16_t maxSpeed = translateSpeed(smuffConfig.maxSpeed[SELECTOR], smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]);
-  uint16_t accelSpeed = translateSpeed(smuffConfig.accelSpeed[SELECTOR], smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]);
+  uint16_t maxSpeed = translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR);
+  uint16_t accelSpeed = translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR);
   steppers[SELECTOR] = ZStepper(SELECTOR, (char*)"Selector", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[SELECTOR].setEndstop(X_END_PIN, smuffConfig.endstopTrg[SELECTOR], ZStepper::MIN);
   steppers[SELECTOR].stepFunc = overrideStepX;
@@ -410,8 +410,8 @@ void setupSteppers() {
   }
 
 #if !defined(SMUFF_V5)
-  maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], smuffConfig.stepsPerMM[REVOLVER], smuffConfig.stepDelay[REVOLVER]);
-  accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], smuffConfig.stepsPerMM[REVOLVER], smuffConfig.stepDelay[REVOLVER]);
+  maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
+  accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::ORBITAL);
   steppers[REVOLVER].stepFunc = overrideStepY;
@@ -440,8 +440,8 @@ void setupSteppers() {
   steppers[REVOLVER] = ZStepper(REVOLVER, (char*)"Revolver", -1, -1, Y_ENABLE_PIN, 0, 0);
 #endif
 
-  maxSpeed = translateSpeed(smuffConfig.maxSpeed[FEEDER], smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
-  accelSpeed = translateSpeed(smuffConfig.accelSpeed[FEEDER], smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
+  maxSpeed = translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER);
+  accelSpeed = translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER);
   steppers[FEEDER] = ZStepper(FEEDER, (char*)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, accelSpeed, maxSpeed);
   if(smuffConfig.useDuetLaser) {
     steppers[FEEDER].setEndstop(-1, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
@@ -450,7 +450,7 @@ void setupSteppers() {
   else
     steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
   if(Z_END2_PIN != -1)
-    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2); // optional; used for testing only
+    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MAX, 2); // optional; used for testing only
   steppers[FEEDER].stepFunc = overrideStepZ;
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM[FEEDER]);
   steppers[FEEDER].endstopFunc = endstopEventZ;
@@ -521,6 +521,7 @@ TMC2209Stepper* initDriver(uint8_t axis, int8_t rx_pin, int8_t tx_pin) {
   driver->Rsense = rsense;
   driver->I_scale_analog(false);    // set internal Vref
   driver->rms_current(current);     // set current in mA
+  //driver->I_scale_analog(true);     // set external Vref
   driver->mstep_reg_select(1);      // set microstepping
   driver->microsteps(msteps);
   driver->irun(31);
@@ -558,11 +559,10 @@ void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t stallThrs
     driver->pwm_autoscale(true);
     driver->toff(toff);
   }
-  if(csmin >0 && csmax >0) {
-    driver->semin(csmin);
-    driver->semax(csmax);
-    driver->sedn(csdown);
-  }
+  driver->semin(csmin);
+  driver->semax(csmax);
+  driver->sedn(csdown);
+  driver->seup(csdown);
 }
 
 void setupTMCDrivers() {
@@ -635,14 +635,14 @@ void setupTimers() {
   //          communication interrupts/breaks. Read the STM32F1 MCU spec. and check
   //          the libmaple library settings before you do so.
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER2, ZTimer::CH1, STEPPER_PSC, 1);   // prescaler set to 4MHz, timer will be calculated as needed
+  stepperTimer.setupTimer(ZTimer::ZTIMER2, ZTimer::CH1, STEPPER_PSC, 1);   // prescaler set to STEPPER_PSC, timer will be calculated as needed
   gpTimer.setupTimer(ZTimer::ZTIMER8, ZTimer::CH1, 8, 0);                  // prescaler set to 9MHz, timer will be set to 50uS
   #if !defined(USE_LEONERD_DISPLAY)
   setToneTimerChannel(ZTimer::ZTIMER4, ZTimer::CH3);                       // force TIMER4 / CH3 on STM32F1x for tone library
   #endif
-  nvic_irq_set_priority(NVIC_TIMER8_CC, 1);
-  nvic_irq_set_priority(NVIC_TIMER2, 0);
-  nvic_irq_set_priority(NVIC_TIMER3, 0);
+  nvic_irq_set_priority(NVIC_TIMER8_CC, 0);
+  nvic_irq_set_priority(NVIC_TIMER2, 1);
+  nvic_irq_set_priority(NVIC_TIMER3, 10);
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers

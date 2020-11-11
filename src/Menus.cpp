@@ -26,7 +26,6 @@ extern uint8_t  swapTools[];
 extern ZStepper steppers[];
 extern ZServo   servo, servoLid;
 extern int8_t   toolSelections[];
-TMC2209Stepper* setupDriver = nullptr;
 bool            forceStopMenu = false;
 
 char            colorName[10];
@@ -225,7 +224,7 @@ void setupServoMenu(char* menu) {
     servoPosClosed[toolSelected],
     #else
     smuffConfig.revolverOffPos,
-    smuffConfig.revolverOnPos,
+    servoPosClosed[toolSelected] == 0 ? smuffConfig.revolverOnPos : servoPosClosed[toolSelected],
     #endif
     smuffConfig.servoCycles1,
     smuffConfig.servoCycles2
@@ -616,8 +615,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperPower[axis];
             if(showInputDialog(title, P_InMilliAmpere, &iVal, 0, MAX_POWER, nullptr, 10)) {
               smuffConfig.stepperPower[axis] = (uint16_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->rms_current(smuffConfig.stepperPower[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->rms_current(smuffConfig.stepperPower[axis]);
             }
             break;
 
@@ -625,8 +624,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             fVal = smuffConfig.stepperRSense[axis];
             if(showInputDialog(title, P_InOhm, &fVal, 0, 1, nullptr, 0.01)) {
               smuffConfig.stepperRSense[axis] = fVal;
-              if(setupDriver != nullptr)
-                setupDriver->Rsense = fVal;
+              if(drivers[axis] != nullptr)
+                drivers[axis]->Rsense = fVal;
             }
             break;
 
@@ -635,9 +634,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             sprintf_P(tmp, loadOptions(P_OptMicrosteps));
             if(showInputDialog(title, P_Microsteps, &iVal, String(tmp), nullptr, false)) {
               smuffConfig.stepperMicrosteps[axis] = (uint16_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->mstep_reg_select(true);
-                setupDriver->microsteps(smuffConfig.stepperMicrosteps[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->microsteps(smuffConfig.stepperMicrosteps[axis]);
             }
             break;
 
@@ -645,8 +643,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperStall[axis];
             if(showInputDialog(title, P_Threshold, &iVal, 0, 255)) {
               smuffConfig.stepperStall[axis] = (int8_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->SGTHRS(smuffConfig.stepperStall[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->SGTHRS(smuffConfig.stepperStall[axis]);
             }
             break;
 
@@ -654,8 +652,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperCSmin[axis];
             if(showInputDialog(title, P_Min, &iVal, 0, 15)) {
               smuffConfig.stepperCSmin[axis] = (int8_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->semin(smuffConfig.stepperCSmin[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->semin(smuffConfig.stepperCSmin[axis]);
             }
             break;
 
@@ -663,8 +661,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperCSmax[axis];
             if(showInputDialog(title, P_Max, &iVal, 0, 15)) {
               smuffConfig.stepperCSmax[axis] = (int8_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->semax(smuffConfig.stepperCSmax[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->semax(smuffConfig.stepperCSmax[axis]);
             }
             break;
 
@@ -672,8 +670,9 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperCSdown[axis];
             if(showInputDialog(title, P_Down, &iVal, 0, 15)) {
               smuffConfig.stepperCSdown[axis] = (int8_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->sedn(smuffConfig.stepperCSdown[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->sedn(smuffConfig.stepperCSdown[axis]);
+                drivers[axis]->seup(smuffConfig.stepperCSdown[axis]);
             }
             break;
 
@@ -688,8 +687,8 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperToff[axis];
             if(showInputDialog(title, P_Value, &iVal, 0, 15)) {
               smuffConfig.stepperToff[axis] = (int8_t)iVal;
-              if(setupDriver != nullptr)
-                setupDriver->toff(smuffConfig.stepperToff[axis]);
+              if(drivers[axis] != nullptr)
+                drivers[axis]->toff(smuffConfig.stepperToff[axis]);
             }
             break;
 
@@ -697,9 +696,7 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             bVal = smuffConfig.stepperStopOnStall[axis];
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.stepperStopOnStall[axis] = bVal;
-              if(setupDriver != nullptr) {
-                steppers[axis].setStopOnStallDetected(bVal);
-              }
+              steppers[axis].setStopOnStallDetected(bVal);
             }
             break;
 
@@ -842,7 +839,6 @@ void showRevolverMenu(char* menuTitle) {
             break;
 
         case 2: // TMC-Paramters
-            setupDriver = drivers[REVOLVER];
             showTMCMenu(title, REVOLVER);
             current_selection = 1;
             break;
@@ -875,7 +871,7 @@ void showRevolverMenu(char* menuTitle) {
             if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               validateSpeed(iVal, &smuffConfig.accelSpeed[REVOLVER], 2);
               smuffConfig.maxSpeed[REVOLVER] = (uint16_t)iVal;
-              steppers[REVOLVER].setMaxSpeed(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerRevolution/360, smuffConfig.stepDelay[REVOLVER]));
+              steppers[REVOLVER].setMaxSpeed(translateSpeed((uint16_t)iVal, REVOLVER));
             }
             break;
 
@@ -883,7 +879,7 @@ void showRevolverMenu(char* menuTitle) {
             iVal = smuffConfig.accelSpeed[REVOLVER];
             if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               smuffConfig.accelSpeed[REVOLVER] = (uint16_t)iVal;
-              steppers[REVOLVER].setAcceleration(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerRevolution/360, smuffConfig.stepDelay[REVOLVER]));
+              steppers[REVOLVER].setAcceleration(translateSpeed((uint16_t)iVal, REVOLVER));
             }
             break;
 
@@ -975,7 +971,6 @@ void showSelectorMenu(char* menuTitle) {
             break;
 
         case 2: // TMC-Paramters
-            setupDriver = drivers[SELECTOR];
             showTMCMenu(title, SELECTOR);
             current_selection = 1;
             break;
@@ -1008,7 +1003,7 @@ void showSelectorMenu(char* menuTitle) {
             if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               validateSpeed(iVal, &smuffConfig.accelSpeed[SELECTOR], 5);
               smuffConfig.maxSpeed[SELECTOR] = (uint16_t)iVal;
-              steppers[SELECTOR].setMaxSpeed(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]));
+              steppers[SELECTOR].setMaxSpeed(translateSpeed((uint16_t)iVal, SELECTOR));
             }
             break;
 
@@ -1016,7 +1011,7 @@ void showSelectorMenu(char* menuTitle) {
             iVal = smuffConfig.accelSpeed[SELECTOR];
             if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               smuffConfig.accelSpeed[SELECTOR] = (uint16_t)iVal;
-              steppers[SELECTOR].setAcceleration(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]));
+              steppers[SELECTOR].setAcceleration(translateSpeed((uint16_t)iVal, SELECTOR));
             }
             break;
 
@@ -1084,7 +1079,6 @@ void showFeederMenu(char* menuTitle) {
             break;
 
         case 2: // TMC-Paramters
-            setupDriver = drivers[FEEDER];
             showTMCMenu(title, FEEDER);
             current_selection = 1;
             break;
@@ -1118,7 +1112,7 @@ void showFeederMenu(char* menuTitle) {
               validateSpeed(iVal, &smuffConfig.accelSpeed[FEEDER], 5);
               validateSpeed(iVal, &smuffConfig.insertSpeed, 10);
               smuffConfig.maxSpeed[FEEDER] = (uint16_t)iVal;
-              steppers[FEEDER].setMaxSpeed(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]));
+              steppers[FEEDER].setMaxSpeed(translateSpeed((uint16_t)iVal, FEEDER));
             }
             break;
 
@@ -1126,7 +1120,7 @@ void showFeederMenu(char* menuTitle) {
             iVal = smuffConfig.accelSpeed[FEEDER];
             if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               smuffConfig.accelSpeed[FEEDER] = (uint16_t)iVal;
-              steppers[FEEDER].setAcceleration(translateSpeed((uint16_t)iVal, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]));
+              steppers[FEEDER].setAcceleration(translateSpeed((uint16_t)iVal, FEEDER));
             }
             break;
 

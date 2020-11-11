@@ -1,0 +1,5 @@
+G1 Xn | Yn | Zn
+---------------
+Xn 		moves the Selector by n millimeters (negative n moves backwards)
+Yn 		moves the Revolver by n millimeters
+Zn 		moves the Feeder by n millimeters

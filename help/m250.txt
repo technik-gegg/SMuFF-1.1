@@ -1,0 +1,3 @@
+M250 Cn
+-------
+Cn 		the contrast value for the LCD (n: 60..255)

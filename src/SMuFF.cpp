@@ -128,13 +128,10 @@ volatile unsigned long          lastEncoderButtonTime = 0;
 bool                            testMode = false;
 bool                            timerRunning = false;
 int8_t                          toolSelections[MAX_TOOLS];
-volatile unsigned long          pwrSaveTime;
+uint32_t                        pwrSaveTime;
 volatile bool                   isPwrSave = false;
 volatile bool                   showMenu = false;
 volatile bool                   lastZEndstopState = false;
-volatile bool                   lastZEndstop2State = false;
-unsigned long                   endstopZ2HitCnt = 0;
-static unsigned long            lastDisplayRefresh = 0;
 static volatile unsigned        generalCounter = 0;
 static volatile unsigned        tickCounter = 0;
 volatile uint16_t               bracketCnt = 0;
@@ -221,6 +218,7 @@ void endstopEventZ() {
 
 void endstopEventZ2() {
   // add your code here it you want to hook into the 2nd endstop event for the Feeder
+  //__debug(PSTR("Z2 hit: %d"), endstop2Hit++);
 }
 
 /*
@@ -310,10 +308,11 @@ void enumI2cDevices() {
       __debug(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
     }
   }
-  #if defined(USE_LEONERD_DISPLAY)
-  if(!encoder)
+  if(!encoder) {
+    #if defined(USE_LEONERD_DISPLAY)
     __debug(PSTR("LeoNerd's OLED configured but no encoder was found!"));
-  #endif
+    #endif
+  }
 }
 
 void setup() {
@@ -354,9 +353,9 @@ void setup() {
   setupDeviceName();                  // used for SerialBT on ESP32 only
   setupSerialBT();                    // used for debugging on ESP32 only
   setupDisplay();                     // setup display first in order to show error messages if neccessary
-  // __debug(PSTR("[ after setupDisplay ]"));
+  //__debug(PSTR("[ after setupDisplay ]"));
   setupEncoder();                     // setup encoder - only relevant on LeoNerd display
-  // __debug(PSTR("[ after setupEncoder ]"));
+  //__debug(PSTR("[ after setupEncoder ]"));
   if(readConfig()) {                  // read SMUFF.CFG from SD-Card
     readTmcConfig();                  // read TMCDRVR.CFG from SD-Card
     readServoMapping();               // read SERVOMAP.CFG from SD-Card
@@ -372,9 +371,9 @@ void setup() {
   setupServos();
   // __debug(PSTR("[ after setupServos ]"));
   setupRelay();
-  // __debug(PSTR("[ after setupRelay ]"));
+  //__debug(PSTR("[ after setupRelay ]"));
   setupTMCDrivers();                  // setup TMC drivers if any were used
-  // __debug(PSTR("[ after setupTMCdrivers ]"));
+  //__debug(PSTR("[ after setupTMCdrivers ]"));
   setupSwSerial0();                   // used only for testing purposes
   setupBacklight();
   setupDuetLaserSensor();             // setup other peripherials
@@ -407,8 +406,8 @@ void setup() {
 
   removeFirmwareBin();      // deletes the firmware.bin file to prevent re-flashing on each boot
   initDone = true;          // mark init done; enable periodically sending status, if configured
-  refreshStatus(true, false);
   startupBeep();            // signal startup has finished
+  refreshStatus(true, false);
   pwrSaveTime = millis();   // init value for LCD screen timeout
 }
 
@@ -428,10 +427,9 @@ void startStepperInterval() {
 
   if(remainingSteppersFlag == 0) {
     stepperTimer.stopTimer();
-    stepperTimer.setOverflow(65534);
+    stepperTimer.setOverflow(65535);
   }
   else {
-    //__debug(PSTR("minDuration: %d"), minDuration);
     stepperTimer.setNextInterruptInterval(minDuration);
   }
 }
@@ -439,7 +437,7 @@ void startStepperInterval() {
 void isrStepperHandler() {
   stepperTimer.stopTimer();
   uint16_t tmp = stepperTimer.getOverflow();
-  stepperTimer.setOverflow(65534);
+  stepperTimer.setOverflow(65535);
 
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if(!(_BV(i) & remainingSteppersFlag))
@@ -453,7 +451,6 @@ void isrStepperHandler() {
     steppers[i].handleISR();
     if(steppers[i].getMovementDone()) {
       remainingSteppersFlag &= ~_BV(i);
-      //__debug(PSTR("ISR(): movement of %d done; Flag %d"), i, remainingSteppersFlag);
     }
   }
   //__debug(PSTR("ISR(): %d"), remainingSteppersFlag);
@@ -483,6 +480,7 @@ void runAndWait(int8_t index) {
 }
 
 void refreshStatus(bool withLogo, bool feedOnly) {
+
   if(feedOnly) {
     drawFeed();
   }
@@ -495,7 +493,6 @@ void refreshStatus(bool withLogo, bool feedOnly) {
       drawSDRemoved(sdRemoved);
     } while(display.nextPage());
   }
-  lastDisplayRefresh = millis();
 }
 
 void reportTMC(uint8_t axis, const char* PROGMEM msg) {
@@ -600,6 +597,7 @@ void loop() {
   #endif
 
   #if defined(SD_DETECT_PIN)
+  // message the user if the SD-Card gets removed
   if(digitalRead(SD_DETECT_PIN) == HIGH) {
     if(!sdRemoved) {
       userBeep();
@@ -624,45 +622,38 @@ void loop() {
   }
   #endif
 
-  if(feederEndstop() != lastZEndstopState) {
-    lastZEndstopState = feederEndstop();
-    bool state = feederEndstop();
+  bool state = feederEndstop();
+  if(state != lastZEndstopState) {
+    lastZEndstopState = state;
     refreshStatus(true, false);
+    // for Duet3D only
     setSignalPort(FEEDER_SIGNAL, state);
     delay(200);
     setSignalPort(FEEDER_SIGNAL, !state);
     delay(200);
     setSignalPort(FEEDER_SIGNAL, state);
   }
-
-  if(feederEndstop(2) != lastZEndstop2State) {
-    lastZEndstop2State = feederEndstop(2);
-    endstopZ2HitCnt++;
-  }
-
   checkUserMessage();
 
   if(!isPwrSave && !showMenu && !displayingUserMessage && ((generalCounter % 250) == 0)) {
     refreshStatus(true, false);   // refresh display every 250ms
   }
 
+  int16_t turn;
+  uint8_t button;
+  bool isHeld, isClicked;
 
   if(!showMenu) {
-    int16_t turn;
-    uint8_t button;
-    bool isHeld, isClicked;
-
     if(remoteKey == REMOTE_HOME)
       remoteKey = REMOTE_NONE;
 
     getInput(&turn, &button, &isHeld, &isClicked);
-
-    if(isClicked && isPwrSave) {
+    if(isPwrSave && (isClicked || turn != 0)) {
       setPwrSave(0);
       refreshStatus(true, false);
     }
-    else if((button == MainButton && isClicked) || (button == WheelButton && isHeld)) {
-      setPwrSave(0);
+
+    if((button == MainButton && isClicked) || (button == WheelButton && isHeld)) {
       showMenu = true;
       char title[] = {"Settings"};
       showSettingsMenu(title);
@@ -670,6 +661,7 @@ void loop() {
       debounceButton();
     }
     else if(button == LeftButton) {
+      // applies to LeoNerd's display only
       if(isClicked) {
         if(strlen(smuffConfig.lButtonDown)>0) {
           parseGcode(String(smuffConfig.lButtonDown), -1);
@@ -700,34 +692,24 @@ void loop() {
         }
       }
     }
-    else {
-      if(turn != 0) {
-        resetAutoClose();
-        if(isPwrSave) {
-          setPwrSave(0);
-          refreshStatus(true, false);
-        }
-        else {
-          displayingUserMessage = false;
-          showMenu = true;
-          if(turn == -1) {
-            showMainMenu();
-          }
-          else {
-            showToolsMenu();
-          }
-          pwrSaveTime = millis();
-          forceStopMenu = false;
-          showMenu = false;
-          refreshStatus(true, false);
-        }
+    else if(turn != 0) {
+      resetAutoClose();
+      displayingUserMessage = false;
+      showMenu = true;
+      if(turn == -1) {
+        showMainMenu();
       }
+      else {
+        showToolsMenu();
+      }
+      pwrSaveTime = millis();
+      showMenu = false;
+      refreshStatus(true, false);
     }
   }
 
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
     //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
-    forceStopMenu = true;
     refreshStatus(true, false);
     setPwrSave(1);
   }

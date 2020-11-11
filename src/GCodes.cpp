@@ -79,6 +79,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
   { 122, M122 },
   { 150, M150 },
   { 201, M201 },
+  { 202, M202 },
   { 203, M203 },
   { 205, M205 },
   { 206, M206 },
@@ -357,10 +358,13 @@ bool M115(const char* msg, String buf, int8_t serial) {
 
 bool M117(const char* msg, String buf, int8_t serial) {
   String umsg = buf;
-  umsg.replace("_", " ");
-  beep(1);
-  drawUserMessage(umsg);
-  return true;
+  if(umsg.length() > 0) {
+    umsg.replace("_", " ");
+    beep(1);
+    drawUserMessage(umsg);
+    return true;
+  }
+  return false;
 }
 
 bool M119(const char* msg, String buf, int8_t serial) {
@@ -849,26 +853,49 @@ bool M201(const char* msg, String buf, int8_t serial) {
   if((param = getParam(buf, X_Param))  != -1) {
     if((unsigned int)param >= mmsMin && (unsigned int)param <= mmsMax) {
       smuffConfig.accelSpeed[SELECTOR] = (uint16_t)param;
-      param = translateSpeed(param, smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]);
-      steppers[SELECTOR].setAcceleration((uint16_t)param);
+      steppers[SELECTOR].setAcceleration(translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR));
     }
     else stat = false;
   }
   if((param = getParam(buf, Y_Param))  != -1) {
     if((unsigned int)param >= mmsMin && (unsigned int)param <= mmsMax) {
       smuffConfig.accelSpeed[REVOLVER] = (uint16_t)param;
-      param = translateSpeed(param, smuffConfig.stepsPerRevolution/360, smuffConfig.stepDelay[REVOLVER]);
-      steppers[REVOLVER].setAcceleration((uint16_t)param);
+      steppers[REVOLVER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER));
     }
     else stat = false;
   }
   if((param = getParam(buf, Z_Param))  != -1) {
     if((unsigned int)param >= mmsMin && (unsigned int)param <= mmsMax) {
       smuffConfig.accelSpeed[FEEDER] = (uint16_t)param;
-      param = translateSpeed(param, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
-      steppers[FEEDER].setAcceleration((uint16_t)param);
+      steppers[FEEDER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER));
     }
     else stat = false;
+  }
+  return stat;
+}
+
+bool M202(const char* msg, String buf, int8_t serial) {
+  bool stat = true;
+  printResponse(msg, serial);
+  if(buf.length()==0) {
+    printSpeedAdjust(serial);
+    return stat;
+  }
+  float paramF;
+  if((paramF = getParamF(buf, X_Param))  != -1) {
+    smuffConfig.speedAdjust[SELECTOR] = paramF;
+    steppers[SELECTOR].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR));
+    steppers[SELECTOR].setAcceleration(translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR));
+  }
+  if((paramF = getParamF(buf, Y_Param))  != -1) {
+    smuffConfig.speedAdjust[REVOLVER] = paramF;
+    steppers[REVOLVER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER));
+    steppers[REVOLVER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER));
+  }
+  if((paramF = getParamF(buf, Z_Param))  != -1) {
+    smuffConfig.speedAdjust[FEEDER] = paramF;
+    steppers[FEEDER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER));
+    steppers[FEEDER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER));
   }
   return stat;
 }
@@ -883,13 +910,9 @@ bool M203(const char* msg, String buf, int8_t serial) {
   if((param = getParam(buf, X_Param))  != -1) {
     if((unsigned int)param > mmsMin && (unsigned int)param <= mmsMax) {
       smuffConfig.maxSpeed[SELECTOR] = (uint16_t)param;
-      param = translateSpeed(param, smuffConfig.stepsPerMM[SELECTOR], smuffConfig.stepDelay[SELECTOR]);
-      steppers[SELECTOR].setMaxSpeed((uint16_t)param);
+      steppers[SELECTOR].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR));
     }
     else stat = false;
-    if((param = getParam(buf, S_Param))  != -1) {
-      smuffConfig.stepDelay[SELECTOR] = (uint8_t)param;
-    }
     if((param = getParam(buf, D_Param))  != -1) {
       smuffConfig.stepDelay[SELECTOR] = (uint8_t)param;
     }
@@ -897,13 +920,9 @@ bool M203(const char* msg, String buf, int8_t serial) {
   if((param = getParam(buf, Y_Param))  != -1) {
     if((unsigned int)param > mmsMin && (unsigned int)param <= mmsMax) {
       smuffConfig.maxSpeed[REVOLVER] = (uint16_t)param;
-      param = translateSpeed(param, smuffConfig.stepsPerRevolution/360, smuffConfig.stepDelay[REVOLVER]);
-      steppers[REVOLVER].setMaxSpeed((uint16_t)param);
+      steppers[REVOLVER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER));
     }
     else stat = false;
-    if((param = getParam(buf, S_Param))  != -1) {
-      smuffConfig.stepDelay[REVOLVER] = (uint8_t)param;
-    }
     if((param = getParam(buf, D_Param))  != -1) {
       smuffConfig.stepDelay[REVOLVER] = (uint8_t)param;
     }
@@ -911,13 +930,9 @@ bool M203(const char* msg, String buf, int8_t serial) {
   if((param = getParam(buf, Z_Param))  != -1) {
     if((unsigned int)param > mmsMin && (unsigned int)param <= mmsMax) {
       smuffConfig.maxSpeed[FEEDER] = (uint16_t)param;
-      param = translateSpeed(param, smuffConfig.stepsPerMM[FEEDER], smuffConfig.stepDelay[FEEDER]);
-      steppers[FEEDER].setMaxSpeed((uint16_t)param);
+      steppers[FEEDER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER));
     }
     else stat = false;
-    if((param = getParam(buf, S_Param))  != -1) {
-      smuffConfig.stepDelay[FEEDER] = (uint8_t)param;
-    }
     if((param = getParam(buf, D_Param))  != -1) {
       smuffConfig.stepDelay[FEEDER] = (uint8_t)param;
     }
@@ -1149,16 +1164,19 @@ bool M205(const char* msg, String buf, int8_t serial) {
             smuffConfig.stepperCSdown[SELECTOR] = (int8_t)param;
             if(drivers[SELECTOR] != nullptr)
               drivers[SELECTOR]->sedn(smuffConfig.stepperCSdown[SELECTOR]);
+              drivers[SELECTOR]->seup(smuffConfig.stepperCSdown[SELECTOR]);
           }
           if(hasParam(buf, Y_Param)) {
             smuffConfig.stepperCSdown[REVOLVER] = (int8_t)param;
             if(drivers[REVOLVER] != nullptr)
               drivers[REVOLVER]->sedn(smuffConfig.stepperCSdown[REVOLVER]);
+              drivers[REVOLVER]->seup(smuffConfig.stepperCSdown[REVOLVER]);
           }
           if(hasParam(buf, Z_Param)) {
             smuffConfig.stepperCSdown[FEEDER] = (int8_t)param;
             if(drivers[FEEDER] != nullptr)
               drivers[FEEDER]->sedn(smuffConfig.stepperCSdown[FEEDER]);
+              drivers[FEEDER]->seup(smuffConfig.stepperCSdown[FEEDER]);
           }
         }
         else
@@ -1346,19 +1364,11 @@ bool M300(const char* msg, String buf, int8_t serial) {
   else if(getParamString(buf, F_Param, filename, ArraySize(filename))) {
     String tune = readTune(filename);
     prepareSequence(tune.c_str(), false);
-    #if defined(USE_LEONERD_DISPLAY)
     playSequence(true);   // play in foreground
-    #else
-    playSequence(false);
-    #endif
   }
   else if(getParamString(buf, T_Param, sequence, ArraySize(sequence)-1)) {
     prepareSequence(sequence, false);
-    #if defined(USE_LEONERD_DISPLAY)
     playSequence(true);   // play in foreground
-    #else
-    playSequence(false);
-    #endif
   }
   else
     stat = false;
@@ -1483,10 +1493,13 @@ bool M569(const char* msg, String buf, int8_t serial) {
     if(param >= 0 && param <= 1) {
       steppers[SELECTOR].setEnabled(true);
       if(drivers[SELECTOR] != nullptr) {
-        uint8_t toff = smuffConfig.stepperToff[SELECTOR] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperCSmin[SELECTOR];
+        uint8_t toff = smuffConfig.stepperToff[SELECTOR] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperToff[SELECTOR];
+        smuffConfig.stepperStealth[SELECTOR] = (param == 0);
         setDriverSpreadCycle(drivers[SELECTOR], (param >0), smuffConfig.stepperStall[SELECTOR], smuffConfig.stepperCSmin[SELECTOR], smuffConfig.stepperCSmax[SELECTOR], smuffConfig.stepperCSdown[SELECTOR], toff);
         if(param == 0 && STALL_X_PIN != -1)
           attachInterrupt(STALL_X_PIN, isrStallDetectedX, FALLING);
+        else if(param == 1 && STALL_X_PIN != -1)
+          detachInterrupt(STALL_X_PIN);
       }
       else {
         printResponseP(P_StepperNotCfg, serial);
@@ -1501,10 +1514,13 @@ bool M569(const char* msg, String buf, int8_t serial) {
     if(param >= 0 && param <= 1) {
       steppers[REVOLVER].setEnabled(true);
       if(drivers[REVOLVER] != nullptr) {
-        uint8_t toff = smuffConfig.stepperToff[REVOLVER] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperCSmin[REVOLVER];
+        uint8_t toff = smuffConfig.stepperToff[REVOLVER] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperToff[REVOLVER];
+        smuffConfig.stepperStealth[REVOLVER] = (param == 0);
         setDriverSpreadCycle(drivers[REVOLVER], (param >0), smuffConfig.stepperStall[REVOLVER], smuffConfig.stepperCSmin[REVOLVER], smuffConfig.stepperCSmax[REVOLVER], smuffConfig.stepperCSdown[REVOLVER], toff);
         if(param == 0 && STALL_Y_PIN != -1)
           attachInterrupt(STALL_Y_PIN, isrStallDetectedY, FALLING);
+        else if(param == 1 && STALL_Y_PIN != -1)
+          detachInterrupt(STALL_Y_PIN);
       }
       else {
         printResponseP(P_StepperNotCfg, serial);
@@ -1519,10 +1535,13 @@ bool M569(const char* msg, String buf, int8_t serial) {
     if(param >= 0 && param <= 1) {
       steppers[FEEDER].setEnabled(true);
       if(drivers[FEEDER] != nullptr) {
-        uint8_t toff = smuffConfig.stepperToff[FEEDER] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperCSmin[FEEDER];
+        uint8_t toff = smuffConfig.stepperToff[FEEDER] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperToff[FEEDER];
+        smuffConfig.stepperStealth[FEEDER] = (param == 0);
         setDriverSpreadCycle(drivers[FEEDER], (param >0), smuffConfig.stepperStall[FEEDER], smuffConfig.stepperCSmin[FEEDER], smuffConfig.stepperCSmax[FEEDER], smuffConfig.stepperCSdown[FEEDER], toff);
         if(param == 0 && STALL_Z_PIN != -1)
           attachInterrupt(STALL_Z_PIN, isrStallDetectedZ, FALLING);
+        else if(param == 1 && STALL_Z_PIN != -1)
+          detachInterrupt(STALL_Z_PIN);
       }
       else {
         printResponseP(P_StepperNotCfg, serial);
@@ -1848,17 +1867,16 @@ uint16_t handleFeedSpeed(String buf, uint8_t axis) {
     uint16_t fspeed = (uint16_t) getParam(buf, F_Param);
     if(fspeed < mmsMin) fspeed = mmsMin;
     if(fspeed > mmsMax) fspeed = mmsMax;
-    uint8_t delay = smuffConfig.stepDelay[axis];
-    fspeed = translateSpeed((unsigned int)fspeed, steppers[axis].getStepsPerMM(), delay);
-    __debug(PSTR("fspeed=%ld"), fspeed);
+    fspeed = translateSpeed(fspeed, axis);
+    //__debug(PSTR("fspeed ticks = %ld"), fspeed);
     steppers[axis].setMaxSpeed(fspeed);
-    if(fspeed > (long)steppers[axis].getAcceleration()) {
-      long faccel = fspeed*3;
+    if(fspeed > steppers[axis].getAcceleration()) {
+      uint16_t faccel = fspeed*3;
       if(faccel >= 65500)
         faccel = 65500;
       steppers[axis].setAcceleration(faccel);
     }
-    return(unsigned int) fspeed;
+    return fspeed;
   }
 }
 

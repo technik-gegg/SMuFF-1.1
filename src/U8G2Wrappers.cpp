@@ -89,7 +89,7 @@ extern "C"
 
 #ifdef __STM32F1__
 #if !defined(USE_TWI_DISPLAY) && !defined(USE_LEONERD_DISPLAY) && !defined(__BRD_FYSETC_AIOII)
-
+SPIClass SPI_3(3);
     /* =========================================
 ATTENTION:
 The following section does a rewrite of the U8G2 library function

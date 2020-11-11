@@ -266,12 +266,20 @@ bool parse_G(const String& buf, int8_t serial) {
   //__debug(PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
 
   char msg[10];
+  char tmp[50];
   sprintf_P(msg, P_GResponse, code);
   uint8_t ofs = String(msg).length()-2;
 
   for(uint16_t i=0; i< 999; i++) {
     if(gCodeFuncsG[i].code == -1)
       break;
+    // deviation from standard GCode parser;
+    // list help file if the first char is a question mark (?)
+    if(buf.substring(ofs).charAt(0)=='?') {
+      sprintf(tmp, "g%d", code);
+      listTextFile(tmp, serial);
+      return true;
+    }
     if(gCodeFuncsG[i].code == code) {
       return gCodeFuncsG[i].func(msg, buf.substring(ofs), serial);
     }
@@ -289,6 +297,7 @@ bool parse_M(const String& buf, int8_t serial) {
   uint16_t code = buf.toInt();
 
   char msg[10];
+  char tmp[50];
   sprintf_P(msg, P_MResponse, code);
   uint8_t ofs = String(msg).length()-2;
 
@@ -296,6 +305,13 @@ bool parse_M(const String& buf, int8_t serial) {
     if(gCodeFuncsM[i].code == -1)
       break;
     if(gCodeFuncsM[i].code == code) {
+      // deviation from standard GCode parser;
+      // list help file if the first char is a question mark (?)
+      if(buf.substring(ofs).charAt(0)=='?') {
+        sprintf(tmp, "m%d", code);
+        listTextFile(tmp, serial);
+        return true;
+      }
       //__debug(PSTR("Calling: M"), gCodeFuncsM[i].code);
       return gCodeFuncsM[i].func(msg, buf.substring(ofs), serial);
     }

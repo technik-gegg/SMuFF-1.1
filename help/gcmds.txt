@@ -1,8 +1,10 @@
-Available G Commands 
-  G0	-	Move 
-  G1	-	Move 
-  G4	-	Dwell 
-  G12	-	Wipe filament 
-  G28	-	Home 
-  G90	-	Absolute positioning 
+Available G Commands
+  G0	-	Move to tool
+  G1	-	Move to position
+  G4	-	Dwell
+  G12	-	Wipe filament
+  G28	-	Home
+  G90	-	Absolute positioning
   G91	-	Relative positioning
+
+Use G[code]? for detailed information on parameters

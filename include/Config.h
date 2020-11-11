@@ -21,10 +21,10 @@
 #ifndef _SMUFF_CONFIG_H
 #define _SMUFF_CONFIG_H
 
-#define VERSION_STRING    "V2.12"
+#define VERSION_STRING    "V2.13"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-10-31"
+#define VERSION_DATE      "2020-11-04"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define MATERIALS_FILE    "MATERIALS.CFG"
 #define TMC_CONFIG_FILE   "TMCDRVR.CFG"
@@ -66,6 +66,8 @@
 
 #define SERVO_CLOSED_OFS    55           // for Multiservo
 
+#define FEED_ERROR_RETRIES  4
+
 #define REMOTE_NONE         0
 #define REMOTE_UP           1
 #define REMOTE_DOWN         2
@@ -77,8 +79,8 @@
 #define REMOTE_PGDN         8
 
 #if defined(__STM32F1__)
-#define STEPPER_PSC         9           // 8MHz on STM32 (72MHz MCU)
-//#define STEPPER_PSC         6           // 12MHz on STM32 (72MHz MCU)
+//#define STEPPER_PSC         9           // 8MHz on STM32 (72MHz MCU)
+#define STEPPER_PSC         3           // 24MHz on STM32 (72MHz MCU)
 #elif defined(__ESP32__)
 #define STEPPER_PSC         10          // 8MHz on ESP32 (80MHz MCU)
 #else

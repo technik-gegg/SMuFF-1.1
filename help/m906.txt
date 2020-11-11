@@ -1,0 +1,7 @@
+M906 Xn | Yn | Zn [ Rn Hn ]
+---------------------------
+Xn 		the motor current for the Selector (in mA)
+Yn 		the motor current for the Revolver (in mA)
+Zn 		the motor current for the Feeder (in mA)
+Rn 		the iRun value (n: 0..31)
+Hn 		the iHold value (n: 0..31)

@@ -1,4 +1,5 @@
-Parameter Name          Option:
+M205 P"..." Sn [ X | Y | Z ]
+Parameter Name In P 	Option:
 -------------------------------
 ToolCount           	S n
 ToolSpacing         	S n.n

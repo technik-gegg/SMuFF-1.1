@@ -41,6 +41,11 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.13** - bug fixing
+
++ removed  the "playing tunes in background" feature since it was causing hands and resets.
++ added parameter help on most of the GCodes when appending a question mark (?) to the command (i.e. M280?)
+
 **2.12** - mostly code refactoring and a couple of new features
 
 + overhauled the intro in this README

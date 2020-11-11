@@ -1,0 +1,7 @@
+M84 [ X | Y | Z ]
+-----------------
+X 		turns off X stepper motor (Selector)
+Y 		turns off Y stepper motor (Revolver)
+Z 		turns off Z stepper motor (Feeder)
+
+No parameter turns off all stepper motors

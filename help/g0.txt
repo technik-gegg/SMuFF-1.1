@@ -1,0 +1,4 @@
+G0 Xn | Yn
+----------
+Xn 		selects the tool n on the Selector
+Yn 		selects the tool n on the Revolver

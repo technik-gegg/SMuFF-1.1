@@ -1,0 +1,4 @@
+G4 Pn | Sn
+----------
+Pn 		the pause in milliseconds
+Sn 		the pause in seconds

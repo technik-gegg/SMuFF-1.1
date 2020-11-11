@@ -1,0 +1,9 @@
+G12 [ Sn In Jn Pn Rn ]
+----------------------
+Sn 		the speed in ms for moving the servo back and forth (default: n = 200)
+In 		the minimum position in degrees of the servo while wiping (default: n = 20)
+Jn 		the maximum position in degrees of the servo while wiping (default: n = 45)
+Pn 		the resting position in degrees of the servo (default: n = 100)
+Rn 		the number of repeats between min. and max. position (default: n = 0)
+
+G12 without any parameters will use the WipeSequence defined in SMUFF.CFG

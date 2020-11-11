@@ -1,0 +1,8 @@
+M150 { Rn Un Bn | Cn } Pn Sn
+----------------------------
+Rn 		the RED color intensity (n: 0..255)
+Un 		the GREEN color intensity (n: 0..255)
+Bn 		the BLUE color intensity (n: 0..255)
+Cn 		the color index (n: 0=Black, 1=Red, 2=Green, 3=Blue, 4=Cyan, 5=Magenta, 6=Yellow, 7=White)
+Pn 		the LED brightness (n: 0..255)
+Sn 		the LED index (n: 0..255)

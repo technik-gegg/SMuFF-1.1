@@ -1,0 +1,5 @@
+M503 [ Sn ]
+-----------
+Sn 		the category to show (1=Basic, 2=TMC settings, 3=Servo settings)
+
+Without S paramater all data will be shown

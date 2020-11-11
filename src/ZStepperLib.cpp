@@ -56,20 +56,19 @@ void ZStepper::resetStepper() {
   _duration = _acceleration;
   _durationInt = (uint16_t)_duration;
   _stepCount = 0;
-  //_stepsTaken = 0;
   _movementDone = false;
   _endstopHit = false;
   _stallDetected = false;
   _stallCount = 0;
   _abort = false;
+  //__debug(PSTR("total: %6ld  _accelDist: %5ld  _acceleration: %d  _stepsAcceleration: %s   _minStepInterval: %d  _duration: %d  ignoreEndstop: %d"), _totalSteps, _accelDistSteps, _acceleration, String(_stepsAcceleration).c_str(), _minStepInterval, _durationInt, _ignoreEndstop);
 }
 
 void ZStepper::prepareMovement(long steps, bool ignoreEndstop /*= false */) {
   setDirection(steps < 0 ? CCW : CW);
   _totalSteps = abs(steps)+1;
   _accelDistSteps = _accelDistance * (_endstopType == ORBITAL ? _stepsPerDegree : _stepsPerMM);
-  _stepsAcceleration = abs((float)((_acceleration - _minStepInterval)+.1) / _accelDistSteps);
-  //__debug(PSTR("total: %6ld  _accelDist: %5ld  _acceleration: %d  _stepsAcceleration: %s   _minStepInterval: %d  _duration: %d  ignoreEndstop: %d"), _totalSteps, _accelDistSteps, _acceleration, String(_stepsAcceleration).c_str(), _minStepInterval, _durationInt, ignoreEndstop);
+  _stepsAcceleration = (float)((_acceleration - _minStepInterval+.1) / _accelDistSteps);
   _ignoreEndstop = ignoreEndstop;
   resetStepper();
 }
@@ -116,17 +115,19 @@ void ZStepper::updateAcceleration() {
     _durationInt = _duration = _minStepInterval;
     return;
   }
+
   if(_stepCount <= _accelDistSteps) {
     _duration -= _stepsAcceleration;    // accelerate (i.e. make the timer interval shorter)
   }
   if (_stepCount >= (_totalSteps - _accelDistSteps)) {
     _duration += _stepsAcceleration;    // decelerate (i.e. make the timer interval longer)
   }
+
   if(_duration <= _minStepInterval)
     _duration = _minStepInterval;
-  if(_duration >= _acceleration)
-    _duration = _acceleration;
   _durationInt = _duration;
+  if(_duration > _acceleration)
+    _duration = _acceleration;
 }
 
 void ZStepper::handleISR() {
@@ -136,6 +137,7 @@ void ZStepper::handleISR() {
     setMovementDone(true);
     return;
   }
+  updateAcceleration();
   // check stepper motor stall on TMC2209 if configured likewise
   if(_stallCountThreshold > 0 && _stallCount > _stallCountThreshold) {
     _stallDetected = true;
@@ -221,7 +223,6 @@ void ZStepper::handleISR() {
       //__debug(PSTR("handleISR() done: %ld / %ld / %ld"), _stepCount, _totalSteps, getStepPosition());
     }
   }
-  updateAcceleration();
 }
 
 bool ZStepper::getEndstopHit(int8_t index) {
@@ -245,6 +246,9 @@ bool ZStepper::getEndstopHit(int8_t index) {
       for(uint8_t i=0; i < 5;  i++)
         stat = digitalRead(_endstopPin2);
       setEndstopHit(stat==_endstopState2, 2);
+    }
+    else {
+      setEndstopHit(false, 2);
     }
     return _endstopHit2;
   }

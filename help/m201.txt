@@ -1,0 +1,5 @@
+M201 [ Xn | Yn | Zn ]
+---------------------
+Xn 		the acceleration speed for the X axis (Selector)
+Yn 		the acceleration speed for the Y axis (Revolver)
+Zn 		the acceleration speed for the Z axis (Feeder)

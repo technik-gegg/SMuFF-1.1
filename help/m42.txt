@@ -1,0 +1,5 @@
+M42 Pn Sn Mn
+------------
+Pn 		Address pin number n
+Sn      State for Pn (0 | 1)
+Mn      Pin mode (n: 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN)

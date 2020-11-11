@@ -1,0 +1,3 @@
+M106 Sn
+-------
+Sn 		the percentage for the fan to spin (n: 0..100)

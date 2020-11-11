@@ -1,0 +1,5 @@
+M350 Xn | Yn | Zn
+-----------------
+Xn 		the microstepping value for the Selector (n: 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128)
+Yn 		the microstepping value for the Revolver (n: 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128)
+Zn 		the microstepping value for the Feeder (n: 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128)

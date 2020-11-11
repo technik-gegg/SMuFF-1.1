@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _BUTTON_STATE_H
-#define _BUTTON_STATE_H 1
-
 typedef enum _ButtonState {
     Open = 0,
     Closed,
@@ -44,6 +41,4 @@ typedef enum _Buttons {
     LeftButton,
     RightButton
 } Buttons;
-#endif
-
 #endif
