@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _SMUFF_STRINGS_H
-#define _SMUFF_STRINGS_H
-
 #if !defined (__ESP32__) && !defined(__NXP__)
 #include <avr/pgmspace.h>
 #endif
@@ -282,5 +279,3 @@ const char P_Action[] PROGMEM               = { "//action: %s" };
 const char P_ActionWait[] PROGMEM           = { "WAIT" };
 const char P_ActionCont[] PROGMEM           = { "CONTINUE" };
 const char P_ActionPong[] PROGMEM           = { "PONG" };
-
-#endif

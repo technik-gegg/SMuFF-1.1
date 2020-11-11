@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _DATASTORE_H
-#define _DATASTORE_H
-
 #include <stdlib.h>
 
 typedef struct {
@@ -32,4 +29,3 @@ extern DataStore      dataStore;
 
 void saveStore();
 void recoverStore();
-#endif

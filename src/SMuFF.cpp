@@ -49,9 +49,8 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   //U8G2_UC1701_MINI12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
-#endif
 
-#ifdef __BRD_ESP32
+#elif defined(__BRD_ESP32)
   #if defined(USE_TWI_DISPLAY)
   U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
   #elif defined(USE_LEONERD_DISPLAY)
@@ -60,13 +59,22 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
   U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
-#endif
 
-#ifdef __BRD_FYSETC_AIOII
+#elif defined(__BRD_FYSETC_AIOII)
 U8G2_UC1701_MINI12864_F_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
 #endif
 
-#if defined(__ESP32__)
+#if defined(__AVR__)
+Stream*                 debugSerial = &Serial;
+
+#elif defined(__STM32F1__)
+  #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
+Stream*                 debugSerial = &Serial2;
+  #else
+Stream*                 debugSerial = &Serial1;
+  #endif
+
+#elif defined(__ESP32__)
 BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue
 #if defined(__DEBUG_BT__)
 Stream*                 debugSerial = &SerialBT;  // decide which serial port to use for debug outputs
@@ -75,14 +83,6 @@ Stream*                 debugSerial = &Serial;    // decide which serial port to
 #endif
 HardwareSerial          Serial3(1);               // dummy declaration to keep the compiler happy,
                                                   // won't be used though because of the CAN_USE_SERIAL3 definition
-#elif defined(__STM32F1__)
-  #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
-Stream*                 debugSerial = &Serial2;
-  #else
-Stream*                 debugSerial = &Serial1;
-  #endif
-#else
-Stream*                 debugSerial = &Serial;
 #endif
 Stream*                 logSerial = &Serial;
 
@@ -101,14 +101,13 @@ ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 
 #if defined(USE_SW_SERIAL)
 SoftwareSerial          swSer0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);
 #endif
-#if defined(__ESP32__)
-ZPortExpander           portEx;
-#endif
 #if defined(__STM32F1__)
 #if defined(USE_COMPOSITE_SERIAL)
 USBMassStorage          MassStorage;
 USBCompositeSerial      CompositeSerial;
 #endif
+#elif defined(__ESP32__)
+ZPortExpander           portEx;
 #endif
 
 TMC2209Stepper* drivers[NUM_STEPPERS] { nullptr, nullptr, nullptr };
@@ -385,7 +384,7 @@ void setup() {
   setupHBridge();
   getStoredData();                    // read EEPROM.DAT from SD-Card; this call must happen after setupSteppers()
   //__debug(PSTR("readSequences start"));
-  uint16_t now = millis();
+  //uint32_t now = millis();
   //readSequences();
   //__debug(PSTR("readSequences took %d ms"), millis()-now);
 

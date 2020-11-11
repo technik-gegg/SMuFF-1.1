@@ -22,9 +22,6 @@
 #include <Arduino.h>
 #include "Config.h"
 
-#ifndef _DUETLASER_H
-#define _DUETLASER_H    1
-
 #define STATE_INIT              0x8000
 #define STATE_IDLE              0x8001
 #define STATE_WAIT_START        0x8002
@@ -106,5 +103,3 @@ private:
   String    _bits;
   String    _stuff;
 };
-
-#endif

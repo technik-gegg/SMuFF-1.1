@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#ifndef _SMUFF_CONFIG_NAMES_EXT_H
-#define _SMUFF_CONFIG_NAMES_EXT_H
-
 extern char* selector;
 extern char* revolver;
 extern char* feeder;
@@ -79,5 +76,3 @@ extern char* stepsPerRevolution;
 extern char* tool;
 extern char* positions;
 extern char* swaps;
-
-#endif
