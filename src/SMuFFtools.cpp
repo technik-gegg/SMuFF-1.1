@@ -2393,7 +2393,7 @@ void setServoLid(uint8_t pos) {
     p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : posForTool;
   setServoPos(SERVO_LID, p);
   #else
-  uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected]+SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
+  uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected]-SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
   //__debug(PSTR("Tool%d = %d"), toolSelected, p);
   setServoPos(toolSelected+10, p);
   #endif

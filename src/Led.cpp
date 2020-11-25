@@ -45,23 +45,34 @@ void showLed(uint8_t mode, uint8_t count) {
 #endif
 }
 
+uint8_t colorMap[8] PROGMEM = { 0, 1, 2, 4, 6, 5, 3, 7 };
+
 void setBacklightRGB(uint8_t color) {
-#if defined(RGB_LED_R_PIN)
-  pinMode(RGB_LED_R_PIN, OUTPUT);
-  digitalWrite(RGB_LED_R_PIN, color & 1);
-#endif
-#if defined(RGB_LED_G_PIN)
-  pinMode(RGB_LED_G_PIN, OUTPUT);
-  digitalWrite(RGB_LED_G_PIN, color & 2);
-#endif
-#if defined(RGB_LED_B_PIN)
-  pinMode(RGB_LED_B_PIN, OUTPUT);
-  digitalWrite(RGB_LED_B_PIN, color & 4);
-#endif
+  if(color >= 0 && color <= 7) {
+    #if defined(RGB_LED_R_PIN)
+    pinMode(RGB_LED_R_PIN, OUTPUT);
+    digitalWrite(RGB_LED_R_PIN, colorMap[color] & 1);
+    #endif
+    #if defined(RGB_LED_G_PIN)
+    pinMode(RGB_LED_G_PIN, OUTPUT);
+    digitalWrite(RGB_LED_G_PIN, colorMap[color] & 2);
+    #endif
+    #if defined(RGB_LED_B_PIN)
+    pinMode(RGB_LED_B_PIN, OUTPUT);
+    digitalWrite(RGB_LED_B_PIN, colorMap[color] & 4);
+    #endif
+  }
 }
 
 void setBacklightRGB(byte R, byte G, byte B) {
-  setBacklightRGB((int)(R&1) | (G&1)<<1 | (B&1)<<2);
+  #if defined(RGB_LED_R_PIN) && defined(RGB_LED_G_PIN) && defined(RGB_LED_B_PIN)
+  pinMode(RGB_LED_R_PIN, OUTPUT);
+  pinMode(RGB_LED_G_PIN, OUTPUT);
+  pinMode(RGB_LED_B_PIN, OUTPUT);
+  digitalWrite(RGB_LED_R_PIN, (R&1));
+  digitalWrite(RGB_LED_G_PIN, (G&1));
+  digitalWrite(RGB_LED_B_PIN, (B&1));
+  #endif
 }
 
 void setBacklightCRGB(CRGB color) {

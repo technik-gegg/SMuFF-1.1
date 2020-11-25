@@ -114,7 +114,7 @@ TMC2209Stepper* drivers[NUM_STEPPERS] { nullptr, nullptr, nullptr };
 
 #if defined(MULTISERVO)
 Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
-uint8_t servoMapping[17]         = {   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, -1 }; // last one is used for the Wiper mapping
+int8_t servoMapping[17]          = {   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, -1 }; // last one is used for the Wiper mapping
 uint8_t servoPosClosed[16]       = {  90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90 };
 #else
 uint8_t servoPosClosed[MAX_TOOLS];
@@ -289,7 +289,7 @@ void isrGPTimerHandler() {
 }
 
 void enumI2cDevices() {
-  uint8_t devs[40];   // unlikey, that there are more devices than that on the bus
+  uint8_t devs[40];   // unlikey that there are more devices than that on the bus
   const char* name;
   bool encoder = false;
   uint8_t deviceCnt = scanI2CDevices(devs);
@@ -326,6 +326,9 @@ void setup() {
   // On the FYSETC AIOII it's because of the display DSP_DC_PIN/DOG_A0 signal (PA15 / JTDI).
   // On the SKR MINI E3-DIP it's because of the buzzer signal (PA15 / JTDI).
   disableDebugPorts();
+  #if defined(__BRD_FYSETC_AIOII) && !defined(USE_TWI_DISPLAY) && defined(STM32_REMAP_SPI)
+    afio_remap(AFIO_REMAP_SPI1);  // remap SPI3 to SPI1 if a "normal" display is being used
+  #endif
   #endif
 
   // Setup a fixed baudrate until the config file was read.
@@ -347,32 +350,37 @@ void setup() {
   initHwDebug();                      // init hardware debugging
 
   __debug(PSTR("[ setup start ]"));
+  #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
   enumI2cDevices();
+  __debug(PSTR("[ after enumI2CDevices ]"));
+  #endif
   setupBuzzer();                      // setup buzzer before reading config
+  __debug(PSTR("[ after setupBuzzer ]"));
   setupDeviceName();                  // used for SerialBT on ESP32 only
+  __debug(PSTR("[ after setupDeviceName ]"));
   setupSerialBT();                    // used for debugging on ESP32 only
   setupDisplay();                     // setup display first in order to show error messages if neccessary
-  //__debug(PSTR("[ after setupDisplay ]"));
+  __debug(PSTR("[ after setupDisplay ]"));
   setupEncoder();                     // setup encoder - only relevant on LeoNerd display
-  //__debug(PSTR("[ after setupEncoder ]"));
+  __debug(PSTR("[ after setupEncoder ]"));
   if(readConfig()) {                  // read SMUFF.CFG from SD-Card
     readTmcConfig();                  // read TMCDRVR.CFG from SD-Card
     readServoMapping();               // read SERVOMAP.CFG from SD-Card
     readMaterials();                  // read MATERIALS.CFG from SD-Card
   }
-  // __debug(PSTR("[ after readConfig ]"));
+  __debug(PSTR("[ after readConfig ]"));
   setupSerial();                      // setup all components according to the values in SMUFF.CFG
-  // __debug(PSTR("[ after setupSerial ]"));
+  __debug(PSTR("[ after setupSerial ]"));
   setupSteppers();
-  // __debug(PSTR("[ after setupSteppers ]"));
+  __debug(PSTR("[ after setupSteppers ]"));
   setupTimers();
-  // __debug(PSTR("[ after setupTimers ]"));
+  __debug(PSTR("[ after setupTimers ]"));
   setupServos();
-  // __debug(PSTR("[ after setupServos ]"));
+  __debug(PSTR("[ after setupServos ]"));
   setupRelay();
-  //__debug(PSTR("[ after setupRelay ]"));
+  __debug(PSTR("[ after setupRelay ]"));
   setupTMCDrivers();                  // setup TMC drivers if any were used
-  //__debug(PSTR("[ after setupTMCdrivers ]"));
+  __debug(PSTR("[ after setupTMCdrivers ]"));
   setupSwSerial0();                   // used only for testing purposes
   setupBacklight();
   setupDuetLaserSensor();             // setup other peripherials
@@ -393,7 +401,7 @@ void setup() {
   else {
     resetRevolver();
   }
-  // __debug(PSTR("DONE reset Revolver"));
+  __debug(PSTR("DONE reset Revolver"));
 
   sendStartResponse(0);       // send "start<CR><LF>" to USB serial interface
   if(CAN_USE_SERIAL1)

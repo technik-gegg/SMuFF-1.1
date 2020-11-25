@@ -250,7 +250,7 @@ void setupServos() {
   for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
     setServoPos(i+10, servoPosClosed[i]);
     delay(400);
-    setServoPos(i+10, servoPosClosed[i]+SERVO_CLOSED_OFS);
+    setServoPos(i+10, servoPosClosed[i]-SERVO_CLOSED_OFS);
   }
   #endif
 }

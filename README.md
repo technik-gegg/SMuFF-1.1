@@ -41,6 +41,17 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.14** - yet another bug fixing seesion
+
++ **Attention:** Renamed almost all parameters in SMUFF.CFG and TMCDRVR.CFG because of memory issues. Don't use your existing ones but rather copy the new files from this repository to your SD-Card
++ increased memory allocation for config files (reading TMCDRVR.CFG failed)
++ removed scanning for I2C devices when not using any I2C components (USE_CREALITY_DISPLAY will fail because of this)
++ updated code for Multiservo
++ corrected colors for RGB backlit displays
++ re-enabled remapping of SPI3/1 in case it's needed (via STM32_REMAP_SPI flag)
++ enabled all __debug() messages in setup() for easier troubleshooting. Once your SMuFF is starting up correctly, recompile firmware without DEGUB flag to get rid of them
++ **Notice:** BTT TFT V3.0 will work in 12864 emulation mode but the encoder button does not. I assume it's a firmware bug since an original Ender-3 display works flawless (using -D USE_CREALITY_DISPLAY flag at compilation). This may not be the case if you've already updates your TFT firmware.
+
 **2.13** - bug fixing
 
 + removed  the "playing tunes in background" feature since it was causing hands and resets.

@@ -220,7 +220,7 @@ void setupServoMenu(char* menu) {
     smuffConfig.resetBeforeFeed ? P_Yes : P_No,
     smuffConfig.revolverIsServo ? P_Yes : P_No,
     #if defined(MULTISERVO)
-    servoPosClosed[toolSelected]+SERVO_CLOSED_OFS,
+    servoPosClosed[toolSelected]-SERVO_CLOSED_OFS,
     servoPosClosed[toolSelected],
     #else
     smuffConfig.revolverOffPos,

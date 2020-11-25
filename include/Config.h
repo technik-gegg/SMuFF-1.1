@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.13"
+#define VERSION_STRING    "V2.14"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-11-11"
+#define VERSION_DATE      "2020-11-17"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define MATERIALS_FILE    "MATERIALS.CFG"
 #define TMC_CONFIG_FILE   "TMCDRVR.CFG"
@@ -56,7 +56,7 @@
 #define SERVO_WIPER         0
 #define SERVO_LID           1
 
-#define SERVO_CLOSED_OFS    55           // for Multiservo
+#define SERVO_CLOSED_OFS    35           // for Multiservo
 
 #define FEED_ERROR_RETRIES  4
 

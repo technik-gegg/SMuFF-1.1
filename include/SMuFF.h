@@ -255,7 +255,7 @@ extern CRGB           leds[];
 #endif
 #if defined(MULTISERVO)
 extern Adafruit_PWMServoDriver servoPwm;
-extern uint8_t servoMapping[];
+extern int8_t servoMapping[];
 #endif
 extern uint8_t servoPosClosed[];
 

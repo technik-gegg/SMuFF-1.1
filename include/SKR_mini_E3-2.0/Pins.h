@@ -56,7 +56,6 @@
 
 #define BEEPER_PIN          PB5     // EXP1.10
 
-#define DEBUG_PIN           PB9     // EXP1.5
 #define RELAY_PIN          PC13    // PS-ON (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
@@ -96,6 +95,9 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
 #define ENCODER_BUTTON_PIN  PB6     // EXP1.9
+
+#define DEBUG_PIN           -1
+
 #else // USE_TWI_DISPLAY
 #define DSP_SCL             PB6     // EXP1.9
 #define DSP_SDA             PB7     // EXP1.3
@@ -107,6 +109,9 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
+
+#define DEBUG_PIN           PB9     // EXP1.5
+
 #endif
 
 #define DEBUG_OFF_PIN       -1      // not needed on TWI display

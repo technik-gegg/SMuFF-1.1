@@ -29,7 +29,7 @@ SdFs SD;
 
 #if defined(__STM32F1__)
 const size_t capacity = 2200;
-const size_t scapacity = 1000;
+const size_t scapacity = 1500;
 #elif defined(__ESP32__)
 const size_t capacity = 4500;     // since the ESP32 has more memory, we can do this
 const size_t scapacity = 1000;
@@ -76,7 +76,7 @@ void showOpenFailed(FsFile* file, const char* cfgFile) {
 }
 
 bool checkFileSize(FsFile* file, size_t cap, const char* PROGMEM errMsg) {
-  if(file->fileSize() > cap) {
+  if(file != nullptr && file->fileSize() > cap) {
     longBeep(2);
     showDialog(P_TitleConfigError, errMsg, P_ConfigFail3, P_OkButtonOnly);
     file->close();
@@ -99,18 +99,19 @@ void closeCfgFile() {
     cfgOut.close();
 }
 
+FsFile cfg;
+
 /*
   Reads main config from SD-Card
 */
 bool readConfig()
 {
-  //DynamicJsonDocument jsonDoc(capacity); // use memory from heap to deserialize
-  StaticJsonDocument<capacity> jsonDoc; // use memory from stack to deserialize
+  DynamicJsonDocument jsonDoc(capacity); // use memory from heap to deserialize
+  //StaticJsonDocument<capacity> jsonDoc; // use memory from stack to deserialize
 
   if(!initSD())
     return false;
   //__debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
-  FsFile cfg;
 
   if(!cfg.open(CONFIG_FILE)) {
     showOpenFailed(&cfg, CONFIG_FILE);
@@ -270,9 +271,9 @@ bool readConfig()
       smuffConfig.isSharedStepper =             jsonDoc[feeder][sharedStepper];
       smuffConfig.ms3config[FEEDER] =           jsonDoc[feeder][ms3Config];
 
-      //__debug(PSTR("DONE reading config"));
-      cfg.close();
+      __debug(PSTR("Config: DONE reading config"));
     }
+    cfg.close();
   }
   return true;
 }
@@ -282,12 +283,12 @@ bool readConfig()
 */
 bool readTmcConfig()
 {
+  //DynamicJsonDocument jsonDoc(scapacity); // use memory from heap to deserialize
   StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
 
   if(!initSD())
     return false;
   //__debug(PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
-  FsFile cfg;
   if(!cfg.open(TMC_CONFIG_FILE)) {
     showOpenFailed(&cfg, TMC_CONFIG_FILE);
     return false;
@@ -305,7 +306,7 @@ bool readTmcConfig()
       */
       smuffConfig.stepperPower[SELECTOR] =      jsonDoc[selector][power];
       smuffConfig.stepperMode[SELECTOR] =       jsonDoc[selector][mode];
-      smuffConfig.stepperStealth[SELECTOR] =      jsonDoc[selector][tmode];
+      smuffConfig.stepperStealth[SELECTOR] =    jsonDoc[selector][tmode];
       smuffConfig.stepperRSense[SELECTOR] =     jsonDoc[selector][rsense];
       smuffConfig.stepperMicrosteps[SELECTOR] = jsonDoc[selector][msteps];
       smuffConfig.stepperStall[SELECTOR] =      jsonDoc[selector][stall];
@@ -321,7 +322,7 @@ bool readTmcConfig()
       */
       smuffConfig.stepperPower[REVOLVER] =      jsonDoc[revolver][power];
       smuffConfig.stepperMode[REVOLVER] =       jsonDoc[revolver][mode];
-      smuffConfig.stepperStealth[REVOLVER] =      jsonDoc[revolver][tmode];
+      smuffConfig.stepperStealth[REVOLVER] =    jsonDoc[revolver][tmode];
       smuffConfig.stepperRSense[REVOLVER] =     jsonDoc[revolver][rsense];
       smuffConfig.stepperMicrosteps[REVOLVER] = jsonDoc[revolver][msteps];
       smuffConfig.stepperStall[REVOLVER] =      jsonDoc[revolver][stall];
@@ -337,7 +338,7 @@ bool readTmcConfig()
       */
       smuffConfig.stepperPower[FEEDER] =        jsonDoc[feeder][power];
       smuffConfig.stepperMode[FEEDER] =         jsonDoc[feeder][mode];
-      smuffConfig.stepperStealth[FEEDER] =        jsonDoc[feeder][tmode];
+      smuffConfig.stepperStealth[FEEDER] =      jsonDoc[feeder][tmode];
       smuffConfig.stepperRSense[FEEDER] =       jsonDoc[feeder][rsense];
       smuffConfig.stepperMicrosteps[FEEDER] =   jsonDoc[feeder][msteps];
       smuffConfig.stepperStall[FEEDER] =        jsonDoc[feeder][stall];
@@ -349,7 +350,7 @@ bool readTmcConfig()
       smuffConfig.stepperStopOnStall[FEEDER]=   jsonDoc[feeder][stopOnStall];
       smuffConfig.stepperMaxStallCnt[FEEDER]=   jsonDoc[feeder][maxStallCount];
 
-      //__debug(PSTR("DONE reading TMC config"));
+      __debug(PSTR("Config: DONE reading TMC config"));
     }
     cfg.close();
   }
@@ -364,8 +365,7 @@ bool readServoMapping() {
 
   if(!initSD())
     return false;
-  //__debug(PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
-  FsFile cfg;
+  //__debug(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
   if(!cfg.open(SERVOMAP_FILE)) {
     showOpenFailed(&cfg, SERVOMAP_FILE);
     return false;
@@ -400,9 +400,9 @@ bool readServoMapping() {
       // read the Wiper servo output pin only
       servoMapping[16] = jsonDoc[wiper][servoOutput];
       #endif
-      cfg.close();
-      //__debug(PSTR("DONE reading servo mappings"));
+      __debug(PSTR("Config: DONE reading servo mappings"));
     }
+    cfg.close();
   }
   return true;
 }
@@ -416,7 +416,6 @@ bool readMaterials() {
   if(!initSD())
     return false;
   //__debug(PSTR("Trying to open TMC config file '%s'"), MATERIALS_FILE);
-  FsFile cfg;
   if(!cfg.open(MATERIALS_FILE)) {
     showOpenFailed(&cfg, MATERIALS_FILE);
     return false;
@@ -449,9 +448,9 @@ bool readMaterials() {
         memset(smuffConfig.materials[i], 0, ArraySize(smuffConfig.materials[i]));
       }
 #endif
-      cfg.close();
-      //__debug(PSTR("DONE reading materials"));
+      __debug(PSTR("Config: DONE reading materials"));
     }
+    cfg.close();
   }
   return true;
 }
