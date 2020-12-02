@@ -57,7 +57,7 @@
 
 #define NEOPIXEL_PIN        -1
 #define DEBUG_PIN           -1
-#define RELAY_PIN          -1      // Relais for stepper motor switching
+#define RELAY_PIN           -1      // Relais for stepper motor switching
 
 #define SDCS_PIN            PA4
 

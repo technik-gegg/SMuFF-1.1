@@ -93,7 +93,10 @@ void setupDisplay() {
 
 void drawLogo() {
   //__debug(PSTR("drawLogo start..."));
-  char brand[] = VERSION_STRING;
+  char brand[8] = VERSION_STRING;
+  #if defined(DEBUG)
+  strcat(brand,"D");
+  #endif
 
   display.setBitmapMode(1);
   display.drawXBMP(0, 0, logo_width, logo_height, logo_bits);

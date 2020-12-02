@@ -42,12 +42,17 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
   #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
   U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #elif defined(USE_CREALITY_DISPLAY)
+    #if defined(CREALITY_HW_SPI)
+    // use this only if you have a special connection cable
+    U8G2_ST7920_128X64_F_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* reset=*/ DSP_RESET_PIN);
+    #else
     // works only with software SPI, hence it's remarkably slower than hardware SPI
-    U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cc=*/ DSP_CS_PIN, /* reset=*/ DSP_RESET_PIN);
+    U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cs=*/ DSP_CS_PIN, /* reset=*/ DSP_RESET_PIN);
+    #endif
   #else
-  // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display
-  U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
-  //U8G2_UC1701_MINI12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
+  // Notice: This constructor is feasible for the MKS-MINI12864 V2.0 RepRap display, although, to run it
+  // on any SKR E3 you'll need a special cable to connect with
+  U8G2_UC1701_MINI12864_F_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
   #endif
 
 #elif defined(__BRD_ESP32)

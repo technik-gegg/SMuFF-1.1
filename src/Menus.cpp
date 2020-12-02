@@ -1873,7 +1873,7 @@ void resetAutoClose() {
 }
 
 void debounceButton() {
-  #if !defined(USE_LEONERD_DISPLAY)
+  #if !defined(USE_LEONERD_DISPLAY) && !defined(USE_CREALITY_DISPLAY)
   delay(20);
   while(getEncoderButton()) {
       delay(20);

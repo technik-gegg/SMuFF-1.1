@@ -110,7 +110,6 @@ standard U8G2 library will do its work as expected.
         uint8_t *data;
         uint8_t internal_spi_mode;
 
-        //__debug("x");
         switch (msg)
         {
         case U8X8_MSG_BYTE_SEND:

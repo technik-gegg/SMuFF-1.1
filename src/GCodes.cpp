@@ -351,7 +351,12 @@ bool M114(const char* msg, String buf, int8_t serial) {
 
 bool M115(const char* msg, String buf, int8_t serial) {
   char tmp[200];
-  sprintf_P(tmp, P_GVersion, VERSION_STRING, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "Duet");
+  char ver[8];
+  sprintf(ver, VERSION_STRING);
+  #if defined(DEBUG)
+  strcat(ver, "D");
+  #endif
+  sprintf_P(tmp, P_GVersion, ver, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "Duet");
   printResponse(tmp, serial);
   return true;
 }

@@ -206,10 +206,13 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
   #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
   extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
   #elif defined(USE_CREALITY_DISPLAY)
+    #if defined(CREALITY_HW_SPI)
+    extern U8G2_ST7920_128X64_F_HW_SPI display;
+    #else
     extern U8G2_ST7920_128X64_F_SW_SPI display;
+    #endif
   #else
-  extern U8G2_ST7567_ENH_DG128064_F_2ND_4W_HW_SPI display;
-  //extern U8G2_UC1701_MINI12864_1_2ND_4W_HW_SPI display;
+  extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
   #endif
 #elif defined(__BRD_ESP32)
   #if defined(USE_TWI_DISPLAY)

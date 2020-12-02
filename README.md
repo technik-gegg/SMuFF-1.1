@@ -41,6 +41,12 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.15** - minor changes
+
++ added a "D" to the version number if the firmware has been compiled in DEBUG mode. This might be useful since some 3D printer firmwares don't like it much if you send unexpected data and decide to go bonkers.
++ corrected standard RepRap Full Graphics Display driver
++ added CREALITY_HW_SPI compile flag in order to be used with [this tweak](https://sites.google.com/view/the-smuff/tips-hints/using-other-displays?authuser=0)
+
 **2.14** - yet another bug fixing seesion
 
 + **Attention:** Renamed almost all parameters in SMUFF.CFG and TMCDRVR.CFG because of memory issues. Don't use your existing ones but rather copy the new files from this repository to your SD-Card

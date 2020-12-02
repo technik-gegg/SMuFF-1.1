@@ -41,6 +41,7 @@ extern void __debug(const char* fmt, ...);
   };
 #endif
 
+//uint32 lastBtnState = LOW;  // for testing only
 // ----------------------------------------------------------------------------
 
 ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active) {
@@ -136,6 +137,13 @@ void ClickEncoder::service(void) {
   // handle button
   //
 #ifndef WITHOUT_BUTTON
+  /*
+  uint32 btnState = digitalRead(pinBTN);
+  if(btnState != lastBtnState) {
+    lastBtnState = btnState;
+    __debug(PSTR("Button state change"));
+  }
+  */
   if (pinBTN > 0 // check button only, if a pin has been provided
       && (now - lastButtonCheck) >= ENC_BUTTONINTERVAL) // checking button is sufficient every 10-30ms
   {

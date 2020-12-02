@@ -94,6 +94,7 @@
 #define SD_DETECT_PIN       PC4
 
 #if defined(USE_CREALITY_DISPLAY)
+    #if !defined(CREALITY_HW_SPI)
 #define DSP_DATA_PIN        PB7     // EXP1.3 = LCD_PINS_EN = ST9720 DAT
 #define DSP_CS_PIN          PB8     // EXP1.4 = LCD_PINS_RS = ST9720 CS
 #define DSP_DC_PIN          PB9     // EXP1.5 = LCD_PINS_D4 = ST9720 CLK
@@ -102,10 +103,21 @@
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
 #define ENCODER_BUTTON_PIN  PB6     // EXP1.9
+    #else
+    // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
+#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
+#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
+#define DSP_DC_PIN          -1      // USE SCK ON SPI1 HEADER
+#define DSP_RESET_PIN       -1
+
+#define ENCODER1_PIN        PA9     // EXP1.8
+#define ENCODER2_PIN        PA10    // EXP1.6
+#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
+    #endif
 
 #define DEBUG_PIN           -1
 
-#else // USE_TWI_DISPLAY
+#elif defined(USE_TWI_DISPLAY)
 
 #define DSP_SCL             PB6     // EXP1.9
 #define DSP_SDA             PB7     // EXP1.3
@@ -119,6 +131,19 @@
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
 
 #define DEBUG_PIN           PB9     // EXP1.5
+
+#else
+    // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
+#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
+#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
+#define DSP_DC_PIN          PB6     // EXP1.9
+#define DSP_RESET_PIN       -1
+
+#define ENCODER1_PIN        PA9     // EXP1.8
+#define ENCODER2_PIN        PA10    // EXP1.6
+#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
+
+#define DEBUG_PIN           -1
 
 #endif
 
