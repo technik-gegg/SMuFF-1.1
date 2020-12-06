@@ -2238,7 +2238,7 @@ const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]) {
     if(n == 0) {
       __debug(PSTR("Failed to load menu '%s'"), filename);
     }
-    //__debug(PSTR("Menu: '%s' %d lines  %d bytes"), filename, ln, n);
+    __debug(PSTR("Menu: '%s' %d lines  %d bytes\n%s"), filename, ln, n, menu);
     return menu;
   }
   else {
