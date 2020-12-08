@@ -41,6 +41,14 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.16** - framework update
+
++ updated to STM32 framework V10.0.1 and though needed some code changes in various files (mostly related to SdFs library modifications). Please make sure you have updated your platformio STM32 framework to that version.
++ changed to a different SdFs library in platformio.ini
++ fixed bug in getFiles() which prevented getting a full list of files if a different extenstion was found (i.e. '.md')
++ changed \__debug() to \__debugS() since it conflicted whith some new namespace defined in latest framework
++ added -D ARDUINO_ARCH_STM32 to all STM32 build environments. This is needed because otherwise the TMCStepper library will not compile correctly and the SMuFF will hang at startup if you compile for TMC2209s!
+
 **2.15** - minor changes
 
 + added a "D" to the version number if the firmware has been compiled in DEBUG mode. This might be useful since some 3D printer firmwares don't like it much if you send unexpected data and decide to go bonkers.

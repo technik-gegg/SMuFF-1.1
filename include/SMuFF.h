@@ -34,8 +34,8 @@
 #include "ClickEncoder.h"
 #endif
 #include <SPI.h>
+#include "SdFat.h"
 #include <Wire.h>
-#include <SdFs.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
@@ -48,8 +48,8 @@
 #include "ZPortExpander.h"
 #include "ZFan.h"
 #include "DuetLaserSensor.h"
-#include "SoftwareSerial.h"
 #include <TMCStepper.h>
+#include "SoftwareSerial.h"
 #if defined(MULTISERVO)
 #include <Adafruit_PWMServoDriver.h>
 #endif
@@ -409,9 +409,8 @@ extern bool writeServoMapping(Print* dumpTo = nullptr);
 extern bool checkAutoClose();
 extern void resetAutoClose();
 extern bool checkUserMessage();
-extern void listDir(File root, int8_t numTabs, int8_t serial);
 extern void setPwrSave(int8_t state);
-extern void __debug(const char* fmt, ...);
+extern void __debugS(const char* fmt, ...);
 extern void __log(const char* fmt, ...);
 extern void setAbortRequested(bool state);
 extern void resetSerialBuffer(int8_t serial);

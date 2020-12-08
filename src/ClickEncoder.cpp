@@ -11,7 +11,7 @@
 
 #include "ClickEncoder.h"
 
-extern void __debug(const char* fmt, ...);
+extern void __debugS(const char* fmt, ...);
 
 // ----------------------------------------------------------------------------
 // Button configuration (values for 1ms timer service calls)
@@ -141,7 +141,7 @@ void ClickEncoder::service(void) {
   uint32 btnState = digitalRead(pinBTN);
   if(btnState != lastBtnState) {
     lastBtnState = btnState;
-    __debug(PSTR("Button state change"));
+    __debugS(PSTR("Button state change"));
   }
   */
   if (pinBTN > 0 // check button only, if a pin has been provided

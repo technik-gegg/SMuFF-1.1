@@ -25,7 +25,7 @@
 #include "ConfigNames.h"
 #include <ArduinoJson.h>
 
-SdFs SD;
+SdFat SD;
 
 #if defined(__STM32F1__)
 const size_t capacity = 2200;
@@ -63,31 +63,31 @@ bool initSD(bool showStatus) {
 }
 
 void showDeserializeFailed(DeserializationError error, const char* PROGMEM errMsg) {
-  __debug(PSTR("deserializeJson() failed with code %s"), error.c_str());
+  __debugS(PSTR("deserializeJson() failed with code %s"), error.c_str());
   longBeep(2);
   showDialog(P_TitleConfigError, errMsg, P_ConfigFail2, P_OkButtonOnly);
 }
 
-void showOpenFailed(FsFile* file, const char* cfgFile) {
-  __debug(PSTR("Opening file '%s' failed: handle = %s"), cfgFile, !file ? "FALSE" : "TRUE");
+void showOpenFailed(SdFile* file, const char* cfgFile) {
+  __debugS(PSTR("Opening file '%s' failed: handle = %s"), cfgFile, !file ? "FALSE" : "TRUE");
   longBeep(2);
   drawSDStatus(SD_ERR_NOCONFIG);
   delay(5000);
 }
 
-bool checkFileSize(FsFile* file, size_t cap, const char* PROGMEM errMsg) {
+bool checkFileSize(SdFile* file, size_t cap, const char* PROGMEM errMsg) {
   if(file != nullptr && file->fileSize() > cap) {
     longBeep(2);
     showDialog(P_TitleConfigError, errMsg, P_ConfigFail3, P_OkButtonOnly);
     file->close();
     return false;
   }
-  //__debug(PSTR("config file '%s' open"), CONFIG_FILE);
+  //__debugS(PSTR("config file '%s' open"), CONFIG_FILE);
   return true;
 }
 
-FsFile cfgOut;
-Stream* openCfgFileWrite(const char* filename) {
+SdFile cfgOut;
+Print* openCfgFileWrite(const char* filename) {
   if(cfgOut.open(filename, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
     return &cfgOut;
   }
@@ -99,7 +99,7 @@ void closeCfgFile() {
     cfgOut.close();
 }
 
-FsFile cfg;
+SdFile cfg;
 
 /*
   Reads main config from SD-Card
@@ -111,7 +111,7 @@ bool readConfig()
 
   if(!initSD())
     return false;
-  //__debug(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
+  //__debugS(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
 
   if(!cfg.open(CONFIG_FILE)) {
     showOpenFailed(&cfg, CONFIG_FILE);
@@ -271,7 +271,7 @@ bool readConfig()
       smuffConfig.isSharedStepper =             jsonDoc[feeder][sharedStepper];
       smuffConfig.ms3config[FEEDER] =           jsonDoc[feeder][ms3Config];
 
-      __debug(PSTR("Config: DONE reading config"));
+      __debugS(PSTR("Config: DONE reading config"));
     }
     cfg.close();
   }
@@ -288,7 +288,7 @@ bool readTmcConfig()
 
   if(!initSD())
     return false;
-  //__debug(PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
+  //__debugS(PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
   if(!cfg.open(TMC_CONFIG_FILE)) {
     showOpenFailed(&cfg, TMC_CONFIG_FILE);
     return false;
@@ -350,7 +350,7 @@ bool readTmcConfig()
       smuffConfig.stepperStopOnStall[FEEDER]=   jsonDoc[feeder][stopOnStall];
       smuffConfig.stepperMaxStallCnt[FEEDER]=   jsonDoc[feeder][maxStallCount];
 
-      __debug(PSTR("Config: DONE reading TMC config"));
+      __debugS(PSTR("Config: DONE reading TMC config"));
     }
     cfg.close();
   }
@@ -365,7 +365,7 @@ bool readServoMapping() {
 
   if(!initSD())
     return false;
-  //__debug(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
+  //__debugS(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
   if(!cfg.open(SERVOMAP_FILE)) {
     showOpenFailed(&cfg, SERVOMAP_FILE);
     return false;
@@ -400,7 +400,7 @@ bool readServoMapping() {
       // read the Wiper servo output pin only
       servoMapping[16] = jsonDoc[wiper][servoOutput];
       #endif
-      __debug(PSTR("Config: DONE reading servo mappings"));
+      __debugS(PSTR("Config: DONE reading servo mappings"));
     }
     cfg.close();
   }
@@ -415,7 +415,7 @@ bool readMaterials() {
 
   if(!initSD())
     return false;
-  //__debug(PSTR("Trying to open TMC config file '%s'"), MATERIALS_FILE);
+  //__debugS(PSTR("Trying to open TMC config file '%s'"), MATERIALS_FILE);
   if(!cfg.open(MATERIALS_FILE)) {
     showOpenFailed(&cfg, MATERIALS_FILE);
     return false;
@@ -441,14 +441,14 @@ bool readMaterials() {
         else {
           strncpy(smuffConfig.materials[i], pItem, ArraySize(smuffConfig.materials[i]));
         }
-        //__debug(PSTR("%s: %s"), item, smuffConfig.materials[i]);
+        //__debugS(PSTR("%s: %s"), item, smuffConfig.materials[i]);
       }
 #else
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
         memset(smuffConfig.materials[i], 0, ArraySize(smuffConfig.materials[i]));
       }
 #endif
-      __debug(PSTR("Config: DONE reading materials"));
+      __debugS(PSTR("Config: DONE reading materials"));
     }
     cfg.close();
   }
@@ -555,7 +555,7 @@ bool writeConfig(Print* dumpTo) {
   if(dumpTo != nullptr) {
     serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
-    //__debug(PSTR("Serializing '%s' done"), CONFIG_FILE);
+    //__debugS(PSTR("Serializing '%s' done"), CONFIG_FILE);
     return true;
   }
   return false;
@@ -624,7 +624,7 @@ bool writeTmcConfig(Print* dumpTo) {
   if(dumpTo != nullptr) {
     serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
-    //__debug(PSTR("Serializing '%s' done"), TMC_CONFIG_FILE);
+    //__debugS(PSTR("Serializing '%s' done"), TMC_CONFIG_FILE);
     return true;
   }
   return false;
@@ -666,7 +666,7 @@ bool writeServoMapping(Print* dumpTo)
   if(dumpTo != nullptr) {
     serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
-    //__debug(PSTR("Serializing '%s' done"), SERVOMAP_FILE);
+    //__debugS(PSTR("Serializing '%s' done"), SERVOMAP_FILE);
     return true;
   }
   return false;

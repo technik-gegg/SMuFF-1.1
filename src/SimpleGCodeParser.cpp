@@ -46,7 +46,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
     return;
   }
 
-  //__debug(PSTR("Line: %s %d"), line.c_str(), line.length());
+  //__debugS(PSTR("Line: %s %d"), line.c_str(), line.length());
 
   int16_t pos;
   if((pos = line.lastIndexOf("*")) > -1) {
@@ -77,10 +77,10 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
             !line.startsWith("T") &&
             !line.startsWith("C") &&
             !line.startsWith("U") ) { // only ABORT or FINDA commands are being processed while parser is busy
-            //__debug(PSTR("NO valid PMMU GCode"));
+            //__debugS(PSTR("NO valid PMMU GCode"));
       return;
     }
-    //__debug(PSTR("Error: parserBusy: %d feederBusy: %d"), parserBusy, steppers[FEEDER].getMovementDone());
+    //__debugS(PSTR("Error: parserBusy: %d feederBusy: %d"), parserBusy, steppers[FEEDER].getMovementDone());
   }
   if(smuffConfig.prusaMMU2) {
     char ptmp[80];
@@ -90,7 +90,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
       // as we do with the 'U' and 'A' commands.
       // The printer is supposed to send another 'T' command after a while.
       if(!steppers[FEEDER].getMovementDone()) {
-        //__debug(PSTR("Wait after 'T' 500ms"));
+        //__debugS(PSTR("Wait after 'T' 500ms"));
         delay(500);
         #if !defined(MARLIN2_ONLY)
         if(currentLine > 0)
@@ -98,7 +98,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
         else
           sprintf_P(ptmp, PSTR("M998\n"));
         printResponseP(ptmp, serial);
-        //__debug(PSTR("Resend 'T' sent"));
+        //__debugS(PSTR("Resend 'T' sent"));
         #endif
         return;
       }
@@ -107,16 +107,16 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
       if(!steppers[FEEDER].getMovementDone()) {
         #if !defined(MARLIN2_ONLY)
         sendOkResponse(serial);
-        //__debug(PSTR("Cancelling U/C"));
+        //__debugS(PSTR("Cancelling U/C"));
         #endif
         return;
       }
     }
     else if(line.startsWith("A")) {
-      //__debug(PSTR("*ABORT* received"));
+      //__debugS(PSTR("*ABORT* received"));
       if(!steppers[FEEDER].getMovementDone()) {
         setAbortRequested(true);
-        //__debug(PSTR("Abort set"));
+        //__debugS(PSTR("Abort set"));
       }
       sendOkResponse(serial);
       return;
@@ -161,7 +161,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
           line.startsWith("R") ||
           line.startsWith("W") ||
           line.startsWith("A")) {
-    //if(!line.startsWith("P")) __debug(PSTR("From Prusa: '%s'"), line.c_str());
+    //if(!line.startsWith("P")) __debugS(PSTR("From Prusa: '%s'"), line.c_str());
     parse_PMMU2(line.charAt(0), line.substring(1), serial);
     parserBusy = false;
     return;
@@ -169,7 +169,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
   else {
     char tmp[256];
     sprintf_P(tmp, P_UnknownCmd, line.c_str());
-    __debug(PSTR("ParseGcode err: %s"), tmp);
+    __debugS(PSTR("ParseGcode err: %s"), tmp);
     if(!smuffConfig.prusaMMU2) {
       sendErrorResponseP(serial, tmp);
     }
@@ -200,12 +200,12 @@ bool parse_T(const String& buf, int8_t serial) {
     parse_G(String("28"), serial);
   }
   else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
-    //__debug(PSTR("Tool change requested: T%d"), tool);
+    //__debugS(PSTR("Tool change requested: T%d"), tool);
     if(feederEndstop()) {
       // Prusa expects the MMU to unload filament on its own before tool change
       // Same goes if the Feeder stepper is declared shared
       if(smuffConfig.prusaMMU2 || smuffConfig.isSharedStepper)
-        //__debug(PSTR("must unload first!"));
+        //__debugS(PSTR("must unload first!"));
         unloadFilament();
     }
     stat = selectTool(tool, false);
@@ -263,7 +263,7 @@ bool parse_G(const String& buf, int8_t serial) {
     return stat;
   }
   uint16_t code = buf.toInt();
-  //__debug(PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
+  //__debugS(PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
 
   char msg[10];
   char tmp[50];
@@ -312,7 +312,7 @@ bool parse_M(const String& buf, int8_t serial) {
         listTextFile(tmp, serial);
         return true;
       }
-      //__debug(PSTR("Calling: M"), gCodeFuncsM[i].code);
+      //__debugS(PSTR("Calling: M"), gCodeFuncsM[i].code);
       return gCodeFuncsM[i].func(msg, buf.substring(ofs), serial);
     }
   }
@@ -330,7 +330,7 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
   if(!smuffConfig.prusaMMU2) {
     sprintf_P(tmp, P_NoPrusa);
     sendErrorResponseP(serial, tmp);
-    //__debug(PSTR("No Prusa Emulation configured!"));
+    //__debugS(PSTR("No Prusa Emulation configured!"));
     return false;
   }
 
@@ -359,19 +359,19 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
           break;
       }
       printResponse(tmp,serial);
-      //__debug(("To Prusa (S%d): '%s'"), type, tmp);
+      //__debugS(("To Prusa (S%d): '%s'"), type, tmp);
       break;
 
     case 'P':     // FINDA status (Feeder endstop)
         sprintf_P(tmp,PSTR("%dok\n"), feederEndstop() ? 1 : 0);
         printResponse(tmp,serial);
-        //__debug(PSTR("To Prusa (P%d): '%s'"), type, tmp);
+        //__debugS(PSTR("To Prusa (P%d): '%s'"), type, tmp);
       break;
 
     case 'C':     // Push filament to nozzle
       if(loadFilament()) {
         sendOkResponse(serial);
-        //__debug(PSTR("To Prusa (C%d): ok<CR>"), type);
+        //__debugS(PSTR("To Prusa (C%d): ok<CR>"), type);
       }
       break;
 
@@ -384,27 +384,27 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
       }
       else
         sendErrorResponse(serial);
-      //__debug(PSTR("To Prusa (L%d): ok<CR>"), type);
+      //__debugS(PSTR("To Prusa (L%d): ok<CR>"), type);
       break;
 
     case 'U':     // Unload filament
       if(unloadFilament()) {
         sendOkResponse(serial);
-        //__debug(PSTR("To Prusa (U%d): ok<CR>"), type);
+        //__debugS(PSTR("To Prusa (U%d): ok<CR>"), type);
       }
       break;
 
     case 'E':     // Eject filament
       unloadFilament();
       sendOkResponse(serial);
-      //__debug(PSTR("To Prusa (E%d): ok<CR>"), type);
+      //__debugS(PSTR("To Prusa (E%d): ok<CR>"), type);
       break;
 
     case 'K':     // Cut filament
     case 'F':     // Set filament
     case 'R':     // Recover after eject
       sendOkResponse(serial);
-      //__debug(PSTR("To Prusa (%c%d): ok<CR>"), cmd, type);
+      //__debugS(PSTR("To Prusa (%c%d): ok<CR>"), cmd, type);
       break;
 
     case 'W': {    // Wait for user click
@@ -414,12 +414,12 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
         button = showDialog(P_PMMU_Title, P_PMMU_Wait, P_PMMU_WaitAdd, P_OkButtonOnly);
       } while (button != 1);
       sendOkResponse(serial);
-      //__debug(PSTR("To Prusa (W%d): ok<CR>"), type);
+      //__debugS(PSTR("To Prusa (W%d): ok<CR>"), type);
       break;
      }
     case 'X':     // Reset MMU
       sendOkResponse(serial);
-      //__debug(PSTR("To Prusa (X%d): ok<CR>"), type);
+      //__debugS(PSTR("To Prusa (X%d): ok<CR>"), type);
     #if !defined(SOFTRESET)
       M999("", tmp, serial);
     #else
@@ -433,7 +433,7 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
 
     default:
       sendErrorResponseP(serial);
-      //__debug(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
+      //__debugS(PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
       break;
   }
   return stat;
@@ -451,7 +451,7 @@ int16_t findTokenPos(String buf, const char* token) {
       continue;
     }
     if(buf.charAt(i) == *token && !isQuote) {
-      //__debug(PSTR("Token found @: %d"), i);
+      //__debugS(PSTR("Token found @: %d"), i);
       return (int)i;
     }
   }
@@ -460,14 +460,14 @@ int16_t findTokenPos(String buf, const char* token) {
 
 bool hasParam(String buf, const char* token) {
   int16_t pos = findTokenPos(buf, token);
-  //__debug(PSTR("hasParam: %d >%s<\n"),pos, buf.c_str());
+  //__debugS(PSTR("hasParam: %d >%s<\n"),pos, buf.c_str());
   return pos != -1;
 }
 
 int getParam(String buf, const char* token) {
   int16_t pos = findTokenPos(buf, token);
   if(pos != -1) {
-    //__debug(PSTR("getParam:pos: %d"),pos);
+    //__debugS(PSTR("getParam:pos: %d"),pos);
     return atoi(buf.substring(pos+1).c_str());
   }
   else
@@ -477,7 +477,7 @@ int getParam(String buf, const char* token) {
 float getParamF(String buf, const char* token) {
   int16_t pos = findTokenPos(buf, token);
   if(pos != -1) {
-    //__debug(PSTR("getParam:pos: %d"),pos);
+    //__debugS(PSTR("getParam:pos: %d"),pos);
     return atof(buf.substring(pos+1).c_str());
   }
   else
@@ -487,7 +487,7 @@ float getParamF(String buf, const char* token) {
 long getParamL(String buf, const char* token) {
   int16_t pos = findTokenPos(buf, token);
   if(pos != -1) {
-    //__debug(PSTR("getParam:pos: %d"),pos);
+    //__debugS(PSTR("getParam:pos: %d"),pos);
     return atol(buf.substring(pos+1).c_str());
   }
   else
@@ -499,13 +499,13 @@ bool getParamString(String buf, const char* token, char* dest, int16_t bufLen) {
   if(pos != -1) {
     if(buf.substring(pos+1).startsWith("\"")) {
       int16_t endPos = buf.substring(pos+2).indexOf("\"");
-      //__debug(PSTR("String @: %d-%d\n"), pos, endPos);
+      //__debugS(PSTR("String @: %d-%d\n"), pos, endPos);
       if(endPos != -1) {
         memset(dest, 0, bufLen);
         if(endPos+1 < bufLen) {
           if(dest != nullptr) {
             buf.substring(pos+2, pos+endPos+3).toCharArray(dest, endPos+1);
-            //__debug(PSTR("ptmp: >%s< (%d)\n"), dest, strlen(dest));
+            //__debugS(PSTR("ptmp: >%s< (%d)\n"), dest, strlen(dest));
           }
           return true;
         }

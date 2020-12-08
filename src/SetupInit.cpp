@@ -24,7 +24,7 @@
 #endif
 
 #if defined(USE_COMPOSITE_SERIAL)
-extern SdFs SD;
+extern SdFat SD;
 
 bool writeSDCard(const uint8_t *writebuff, uint32_t startSector, uint16_t numSectors) {
   return SD.card()->writeSectors(startSector, writebuff, numSectors);
@@ -47,14 +47,14 @@ void initUSB() {
   #if defined(USE_COMPOSITE_SERIAL)
   /* Not tested yet */
   bool sdStat = initSD(false);
-  __debug(PSTR("SD status"), sdStat);
+  __debugS(PSTR("SD status"), sdStat);
   if(sdStat) {
     USBComposite.setProductId(PRODUCT_ID);
     MassStorage.setDriveData(0, SD.card()->sectorCount(), readSDCard, writeSDCard);
     MassStorage.registerComponent();
     CompositeSerial.registerComponent();
     USBComposite.begin();
-    __debug(PSTR("USB Composite started"));
+    __debugS(PSTR("USB Composite started"));
     delay(2000);
   }
   #endif
@@ -135,12 +135,12 @@ void setupSerialBT() {
 }
 
 void setupSerial() {
-  //__debug(PSTR("Setting up serial"));
+  //__debugS(PSTR("Setting up serial"));
   // special case:
   // if the baudrate is set to 0, the board is running out of memory
   if(smuffConfig.serialBaudrates[0] != 0) {
     if(smuffConfig.serialBaudrates[0] != 115200) {
-      //__debug(PSTR("End SERIAL0 -> %ld"), smuffConfig.serialBaudrates[0]);
+      //__debugS(PSTR("End SERIAL0 -> %ld"), smuffConfig.serialBaudrates[0]);
       #if defined(USE_COMPOSITE_SERIAL)
       CompositeSerial.end();
       delay(250);
@@ -153,37 +153,37 @@ void setupSerial() {
     }
   }
   else {
-    __debug(PSTR("Config error for serial"));
+    __debugS(PSTR("Config error for serial"));
     writeConfig((Print*)debugSerial);
     longBeep(3);
     showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail4, P_OkButtonOnly);
   }
 
   if(CAN_USE_SERIAL1 && smuffConfig.serialBaudrates[1] != 115200 && smuffConfig.serialBaudrates[1] >= 4800 && smuffConfig.serialBaudrates[1] <= 230400) {
-    //__debug(PSTR("End SERIAL1 -> %ld"), smuffConfig.serialBaudrates[1]);
+    //__debugS(PSTR("End SERIAL1 -> %ld"), smuffConfig.serialBaudrates[1]);
     Serial1.end();
     delay(150);
     Serial1.begin(smuffConfig.serialBaudrates[1]);
     delay(250);
-    //__debug(PSTR("DONE init SERIAL1"));
+    //__debugS(PSTR("DONE init SERIAL1"));
   }
   if(CAN_USE_SERIAL2 && smuffConfig.serialBaudrates[2] != 115200 && smuffConfig.serialBaudrates[2] >= 4800 && smuffConfig.serialBaudrates[2] <= 230400) {
-     //__debug(PSTR("End SERIAL2 -> %ld"), smuffConfig.serialBaudrates[2]);
+     //__debugS(PSTR("End SERIAL2 -> %ld"), smuffConfig.serialBaudrates[2]);
      Serial2.end();
     delay(150);
      Serial2.begin(smuffConfig.serialBaudrates[2]);
      delay(250);
-     //__debug(PSTR("DONE init SERIAL2"));
+     //__debugS(PSTR("DONE init SERIAL2"));
   }
   if(CAN_USE_SERIAL3 && smuffConfig.serialBaudrates[3] != 115200 && smuffConfig.serialBaudrates[3] >= 4800 && smuffConfig.serialBaudrates[3] <= 230400) {
-    //__debug(PSTR("End SERIAL3 -> %ld"), smuffConfig.serialBaudrates[3]);
+    //__debugS(PSTR("End SERIAL3 -> %ld"), smuffConfig.serialBaudrates[3]);
     Serial3.end();
     delay(150);
     Serial3.begin(smuffConfig.serialBaudrates[3]);
     delay(250);
-    //__debug(PSTR("DONE init SERIAL3"));
+    //__debugS(PSTR("DONE init SERIAL3"));
   }
-  //__debug(PSTR("DONE init SERIAL"));
+  //__debugS(PSTR("DONE init SERIAL"));
 }
 
 void setupSwSerial0() {
@@ -296,7 +296,7 @@ void setupFan() {
   #elif defined(__ESP32__)
     ledcSetup(FAN_CHANNEL, FAN_FREQ, 8);
     ledcAttachPin(FAN_PIN, FAN_CHANNEL);
-    //__debug(PSTR("DONE FAN PIN CONFIG"));
+    //__debugS(PSTR("DONE FAN PIN CONFIG"));
   #else
     pinMode(FAN_PIN, OUTPUT);
   #endif
@@ -311,7 +311,7 @@ void setupFan() {
       #endif
     }
   }
-  //__debug(PSTR("DONE FAN init"));
+  //__debugS(PSTR("DONE FAN init"));
 }
 
 void setupPortExpander() {
@@ -325,7 +325,7 @@ void setupPortExpander() {
   portEx.pinMode(6, INPUT_PULLUP);
   portEx.pinMode(7, INPUT_PULLUP);
   portEx.resetPin(0);
-  //__debug(PSTR("DONE PortExpander init"));
+  //__debugS(PSTR("DONE PortExpander init"));
   #endif
 }
 
@@ -337,7 +337,7 @@ void setupI2C() {
     Wire.begin(smuffConfig.i2cAddress);
     Wire.onReceive(wireReceiveEvent);
   }
-  //__debug(PSTR("DONE I2C init"));
+  //__debugS(PSTR("DONE I2C init"));
  #endif
 }
 
@@ -356,7 +356,7 @@ void setupEncoder() {
   encoder.begin();
   uint8_t ver = encoder.queryVersion();
   if(ver < 2) {
-    __debug(PSTR("Warning: Encoder version mismatch! Version is: %d"), ver);
+    __debugS(PSTR("Warning: Encoder version mismatch! Version is: %d"), ver);
   }
   else {
     encoder.setKeyBeepMask(BEEP_NONE);
@@ -367,13 +367,13 @@ void setupEncoder() {
     const char P_Reprog[] PROGMEM = { "Reprogramming Encoder button mapping %s" };
     if(tmp != 1) {
       // if not, program the ecnoder accordingly
-      __debug(P_Reprog,"");
+      __debugS(P_Reprog,"");
       encoder.setEepromValue(REG_EEPROM_BTN_MAPPING, 4);
 
     }
     tmp = encoder.queryButtonMappingPolarity(LeftButton);
     if(tmp != 1) {
-      __debug(P_Reprog,"polarity");
+      __debugS(P_Reprog,"polarity");
       encoder.setEepromValue(REG_EEPROM_BTN_POLARITY, 4);
     }
     */
@@ -477,15 +477,15 @@ void setupSteppers() {
       steppers[i].setEnabled(true);
   }
 
-  //__debug(PSTR("DONE init/enabling steppers"));
+  //__debugS(PSTR("DONE init/enabling steppers"));
   for(uint8_t i=0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
-  //__debug(PSTR("DONE initializing swaps"));
+  //__debugS(PSTR("DONE initializing swaps"));
 }
 
 
-TMC2209Stepper* initDriver(uint8_t axis, int8_t rx_pin, int8_t tx_pin) {
+TMC2209Stepper* initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin) {
   uint8_t mode        = smuffConfig.stepperMode[axis];
   bool tmode          = smuffConfig.stepperStealth[axis];
   int8_t stall        = smuffConfig.stepperStall[axis];
@@ -495,11 +495,11 @@ TMC2209Stepper* initDriver(uint8_t axis, int8_t rx_pin, int8_t tx_pin) {
   int8_t csmax        = smuffConfig.stepperCSmax[axis];
   int8_t csdown       = smuffConfig.stepperCSdown[axis];
   float rsense        = smuffConfig.stepperRSense[axis];
-  int8_t drvrAdr      = smuffConfig.stepperAddr[axis];
+  uint8_t drvrAdr     = (uint8_t)smuffConfig.stepperAddr[axis];
   int8_t toff         = smuffConfig.stepperToff[axis]==-1 ? (tmode ? 4 : 3) : smuffConfig.stepperToff[axis];
 
   if(mode == 0) {
-    //__debug(PSTR("Driver for %c-axis skipped"), 'X'+axis);
+    //__debugS(PSTR("Driver for %c-axis skipped"), 'X'+axis);
     return nullptr;
   }
   #if defined(TMC_SERIAL) && defined(TMC_HW_SERIAL)
@@ -507,7 +507,7 @@ TMC2209Stepper* initDriver(uint8_t axis, int8_t rx_pin, int8_t tx_pin) {
   #else
   TMC2209Stepper* driver = new TMC2209Stepper(rx_pin, tx_pin, rsense, drvrAdr);
   #endif
-  //__debug(PSTR("Driver for %c-axis initialized"), 'X'+axis);
+  //__debugS(PSTR("Driver for %c-axis initialized"), 'X'+axis);
 
   steppers[axis].setEnabled(true);
   #if defined(TMC_SERIAL) && defined(TMC_HW_SERIAL)
@@ -568,9 +568,9 @@ void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t stallThrs
 void setupTMCDrivers() {
 
   #if defined(TMC_HW_SERIAL)
-    drivers[SELECTOR] = initDriver(SELECTOR, -1, -1);
-    drivers[REVOLVER] = initDriver(REVOLVER, -1, -1);
-    drivers[FEEDER]   = initDriver(FEEDER,   -1, -1);
+    drivers[SELECTOR] = initDriver(SELECTOR, 0, 0);
+    drivers[REVOLVER] = initDriver(REVOLVER, 0, 0);
+    drivers[FEEDER]   = initDriver(FEEDER,   0, 0);
   #else
     #if defined(X_SERIAL_TX_PIN)
     drivers[SELECTOR] = initDriver(SELECTOR, X_SERIAL_TX_PIN, X_SERIAL_TX_PIN);
@@ -595,7 +595,7 @@ void setupTMCDrivers() {
     if(STALL_Z_PIN != -1)
       pinMode(STALL_Z_PIN, INPUT_PULLUP);
   #endif
-  //__debug(PSTR("DONE initializing TMC Steppers"));
+  //__debugS(PSTR("DONE initializing TMC Steppers"));
 }
 
 void setupTimers() {
@@ -656,5 +656,5 @@ void setupTimers() {
 #elif defined(__ESP32__)
   gpTimer.setNextInterruptInterval(50);                   // run general purpose (gp)timer on 50uS (ESP32)
 #endif
-  //__debug(PSTR("DONE setup timers"));
+  //__debugS(PSTR("DONE setup timers"));
 }

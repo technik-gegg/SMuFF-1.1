@@ -28,7 +28,7 @@
 #define X_STEP_PIN          PC6
 #define X_DIR_PIN           PC7
 #define X_ENABLE_PIN        PB15
-#define X_END_PIN           PC2
+#define X_END_PIN           PC2     // Endstop X-
 // REVOLVER (Y)
 #define STEP_HIGH_Y         digitalWrite(Y_STEP_PIN, HIGH);
 #define STEP_LOW_Y          digitalWrite(Y_STEP_PIN, LOW);

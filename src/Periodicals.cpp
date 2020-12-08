@@ -65,7 +65,7 @@ void every1s() {
 
 void every2s() {
   if(parserBusy || sendingResponse) {
-    __debug(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
+    __debugS(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
   }
   // send status of endstops and current tool to all listeners, if configured
   if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone && !parserBusy) {

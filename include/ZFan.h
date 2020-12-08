@@ -25,7 +25,7 @@
 #define MAX_FANS                2
 #define FAN_DUTY_CYCLE          150     // fan cycle in us (7500)
 
-extern void __debug(const char* fmt, ...);
+extern void __debugS(const char* fmt, ...);
 
 void isrFanTimerHandler();
 

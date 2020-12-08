@@ -26,7 +26,7 @@
 #include "GCodes.h"
 #include "ConfigNamesExt.h"
 
-extern SdFs SD;
+extern SdFat SD;
 
 const char* S_Param = (char*)"S";
 const char* P_Param = (char*)"P";
@@ -121,7 +121,7 @@ int param;
 bool dummy(const char* msg, String buf, int8_t serial) {
   if(!smuffConfig.prusaMMU2) {
     uint16_t code = buf.toInt();
-    __debug(PSTR("Ignored M-Code: M%d"), code);
+    __debugS(PSTR("Ignored M-Code: M%d"), code);
   }
   return true;
 }
@@ -201,7 +201,7 @@ bool M42(const char* msg, String buf, int8_t serial) {
   int8_t mode;
   char tmp[128];
   printResponse(msg, serial);
-  //__debug(PSTR("M42->%s"), buf);
+  //__debugS(PSTR("M42->%s"), buf);
 
   if((pin = getParam(buf, P_Param)) != -1) {
     // pins over 1000 go to the port expander
@@ -222,7 +222,7 @@ bool M42(const char* msg, String buf, int8_t serial) {
         portEx.pinMode(pin, OUTPUT);
       }
       if((param = getParam(buf, S_Param)) != -1 && mode == 1) {
-        //__debug(PSTR("Pin%d set to %s"), pin, param==0 ? "LOW" : "HIGH");
+        //__debugS(PSTR("Pin%d set to %s"), pin, param==0 ? "LOW" : "HIGH");
         portEx.writePin(pin, param);
       }
       if(mode != 1) {
@@ -299,7 +299,7 @@ bool M106(const char* msg, String buf, int8_t serial) {
   if((param = getParam(buf, S_Param)) == -1) {
     param = 100;
   }
-  //__debug(PSTR("Fan speed: %d%%"), param);
+  //__debugS(PSTR("Fan speed: %d%%"), param);
 #ifdef __STM32F1__
   fan.setFanSpeed(param);
 #elif __ESP32__
@@ -983,7 +983,7 @@ bool M205(const char* msg, String buf, int8_t serial) {
   if((param = getParamString(buf, P_Param, cmd, sizeof(cmd)))  != -1) {
     float fParam = getParamF(buf, S_Param);
     if((param = getParam(buf, S_Param)) != -1) {
-      //__debug(PSTR("Value: %d"), param);
+      //__debugS(PSTR("Value: %d"), param);
 
       if(strcmp(cmd, toolCount)==0) {
         if(param >= 1 && param <= MAX_TOOLS)
@@ -1599,7 +1599,7 @@ bool M700(const char* msg, String buf, int8_t serial) {
   printResponse(msg, serial);
   if(toolSelected >= 0 && toolSelected <= MAX_TOOLS) {
     getParamString(buf, S_Param, smuffConfig.materials[toolSelected], sizeof(smuffConfig.materials[0]));
-    //__debug(PSTR("Material: %s\n"),smuffConfig.materials[toolSelected]);
+    //__debugS(PSTR("Material: %s\n"),smuffConfig.materials[toolSelected]);
     return loadFilament();
   }
   else
@@ -1873,7 +1873,7 @@ uint16_t handleFeedSpeed(String buf, uint8_t axis) {
     if(fspeed < mmsMin) fspeed = mmsMin;
     if(fspeed > mmsMax) fspeed = mmsMax;
     fspeed = translateSpeed(fspeed, axis);
-    //__debug(PSTR("fspeed ticks = %ld"), fspeed);
+    //__debugS(PSTR("fspeed ticks = %ld"), fspeed);
     steppers[axis].setMaxSpeed(fspeed);
     if(fspeed > steppers[axis].getAcceleration()) {
       uint16_t faccel = fspeed*3;
@@ -1903,7 +1903,7 @@ bool G1(const char* msg, String buf, int8_t serial) {
     paramF = getParamF(buf, X_Param);
     paramL = isMill ? round(paramF * steppers[SELECTOR].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, SELECTOR);
-    //__debug(PSTR("G1 moving X: %2.f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[SELECTOR].getStepsPerMM(), smuffConfig.stepDelay[SELECTOR]);
+    //__debugS(PSTR("G1 moving X: %2.f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[SELECTOR].getStepsPerMM(), smuffConfig.stepDelay[SELECTOR]);
     steppers[SELECTOR].setEnabled(true);
     prepStepping(SELECTOR, paramL, false, true);
   }
@@ -1911,7 +1911,7 @@ bool G1(const char* msg, String buf, int8_t serial) {
     paramF = getParamF(buf, Y_Param);
     paramL = isMill ? round(paramF * steppers[REVOLVER].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, REVOLVER);
-    __debug(PSTR("G1 moving Y: %.2f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[REVOLVER].getStepsPerDegree(), smuffConfig.stepDelay[REVOLVER]);
+    __debugS(PSTR("G1 moving Y: %.2f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[REVOLVER].getStepsPerDegree(), smuffConfig.stepDelay[REVOLVER]);
     steppers[REVOLVER].setEnabled(true);
     prepStepping(REVOLVER, paramL, false, true);
   }
@@ -1919,26 +1919,26 @@ bool G1(const char* msg, String buf, int8_t serial) {
     paramF = getParamF(buf, Z_Param);
     paramL = isMill ? round(paramF * steppers[FEEDER].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, FEEDER);
-    //__debug(PSTR("G1 moving Z: %.2f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[FEEDER].getStepsPerMM(), smuffConfig.stepDelay[FEEDER]);
+    //__debugS(PSTR("G1 moving Z: %.2f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[FEEDER].getStepsPerMM(), smuffConfig.stepDelay[FEEDER]);
     steppers[FEEDER].setEnabled(true);
     prepStepping(FEEDER, paramL, false, true);
   }
   uint32 start = millis();
   runAndWait(-1);
   // for testing only: check if stall was detected
-  __debug(PSTR("Move took: %d ms"), millis()-start);
+  __debugS(PSTR("Move took: %d ms"), millis()-start);
   const char P_StallRes[] PROGMEM = { "G1 StallResult %c: %d  Stalled: %s" };
   if(hasParam(buf, X_Param) && drivers[SELECTOR] != nullptr && !drivers[SELECTOR]->spread_en()) {
     uint16_t sr = drivers[SELECTOR]->SG_RESULT();
-    __debug(P_StallRes, 'X', sr, steppers[SELECTOR].getStallDetected() ? P_Yes : P_No);
+    __debugS(P_StallRes, 'X', sr, steppers[SELECTOR].getStallDetected() ? P_Yes : P_No);
   }
   if(hasParam(buf, Y_Param) && drivers[REVOLVER] != nullptr && !drivers[REVOLVER]->spread_en()) {
     uint16_t sr = drivers[REVOLVER]->SG_RESULT();
-    __debug(P_StallRes, 'Y', sr, steppers[REVOLVER].getStallDetected() ? P_Yes : P_No);
+    __debugS(P_StallRes, 'Y', sr, steppers[REVOLVER].getStallDetected() ? P_Yes : P_No);
   }
   if(hasParam(buf, Z_Param) && drivers[FEEDER] != nullptr && !drivers[FEEDER]->spread_en()) {
     uint16_t sr = drivers[FEEDER]->SG_RESULT();
-    __debug(P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
+    __debugS(P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
   }
   // set all speeds back to the configured values
   if(hasParam(buf, F_Param)) {

@@ -22,7 +22,7 @@
 #include "ZTimerLib.h"
 #include "PCF857X.h"
 
-extern void __debug(const char* fmt, ...);
+extern void __debugS(const char* fmt, ...);
 
 #define MAX_SERIAL      4
 #define MAX_TX_BUFFER   256

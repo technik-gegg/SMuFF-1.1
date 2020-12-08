@@ -43,9 +43,9 @@ void ZServo::attach(int8_t pin, bool useTimer, int8_t servoIndex) {
     #if defined(__ESP32__)
     ledcSetup(SERVO_CHANNEL+_servoIndex, SERVO_FREQ, 16);
     ledcAttachPin(pin, SERVO_CHANNEL+_servoIndex);
-    //__debug(PSTR("Servo channel: %d"), SERVO_CHANNEL+_servoIndex);
+    //__debugS(PSTR("Servo channel: %d"), SERVO_CHANNEL+_servoIndex);
     #endif
-    //__debug(PSTR("Servo without timer initialized"));
+    //__debugS(PSTR("Servo without timer initialized"));
   }
 }
 
@@ -102,15 +102,15 @@ bool ZServo::setServoPos(uint8_t degree) {
   #if defined(__ESP32__)
   if(!_useTimer) {
     _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
-    //__debug(PSTR("Servo %d: %d° = %d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
+    //__debugS(PSTR("Servo %d: %d° = %d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
   }
   else {
     _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-    //__debug(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
+    //__debugS(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
   }
   #else
   _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-  //__debug(PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
+  //__debugS(PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
   #endif
   _degree = degree;
   _lastUpdate = millis();

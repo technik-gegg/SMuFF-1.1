@@ -81,7 +81,7 @@ Stream*                 debugSerial = &Serial1;
 
 #elif defined(__ESP32__)
 BluetoothSerial SerialBT;                 // used for debugging or mirroring traffic to PanelDue
-#if defined(__DEBUG_BT__)
+#if defined(__debugS_BT__)
 Stream*                 debugSerial = &SerialBT;  // decide which serial port to use for debug outputs
 #else
 Stream*                 debugSerial = &Serial;    // decide which serial port to use for debug outputs
@@ -115,7 +115,7 @@ USBCompositeSerial      CompositeSerial;
 ZPortExpander           portEx;
 #endif
 
-TMC2209Stepper* drivers[NUM_STEPPERS] { nullptr, nullptr, nullptr };
+TMC2209Stepper* drivers[NUM_STEPPERS];
 
 #if defined(MULTISERVO)
 Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
@@ -212,17 +212,17 @@ void overrideStepZ() {
 
 void endstopEventY() {
   // add your code here it you want to hook into the endstop event for the Revolver
-  //__debug(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
+  //__debugS(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
 }
 
 void endstopEventZ() {
   // add your code here it you want to hook into the 1st endstop event for the Feeder
-  //__debug(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
+  //__debugS(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
 }
 
 void endstopEventZ2() {
   // add your code here it you want to hook into the 2nd endstop event for the Feeder
-  //__debug(PSTR("Z2 hit: %d"), endstop2Hit++);
+  //__debugS(PSTR("Z2 hit: %d"), endstop2Hit++);
 }
 
 /*
@@ -309,12 +309,12 @@ void enumI2cDevices() {
         case I2C_SERVOBCAST_ADDRESS:  name = PSTR("MultiServo"); break;
         default: name = PSTR("n.a."); break;
       }
-      __debug(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
+      __debugS(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
     }
   }
   if(!encoder) {
     #if defined(USE_LEONERD_DISPLAY)
-    __debug(PSTR("LeoNerd's OLED configured but no encoder was found!"));
+    __debugS(PSTR("LeoNerd's OLED configured but no encoder was found!"));
     #endif
   }
 }
@@ -354,38 +354,38 @@ void setup() {
   testFastLED();                      // run a test sequence on FastLEDs
   initHwDebug();                      // init hardware debugging
 
-  __debug(PSTR("[ setup start ]"));
+  __debugS(PSTR("[ setup start ]"));
   #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
   enumI2cDevices();
-  __debug(PSTR("[ after enumI2CDevices ]"));
+  __debugS(PSTR("[ after enumI2CDevices ]"));
   #endif
   setupBuzzer();                      // setup buzzer before reading config
-  __debug(PSTR("[ after setupBuzzer ]"));
+  __debugS(PSTR("[ after setupBuzzer ]"));
   setupDeviceName();                  // used for SerialBT on ESP32 only
-  __debug(PSTR("[ after setupDeviceName ]"));
+  __debugS(PSTR("[ after setupDeviceName ]"));
   setupSerialBT();                    // used for debugging on ESP32 only
   setupDisplay();                     // setup display first in order to show error messages if neccessary
-  __debug(PSTR("[ after setupDisplay ]"));
+  __debugS(PSTR("[ after setupDisplay ]"));
   setupEncoder();                     // setup encoder - only relevant on LeoNerd display
-  __debug(PSTR("[ after setupEncoder ]"));
+  __debugS(PSTR("[ after setupEncoder ]"));
   if(readConfig()) {                  // read SMUFF.CFG from SD-Card
     readTmcConfig();                  // read TMCDRVR.CFG from SD-Card
     readServoMapping();               // read SERVOMAP.CFG from SD-Card
     readMaterials();                  // read MATERIALS.CFG from SD-Card
   }
-  __debug(PSTR("[ after readConfig ]"));
+  __debugS(PSTR("[ after readConfig ]"));
   setupSerial();                      // setup all components according to the values in SMUFF.CFG
-  __debug(PSTR("[ after setupSerial ]"));
+  __debugS(PSTR("[ after setupSerial ]"));
   setupSteppers();
-  __debug(PSTR("[ after setupSteppers ]"));
+  __debugS(PSTR("[ after setupSteppers ]"));
   setupTimers();
-  __debug(PSTR("[ after setupTimers ]"));
+  __debugS(PSTR("[ after setupTimers ]"));
   setupServos();
-  __debug(PSTR("[ after setupServos ]"));
+  __debugS(PSTR("[ after setupServos ]"));
   setupRelay();
-  __debug(PSTR("[ after setupRelay ]"));
+  __debugS(PSTR("[ after setupRelay ]"));
   setupTMCDrivers();                  // setup TMC drivers if any were used
-  __debug(PSTR("[ after setupTMCdrivers ]"));
+  __debugS(PSTR("[ after setupTMCdrivers ]"));
   setupSwSerial0();                   // used only for testing purposes
   setupBacklight();
   setupDuetLaserSensor();             // setup other peripherials
@@ -395,10 +395,10 @@ void setup() {
   setupI2C();
   setupHBridge();
   getStoredData();                    // read EEPROM.DAT from SD-Card; this call must happen after setupSteppers()
-  //__debug(PSTR("readSequences start"));
+  //__debugS(PSTR("readSequences start"));
   //uint32_t now = millis();
   //readSequences();
-  //__debug(PSTR("readSequences took %d ms"), millis()-now);
+  //__debugS(PSTR("readSequences took %d ms"), millis()-now);
 
   if(smuffConfig.homeAfterFeed) {
     moveHome(REVOLVER, false, false);
@@ -406,7 +406,7 @@ void setup() {
   else {
     resetRevolver();
   }
-  __debug(PSTR("DONE reset Revolver"));
+  __debugS(PSTR("DONE reset Revolver"));
 
   sendStartResponse(0);       // send "start<CR><LF>" to USB serial interface
   if(CAN_USE_SERIAL1)
@@ -465,7 +465,7 @@ void isrStepperHandler() {
       remainingSteppersFlag &= ~_BV(i);
     }
   }
-  //__debug(PSTR("ISR(): %d"), remainingSteppersFlag);
+  //__debugS(PSTR("ISR(): %d"), remainingSteppersFlag);
   startStepperInterval();
 }
 
@@ -473,7 +473,7 @@ void runNoWait(int8_t index) {
   if(index != -1)
     remainingSteppersFlag |= _BV(index);
   startStepperInterval();
-  //__debug(PSTR("Started stepper %d"), index);
+  //__debugS(PSTR("Started stepper %d"), index);
 }
 
 void runAndWait(int8_t index) {
@@ -487,8 +487,8 @@ void runAndWait(int8_t index) {
     }
 #endif
   }
-  //__debug(PSTR("RunAndWait done"));
-  //if(index==FEEDER) __debug(PSTR("Fed: %smm"), String(steppers[index].getStepsTakenMM()).c_str());
+  //__debugS(PSTR("RunAndWait done"));
+  //if(index==FEEDER) __debugS(PSTR("Fed: %smm"), String(steppers[index].getStepsTakenMM()).c_str());
 }
 
 void refreshStatus(bool withLogo, bool feedOnly) {
@@ -509,7 +509,7 @@ void refreshStatus(bool withLogo, bool feedOnly) {
 
 void reportTMC(uint8_t axis, const char* PROGMEM msg) {
   // for now, only debug message, subject to change in the future
-  __debug(PSTR("Driver %c: reports '%s'"), 'X'+axis, msg);
+  __debugS(PSTR("Driver %c: reports '%s'"), 'X'+axis, msg);
 }
 
 void monitorTMC(uint8_t axis) {
@@ -585,7 +585,7 @@ void loopEx() {
   while(portEx.serialAvailable(0)) {
     char c = portEx.serialRead(0);
     char cc = (c >= 0x20 && c < 0x7F) ? c : '.';
-    __debug(PSTR("Got: %3d - '%c' - 0x%02x"), c, cc, c);
+    __debugS(PSTR("Got: %3d - '%c' - 0x%02x"), c, cc, c);
   }
   */
 #endif
@@ -721,7 +721,7 @@ void loop() {
   }
 
   if((millis() - pwrSaveTime)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
-    //__debug(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
+    //__debugS(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
     refreshStatus(true, false);
     setPwrSave(1);
   }
@@ -754,7 +754,7 @@ bool checkUserMessage() {
   if(button && displayingUserMessage) {
     displayingUserMessage = false;
   }
-  //__debug(PSTR("%ld"), (millis()-userMessageTime)/1000);
+  //__debugS(PSTR("%ld"), (millis()-userMessageTime)/1000);
   if(millis()-userMessageTime > USER_MESSAGE_RESET*1000) {
     displayingUserMessage = false;
   }
@@ -802,7 +802,7 @@ void filterSerialInput(String& buffer, char in) {
     return;
   }
   if(isFuncKey) {
-    //__debug(PSTR("%02x"), in);
+    //__debugS(PSTR("%02x"), in);
     if(in == '[')  // second escape char '[' - swallow that
       return;
     isFuncKey = false;
@@ -868,7 +868,7 @@ bool isJsonData(char in) {
   }
   if(bracketCnt > 0) {
     jsonPtr++;
-    //__debug(PSTR("JSON nesting level: %d"), bracketCnt);
+    //__debugS(PSTR("JSON nesting level: %d"), bracketCnt);
   }
 
   if(jsonPtr > 0) {
@@ -879,10 +879,10 @@ bool isJsonData(char in) {
   if(bracketCnt == 0 && jsonPtr > 0) {
     /*
     if(smuffConfig.hasPanelDue) {
-      __debug(PSTR("JSON data passed through to PanelDue: %d"), jsonPtr+1);
+      __debugS(PSTR("JSON data passed through to PanelDue: %d"), jsonPtr+1);
     }
     else {
-      __debug(PSTR("PanelDue not configured. JSON data ignored"));
+      __debugS(PSTR("PanelDue not configured. JSON data ignored"));
     }
     */
     jsonPtr = 0;
@@ -902,7 +902,7 @@ void serialEvent() {
     if(isJsonData(in))
       continue;
     if (in == '\n') {
-      //__debug(PSTR("Received-0: %s"), serialBuffer0.c_str());
+      //__debugS(PSTR("Received-0: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 0);
       isQuote = false;
       actionOk = false;
@@ -926,7 +926,7 @@ void serialEvent2() {
     }
     else {
       if (in == '\n') {
-        //__debug(PSTR("Received-2: %s"), serialBuffer2.c_str());
+        //__debugS(PSTR("Received-2: %s"), serialBuffer2.c_str());
         parseGcode(serialBuffer2, 2);
         isQuote = false;
         actionOk = false;
@@ -950,7 +950,7 @@ void serialEvent1() {
     if(isJsonData(in))
       continue;
     if (in == '\n') {
-      //__debug(PSTR("Received-1: %s"), serialBuffer1.c_str());
+      //__debugS(PSTR("Received-1: %s"), serialBuffer1.c_str());
       parseGcode(serialBuffer1, 1);
       isQuote = false;
       actionOk = false;
@@ -974,7 +974,7 @@ void serialEvent3() {
     }
     else {
       if (in == '\n') {
-        //__debug(PSTR("Received-3: %s"), serialBuffe3.c_str());
+        //__debugS(PSTR("Received-3: %s"), serialBuffe3.c_str());
         parseGcode(serialBuffer3, 3);
         isQuote = false;
         actionOk = false;

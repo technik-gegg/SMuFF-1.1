@@ -42,7 +42,7 @@ void checkMenuSize(const char* PROGMEM name, char* menu, size_t size) {
   if(strlen(menu) > size) {
     char tmp[80];
     sprintf_P(tmp, name);
-    __debug(PSTR("Overrun in %s Menu: size=%d len=%d\n"), tmp, size, strlen(menu));
+    __debugS(PSTR("Overrun in %s Menu: size=%d len=%d\n"), tmp, size, strlen(menu));
   }
   #endif
 }
@@ -85,7 +85,7 @@ char* extractTitle(const char* menu, uint8_t index) {
       tok2++;
     }
     *tok2 = 0;
-    //__debug(PSTR("Menu: %s tok: %s @index: %d"), menu, tok, index);
+    //__debugS(PSTR("Menu: %s tok: %s @index: %d"), menu, tok, index);
     return tok;
   }
   return nullptr;
@@ -305,7 +305,7 @@ void setupTestrunMenu(char* menu, uint8_t maxFiles) {
   if(getFiles(PSTR("test/"), PSTR(".gcode"), maxFiles, true, items)) {
     strcat(menu, items);
   }
-  //__debug(PSTR("Test-Files:\n%s"), items);
+  //__debugS(PSTR("Test-Files:\n%s"), items);
 }
 
 void showMainMenu() {
@@ -328,7 +328,7 @@ void showMainMenu() {
 
     current_selection = display.userInterfaceSelectionList(_title, current_selection, _menu);
     uint8_t fnc = menuOrdinals[current_selection];
-    //__debug(PSTR("Cur now: %d -> %d"), current_selection, fnc);
+    //__debugS(PSTR("Cur now: %d -> %d"), current_selection, fnc);
 
     if(current_selection == 0)
       return;
@@ -441,7 +441,7 @@ void showTestrunMenu(char* menuTitle) {
         while((p = strrchr(_file,' ')) != nullptr) {
           *p = 0;
         }
-        //__debug(PSTR("Selected file: >%s<"), _file);
+        //__debugS(PSTR("Selected file: >%s<"), _file);
         testRun(_file);
         break;
     }
@@ -555,7 +555,7 @@ bool selectBacklightColor(int color, char* menuTitle) {
   sprintf_P(tmp, loadOptions(P_OptColors));
   if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setBacklightIndex, true)) {
     smuffConfig.backlightColor = val;
-    //__debug(PSTR("Backlight: %d"), val);
+    //__debugS(PSTR("Backlight: %d"), val);
   }
   return true;
 }
@@ -1773,7 +1773,7 @@ void changeOffset(uint8_t index) {
         posF += (stepsF*turn);
         prepSteppingAbsMillimeter(SELECTOR, posF, true);
       }
-      //__debug(PSTR("Turn: %d  Pos: %d   PosF: %s"), turn, pos, String(posF).c_str());
+      //__debugS(PSTR("Turn: %d  Pos: %d   PosF: %s"), turn, pos, String(posF).c_str());
       runAndWait(index);
       if(index == REVOLVER) {
         drawValue(steppers[index].getDescriptor(), P_InSteps, String(steppers[index].getStepPosition()));

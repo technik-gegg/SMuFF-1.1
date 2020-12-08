@@ -34,7 +34,7 @@ extern BluetoothSerial SerialBT;
 extern ZStepper       steppers[];
 extern ZServo         servo;
 extern ZServo         servoLid;
-extern SdFs           SD;
+extern SdFat           SD;
 
 SMuFFConfig           smuffConfig;
 int8_t                toolSelected = -1;
@@ -92,7 +92,7 @@ void setupDisplay() {
 }
 
 void drawLogo() {
-  //__debug(PSTR("drawLogo start..."));
+  //__debugS(PSTR("drawLogo start..."));
   char brand[8] = VERSION_STRING;
   #if defined(DEBUG)
   strcat(brand,"D");
@@ -106,7 +106,7 @@ void drawLogo() {
   display.setDrawColor(1);
   display.setCursor(display.getDisplayWidth() - display.getStrWidth(brand) - 1, display.getDisplayHeight() - display.getMaxCharHeight());
   display.print(brand);
-  //__debug(PSTR("drawLogo end..."));
+  //__debugS(PSTR("drawLogo end..."));
 }
 
 void drawStatus() {
@@ -114,7 +114,7 @@ void drawStatus() {
   char tmp[80];
   char pos[20];
 
-  //__debug(PSTR("drawStatus start..."));
+  //__debugS(PSTR("drawStatus start..."));
   display.setFont(STATUS_FONT);
   display.setFontMode(0);
   display.setDrawColor(1);
@@ -147,7 +147,7 @@ void drawStatus() {
   else {
     drawFeed();
   }
-  //__debug(PSTR("drawStatus end..."));
+  //__debugS(PSTR("drawStatus end..."));
 }
 
 void drawSDRemoved(bool removed) {
@@ -314,13 +314,13 @@ void showTMCStatus(uint8_t axis) {
     delay(100);
     if(showDriver->diag()) {
       //if(n==0)
-      //  __debug(PSTR("Stepper stall detected @ %ld"), showDriver->SG_RESULT());
+      //  __debugS(PSTR("Stepper stall detected @ %ld"), showDriver->SG_RESULT());
       n++;
     }
     // reset stall flag after 3 secs.
     if(n % 30 == 0 && showDriver->diag()) {
       n = 0;
-      //__debug(PSTR("Stall has been reset!"));
+      //__debugS(PSTR("Stall has been reset!"));
     }
   }
   displayingUserMessage = false;
@@ -395,7 +395,7 @@ uint8_t splitStringLines(char* lines[], uint8_t maxLines, const char* message, c
   while(tok != nullptr) {
     lines[++cnt] = tok;
     lastTok = tok;
-    //__debug(PSTR("Line: %s"), lines[cnt]);
+    //__debugS(PSTR("Line: %s"), lines[cnt]);
     if(cnt >= maxLines-1)
       break;
     tok = strtok(nullptr, delimiter);
@@ -521,7 +521,7 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
     }
   }
   if(smuffConfig.revolverIsServo) {
-    //__debug(PSTR("Stepper home SERVO variant"));
+    //__debugS(PSTR("Stepper home SERVO variant"));
     // don't release the servo when homing the Feeder but
     // release it when homing something else
     if(index != FEEDER)
@@ -531,12 +531,12 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
       steppers[index].home();
   }
   else {
-    //__debug(PSTR("Stepper home non SERVO variant"));
+    //__debugS(PSTR("Stepper home non SERVO variant"));
     // not a servo variant, home stepper which ever it is
     steppers[index].home();
   }
 
-  //__debug(PSTR("DONE Stepper home"));
+  //__debugS(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
     toolSelected = -1;
   }
@@ -546,7 +546,7 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
   }
   dataStore.stepperPos[index] = pos;
   saveStore();
-  //__debug(PSTR("DONE save store"));
+  //__debugS(PSTR("DONE save store"));
   parserBusy = false;
   return true;
 }
@@ -611,7 +611,7 @@ bool showFeederFailedMessage(int8_t state) {
 }
 
 uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
-  //__debug(PSTR("showDialog: %S"), title);
+  //__debugS(PSTR("showDialog: %S"), title);
   if(isPwrSave) {
     setPwrSave(0);
   }
@@ -708,12 +708,12 @@ void positionRevolver() {
   }
   steppers[FEEDER].setEnabled(true);
   delay(150);
-  //__debug(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
+  //__debugS(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
 
 void changeFeederInsertSpeed(uint16_t speed) {
   unsigned long maxSpeed = translateSpeed(speed, FEEDER);
-  //__debug(PSTR("Changing Feeder speed to %3d (%6ld ticks)"), speed, maxSpeed);
+  //__debugS(PSTR("Changing Feeder speed to %3d (%6ld ticks)"), speed, maxSpeed);
   steppers[FEEDER].setMaxSpeed(maxSpeed);
 }
 
@@ -753,7 +753,7 @@ bool feedToEndstop(bool showMessage) {
   positionRevolver();
 
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
-  //__debug(PSTR("InsertSpeed: %d"), smuffConfig.insertSpeed);
+  //__debugS(PSTR("InsertSpeed: %d"), smuffConfig.insertSpeed);
   uint16_t speed = smuffConfig.insertSpeed;
   changeFeederInsertSpeed(speed);
   if(smuffConfig.accelSpeed[FEEDER] > smuffConfig.insertSpeed)
@@ -781,7 +781,7 @@ bool feedToEndstop(bool showMessage) {
     runAndWait(FEEDER);
     // has the endstop already triggered?
     if(feederEndstop()) {
-      //__debug(PSTR("Position now: %s"), String(steppers[FEEDER].getStepPositionMM()).c_str());
+      //__debugS(PSTR("Position now: %s"), String(steppers[FEEDER].getStepPositionMM()).c_str());
       break;
     }
     n += smuffConfig.insertLength;  // increment the position of the filament
@@ -810,7 +810,7 @@ bool feedToEndstop(bool showMessage) {
         setServoLid(SERVO_CLOSED);
       n = 0;
     }
-    //__debug(PSTR("Max: %s  N: %s  Retries: %d  Endstop: %d"), String(max).c_str(), String(n).c_str(), retries, feederEndstop());
+    //__debugS(PSTR("Max: %s  N: %s  Retries: %d  Endstop: %d"), String(max).c_str(), String(n).c_str(), retries, feederEndstop());
     if (!feederEndstop() && retries < 0) {
       // still got no endstop trigger, abort action
       if (showMessage) {
@@ -865,7 +865,7 @@ bool handleFeederStall(uint16_t* speed, int8_t* retries) {
     }
     *retries -= 1;
     changeFeederInsertSpeed(*speed);
-    __debug(PSTR("Feeder has stalled, slowing down speed to %d"), *speed);
+    __debugS(PSTR("Feeder has stalled, slowing down speed to %d"), *speed);
     // counter used in testRun
     stallDetectedCountFeeder++;   // for testrun only
   }
@@ -899,7 +899,7 @@ bool feedToNozzle(bool showMessage) {
       stat = handleFeederStall(&speed, &retries);
       if(!stat) {
         remains = steppers[FEEDER].getStepPositionMM();
-        __debug(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+        __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
       }
     } while(!stat && retries > 0);
     if(stat) {
@@ -917,7 +917,7 @@ bool feedToNozzle(bool showMessage) {
         stat = handleFeederStall(&speed, &retries);
         if(!stat) {
           remains = steppers[FEEDER].getStepPositionMM();
-          __debug(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+          __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
         }
       }while(!stat && retries > 0);
     }
@@ -1046,7 +1046,7 @@ bool unloadFromNozzle(bool showMessage) {
   int8_t retries = FEED_ERROR_RETRIES;
 
   if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
-    __debug(PSTR("Unloading in %d chunks "), smuffConfig.feedChunks);
+    __debugS(PSTR("Unloading in %d chunks "), smuffConfig.feedChunks);
     // prepare to unfeed 3 times the bowden length full speed in chunks
     float bLen = -smuffConfig.bowdenLength*3;
     float len = bLen/smuffConfig.feedChunks;
@@ -1064,7 +1064,7 @@ bool unloadFromNozzle(bool showMessage) {
       stat = handleFeederStall(&speed, &retries);
     } while(!stat && retries > 0);
   }
-  //__debug(PSTR("Feeder endstop now %d (%d)"), feederEndstop(), steppers[FEEDER].getEndstopState());
+  //__debugS(PSTR("Feeder endstop now %d (%d)"), feederEndstop(), steppers[FEEDER].getEndstopState());
   // reset feeder to max. speed
   changeFeederInsertSpeed(smuffConfig.maxSpeed[FEEDER]);
   delay(500);
@@ -1141,12 +1141,12 @@ bool unloadFilament() {
   // just to make sure we've got the right position, feed until the endstop gets hit again
   // then unload from Selector
   float ofs = steppers[FEEDER].getStepPositionMM();
-  // __debug(PSTR("Offset: %s"), String(ofs).c_str());
+  // __debugS(PSTR("Offset: %s"), String(ofs).c_str());
   changeFeederInsertSpeed(smuffConfig.insertSpeed);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
   runAndWait(FEEDER);
   ofs = steppers[FEEDER].getStepPositionMM() - ofs;
-  __debug(PSTR("Offset now: %s,  Endstop: %d"), String(ofs).c_str(), feederEndstop());
+  __debugS(PSTR("Offset now: %s,  Endstop: %d"), String(ofs).c_str(), feederEndstop());
   */
 
   unloadFromSelector();
@@ -1218,10 +1218,10 @@ bool nudgeBackFilament() {
 
 void handleStall(int8_t axis) {
   const char P_StallHandler[] PROGMEM = { "Stall handler: %s" };
-  __debug(P_StallHandler,"Triggered on %c-axis", 'X'+axis);
+  __debugS(P_StallHandler,"Triggered on %c-axis", 'X'+axis);
   // check if stall must be handled
   if(steppers[axis].getStopOnStallDetected()) {
-    __debug(P_StallHandler, "Stopped on stall");
+    __debugS(P_StallHandler, "Stopped on stall");
     // save speed/acceleration settings
     uint16_t maxSpeed = steppers[axis].getMaxSpeed();
     uint16_t accel = steppers[axis].getAcceleration();
@@ -1238,7 +1238,7 @@ void handleStall(int8_t axis) {
     remainingSteppersFlag |= _BV(axis);
     runAndWait(-1);
     bool stallLeft = steppers[axis].getStallCount() > (uint32_t)steppers[axis].getStallThreshold();
-    __debug(PSTR("Left: %d"), steppers[axis].getStallCount());
+    __debugS(PSTR("Left: %d"), steppers[axis].getStallCount());
     steppers[axis].setEnabled(false);
     delay(1000);
     steppers[axis].setEnabled(true);
@@ -1247,18 +1247,18 @@ void handleStall(int8_t axis) {
     remainingSteppersFlag |= _BV(axis);
     runAndWait(-1);
     bool stallRight = steppers[axis].getStallCount() > (uint32_t)steppers[axis].getStallThreshold();
-    __debug(PSTR("Right: %d"), steppers[axis].getStallCount());
+    __debugS(PSTR("Right: %d"), steppers[axis].getStallCount());
 
-    if(stallLeft && stallRight)   __debug(P_StallHandler, "Stalled center");
-    if(stallLeft && !stallRight)  __debug(P_StallHandler, "Stalled left");
-    if(!stallLeft && stallRight)  __debug(P_StallHandler, "Stalled right");
+    if(stallLeft && stallRight)   __debugS(P_StallHandler, "Stalled center");
+    if(stallLeft && !stallRight)  __debugS(P_StallHandler, "Stalled left");
+    if(!stallLeft && stallRight)  __debugS(P_StallHandler, "Stalled right");
 
     nudgeBackFilament();
-    __debug(P_StallHandler,"Feeder nudged back");
+    __debugS(P_StallHandler,"Feeder nudged back");
     delay(1000);
     if(axis != FEEDER) {    // Feeder can't be homed
       moveHome(axis, false, false);
-      __debug(P_StallHandler, "%c-Axis Homed", 'X'+axis);
+      __debugS(P_StallHandler, "%c-Axis Homed", 'X'+axis);
     }
     else {
       // TODO: add stall handling for Feeder
@@ -1339,7 +1339,7 @@ bool selectTool(int8_t ndx, bool showMessage) {
           if(CAN_USE_SERIAL2) {
             Serial2.print(smuffConfig.unloadCommand);
             Serial2.print("\n");
-            //__debug(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
+            //__debugS(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
           }
         }
       }
@@ -1356,10 +1356,10 @@ bool selectTool(int8_t ndx, bool showMessage) {
       setServoLid(SERVO_OPEN);
     }
   }
-  //__debug(PSTR("Selecting tool: %d"), ndx);
+  //__debugS(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
   drawSelectingMessage(ndx);
-  //__debug(PSTR("Message shown"));
+  //__debugS(PSTR("Message shown"));
   uint16_t speed = steppers[SELECTOR].getMaxSpeed();
 
   uint8_t retry = 3;
@@ -1377,9 +1377,9 @@ bool selectTool(int8_t ndx, bool showMessage) {
     #else
     runAndWait(SELECTOR);
     #endif
-    //__debug(PSTR("Selector in position: %d"), ndx);
+    //__debugS(PSTR("Selector in position: %d"), ndx);
     if(smuffConfig.stepperStall[SELECTOR] > 0) {
-      //__debug(PSTR("Selector stall count: %d"), steppers[SELECTOR].getStallCount());
+      //__debugS(PSTR("Selector stall count: %d"), steppers[SELECTOR].getStallCount());
     }
     if(steppers[SELECTOR].getStallDetected()) {
         posOk = false;
@@ -1400,20 +1400,20 @@ bool selectTool(int8_t ndx, bool showMessage) {
     dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
     dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
     saveStore();
-    //__debug(PSTR("Data stored"));
+    //__debugS(PSTR("Data stored"));
 
     if (!smuffConfig.extControlFeeder && showMessage) {
       showFeederLoadMessage();
     }
     if(smuffConfig.extControlFeeder) {
-      //__debug(PSTR("Resetting Revolver"));
+      //__debugS(PSTR("Resetting Revolver"));
       resetRevolver();
       signalSelectorReady();
-      //__debug(PSTR("Revolver reset done"));
+      //__debugS(PSTR("Revolver reset done"));
     }
   }
   parserBusy = false;
-  //__debug(PSTR("Finished selecting tool"));
+  //__debugS(PSTR("Finished selecting tool"));
   return posOk;
 }
 
@@ -1425,7 +1425,7 @@ void resetRevolver() {
       runAndWait(REVOLVER);
     }
     else {
-      //__debug(PSTR("Positioning servo to: %d (CLOSED)"), smuffConfig.revolverOnPos);
+      //__debugS(PSTR("Positioning servo to: %d (CLOSED)"), smuffConfig.revolverOnPos);
       setServoLid(SERVO_CLOSED);
     }
   }
@@ -1436,7 +1436,7 @@ void setStepperSteps(int8_t index, long steps, bool ignoreEndstop) {
   // ... just in case... you never know...
   if(smuffConfig.revolverIsServo && index == SELECTOR) {
     if(lidOpen) {
-      //__debug(PSTR("Positioning servo to: %d (OPEN)"), smuffConfig.revolverOffPos);
+      //__debugS(PSTR("Positioning servo to: %d (OPEN)"), smuffConfig.revolverOffPos);
       setServoLid(SERVO_OPEN);
     }
   }
@@ -1447,7 +1447,7 @@ void setStepperSteps(int8_t index, long steps, bool ignoreEndstop) {
 void prepSteppingAbs(int8_t index, long steps, bool ignoreEndstop) {
   long pos = steppers[index].getStepPosition();
   long _steps = steps - pos;
-  //__debug(PSTR("Pos: %ld  New: %ld"), pos, _steps);
+  //__debugS(PSTR("Pos: %ld  New: %ld"), pos, _steps);
   setStepperSteps(index, _steps, ignoreEndstop);
 }
 
@@ -1802,7 +1802,7 @@ bool setServoPos(int8_t servoNum, uint8_t degree) {
   else if(servoNum >= 10 && servoNum <= 26) {
     #if defined(MULTISERVO)
     uint8_t servo = servoMapping[servoNum-10];
-    //__debug(PSTR("Servo mapping: %d -> %d (pulse len: %d ms: %d)"), servoNum-10, servo, pulseLen, ms);
+    //__debugS(PSTR("Servo mapping: %d -> %d (pulse len: %d ms: %d)"), servoNum-10, servo, pulseLen, ms);
     if(servo != -1)
       servoPwm.writeMicroseconds(servo, pulseLen);
     return true;
@@ -1843,7 +1843,7 @@ void getStoredData() {
   steppers[REVOLVER].setStepPosition(dataStore.stepperPos[REVOLVER]);
   steppers[FEEDER].setStepPosition(dataStore.stepperPos[FEEDER]);
   toolSelected = dataStore.tool;
-  //__debug(PSTR("Recovered tool: %d"), toolSelected);
+  //__debugS(PSTR("Recovered tool: %d"), toolSelected);
 }
 
 void setSignalPort(uint8_t port, bool state) {
@@ -1860,67 +1860,41 @@ void setSignalPort(uint8_t port, bool state) {
 
 void signalSelectorReady() {
   setSignalPort(SELECTOR_SIGNAL, false);
-  //__debug(PSTR("Signalling Selector ready"));
+  //__debugS(PSTR("Signalling Selector ready"));
 }
 
 void signalSelectorBusy() {
   setSignalPort(SELECTOR_SIGNAL, true);
-  //__debug(PSTR("Signalling Selector busy"));
+  //__debugS(PSTR("Signalling Selector busy"));
 }
 
 void signalLoadFilament() {
   setSignalPort(FEEDER_SIGNAL, true);
-  //__debug(PSTR("Signalling load filament"));
+  //__debugS(PSTR("Signalling load filament"));
 }
 
 void signalUnloadFilament() {
   setSignalPort(FEEDER_SIGNAL, false);
-  //__debug(PSTR("Signalling unload filament"));
-}
-
-void listDir(File root, int8_t numTabs, int8_t serial) {
-  char tmp[80];
-  while (true) {
-    File entry =  root.openNextFile();
-    if (!entry)
-      break;
-
-    for (int8_t i = 1; i < numTabs; i++) {
-      printResponseP(PSTR("\t"), serial);
-    }
-    printResponse(entry.name(), serial);
-    if (entry.isDirectory()) {
-      printResponseP(PSTR("/\r\n"), serial);
-      //listDir(entry, numTabs + 1, serial);
-    }
-    else {
-#if defined(__ESP32__)
-      sprintf_P(tmp, PSTR("\t\t%u\r\n"), entry.size());
-#else
-      sprintf_P(tmp, PSTR("\t\t%lu\r\n"), entry.size());
-#endif
-      printResponse(tmp, serial);
-    }
-    entry.close();
-  }
+  //__debugS(PSTR("Signalling unload filament"));
 }
 
 bool getFiles(const char* rootFolder PROGMEM, const char* pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char* files) {
   char fname[40];
-  char tmp[40];
+  char tmp[25];
   uint8_t cnt = 0;
-  FsFile file;
-  FsFile root;
+  SdFile file;
+  SdFile root;
   SdFat SD;
 
   if (initSD(false)) {
     root.open(rootFolder, O_READ);
     while (file.openNext(&root, O_READ)) {
       if (!file.isHidden()) {
-        file.getName(fname, sizeof(fname));
-        //__debug(PSTR("File: %s"), fname);
+        file.getName(fname, ArraySize(fname));
+        //__debugS(PSTR("File: %s"), fname);
         String lfn = String(fname);
         if(pattern != nullptr && !lfn.endsWith(pattern)) {
+          file.close();
           continue;
         }
         if(pattern != nullptr && cutExtension)
@@ -1928,8 +1902,14 @@ bool getFiles(const char* rootFolder PROGMEM, const char* pattern PROGMEM, uint8
         sprintf_P(tmp, PSTR("%-20s\n"), lfn.c_str());
         strcat(files, tmp);
       }
+      /*
+      else {
+        file.getName(fname, ArraySize(fname));
+        __debugS(PSTR("Hidden file: %s"), fname);
+      }
+      */
       file.close();
-      if(cnt >= maxFiles)
+      if(++cnt >= maxFiles)
         break;
     }
     root.close();
@@ -1953,7 +1933,7 @@ void removeFirmwareBin() {
   Reads the next line from the test script and filters unwanted
   characters.
 */
-uint8_t getTestLine(FsFile* file, char* line, int maxLen) {
+uint8_t getTestLine(SdFile* file, char* line, int maxLen) {
   uint8_t n = 0;
   bool isQuote = false;
   while(1) {
@@ -1977,7 +1957,7 @@ uint8_t getTestLine(FsFile* file, char* line, int maxLen) {
   return n;
 }
 
-extern SdFs SD;
+extern SdFat SD;
 
 void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, long toolChanges, unsigned long secs, unsigned long endstop2Hit[], unsigned long endstop2Miss[]) {
   char report[700];
@@ -2006,7 +1986,7 @@ void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, 
   // format report to be sent to terminal
   uint8_t cnt = splitStringLines(lines, ArraySize(lines), report);
   for(uint8_t n=0; n < cnt; n++) {
-    //__debug(PSTR("LN: %s"), lines[n]);
+    //__debugS(PSTR("LN: %s"), lines[n]);
     String s = String(lines[n]);
     s.replace("{TIME}", runtm);
     s.replace("{GCO}",  gco);
@@ -2031,7 +2011,7 @@ void testRun(const char* fname) {
   char line[80];
   char msg[80];
   char filename[80];
-  FsFile file;
+  SdFile file;
   String gCode;
   unsigned long loopCnt = 1L, cmdCnt = 1L;
   uint8_t tool = 0, lastTool = 0;
@@ -2099,7 +2079,7 @@ void testRun(const char* fname) {
             gCode.replace("{RNDT}", String(tool));
           }
           parseGcode(gCode, -1);
-          //__debug(PSTR("GCode: %s"), gCode.c_str());
+          //__debugS(PSTR("GCode: %s"), gCode.c_str());
           if(*line=='T') {
             tool = strtol(line+1, nullptr, 10);
             toolChanges++;
@@ -2121,7 +2101,7 @@ void testRun(const char* fname) {
         else {
           // restart from begin and increment loop count
           file.rewind();
-          //__debug(PSTR("Rewinding"));
+          //__debugS(PSTR("Rewinding"));
           loopCnt++;
         }
         switch(mode) {
@@ -2158,7 +2138,7 @@ void testRun(const char* fname) {
 }
 
 void listTextFile(const char* filename PROGMEM, int8_t serial) {
-  FsFile file;
+  SdFile file;
   char line[80];
   char fname[80];
   char delimiter[] = { "\n" };
@@ -2193,7 +2173,7 @@ void dumpString(String &s) {
  * @returns the contents of that file
  */
 const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]) {
-  FsFile file;
+  SdFile file;
   static char menu[700];
   char fname[80];
   char ordinal[10];
@@ -2221,7 +2201,7 @@ const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]) {
             break;
         } while (isdigit(c));
         ordinals[ln] = atoi(ordinal);
-        //__debug(PSTR("Ordinal found: %s = %d"), ordinal, ordinals[n]);
+        //__debugS(PSTR("Ordinal found: %s = %d"), ordinal, ordinals[n]);
         continue;
       }
       menu[n] = c;
@@ -2236,19 +2216,19 @@ const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]) {
     file.close();
 
     if(n == 0) {
-      __debug(PSTR("Failed to load menu '%s'"), filename);
+      __debugS(PSTR("Failed to load menu '%s'"), filename);
     }
-    //__debug(PSTR("Menu: '%s' %d lines  %d bytes\n%s"), filename, ln, n, menu);
+    //__debugS(PSTR("Menu: '%s' %d lines  %d bytes\n%s"), filename, ln, n, menu);
     return menu;
   }
   else {
-    __debug(P_FileNotFound, filename);
+    __debugS(P_FileNotFound, filename);
   }
   return nullptr;
 }
 
 const char* loadOptions(const char* filename PROGMEM) {
-  FsFile file;
+  SdFile file;
   static char opts[300];
   char fname[80];
 
@@ -2265,19 +2245,19 @@ const char* loadOptions(const char* filename PROGMEM) {
     }
     file.close();
     if(n == 0) {
-      __debug(PSTR("Failed to load options '%s'"), filename);
+      __debugS(PSTR("Failed to load options '%s'"), filename);
     }
-    //__debug(PSTR("Opts: '%s' %d bytes"), filename, n);
+    //__debugS(PSTR("Opts: '%s' %d bytes"), filename, n);
     return opts;
   }
   else {
-    __debug(P_FileNotFound, filename);
+    __debugS(P_FileNotFound, filename);
   }
   return nullptr;
 }
 
 bool loadReport(const char* filename PROGMEM, char* buffer, uint16_t maxLen) {
-  FsFile file;
+  SdFile file;
   char fname[80];
 
   memset(buffer, 0, maxLen);
@@ -2286,12 +2266,12 @@ bool loadReport(const char* filename PROGMEM, char* buffer, uint16_t maxLen) {
     int n = file.read(buffer, maxLen-1);
     file.close();
     if(n == 0) {
-      __debug(PSTR("Failed to load report '%s'"), filename);
+      __debugS(PSTR("Failed to load report '%s'"), filename);
     }
     return true;
   }
   else {
-    __debug(P_FileNotFound, filename);
+    __debugS(P_FileNotFound, filename);
   }
   return false;
 }
@@ -2359,10 +2339,10 @@ unsigned long translateSpeed(uint16_t speed, uint8_t axis) {
   char ttl[30], dtl[30];
   dtostrf(timeTot, 12, 6, ttl);
   dtostrf(delayTot, 12, 6, dtl);
-  __debug(PSTR("FREQ: %lu  SPEED: %4d  StepsMM: %4d  TICKS: %12lu  TOTAL: %s  PULSES: %6lu   DLY: %s"), freq, speed, stepsPerMM, ticks, ttl, pulses, dtl);
+  __debugS(PSTR("FREQ: %lu  SPEED: %4d  StepsMM: %4d  TICKS: %12lu  TOTAL: %s  PULSES: %6lu   DLY: %s"), freq, speed, stepsPerMM, ticks, ttl, pulses, dtl);
   */
   if(timeTot > 1) {
-    __debug(PSTR("Too fast! Slow down speed in mm/s."));
+    __debugS(PSTR("Too fast! Slow down speed in mm/s."));
   }
   return ticks;
 }
@@ -2397,7 +2377,7 @@ void setServoLid(uint8_t pos) {
   setServoPos(SERVO_LID, p);
   #else
   uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected]-SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
-  //__debug(PSTR("Tool%d = %d"), toolSelected, p);
+  //__debugS(PSTR("Tool%d = %d"), toolSelected, p);
   setServoPos(toolSelected+10, p);
   #endif
   lidOpen = pos == SERVO_OPEN;
@@ -2419,7 +2399,7 @@ uint8_t scanI2CDevices(uint8_t *devices) {
     if (stat == SUCCESS) {
       *(devices+cnt) = address;
       cnt++;
-      //__debug(PSTR("I2C device found at address 0x%2x"), address);
+      //__debugS(PSTR("I2C device found at address 0x%2x"), address);
     }
     delay(3);
   }
@@ -2429,7 +2409,7 @@ uint8_t scanI2CDevices(uint8_t *devices) {
 extern Stream* debugSerial;
 extern Stream* logSerial;
 
-void __debug(const char* fmt, ...) {
+void __debugS(const char* fmt, ...) {
   if(debugSerial == nullptr)
     return;
 #ifdef DEBUG

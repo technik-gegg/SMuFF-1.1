@@ -26,7 +26,7 @@
 #include "ConfigNamesExt.h"
 
 DataStore dataStore;
-extern SdFs SD;
+extern SdFat SD;
 extern uint8_t  swapTools[];
 
 void saveStore() {
@@ -45,31 +45,31 @@ void saveStore() {
     swps[tmp] = swapTools[i];
   }
 
-  //__debug(PSTR("Updating dataStore"));
+  //__debugS(PSTR("Updating dataStore"));
   if(initSD(false)) {
-    FsFile cfg;
+    SdFile cfg;
     if(cfg.open(DATASTORE_FILE, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
         serializeJsonPretty(jsonDoc, cfg);
     }
     cfg.close();
-    //__debug(PSTR("DataStore updated"));
+    //__debugS(PSTR("DataStore updated"));
   }
 }
 
 void recoverStore() {
   StaticJsonDocument<512> jsonDoc;
   if (initSD(false)) {
-    FsFile cfg;
+    SdFile cfg;
     if (!cfg.open(DATASTORE_FILE)){
-      __debug(PSTR("Data store file '%s' not found!\n"), DATASTORE_FILE);
+      __debugS(PSTR("Data store file '%s' not found!\n"), DATASTORE_FILE);
     }
     else {
       auto error = deserializeJson(jsonDoc, cfg);
       if (error) {
-        __debug(PSTR("Data store file possibly corrupted or too large!\n"));
+        __debugS(PSTR("Data store file possibly corrupted or too large!\n"));
       }
       else {
-        //__debug(PSTR("Data store recovered\n"));
+        //__debugS(PSTR("Data store recovered\n"));
         dataStore.stepperPos[SELECTOR]  = jsonDoc[positions][selector];
         dataStore.stepperPos[REVOLVER]  = jsonDoc[positions][revolver];
         dataStore.stepperPos[FEEDER]    = jsonDoc[positions][feeder];
@@ -93,9 +93,9 @@ const char* readTune(const char* filename) {
 
   sprintf_P(fname, PSTR("sounds/"), filename);
   if (initSD(false)) {
-    FsFile tune;
+    SdFile tune;
     if (!tune.open(fname)) {
-      __debug(PSTR("Tune file '%s' not found!\n"), fname);
+      __debugS(PSTR("Tune file '%s' not found!\n"), fname);
     }
     else {
       tune.read(data, ArraySize(data)-1);

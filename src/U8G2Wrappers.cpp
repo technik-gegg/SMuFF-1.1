@@ -223,7 +223,7 @@ standard U8G2 library will do its work as expected.
         fw = w;
         fh = u8g2_GetAscent(u8g2) - u8g2_GetDescent(u8g2);
 
-        //__debug(PSTR("X: %d  Y: %d  W: %d  H:%d  %s"), fx, fy, fw, fh, s);
+        //__debugS(PSTR("X: %d  Y: %d  W: %d  H:%d  %s"), fx, fy, fw, fh, s);
         /* draw the box, if inverted */
         u8g2_SetDrawColor(u8g2, 1);
         if (is_invert)
@@ -351,7 +351,7 @@ standard U8G2 library will do its work as expected.
         uint8_t title_lines = u8x8_GetStringLineCnt(title);
         uint8_t display_lines;
 
-        //__debug(PSTR("__wrap_u8g2_UserInterfaceSelectionList"));
+        //__debugS(PSTR("__wrap_u8g2_UserInterfaceSelectionList"));
 
         if (start_pos > 0) /* issue 112 */
             start_pos--;   /* issue 112 */

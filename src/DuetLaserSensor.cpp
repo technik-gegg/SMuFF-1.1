@@ -19,7 +19,7 @@
 
 #include "DuetLaserSensor.h"
 
-extern void __debug(const char* fmt, ...);
+extern void __debugS(const char* fmt, ...);
 
 /* ==============================================================================================================================
     Duet3D laser Sensor Protocol (according to the Duet3D Wiki)

@@ -22,7 +22,7 @@
 #include <Arduino.h>
 #include "Config.h"
 
-extern void __debug(const char* fmt, ...);
+extern void __debugS(const char* fmt, ...);
 
 class ZStepper {
 public:

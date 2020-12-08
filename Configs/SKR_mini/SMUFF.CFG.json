@@ -33,7 +33,7 @@
       "StepsMm":        80,
       "AccelSpeed":     10,
       "AccelDist":      21,
-	   "MaxSpeed":       175,
+	   "MaxSpeed":       100,
 	   "InvDir":         false,
 	   "EStopTrg":       1,
       "StepDly":        2,
