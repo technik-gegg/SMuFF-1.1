@@ -30,7 +30,7 @@
    "Selector": {
       "Offset":         0.5,
       "Spacing":        21.0,
-      "StepsMm":        80,
+      "StepsMM":        80,
       "AccelSpeed":     10,
       "AccelDist":      21,
 	   "MaxSpeed":       100,
@@ -58,7 +58,7 @@
    },
    "Feeder": {
 	   "ExtCtrl":        true,
-      "StepsMm":        410,
+      "StepsMM":        410,
 	   "AccelSpeed":     5,
       "AccelDist":      5,
 	   "MaxSpeed":       55,

@@ -1,38 +1,38 @@
 M205 P"..." Sn [ X | Y | Z ]
 Parameter Name In P 	Option:
 -------------------------------
-ToolCount           	S n
-ToolSpacing         	S n.n
-BowdenLength        	S n.n
-InsertLength        	S n.n
-ReinforceLength     	S n.n
-SelectorDist        	S n.n
-HomeAfterFeed       	S 0|1
-ResetBeforeFeed     	S 0|1
-EmulatePrusa        	S 0|1
-UseServo            	S 0|1
-ServoOffPos         	S 0..180
-ServoOnPos          	S 0..180
-WipeSequence        	S "..."
-StepsPerMillimeter  	S n      X | Z
-StepsPerRevolution  	S n
-MenuAutoClose       	S n
-PowerSaveTimeout    	S n
-SendActionCmds      	S 0|1
-BacklightColor      	S n
-HasPanelDue         	S 0|1
-EncoderTicks        	S 0|1
-SendPeriodicalStats 	S 0|1
-SharedStepper       	S 0|1
+BackColor           	S n
+BowdenLen           	S n.n
+CSDown              	S n      X | Y | Z
+CSMax               	S n      X | Y | Z
+CSMin               	S n      X | Y | Z
+DrvAddr             	S n      X | Y | Z
 DuetLaser           	S 0|1
-InvertDir           	S 0|1    X | Y | Z
-EndstopTrigger      	S 0|1    X | Y | Z
-RSense              	S n.n    X | Y | Z
+EmulPrusa           	S 0|1
+EncTicks            	S 0|1
+EStopTrg            	S 0|1    X | Y | Z
+HasPanelDue         	S 0|1
+HomeAfterFd         	S 0|1
+InvDir              	S 0|1    X | Y | Z
+InsLen              	S n.n
+MaxStall            	S n      X | Y | Z
+MenuClose           	S n
 Mode                	S 0|1|2  X | Y | Z
-CoolStepMin         	S n      X | Y | Z
-CoolStepMax         	S n      X | Y | Z
-CoolStepDown        	S n      X | Y | Z
-DriverAddress       	S n      X | Y | Z
-TOff                	S n      X | Y | Z
-MaxStallCount       	S n      X | Y | Z
+PwrSaveTime         	S n
+ReinforceLen        	S n.n
+ResetBeforeFd       	S 0|1
+RSense              	S n.n    X | Y | Z
+SelectorDist        	S n.n
+SendAction          	S 0|1
+SendStats           	S 0|1
+ServoOpen           	S 0..180
+ServoClose          	S 0..180
+SharedStepper       	S 0|1
+StepsMM             	S n      X | Z
+StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z
+Spacing             	S n.n
+Tools               	S n
+TOff                	S n      X | Y | Z
+UseServo            	S 0|1
+WipeSeq             	S "..."
