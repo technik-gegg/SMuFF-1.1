@@ -76,3 +76,6 @@ extern char* stepsPerRevolution;
 extern char* tool;
 extern char* positions;
 extern char* swaps;
+extern char* useCutter;
+extern char* cutterOpen;
+extern char* cutterClose;

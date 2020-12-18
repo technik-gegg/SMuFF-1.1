@@ -26,6 +26,9 @@
    "RBtnDown":          "M18",
    "RBtnHold":          "",
    "SpdsInMms":         true,
+   "UseCutter":         false,
+   "CutOpen":           90,
+   "CutClose":          50,
 
    "Selector": {
       "Offset":         0.5,

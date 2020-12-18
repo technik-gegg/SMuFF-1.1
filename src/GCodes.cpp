@@ -2001,6 +2001,17 @@ bool G12(const char* msg, String buf, int8_t serial) {
   if((param = getParam(p, R_Param)) != -1) {
     repeat = param; // defines the number of repeats
   }
+  if(hasParam(p, C_Param) && smuffConfig.useCutter) {
+    uint8_t p1 = hasParam(p, I_Param) ? pos1 : (uint8_t)smuffConfig.cutterClose;
+    uint8_t p2 = hasParam(p, J_Param) ? pos2 : (uint8_t)smuffConfig.cutterOpen;
+    //__debugS(PSTR("Cutter activated: Close @ %d  Open @ %d"), p1, p2);
+    setServoPos(SERVO_CUTTER, p1);
+    delay(wait);
+    setServoPos(SERVO_CUTTER, p2);
+    delay(100);
+    return true;
+  }
+
   unsigned n = 1;
   for(n=0; n < repeat; n++) {
     setServoPos(SERVO_WIPER, pos1);

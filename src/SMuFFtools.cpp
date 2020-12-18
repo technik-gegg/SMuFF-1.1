@@ -940,6 +940,12 @@ bool loadFilament(bool showMessage) {
       switchFeederStepper(INTERNAL);
     }
   }
+
+  if(smuffConfig.useCutter) {
+    // release the cutter just in case
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+  }
+
   parserBusy = true;
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
     // move filament until it hits the feeder endstop
@@ -996,6 +1002,11 @@ bool loadFilamentPMMU2(bool showMessage) {
   }
   if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
     switchFeederStepper(INTERNAL);
+  }
+
+  if(smuffConfig.useCutter) {
+    // release the cutter just in case
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
 
   parserBusy = true;
@@ -1111,6 +1122,15 @@ bool unloadFilament() {
 
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
 
+  // use the filament cutter?
+  if(smuffConfig.useCutter) {
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
+    delay(500);
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+    delay(200);
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
+  }
+
   if(smuffConfig.unloadRetract != 0) {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadRetract);
     runAndWait(FEEDER);
@@ -1150,6 +1170,11 @@ bool unloadFilament() {
   */
 
   unloadFromSelector();
+
+  if(smuffConfig.useCutter) {
+    // release the cutter
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+  }
 
   feederJammed = false;
   steppers[FEEDER].setIgnoreAbort(false);
@@ -1761,20 +1786,26 @@ void playSequenceBackgnd() {
 }
 
 void setServoMinPwm(int8_t servoNum, uint16_t pwm) {
-  if(servoNum == 0) {
+  if(servoNum == SERVO_WIPER) {
     servo.setPulseWidthMin(pwm);
   }
-  else if(servoNum == 1) {
+  else if(servoNum == SERVO_LID) {
     servoLid.setPulseWidthMin(pwm);
+  }
+  else if(servoNum == SERVO_CUTTER) {
+    servoCutter.setPulseWidthMin(pwm);
   }
 }
 
 void setServoMaxPwm(int8_t servoNum, uint16_t pwm) {
-  if(servoNum == 0) {
+  if(servoNum == SERVO_WIPER) {
     servo.setPulseWidthMax(pwm);
   }
-  else if(servoNum == 1) {
+  else if(servoNum == SERVO_LID) {
     servoLid.setPulseWidthMax(pwm);
+  }
+  else if(servoNum == SERVO_CUTTER) {
+    servoCutter.setPulseWidthMax(pwm);
   }
 }
 
@@ -1783,7 +1814,7 @@ bool setServoPos(int8_t servoNum, uint8_t degree) {
   uint16_t pulseLen = map(degree, 0, 180, smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
   #endif
 
-  if(servoNum == 0) {
+  if(servoNum == SERVO_WIPER) {
     #if defined(MULTISERVO)
     if(servoMapping[16] != -1) {
       servoPwm.writeMicroseconds(servoMapping[16], pulseLen);
@@ -1794,9 +1825,20 @@ bool setServoPos(int8_t servoNum, uint8_t degree) {
     #endif
     return true;
   }
-  else if(servoNum == 1) {
+  else if(servoNum == SERVO_LID) {
     servoLid.write(degree);
     delay(250);
+    return true;
+  }
+  else if(servoNum == SERVO_CUTTER) {
+    #if defined(MULTISERVO)
+    if(servoMapping[17] != -1) {
+      servoPwm.writeMicroseconds(servoMapping[17], pulseLen);
+    }
+    #else
+    servoCutter.write(degree);
+    delay(250);
+    #endif
     return true;
   }
   else if(servoNum >= 10 && servoNum <= 26) {
@@ -1812,7 +1854,7 @@ bool setServoPos(int8_t servoNum, uint8_t degree) {
 }
 
 bool setServoMS(int8_t servoNum, uint16_t microseconds) {
-  if(servoNum == 0) {
+  if(servoNum == SERVO_WIPER) {
     #if defined(MULTISERVO)
     if(servoMapping[16] != -1) {
       servoPwm.writeMicroseconds(servoMapping[16], microseconds);
@@ -1823,13 +1865,24 @@ bool setServoMS(int8_t servoNum, uint16_t microseconds) {
     #endif
     return true;
   }
-  else if(servoNum == 1) {
+  else if(servoNum == SERVO_LID) {
     #if defined(MULTISERVO)
     uint8_t servo = servoMapping[servoNum-10];
     if(servo != -1)
       servoPwm.writeMicroseconds(servo, microseconds);
     #else
     servoLid.writeMicroseconds(microseconds);
+    delay(250);
+    #endif
+    return true;
+  }
+  else if(servoNum == SERVO_CUTTER) {
+    #if defined(MULTISERVO)
+    if(servoMapping[17] != -1) {
+      servoPwm.writeMicroseconds(servoMapping[17], microseconds);
+    }
+    #else
+    servoCutter.writeMicroseconds(microseconds);
     delay(250);
     #endif
     return true;

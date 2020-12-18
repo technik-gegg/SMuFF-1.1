@@ -24,7 +24,6 @@
 
 extern uint8_t  swapTools[];
 extern ZStepper steppers[];
-extern ZServo   servo, servoLid;
 extern int8_t   toolSelections[];
 bool            forceStopMenu = false;
 
@@ -179,7 +178,10 @@ void setupOptionsMenu(char* menu) {
     smuffConfig.hasPanelDue==0 ? P_None : translatePanelDuePort(smuffConfig.hasPanelDue),
     smuffConfig.speedsInMMS ? P_Yes : P_No,
     smuffConfig.servoMinPwm,
-    smuffConfig.servoMaxPwm
+    smuffConfig.servoMaxPwm,
+    smuffConfig.useCutter ? P_Yes : P_No,
+    smuffConfig.cutterOpen,
+    smuffConfig.cutterClose
   );
 }
 
@@ -1541,6 +1543,26 @@ void showOptionsMenu(char* menuTitle) {
               smuffConfig.servoMaxPwm = iVal;
               servo.setPulseWidthMax(iVal);
               servoLid.setPulseWidthMax(iVal);
+            }
+            break;
+
+        case 11: // Use Cutter
+            bVal = smuffConfig.useCutter;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.useCutter = bVal;
+            break;
+
+        case 12: // Cutter Open
+            iVal = smuffConfig.cutterOpen;
+            if(showInputDialog(title, P_OpenPos, &iVal, 0, 180, nullptr, 1)) {
+              smuffConfig.cutterOpen = iVal;
+            }
+            break;
+
+        case 13: // Cutter Close
+            iVal = smuffConfig.cutterClose;
+            if(showInputDialog(title, P_ClosedPos, &iVal, 0, 180, nullptr, 1)) {
+              smuffConfig.cutterClose = iVal;
             }
             break;
       }

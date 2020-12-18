@@ -103,3 +103,6 @@ const char* rButtonHold PROGMEM        = "RBtnHold";
 const char* speedsInMMS PROGMEM        = "SpdsInMms";
 const char* ms3Config PROGMEM          = "MS3";
 const char* motDelay PROGMEM           = "MDly";
+const char* useCutter PROGMEM          = "UseCutter";
+const char* cutterOpen PROGMEM         = "CutOpen";
+const char* cutterClose PROGMEM        = "CutClose";

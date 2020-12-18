@@ -5,5 +5,6 @@ In 		the minimum position in degrees of the servo while wiping (default: n = 20)
 Jn 		the maximum position in degrees of the servo while wiping (default: n = 45)
 Pn 		the resting position in degrees of the servo (default: n = 100)
 Rn 		the number of repeats between min. and max. position (default: n = 0)
+C       executes the Filament-Cutter if configured. I and J params define the 'close' and 'open' position if applied.
 
 G12 without any parameters will use the WipeSequence defined in SMUFF.CFG

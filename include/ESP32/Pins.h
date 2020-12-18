@@ -56,6 +56,7 @@
 
 #define SERVO1_PIN          4       // IO4
 #define SERVO2_PIN          15      // IO15
+#define SERVO3_PIN          -1      // no cutter pin available
 
 #define FAN_CHANNEL         1
 #define FAN_FREQ            5000

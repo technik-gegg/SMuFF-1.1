@@ -133,6 +133,9 @@ typedef struct {
   char              rButtonHold[20]         = { 0 };
   bool              speedsInMMS             = true;
   bool              runoutDetection         = false;
+  bool              useCutter               = false;
+  uint16_t          cutterOpen              = 90;
+  uint16_t          cutterClose             = 50;
 
   // ALL STEPPERS
   uint16_t  stepsPerMM[NUM_STEPPERS]        = { 80, 0, 410 };
@@ -246,6 +249,7 @@ extern ZTimer         stepperTimer;
 extern ZTimer         gpTimer;
 extern ZServo         servo;
 extern ZServo         servoLid;
+extern ZServo         servoCutter;
 extern ZFan           fan;
 #if defined(USE_LEONERD_DISPLAY)
 extern LeoNerdEncoder encoder;

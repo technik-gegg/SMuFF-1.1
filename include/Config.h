@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.16"
+#define VERSION_STRING    "V2.17"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-12-08"
+#define VERSION_DATE      "2020-12-18"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define MATERIALS_FILE    "MATERIALS.CFG"
 #define TMC_CONFIG_FILE   "TMCDRVR.CFG"
@@ -55,6 +55,7 @@
 
 #define SERVO_WIPER         0
 #define SERVO_LID           1
+#define SERVO_CUTTER        2
 
 #define SERVO_CLOSED_OFS    35           // for Multiservo
 
@@ -69,6 +70,10 @@
 #define REMOTE_END          6
 #define REMOTE_PGUP         7
 #define REMOTE_PGDN         8
+#define REMOTE_PF1          9
+#define REMOTE_PF2          10
+#define REMOTE_PF3          11
+#define REMOTE_PF4          12
 
 #if defined(__STM32F1__)
 //#define STEPPER_PSC         9           // 8MHz on STM32 (72MHz MCU)

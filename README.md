@@ -41,6 +41,14 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.17** - minor modifications
+
++ added parsing for "**\n**" (two bytes) in the received data, which eventually gets threated as line-feed ('**_\n_**'). This is needed for Duet3D / RRF firmware which doesn't send an LF at the end of a message when sent using **M118** GCode.
++ added Filament-Cutter handling (see [Filament-Cutter](https://www.thingiverse.com/thing:4650129)). Be aware that you'll need to attach the servo to **SERVO3_PIN**, which is not available on all controller boards. For those board which support only two servos, you have to pick either Wiper **or** Cutter and assign it accordingly in the *Pins.h* file. Usage of the cutter and open/close positions are defined through the **Options** menu (SMUFF.CFG).
+Cutting filament can also be activated through the **G12 C** GCode command. Because of this change, the files **options.mnu** and **g12.txt** have changed and must be copied to the SD-Card, as well as the SMUFF.CFG.
++ added function keys (PF1-PF4) to be used in VT100 terminal emulation which will execute the commands assigned in *LBtnDown*, *LBtnHold*, *RBtnDown* and *RBtnHold* accordingly.
+**Please notice:** The PF1-PF4 keys in the terminal emulator are not assigned to F1-F4 but are located on the upper row of the NUM-Pad ('Num-Lock', '/', '*', '-' keys) in **TeraTerm**.
+
 **2.16** - framework update
 
 + updated to STM32 framework V10.0.1 and though needed some code changes in various files (mostly related to SdFs library modifications). Please make sure you have updated your platformio STM32 framework to that version.

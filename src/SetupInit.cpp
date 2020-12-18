@@ -213,11 +213,11 @@ void setupServos() {
     servo.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
-      servo.attach(SERVO1_PIN, false, 0);
+      servo.attach(SERVO1_PIN, false, SERVO_WIPER);
     #elif defined(__STM32F1__)
-      servo.attach(SERVO1_PIN, true, 0);
+      servo.attach(SERVO1_PIN, true, SERVO_WIPER);
     #else
-      servo.attach(SERVO1_PIN, true, 0);
+      servo.attach(SERVO1_PIN, true, SERVO_WIPER);
     #endif
     uint8_t resetPos = 90, param;
     // try to find out the default reset position of the wiper servo from
@@ -235,13 +235,27 @@ void setupServos() {
     servoLid.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     #if defined(__ESP32__)
       // we'll be using the internal ledcWrite for servo control on ESP32
-      servoLid.attach(SERVO2_PIN, false, 1);
+      servoLid.attach(SERVO2_PIN, false, SERVO_LID);
     #elif defined(__STM32F1__)
-      servoLid.attach(SERVO2_PIN, true, 1);
+      servoLid.attach(SERVO2_PIN, true, SERVO_LID);
     #else
-      servoLid.attach(SERVO2_PIN, true, 1);
+      servoLid.attach(SERVO2_PIN, true, SERVO_LID);
     #endif
     setServoLid(SERVO_OPEN);
+  }
+  // setup the Filament-Cutter servo if defined
+  if(SERVO3_PIN != -1) {
+    servoCutter.setMaxCycles(0);
+    servoCutter.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
+    #if defined(__ESP32__)
+      // we'll be using the internal ledcWrite for servo control on ESP32
+      servoCutter.attach(SERVO3_PIN, false, SERVO_CUTTER);
+    #elif defined(__STM32F1__)
+      servoCutter.attach(SERVO3_PIN, true, SERVO_CUTTER);
+    #else
+      servoCutter.attach(SERVO3_PIN, true, SERVO_CUTTER);
+    #endif
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
   #else
   servoPwm.begin();

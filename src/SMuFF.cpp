@@ -96,6 +96,7 @@ ZTimer                  stepperTimer;
 ZTimer                  gpTimer;
 ZServo                  servo;
 ZServo                  servoLid;
+ZServo                  servoCutter;
 ZFan                    fan;
 DuetLaserSensor         duetLS;
 #if defined(USE_LEONERD_DISPLAY)
@@ -119,7 +120,7 @@ TMC2209Stepper* drivers[NUM_STEPPERS];
 
 #if defined(MULTISERVO)
 Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
-int8_t servoMapping[17]          = {   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, -1 }; // last one is used for the Wiper mapping
+int8_t servoMapping[18]          = {   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, -1, -1 }; // last two are used for the Wiper and Cutter mapping
 uint8_t servoPosClosed[16]       = {  90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90 };
 #else
 uint8_t servoPosClosed[MAX_TOOLS];
@@ -591,6 +592,37 @@ void loopEx() {
 #endif
 }
 
+void fncKey1() {
+  if(strlen(smuffConfig.lButtonDown)>0) {
+    parseGcode(String(smuffConfig.lButtonDown), -1);
+  }
+}
+
+void fncKey2() {
+  if(strlen(smuffConfig.lButtonHold)>0) {
+    parseGcode(String(smuffConfig.lButtonHold), -1);
+  }
+}
+
+void fncKey3() {
+  if(strlen(smuffConfig.rButtonDown)>0) {
+    parseGcode(String(smuffConfig.rButtonDown), -1);
+  }
+}
+
+void fncKey4() {
+  if(strlen(smuffConfig.rButtonHold)>0) {
+    parseGcode(String(smuffConfig.rButtonHold), -1);
+  }
+  else {
+    // open / close LID servo by default
+    if(lidOpen)
+      setServoLid(SERVO_CLOSED);
+    else
+      setServoLid(SERVO_OPEN);
+  }
+}
+
 void loop() {
   // Call periodical functions as the timeout has reached.
   // Add your specific code there, if you need to have something
@@ -656,8 +688,27 @@ void loop() {
   bool isHeld, isClicked;
 
   if(!showMenu) {
-    if(remoteKey == REMOTE_HOME)
-      remoteKey = REMOTE_NONE;
+    switch(remoteKey) {
+      case REMOTE_HOME:
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF1:
+        fncKey1();
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF2:
+        fncKey2();
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF3:
+        fncKey3();
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF4:
+        fncKey4();
+        remoteKey = REMOTE_NONE;
+        break;
+    }
 
     getInput(&turn, &button, &isHeld, &isClicked);
     if(isPwrSave && (isClicked || turn != 0)) {
@@ -675,33 +726,18 @@ void loop() {
     else if(button == LeftButton) {
       // applies to LeoNerd's display only
       if(isClicked) {
-        if(strlen(smuffConfig.lButtonDown)>0) {
-          parseGcode(String(smuffConfig.lButtonDown), -1);
-        }
+        fncKey1();
       }
       else if(isHeld) {
-        if(strlen(smuffConfig.lButtonHold)>0) {
-          parseGcode(String(smuffConfig.lButtonHold), -1);
-        }
+        fncKey2();
       }
     }
     else if(button == RightButton) {
       if(isClicked) {
-        if(strlen(smuffConfig.rButtonDown)>0) {
-          parseGcode(String(smuffConfig.rButtonDown), -1);
-        }
+        fncKey3();
       }
       else if(isHeld) {
-        if(strlen(smuffConfig.rButtonHold)>0) {
-          parseGcode(String(smuffConfig.rButtonHold), -1);
-        }
-        else {
-          // open / close LID servo by default
-          if(lidOpen)
-            setServoLid(SERVO_CLOSED);
-          else
-            setServoLid(SERVO_OPEN);
-        }
+        fncKey4();
       }
     }
     else if(turn != 0) {
@@ -794,6 +830,7 @@ void resetSerialBuffer(int8_t serial) {
 
 bool isQuote = false;
 bool isFuncKey = false;
+bool isCtlKey = false;
 
 void filterSerialInput(String& buffer, char in) {
   // function key sequence starts with 'ESC['
@@ -803,7 +840,7 @@ void filterSerialInput(String& buffer, char in) {
   }
   if(isFuncKey) {
     //__debugS(PSTR("%02x"), in);
-    if(in == '[')  // second escape char '[' - swallow that
+    if(in == '[' || in == 'O')  // second escape char '[' or 'O' - swallow that
       return;
     isFuncKey = false;
     switch(in) {
@@ -816,10 +853,27 @@ void filterSerialInput(String& buffer, char in) {
       case 0x34: remoteKey = REMOTE_END; return;      // End Key  (not used yet)
       case 0x35: remoteKey = REMOTE_PGUP; return;     // PageUp Key (not used yet)
       case 0x36: remoteKey = REMOTE_PGDN; return;     // PageDown Key (not used yet)
+      case 0x50: remoteKey = REMOTE_PF1; return;      // F1 Key = fncKey1()
+      case 0x51: remoteKey = REMOTE_PF2; return;      // F2 Key = fncKey2()
+      case 0x52: remoteKey = REMOTE_PF3; return;      // F3 Key = fncKey3()
+      case 0x53: remoteKey = REMOTE_PF4; return;      // F4 Key = fncKey4()
       default:  return;                               // ignore any other code not in the list
     }
   }
   isFuncKey = false;
+  // special function for Duet3D: if "\n" is transmitted (two characters)
+  // then threat that as a line-feed eventually. Otherwise if it's a "\\"
+  // store that as a single "\" in the buffer.
+  if(in == '\\') {
+    if(isCtlKey) {
+      isCtlKey = false;
+      buffer += in;
+    }
+    else {
+      isCtlKey = true;
+    }
+    return;
+  }
   if(in >= 'a' && in <='z') {
     if(!isQuote)
       in = in - 0x20;
@@ -901,11 +955,12 @@ void serialEvent() {
     // check for JSON data first
     if(isJsonData(in))
       continue;
-    if (in == '\n') {
+    if (in == '\n' || (isCtlKey && in =='n')) {
       //__debugS(PSTR("Received-0: %s"), serialBuffer0.c_str());
       parseGcode(serialBuffer0, 0);
       isQuote = false;
       actionOk = false;
+      isCtlKey = false;
     }
     else {
       filterSerialInput(serialBuffer0, in);
@@ -925,11 +980,12 @@ void serialEvent2() {
       if(CAN_USE_SERIAL1) Serial1.write(in);
     }
     else {
-      if (in == '\n') {
+      if (in == '\n' || (isCtlKey && in =='n')) {
         //__debugS(PSTR("Received-2: %s"), serialBuffer2.c_str());
         parseGcode(serialBuffer2, 2);
         isQuote = false;
         actionOk = false;
+        isCtlKey = false;
       }
       else {
         filterSerialInput(serialBuffer2, in);
@@ -949,11 +1005,12 @@ void serialEvent1() {
     // check for JSON data first
     if(isJsonData(in))
       continue;
-    if (in == '\n') {
+    if (in == '\n' || (isCtlKey && in =='n')) {
       //__debugS(PSTR("Received-1: %s"), serialBuffer1.c_str());
       parseGcode(serialBuffer1, 1);
       isQuote = false;
       actionOk = false;
+      isCtlKey = false;
     }
     else {
       filterSerialInput(serialBuffer1, in);
@@ -973,11 +1030,12 @@ void serialEvent3() {
       if(CAN_USE_SERIAL2) Serial2.write(in);
     }
     else {
-      if (in == '\n') {
+      if (in == '\n' || (isCtlKey && in =='n')) {
         //__debugS(PSTR("Received-3: %s"), serialBuffe3.c_str());
         parseGcode(serialBuffer3, 3);
         isQuote = false;
         actionOk = false;
+        isCtlKey = false;
       }
       else {
         filterSerialInput(serialBuffer3, in);

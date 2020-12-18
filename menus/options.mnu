@@ -8,3 +8,6 @@ PanelDue Port	%s|7
 Speeds in mm/s	%s|8
 Servo Min. PWM	%d|9
 Servo Max. PWM	%d|10
+Use Cutter	%s|11
+Cutter Open	%d|12
+Cutter close	%d|13

@@ -56,11 +56,12 @@
 
 #define BEEPER_PIN          PB5     // EXP1.10
 
-#define RELAY_PIN          PC14    // PROBE (Relay for stepper motor switching)
+#define RELAY_PIN           PC14    // PROBE (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PC12    // PT-DET
 #define SERVO2_PIN          PA1     // SERVO
+#define SERVO3_PIN          -1      // SERVO -- can use only one servo; pick either WIPER or CUTTER
 
 #define FAN_PIN             PA8     // FAN0
 #define HEATER0_PIN         PC8     // HE0

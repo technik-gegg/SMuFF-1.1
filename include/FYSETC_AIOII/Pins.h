@@ -51,6 +51,7 @@
 
 #define SERVO1_PIN          -1
 #define SERVO2_PIN          PB15     // FIL-DET
+#define SERVO3_PIN          -1       // no cutter pin available
 #define FAN_PIN             PC8      // FAN1
 #define HEATER0_PIN         PC7      // BED
 #define HEATBED_PIN         PC6      // END

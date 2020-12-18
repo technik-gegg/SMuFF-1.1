@@ -28,7 +28,7 @@
 SdFat SD;
 
 #if defined(__STM32F1__)
-const size_t capacity = 2200;
+const size_t capacity = 2300;
 const size_t scapacity = 1500;
 #elif defined(__ESP32__)
 const size_t capacity = 4500;     // since the ESP32 has more memory, we can do this
@@ -187,6 +187,10 @@ bool readConfig()
         speedIncrement = INC_MMS;
       }
       smuffConfig.motorOnDelay =                jsonDoc[motDelay];
+      smuffConfig.useCutter =                   jsonDoc[useCutter];
+      smuffConfig.cutterOpen =                  jsonDoc[cutterOpen];
+      smuffConfig.cutterClose =                 jsonDoc[cutterClose];
+
       /*
       SELECTOR
       */
@@ -495,6 +499,9 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[rButtonHold]          = smuffConfig.rButtonHold;
   jsonDoc[speedsInMMS]          = smuffConfig.speedsInMMS;
   jsonDoc[motDelay]             = smuffConfig.motorOnDelay;
+  jsonDoc[useCutter]            = smuffConfig.useCutter;
+  jsonDoc[cutterOpen]           = smuffConfig.cutterOpen;
+  jsonDoc[cutterClose]          = smuffConfig.cutterClose;
 
   JsonObject node = jsonObj.createNestedObject(selector);
   node[offset]                = smuffConfig.firstToolOffset;
