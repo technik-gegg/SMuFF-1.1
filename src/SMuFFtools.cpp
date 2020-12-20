@@ -79,9 +79,9 @@ void setupDisplay() {
   // If it's configured at 0x7a, you need to change the I2C_DISPLAY_ADDRESS in Config.h to 0x3d.
   #if I2C_DISPLAY_ADDRESS != 0x3C
   display.setI2CAddress(I2C_DISPLAY_ADDRESS);
+  __debugS(PSTR("I2C display address set to 0x%02X"), I2C_DISPLAY_ADDRESS);
   #endif
   #if defined(USE_LEONERD_DISPLAY)
-  //display.setBusClock(400000);
   display.begin();
   #else
   display.begin(/*Select=*/ ENCODER_BUTTON_PIN,  /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);

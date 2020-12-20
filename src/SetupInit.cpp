@@ -498,6 +498,7 @@ void setupSteppers() {
   //__debugS(PSTR("DONE initializing swaps"));
 }
 
+bool hwSerialInit = false;
 
 TMC2209Stepper* initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin) {
   uint8_t mode        = smuffConfig.stepperMode[axis];
@@ -517,7 +518,7 @@ TMC2209Stepper* initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin) {
     return nullptr;
   }
   #if defined(TMC_SERIAL) && defined(TMC_HW_SERIAL)
-  TMC2209Stepper* driver = new TMC2209Stepper(TMC_SERIAL, rsense, drvrAdr);
+  TMC2209Stepper* driver = new TMC2209Stepper(&TMC_SERIAL, rsense, drvrAdr);
   #else
   TMC2209Stepper* driver = new TMC2209Stepper(rx_pin, tx_pin, rsense, drvrAdr);
   #endif
@@ -525,7 +526,12 @@ TMC2209Stepper* initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin) {
 
   steppers[axis].setEnabled(true);
   #if defined(TMC_SERIAL) && defined(TMC_HW_SERIAL)
-  driver->beginSerial(TMC_HW_BAUDRATE);
+  // make sure init of the HW-Serial is done only once
+  if(!hwSerialInit) {
+    __debugS(PSTR("[initDriver] Initializing TMC HW-Serial with Baudrate %ld"), TMC_HW_BAUDRATE);
+    TMC_SERIAL.begin(TMC_HW_BAUDRATE);
+    hwSerialInit = true;
+  }
   #else
   driver->beginSerial(TMC_SW_BAUDRATE);
   #endif
@@ -540,6 +546,7 @@ TMC2209Stepper* initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin) {
   driver->microsteps(msteps);
   driver->irun(31);
   driver->pdn_disable(true);
+  __debugS(PSTR("[initDriver] Basic Init done for %c-Axis."), 'X'+axis);
 
   // setup StallGuard only if TMode is set to true
   // otherwise put it in SpreadCycle mode
@@ -596,6 +603,7 @@ void setupTMCDrivers() {
     drivers[FEEDER] = initDriver(FEEDER,   Z_SERIAL_TX_PIN, Z_SERIAL_TX_PIN);
     #endif
   #endif
+  //__debugS(PSTR("[setupTMCDrivers] initialized"));
 
   #if defined(STALL_X_PIN)
     if(STALL_X_PIN != -1)

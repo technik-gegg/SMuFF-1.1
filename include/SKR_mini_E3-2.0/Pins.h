@@ -109,8 +109,9 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define DEBUG_PIN           -1
 
 #elif defined(USE_TWI_DISPLAY)
-#define DSP_SCL             PB6     // EXP1.9
-#define DSP_SDA             PB7     // EXP1.3
+#define USE_SW_TWI          1       //  only SW I2C/TWI is available due to pins PB6/PB7 are not routed to EXP1
+#define DSP_SCL             PA15    // EXP1.9
+#define DSP_SDA             PB15    // EXP1.3
 
 #define DSP_CS_PIN          -1
 #define DSP_DC_PIN          -1
@@ -139,7 +140,7 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define DEBUG_OFF_PIN       -1      // not needed on TWI display
 
 #define TMC_HW_SERIAL       1
-#define TMC_SERIAL          &Serial4
+#define TMC_SERIAL          Serial4
 
 //#define TMC_SERIAL_RX_PIN   PC11    // UART - SERIAL4 RX
 //#define TMC_SERIAL_TX_PIN   PC10    // UART - SERIAL4 TX

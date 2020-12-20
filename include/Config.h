@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.17"
+#define VERSION_STRING    "V2.18"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-12-18"
+#define VERSION_DATE      "2020-12-20"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define MATERIALS_FILE    "MATERIALS.CFG"
 #define TMC_CONFIG_FILE   "TMCDRVR.CFG"

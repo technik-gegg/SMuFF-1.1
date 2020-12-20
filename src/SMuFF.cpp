@@ -28,7 +28,11 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
 
 #if defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
   #if defined(USE_TWI_DISPLAY)
-  U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+    #if defined(USE_SW_TWI)
+      U8G2_SSD1306_128X64_NONAME_F_SW_I2C display(U8G2_R0, /* clock */ DSP_SCL, /* data */ DSP_SDA, /* reset=*/ U8X8_PIN_NONE);
+    #else
+      U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+    #endif
   #elif defined(USE_LEONERD_DISPLAY)
   U8G2_SH1106_128X64_NONAME_F_HW_I2C display(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
   #elif defined(USE_ANET_DISPLAY)
@@ -327,10 +331,11 @@ void setup() {
   serialBuffer2.reserve(40);
   serialBuffer3.reserve(40);
 
-  #if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI)
+  #if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3)
   // Disable JTAG for these boards!
   // On the FYSETC AIOII it's because of the display DSP_DC_PIN/DOG_A0 signal (PA15 / JTDI).
   // On the SKR MINI E3-DIP it's because of the buzzer signal (PA15 / JTDI).
+  // On the SKR MINI E3 V2.0 it's because of the SCL signal (PA15 / JTDI).
   disableDebugPorts();
   #if defined(__BRD_FYSETC_AIOII) && !defined(USE_TWI_DISPLAY) && defined(STM32_REMAP_SPI)
     afio_remap(AFIO_REMAP_SPI1);  // remap SPI3 to SPI1 if a "normal" display is being used
@@ -357,8 +362,10 @@ void setup() {
 
   __debugS(PSTR("[ setup start ]"));
   #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
+    #if !defined(USE_SW_TWI)
   enumI2cDevices();
   __debugS(PSTR("[ after enumI2CDevices ]"));
+    #endif
   #endif
   setupBuzzer();                      // setup buzzer before reading config
   __debugS(PSTR("[ after setupBuzzer ]"));

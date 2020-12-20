@@ -200,7 +200,11 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI       display;
 #elif defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
   extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
   #if defined(USE_TWI_DISPLAY)
-  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C  display;
+  #if defined(USE_SW_TWI)
+  extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
+  #else
+  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
+  #endif
   #elif defined(USE_LEONERD_DISPLAY)
   extern U8G2_SH1106_128X64_NONAME_F_HW_I2C  display;
   #elif defined(USE_ANET_DISPLAY)

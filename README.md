@@ -41,6 +41,11 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.18** - SKR E3 V2.0 bug fixing
+
++ changed the way how the TMC steppers are being initilized using HW serial (important for SKR E3 V2 only).
++ fixed the TWI/I2C OLED display. Instead of hardware I2C, as I mistakenly mentioned earlier, it now uses software I2C since the according pins for hardware I2C (PB6/PB7) are not routed to the EXP1 header but to the additional EEPROM. This makes the display noticeably slower but useable. To speed up the display, you'll need a display that utiilizes SPI and the according mod as added in 2.15 [and mentioned here](https://sites.google.com/view/the-smuff/tips-hints/using-other-displays).
+
 **2.17** - minor modifications
 
 + added parsing for "**\n**" (two bytes) in the received data, which eventually gets threated as line-feed ('**_\n_**'). This is needed for Duet3D / RRF firmware which doesn't send an LF at the end of a message when sent using **M118** GCode.
