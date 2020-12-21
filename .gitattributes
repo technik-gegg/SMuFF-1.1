@@ -6,6 +6,8 @@
 *.h text eol=lf
 *.gcode text eol=lf
 *.CFG text eol=lf
+*.mnu text eol=crlf
+*.opt text eol=crlf
 
 # Binary files
 *.png binary
