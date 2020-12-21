@@ -3,4 +3,3 @@ Screen Timeout	%d|2
 LCD Contrast	%d|3
 Backlight	%s|4
 Encoder Ticks	%s|5
-.
