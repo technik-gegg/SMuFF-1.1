@@ -1,6 +1,6 @@
 ◀ BACK|1
-Mode	%s|2
-Stealth Mode	%s|3
+.Mode	%s|2
+.Stealth Mode	%s|3
 Power	%d|4
 R-Sense	%s|5
 Microsteps	%d|6
