@@ -10,6 +10,7 @@ If you like this project and find it useful, please consider donating.
 
 
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
+
 + the [SKR mini V1.1](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53)
 + the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)
 + the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)
@@ -44,7 +45,7 @@ For more information about building the SMuFF and some more detailed stuff, head
 **2.18** - SKR E3 V2.0 bug fixing
 
 + changed the way how the TMC steppers are being initilized using HW serial (important for SKR E3 V2 only).
-+ fixed the TWI/I2C OLED display. Instead of hardware I2C, as I mistakenly mentioned earlier, it now uses software I2C since the according pins for hardware I2C (PB6/PB7) are not routed to the EXP1 header but to the additional EEPROM. This makes the display noticeably slower but useable. To speed up the display, you'll need a display that utiilizes SPI and the according mod as added in 2.15 [and mentioned here](https://sites.google.com/view/the-smuff/tips-hints/using-other-displays).
++ fixed the TWI/I2C OLED display. Instead of hardware I2C, as I mistakenly mentioned earlier, it now uses software I2C since the according pins for hardware I2C (PB6/PB7) are not routed to the EXP1 header but to the additional EEPROM. This makes the display noticeably slower but useable. To speed up the display, you'll need a display that utilizes SPI and the according mod as added in 2.15 [and mentioned here](https://sites.google.com/view/the-smuff/tips-hints/using-other-displays).
 
 **2.17** - minor modifications
 
