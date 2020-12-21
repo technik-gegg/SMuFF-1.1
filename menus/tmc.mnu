@@ -1,14 +1,14 @@
 ◀ BACK|1
-.Mode	%s|2
-.Stealth Mode	%s|3
-.Power	%d|4
-.R-Sense	%s|5
-.Microsteps	%d|6
-.Stall Thresh.	%d|7
-.CoolStep min.	%d|8
-.CoolStep max.	%d|9
-.CoolStep down	%d|10
-.Driver Address	%d|11
-.TOff	%d|12
-.Stop on stall	%s|13
-.Stall trigger	%d|14
+Mode	%s|2
+Stealth Mode	%s|3
+Power	%d|4
+R-Sense	%s|5
+Microsteps	%d|6
+Stall Thresh.	%d|7
+CoolStep min.	%d|8
+CoolStep max.	%d|9
+CoolStep down	%d|10
+Driver Address	%d|11
+TOff	%d|12
+Stop on stall	%s|13
+Stall trigger	%d|14
