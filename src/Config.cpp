@@ -129,13 +129,13 @@ bool readConfig()
       smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
       uint8_t _contrast =                        jsonDoc[contrast];
       smuffConfig.lcdContrast = (_contrast >= MIN_CONTRAST && _contrast <= MAX_CONTRAST) ? _contrast : DSP_CONTRAST;
-      uint8_t backlightColor =                  jsonDoc[backlightColor];
-      smuffConfig.backlightColor = (backlightColor == 0 ? 7 : backlightColor);   // set backlight color to white if not set
+      uint8_t _backlightColor =                  jsonDoc[backlightColor];
+      smuffConfig.backlightColor = (_backlightColor == 0 ? 7 : _backlightColor);   // set backlight color to white if not set
       smuffConfig.encoderTickSound =            jsonDoc[encoderTicks];
       smuffConfig.bowdenLength =                jsonDoc[bowdenLength];
       smuffConfig.selectorDistance =            jsonDoc[selectorDist];
-      uint8_t i2cAdr =                          jsonDoc[i2cAdr];
-      smuffConfig.i2cAddress = (i2cAdr > 0 && i2cAdr < 128) ? i2cAdr : I2C_SLAVE_ADDRESS;
+      uint8_t _i2cAdr =                          jsonDoc[i2cAdr];
+      smuffConfig.i2cAddress = (_i2cAdr > 0 && _i2cAdr < 128) ? _i2cAdr : I2C_SLAVE_ADDRESS;
       smuffConfig.menuAutoClose =               jsonDoc[autoClose];
       smuffConfig.serialBaudrates[0] =          jsonDoc[serial0Baudrate];
       smuffConfig.serialBaudrates[1] =          jsonDoc[serial1Baudrate];

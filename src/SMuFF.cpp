@@ -120,7 +120,9 @@ USBCompositeSerial      CompositeSerial;
 ZPortExpander           portEx;
 #endif
 
+#ifdef HAS_TMC_SUPPORT
 TMC2209Stepper* drivers[NUM_STEPPERS];
+#endif
 
 #if defined(MULTISERVO)
 Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
@@ -290,7 +292,9 @@ void isrGPTimerHandler() {
       duetLS.service();               // service the Duet3D laser Sensor reader
     }
     playSequenceBackgnd();            // handle background playing of a sequence
+#ifdef FLIPDBG
     FLIPDBG
+#endif
     isrFanTimerHandler();             // call the fan interrupt routines also every 1ms
   }
   if(tickCounter == 1000)             // reset counter to avoid overrun
@@ -396,8 +400,10 @@ void setup() {
   __debugS(PSTR("[ after setupServos ]"));
   setupRelay();
   __debugS(PSTR("[ after setupRelay ]"));
+#ifdef HAS_TMC_SUPPORT
   setupTMCDrivers();                  // setup TMC drivers if any were used
   __debugS(PSTR("[ after setupTMCdrivers ]"));
+#endif
   setupSwSerial0();                   // used only for testing purposes
   setupBacklight();
   setupDuetLaserSensor();             // setup other peripherials
@@ -519,13 +525,13 @@ void refreshStatus(bool withLogo, bool feedOnly) {
   }
 }
 
+#ifdef HAS_TMC_SUPPORT
 void reportTMC(uint8_t axis, const char* PROGMEM msg) {
   // for now, only debug message, subject to change in the future
   __debugS(PSTR("Driver %c: reports '%s'"), 'X'+axis, msg);
 }
 
 void monitorTMC(uint8_t axis) {
-
   uint16_t temp;
   if(drivers[axis] != nullptr) {
     // has any error occured?
@@ -565,6 +571,7 @@ void monitorTMC(uint8_t axis) {
     }
   }
 }
+#endif
 
 /*
 * For testing only
@@ -773,6 +780,7 @@ void loop() {
     setPwrSave(1);
   }
 
+#ifdef HAS_TMC_SUPPORT
   if(smuffConfig.stepperStall[SELECTOR]) {
     monitorTMC(SELECTOR);
   }
@@ -782,6 +790,7 @@ void loop() {
   if(smuffConfig.stepperStall[FEEDER]) {
     monitorTMC(FEEDER);
   }
+#endif
   // For testing only
   // loopEx();
 }

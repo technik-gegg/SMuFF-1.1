@@ -21,9 +21,9 @@
  * Module for timer & ISR routines
  */
 
-#if !defined(__ESP32__)
-  #include "ZTimerLib.h"
+#include "ZTimerLib.h"
 
+#if !defined(__ESP32__)
   static void (*__timer1Hook)(void) = nullptr;
   static void (*__timer2Hook)(void) = nullptr;
   static void (*__timer3Hook)(void) = nullptr;

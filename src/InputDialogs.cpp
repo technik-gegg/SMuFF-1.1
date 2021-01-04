@@ -43,7 +43,6 @@ bool getEncoderButton(bool encoderOnly) {
 void getEncoderButton(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked) {
   *turn = encoder.getValue();
   ButtonState wheelBtn = encoder.getButton();
-  ButtonState second;
   *isHeld = false;
   *isClicked = false;
   *button = NoButton;
@@ -71,6 +70,8 @@ void getEncoderButton(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClic
       return;
   }
   #if defined(USE_LEONERD_DISPLAY)
+  ButtonState second;
+
   if(wheelBtn == Open) {
     // special case for Main button on LeoNerds encoder
     // used as "Back" button (click) or "Home" button (long click)

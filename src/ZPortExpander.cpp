@@ -17,17 +17,16 @@
  *
  */
 
+#if defined (__ESP32__)
 #include "ZPortExpander.h"
 
 static bool timerAction;
-
-#if defined (__ESP32__)
-static TaskHandle_t taskHandle;
+//static TaskHandle_t taskHandle;
 
 /**
  * Experimental...
  * Tried to overcome the panic crash with relocating the serial port
- * handling (I2C) from tiner ISR to an seperate task.
+ * handling (I2C) from timer ISR to an seperate task.
  * Unfortunatelly, the result is just the same as in the timer ISR.
  */
 void timerServiceTask(void* parameter) {

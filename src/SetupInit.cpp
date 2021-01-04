@@ -130,6 +130,7 @@ void setupDuetLaserSensor() {
 void setupSerialBT() {
 #ifdef __ESP32__
   // this line must be kept, otherwise BT power down will cause a reset
+  extern BluetoothSerial SerialBT;
   SerialBT.begin(wirelessHostname);
 #endif
 }
@@ -331,6 +332,8 @@ void setupFan() {
 
 void setupPortExpander() {
   #if defined(__ESP32__)
+  extern ZPortExpander portEx;
+
   // init the PCF8574 port expander and set pin modes (0-5 OUTPUT, 6-7 INPUT)
   portEx.begin(PORT_EXPANDER_ADDRESS, false);
   for(uint8_t i=0; i< 6; i++) {
@@ -414,8 +417,10 @@ void setupSteppers() {
   steppers[SELECTOR].setStallThreshold(smuffConfig.stepperMaxStallCnt[SELECTOR]);
   if(smuffConfig.stepperStealth[SELECTOR]) {
     steppers[SELECTOR].setStopOnStallDetected(smuffConfig.stepperStopOnStall[SELECTOR]);
+#ifdef HAS_TMC_SUPPORT
     if(STALL_X_PIN != -1)
       attachInterrupt(STALL_X_PIN, isrStallDetectedX, FALLING);
+#endif
   }
   if(smuffConfig.stepperMode[SELECTOR] == 0 && smuffConfig.ms3config[SELECTOR] > 0) {
     #if defined(MS3_X) && MS3_X != -1
@@ -439,8 +444,10 @@ void setupSteppers() {
   steppers[REVOLVER].setStallThreshold(smuffConfig.stepperMaxStallCnt[REVOLVER]);
   if(smuffConfig.stepperStealth[REVOLVER]) {
     steppers[REVOLVER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[REVOLVER]);
+#ifdef HAS_TMC_SUPPORT
     if(STALL_Y_PIN != -1)
       attachInterrupt(STALL_Y_PIN, isrStallDetectedY, FALLING);
+#endif
   }
   if(smuffConfig.stepperMode[REVOLVER] == 0 && smuffConfig.ms3config[REVOLVER] > 0) {
     #if defined(MS3_Y) && MS3_Y != -1
@@ -476,8 +483,10 @@ void setupSteppers() {
   steppers[FEEDER].setStallThreshold(smuffConfig.stepperMaxStallCnt[FEEDER]);
   if(smuffConfig.stepperStealth[FEEDER]) {
     steppers[FEEDER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[FEEDER]);
+#ifdef HAS_TMC_SUPPORT
     if(STALL_Z_PIN != -1)
       attachInterrupt(STALL_Z_PIN, isrStallDetectedZ, FALLING);
+#endif
   }
   if(smuffConfig.stepperMode[FEEDER] == 0 && smuffConfig.ms3config[FEEDER] > 0) {
     #if defined(MS3_Z) && MS3_Z != -1
@@ -499,6 +508,7 @@ void setupSteppers() {
   //__debugS(PSTR("DONE initializing swaps"));
 }
 
+#ifdef HAS_TMC_SUPPORT
 bool hwSerialInit = false;
 
 TMC2209Stepper* initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin) {
@@ -620,6 +630,7 @@ void setupTMCDrivers() {
   #endif
   //__debugS(PSTR("DONE initializing TMC Steppers"));
 }
+#endif
 
 void setupTimers() {
 #if defined(__AVR__)

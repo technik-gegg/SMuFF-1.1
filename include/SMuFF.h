@@ -333,7 +333,9 @@ extern bool           lidOpen;
 extern uint16_t       mmsMin, mmsMax;
 extern uint16_t       speedIncrement;
 
+#ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper* drivers[];
+#endif
 
 extern void setupSerial();
 extern void setupSwSerial0();
@@ -475,7 +477,9 @@ extern void every1s();
 extern void every2s();
 extern void every5s();
 extern void blinkLED();
+#ifdef HAS_TMC_SUPPORT
 extern void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t stallThrs, uint8_t csmin=0, uint8_t csmax=0, uint8_t csdown=0, uint8_t toff=3);
+#endif
 
 extern void printEndstopState(int8_t serial);
 extern void printPos(int8_t index, int8_t serial);
