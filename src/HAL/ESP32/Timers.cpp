@@ -46,20 +46,28 @@ static ESP32_timer_t timers[] = {
     .serviceFunPtr = nullptr},
 };
 
+void timerISRService(ZTimer::IsrTimer t) {
+  if (timers[t].serviceFunPtr != nullptr) {
+    portENTER_CRITICAL_ISR(&timers[t].mux);
+    timers[t].serviceFunPtr();
+    portEXIT_CRITICAL_ISR(&timers[t].mux);
+    }
+}
+
 void IRAM_ATTR ISR1() {
-  TIMERISRSERVICE(ZTimer::IsrTimer::ZTIMER1);
+  timerISRService(ZTimer::IsrTimer::ZTIMER1);
 }
 
 void IRAM_ATTR ISR2() {
-  TIMERISRSERVICE(ZTimer::IsrTimer::ZTIMER2);
+  timerISRService(ZTimer::IsrTimer::ZTIMER2);
 }
 
 void IRAM_ATTR ISR3() {
-  TIMERISRSERVICE(ZTimer::IsrTimer::ZTIMER3);
+  timerISRService(ZTimer::IsrTimer::ZTIMER3);
 }
 
 void IRAM_ATTR ISR4() {
-  TIMERISRSERVICE(ZTimer::IsrTimer::ZTIMER4);
+  timerISRService(ZTimer::IsrTimer::ZTIMER4);
 }
 
 void ZTimer::setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare) {
