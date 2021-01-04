@@ -21,21 +21,17 @@
  * Module for timer & ISR routines
  */
 
-#include "ZTimerLib.h"
-#if defined(__STM32F1__)
-//#include <libmaple/libmaple.h>
-#elif defined(__ESP32__)
-#include "esp32-hal.h"
-#endif
+#if !defined(__ESP32__)
+  #include "ZTimerLib.h"
 
-static void (*__timer1Hook)(void) = nullptr;
-static void (*__timer2Hook)(void) = nullptr;
-static void (*__timer3Hook)(void) = nullptr;
-static void (*__timer4Hook)(void) = nullptr;
-static void (*__timer5Hook)(void) = nullptr;
-static void (*__timer6Hook)(void) = nullptr;
-static void (*__timer7Hook)(void) = nullptr;
-static void (*__timer8Hook)(void) = nullptr;
+  static void (*__timer1Hook)(void) = nullptr;
+  static void (*__timer2Hook)(void) = nullptr;
+  static void (*__timer3Hook)(void) = nullptr;
+  static void (*__timer4Hook)(void) = nullptr;
+  static void (*__timer5Hook)(void) = nullptr;
+  static void (*__timer6Hook)(void) = nullptr;
+  static void (*__timer7Hook)(void) = nullptr;
+  static void (*__timer8Hook)(void) = nullptr;
 
 #if defined(__AVR__)
 ISR(TIMER1_COMPA_vect) {
@@ -109,47 +105,6 @@ void ISR8() {
     __timer8Hook();
 }
 
-#elif defined(__ESP32__)
-hw_timer_t* hwTimer1 = nullptr;
-hw_timer_t* hwTimer2 = nullptr;
-hw_timer_t* hwTimer3 = nullptr;
-hw_timer_t* hwTimer4 = nullptr;
-portMUX_TYPE timer1Mux = portMUX_INITIALIZER_UNLOCKED;
-portMUX_TYPE timer2Mux = portMUX_INITIALIZER_UNLOCKED;
-portMUX_TYPE timer3Mux = portMUX_INITIALIZER_UNLOCKED;
-portMUX_TYPE timer4Mux = portMUX_INITIALIZER_UNLOCKED;
-
-void IRAM_ATTR ISR1() {
-  if(__timer1Hook != nullptr) {
-    portENTER_CRITICAL_ISR(&timer1Mux);
-    __timer1Hook();
-    portEXIT_CRITICAL_ISR(&timer1Mux);
-  }
-}
-
-void IRAM_ATTR ISR2() {
-  if(__timer2Hook != nullptr) {
-    portENTER_CRITICAL_ISR(&timer2Mux);
-    __timer2Hook();
-    portEXIT_CRITICAL_ISR(&timer2Mux);
-  }
-}
-
-void IRAM_ATTR ISR3() {
-  if(__timer3Hook != nullptr) {
-    portENTER_CRITICAL_ISR(&timer3Mux);
-    __timer3Hook();
-    portEXIT_CRITICAL_ISR(&timer3Mux);
-  }
-}
-
-void IRAM_ATTR ISR4() {
-  if(__timer4Hook != nullptr) {
-    portENTER_CRITICAL_ISR(&timer4Mux);
-    __timer4Hook();
-    portEXIT_CRITICAL_ISR(&timer4Mux);
-  }
-}
 #endif
 
 #if defined(__AVR__)
@@ -264,126 +219,73 @@ void ZTimer::setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, uin
   interrupts();
 }
 
-#elif defined (__ESP32__)
-void ZTimer::setupTimer(IsrTimer timer, uint16_t prescaler) {
-    setupTimer(timer, prescaler, 1);
-}
-
-void ZTimer::setupTimer(IsrTimer timer, uint16_t prescaler, uint64_t compare) {
-  _timer = timer;
-
-  noInterrupts();
-  switch(_timer) {
-    case ZTIMER1:
-      hwTimer1 = timerBegin(0, prescaler, true);
-      timerAttachInterrupt(hwTimer1, &ISR1, true);
-      timerAlarmWrite(hwTimer1, compare, true);
-      break;
-    case ZTIMER2:
-      hwTimer2 = timerBegin(1, prescaler, true);
-      timerAttachInterrupt(hwTimer2, &ISR2, true);
-      timerAlarmWrite(hwTimer2, compare, true);
-      break;
-    case ZTIMER3:
-      hwTimer3 = timerBegin(2, prescaler, true);
-      timerAttachInterrupt(hwTimer3, &ISR3, true);
-      timerAlarmWrite(hwTimer3, compare, true);
-      break;
-    case ZTIMER4:
-      hwTimer4 = timerBegin(3, prescaler, true);
-      timerAttachInterrupt(hwTimer4, &ISR4, true);
-      timerAlarmWrite(hwTimer4, compare, true);
-      break;
-    default:
-      break;
-  }
-  interrupts();
-}
 #endif
 
-void ZTimer::setupTimerHook(void (*function)(void)) {
-  switch(_timer) {
-    case ZTIMER1: __timer1Hook = function; break;
-    case ZTIMER2: __timer2Hook = function; break;
-    case ZTIMER3: __timer3Hook = function; break;
-    case ZTIMER4: __timer4Hook = function; break;
-    case ZTIMER5: __timer5Hook = function; break;
-    case ZTIMER6: __timer6Hook = function; break;
-    case ZTIMER7: __timer7Hook = function; break;
-    case ZTIMER8: __timer8Hook = function; break;
+  void ZTimer::setupTimerHook(void (*function)(void)) {
+    switch (_timer) {
+      case ZTIMER1: __timer1Hook = function; break;
+      case ZTIMER2: __timer2Hook = function; break;
+      case ZTIMER3: __timer3Hook = function; break;
+      case ZTIMER4: __timer4Hook = function; break;
+      case ZTIMER5: __timer5Hook = function; break;
+      case ZTIMER6: __timer6Hook = function; break;
+      case ZTIMER7: __timer7Hook = function; break;
+      case ZTIMER8: __timer8Hook = function; break;
+    }
   }
-}
 
-void ZTimer::setNextInterruptInterval(timerVal_t interval) {
-  stopTimer();
-  setOverflow(interval);
-  setCounter(0);
-  startTimer();
-}
-
-timerVal_t ZTimer::getOverflow() {
-  switch(_timer) {
-    default: return 0;
+  timerVal_t ZTimer::getOverflow() {
+    switch (_timer) {
+      default: return 0;
 
 #if defined(__AVR__)
-    case ZTIMER1: return OCR1A;
-    case ZTIMER2: return 0;
-    case ZTIMER3: return OCR3A;
-    case ZTIMER4: return OCR4A;
-    case ZTIMER5: return OCR5A;
+      case ZTIMER1: return OCR1A;
+      case ZTIMER2: return 0;
+      case ZTIMER3: return OCR3A;
+      case ZTIMER4: return OCR4A;
+      case ZTIMER5: return OCR5A;
 
 #elif defined(__STM32F1__)
-    case ZTIMER1: return hwTimer1.getOverflow();
-    case ZTIMER2: return hwTimer2.getOverflow();
-    case ZTIMER3: return hwTimer3.getOverflow();
-    case ZTIMER4: return hwTimer4.getOverflow();
-    case ZTIMER5: return hwTimer5.getOverflow();
-    case ZTIMER6: return hwTimer6.getOverflow();
-    case ZTIMER7: return hwTimer7.getOverflow();
-    case ZTIMER8: return hwTimer8.getOverflow();
-
-#elif defined(__ESP32__)
-    case ZTIMER1: return timerAlarmReadMicros(hwTimer1);
-    case ZTIMER2: return timerAlarmReadMicros(hwTimer2);
-    case ZTIMER3: return timerAlarmReadMicros(hwTimer3);
-    case ZTIMER4: return timerAlarmReadMicros(hwTimer4);
+      case ZTIMER1: return hwTimer1.getOverflow();
+      case ZTIMER2: return hwTimer2.getOverflow();
+      case ZTIMER3: return hwTimer3.getOverflow();
+      case ZTIMER4: return hwTimer4.getOverflow();
+      case ZTIMER5: return hwTimer5.getOverflow();
+      case ZTIMER6: return hwTimer6.getOverflow();
+      case ZTIMER7: return hwTimer7.getOverflow();
+      case ZTIMER8: return hwTimer8.getOverflow();
 #endif
+    }
   }
-}
 
-void ZTimer::setOverflow(timerVal_t value) {
-  switch(_timer) {
-    default: break;
+  void ZTimer::setOverflow(timerVal_t value) {
+    switch(_timer) {
+      default: break;
 
 #if defined(__AVR__)
-    case ZTIMER1: OCR1A = value; break;
-    case ZTIMER2: break;
-    case ZTIMER3: OCR3A = value; break;
-    case ZTIMER4: OCR4A = value; break;
-    case ZTIMER5: OCR5A = value; break;
+      case ZTIMER1: OCR1A = value; break;
+      case ZTIMER2: break;
+      case ZTIMER3: OCR3A = value; break;
+      case ZTIMER4: OCR4A = value; break;
+      case ZTIMER5: OCR5A = value; break;
 
 #elif defined(__STM32F1__)
-    case ZTIMER1: hwTimer1.setOverflow(value); break;
-    case ZTIMER2: hwTimer2.setOverflow(value); break;
-    case ZTIMER3: hwTimer3.setOverflow(value); break;
-    case ZTIMER4: hwTimer4.setOverflow(value); break;
-    case ZTIMER5: hwTimer5.setOverflow(value); break;
-    case ZTIMER6: hwTimer6.setOverflow(value); break;
-    case ZTIMER7: hwTimer7.setOverflow(value); break;
-    case ZTIMER8: hwTimer8.setOverflow(value); break;
+      case ZTIMER1: hwTimer1.setOverflow(value); break;
+      case ZTIMER2: hwTimer2.setOverflow(value); break;
+      case ZTIMER3: hwTimer3.setOverflow(value); break;
+      case ZTIMER4: hwTimer4.setOverflow(value); break;
+      case ZTIMER5: hwTimer5.setOverflow(value); break;
+      case ZTIMER6: hwTimer6.setOverflow(value); break;
+      case ZTIMER7: hwTimer7.setOverflow(value); break;
+      case ZTIMER8: hwTimer8.setOverflow(value); break;
 
-#elif defined(__ESP32__)
-    case ZTIMER1: timerAlarmWrite(hwTimer1, value, true); break;
-    case ZTIMER2: timerAlarmWrite(hwTimer2, value, true); break;
-    case ZTIMER3: timerAlarmWrite(hwTimer3, value, true); break;
-    case ZTIMER4: timerAlarmWrite(hwTimer4, value, true); break;
 #endif
+    }
   }
-}
 
-void ZTimer::setCompare(timerVal_t value) {
-  switch(_timer) {
-    default: break;
+  void ZTimer::setCompare(timerVal_t value) {
+    switch(_timer) {
+      default: break;
 
 #if defined(__AVR__)
     // Not implemented
@@ -398,45 +300,38 @@ void ZTimer::setCompare(timerVal_t value) {
     case ZTIMER7: hwTimer7.setCompare(_channel, value); break;
     case ZTIMER8: hwTimer8.setCompare(_channel, value); break;
 
-#elif defined(__ESP32__)
-    // Not implemented
 #endif
+    }
   }
-}
 
-void ZTimer::setCounter(timerVal_t value) {
-  switch(_timer) {
-    default: break;
+  void ZTimer::setCounter(timerVal_t value) {
+    switch(_timer) {
+      default: break;
 
 #if defined(__AVR__)
-    case ZTIMER1: TCNT1 = value; break;
-    case ZTIMER2: break;
-    case ZTIMER3: TCNT3 = value; break;
-    case ZTIMER4: TCNT4 = value; break;
-    case ZTIMER5: TCNT5 = value; break;
+      case ZTIMER1: TCNT1 = value; break;
+      case ZTIMER2: break;
+      case ZTIMER3: TCNT3 = value; break;
+      case ZTIMER4: TCNT4 = value; break;
+      case ZTIMER5: TCNT5 = value; break;
 
 #elif defined(__STM32F1__)
-    case ZTIMER1: hwTimer1.setCount(value); break;
-    case ZTIMER2: hwTimer2.setCount(value); break;
-    case ZTIMER3: hwTimer3.setCount(value); break;
-    case ZTIMER4: hwTimer4.setCount(value); break;
-    case ZTIMER5: hwTimer5.setCount(value); break;
-    case ZTIMER6: hwTimer6.setCount(value); break;
-    case ZTIMER7: hwTimer7.setCount(value); break;
-    case ZTIMER8: hwTimer8.setCount(value); break;
+      case ZTIMER1: hwTimer1.setCount(value); break;
+      case ZTIMER2: hwTimer2.setCount(value); break;
+      case ZTIMER3: hwTimer3.setCount(value); break;
+      case ZTIMER4: hwTimer4.setCount(value); break;
+      case ZTIMER5: hwTimer5.setCount(value); break;
+      case ZTIMER6: hwTimer6.setCount(value); break;
+      case ZTIMER7: hwTimer7.setCount(value); break;
+      case ZTIMER8: hwTimer8.setCount(value); break;
 
-#elif defined(__ESP32__)
-    case ZTIMER1: break;
-    case ZTIMER2: break;
-    case ZTIMER3: break;
-    case ZTIMER4: break;
 #endif
+    }
   }
-}
 
-void ZTimer::startTimer() {
-  switch(_timer) {
-    default: break;
+  void ZTimer::startTimer() {
+    switch(_timer) {
+      default: break;
 
 #if defined(__AVR__)
     case ZTIMER1: TIMSK1 |= _BV(OCIE1A); break;
@@ -455,18 +350,13 @@ void ZTimer::startTimer() {
     case ZTIMER7: hwTimer7.refresh(); hwTimer7.resume(); break;
     case ZTIMER8: hwTimer8.refresh(); hwTimer8.resume(); break;
 
-#elif defined(__ESP32__)
-    case ZTIMER1: timerAlarmEnable(hwTimer1); break;
-    case ZTIMER2: timerAlarmEnable(hwTimer2); break;
-    case ZTIMER3: timerAlarmEnable(hwTimer3); break;
-    case ZTIMER4: timerAlarmEnable(hwTimer4); break;
 #endif
+    }
   }
-}
 
-void ZTimer::stopTimer() {
-  switch(_timer) {
-    default: break;
+  void ZTimer::stopTimer() {
+    switch(_timer) {
+      default: break;
 
 #if defined(__AVR__)
     case ZTIMER1: TIMSK1 &= ~_BV(OCIE1A); break;
@@ -485,11 +375,14 @@ void ZTimer::stopTimer() {
     case ZTIMER7: hwTimer7.pause(); break;
     case ZTIMER8: hwTimer8.pause(); break;
 
-#elif defined(__ESP32__)
-    case ZTIMER1: timerAlarmDisable(hwTimer1); break;
-    case ZTIMER2: timerAlarmDisable(hwTimer2); break;
-    case ZTIMER3: timerAlarmDisable(hwTimer3); break;
-    case ZTIMER4: timerAlarmDisable(hwTimer4); break;
 #endif
+    }
   }
+#endif
+
+void ZTimer::setNextInterruptInterval(timerVal_t interval) {
+  stopTimer();
+  setOverflow(interval);
+  setCounter(0);
+  startTimer();
 }

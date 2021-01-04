@@ -28,14 +28,15 @@ extern void __debugS(const char* fmt, ...);
 class ZTimer {
 public:
     typedef enum {
-      ZTIMER1 = 1,
-      ZTIMER2 = 2,
-      ZTIMER3 = 3,
-      ZTIMER4 = 4,
-      ZTIMER5 = 5,
-      ZTIMER6 = 6,
-      ZTIMER7 = 7,
-      ZTIMER8 = 8
+      ZUNDEFINED = -1,
+      ZTIMER1 = 0,
+      ZTIMER2 = 1,
+      ZTIMER3 = 2,
+      ZTIMER4 = 3,
+      ZTIMER5 = 4,
+      ZTIMER6 = 5,
+      ZTIMER7 = 6,
+      ZTIMER8 = 7
     } IsrTimer;
 
     typedef enum {
@@ -53,7 +54,7 @@ public:
       PRESCALER1024   = 5
     } TimerPrescaler;
 
-    ZTimer() { };
+    ZTimer() { _timer = ZUNDEFINED; };
 
 #if defined(__AVR__)
     void           setupTimer(IsrTimer timer, TimerPrescaler prescaler);
@@ -61,8 +62,7 @@ public:
     void           setupTimer(IsrTimer timer, uint16_t prescaler);
     void           setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, timerVal_t compare = 1);
 #elif defined(__ESP32__)
-    void           setupTimer(IsrTimer timer, uint16_t prescaler);
-    void           setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare);
+    void           setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare=1);
 #endif
     timerVal_t     getOverflow();
     void           setOverflow(timerVal_t value);

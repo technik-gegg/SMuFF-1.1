@@ -78,13 +78,8 @@ private:
   int8_t            _servoIndex;
   uint8_t           _degree;
   uint8_t           _lastDegree;
-#ifdef __STM32F1__
   uint32_t          _lastUpdate;
   volatile uint32_t _tickCnt;
-#else
-  unsigned uint32_t _lastUpdate;
-  volatile uint32_t _tickCnt;
-#endif
   volatile uint8_t  _dutyCnt;
   uint8_t           _maxCycles;
   uint16_t          _pulseLen;

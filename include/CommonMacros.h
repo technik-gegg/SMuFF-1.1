@@ -14,10 +14,6 @@
 
 #elif defined (__ESP32__)
   typedef uint8_t WiringPinMode;
-  #define INPUT_PULLDOWN  INPUT   // Pulldown not supported, default to input
 
   typedef uint64_t timerVal_t;
-
-  #define noInterrupts    cli
-  #define interrupts      sei
 #endif

@@ -48,8 +48,10 @@
 #include "ZPortExpander.h"
 #include "ZFan.h"
 #include "DuetLaserSensor.h"
+#if defined(HAS_TMC_SUPPORT)
 #include <TMCStepper.h>
 #include "SoftwareSerial.h"
+#endif
 #if defined(MULTISERVO)
 #include <Adafruit_PWMServoDriver.h>
 #endif
