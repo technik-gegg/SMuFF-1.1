@@ -22,9 +22,6 @@
  */
 
 #include "SMuFF.h"
-#include "Config.h"
-#include "ZTimerLib.h"
-#include "ZStepperLib.h"
 
 extern ZStepper steppers[];
 volatile bool parserBusy = false;

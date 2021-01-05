@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <Arduino.h>
 #include "Config.h"
-#include "ZTimerLib.h"
+#include "HAL/shared/timers.h"
 
 #define MAX_SERVOS              5
 #define US_PER_PULSE_0DEG       1000      // microseconds for 0 degrees

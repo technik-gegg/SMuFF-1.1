@@ -17,10 +17,11 @@
  *
  */
 
-#if defined (__ESP32__)
 #include "ZPortExpander.h"
 
 static bool timerAction;
+
+#ifdef __ESP32__
 //static TaskHandle_t taskHandle;
 
 /**

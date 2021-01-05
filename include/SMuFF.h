@@ -42,7 +42,7 @@
 #if defined(USE_FASTLED_BACKLIGHT)
 #include "FastLED.h"
 #endif
-#include "ZTimerLib.h"
+#include "HAL/shared/timers.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
 #include "ZPortExpander.h"

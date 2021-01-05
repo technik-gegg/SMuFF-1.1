@@ -1,5 +1,7 @@
 #pragma once
 
+#define COUNT(a)    (sizeof(a) / sizeof(a[0]))
+
 #if defined (__AVR__)
   typedef uint8_t WiringPinMode;
   #define INPUT_PULLDOWN  INPUT   // Pulldown not supported, default to input

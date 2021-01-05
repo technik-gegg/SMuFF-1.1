@@ -19,7 +19,6 @@
 #pragma once
 
 #include "SMuFF.h"
-#include "ZTimerLib.h"
 #include "PCF857X.h"
 
 extern void __debugS(const char* fmt, ...);

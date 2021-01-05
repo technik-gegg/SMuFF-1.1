@@ -17,41 +17,35 @@
  *
  */
 
+#ifdef __ESP32__
+
 /*
  * ESP32 HAL timers handling
  */
-
-#ifdef __ESP32__
-
-#include "esp32-hal.h"
-#include "../include/ZTimerLib.h"
-#include "Timers.h"
+#include "timers.h"
 
 static ESP32_timer_t timers[] = {
   { .timer = nullptr,
     .mux = portMUX_INITIALIZER_UNLOCKED,
-    .ISRptr = &ISR1,
-    .serviceFunPtr = nullptr},
+    .serviceFunPtr = nullptr },
   { .timer = nullptr,
     .mux = portMUX_INITIALIZER_UNLOCKED,
-    .ISRptr = &ISR2,
-    .serviceFunPtr = nullptr},
+    .serviceFunPtr = nullptr },
   { .timer = nullptr,
     .mux = portMUX_INITIALIZER_UNLOCKED,
-    .ISRptr = &ISR3,
-    .serviceFunPtr = nullptr},
+    .serviceFunPtr = nullptr },
   { .timer = nullptr,
     .mux = portMUX_INITIALIZER_UNLOCKED,
-    .ISRptr = &ISR4,
-    .serviceFunPtr = nullptr},
+    .serviceFunPtr = nullptr }
 };
 
 void timerISRService(ZTimer::IsrTimer t) {
-  if (timers[t].serviceFunPtr != nullptr) {
-    portENTER_CRITICAL_ISR(&timers[t].mux);
-    timers[t].serviceFunPtr();
-    portEXIT_CRITICAL_ISR(&timers[t].mux);
-    }
+  if (timers[t].serviceFunPtr == nullptr)
+    return;
+
+  portENTER_CRITICAL_ISR(&timers[t].mux);
+  timers[t].serviceFunPtr();
+  portEXIT_CRITICAL_ISR(&timers[t].mux);
 }
 
 void IRAM_ATTR ISR1() {
@@ -71,14 +65,14 @@ void IRAM_ATTR ISR4() {
 }
 
 void ZTimer::setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare) {
-  if (timer < ZTIMER1 || timer > ZTIMER4)
+  if (timer < ZTIMER1 || (unsigned)timer >= COUNT(timers))
     return;
 
   _timer = timer;
 
   noInterrupts();
   hw_timer_t* hwTimer = timers[_timer].timer = timerBegin(_timer, prescaler, true);
-  timerAttachInterrupt(hwTimer, timers[_timer].ISRptr, true);
+  timerAttachInterrupt(hwTimer, ((void (*[])(void)) { &ISR1, &ISR2, &ISR3, &ISR4 })[_timer], true);
   timerAlarmWrite(hwTimer, compare, true);
   interrupts();
 }
