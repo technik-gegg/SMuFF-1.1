@@ -249,11 +249,7 @@ bool M42(const char* msg, String buf, int8_t serial) {
           case 1: pinMode(pin, OUTPUT); break;
           case 2: pinMode(pin, INPUT_PULLUP); break;
           case 3:
-            #if defined(__AVR__)
-            pinMode(pin, INPUT);
-            #else
             pinMode(pin, INPUT_PULLDOWN);
-            #endif
             break;
          }
       }
@@ -295,11 +291,6 @@ bool M98(const char* msg, String buf, int8_t serial) {
 
 bool M100(const char* msg, String buf, int8_t serial) {
   printResponse(msg, serial);
-  #if defined(__AVR__)
-  char tmp[50];
-  sprintf_P(tmp, P_FreeMemory, freeMemory());
-  printResponseP(tmp, serial);
-  #endif
   return true;
 }
 
@@ -1855,9 +1846,7 @@ bool M914(const char* msg, String buf, int8_t serial) {
 bool M999(const char* msg, String buf, int8_t serial) {
   printResponse(msg, serial);
   delay(500);
-#ifdef __AVR__
-  __asm__ volatile ("jmp 0x0000");
-#elif __STM32F1__
+#if __STM32F1__
   nvic_sys_reset();
 #elif __ESP32__
   ESP.restart();

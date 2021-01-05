@@ -46,17 +46,7 @@ public:
 
     ZTimer() { _timer = ZUNDEFINED; };
 
-#if defined(__AVR__)
-    typedef enum {
-      PRESCALER1      = 1,
-      PRESCALER8      = 2,
-      PRESCALER64     = 3,
-      PRESCALER256    = 4,
-      PRESCALER1024   = 5
-    } TimerPrescaler;
-
-    void           setupTimer(IsrTimer timer, TimerPrescaler prescaler);
-#elif defined(__STM32F1__)
+#if defined(__STM32F1__)
     void           setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, timerVal_t compare = 1);
 #elif defined(__ESP32__)
     void           setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare=1);

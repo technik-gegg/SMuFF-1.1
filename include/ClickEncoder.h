@@ -13,11 +13,6 @@
 #pragma once
 
 #include <stdint.h>
-#if defined (__AVR__)
-	#include <avr/io.h>
-	#include <avr/interrupt.h>
-	#include <avr/pgmspace.h>
-#endif
 #include "Arduino.h"
 #include "CommonMacros.h"
 #include "ButtonState.h"

@@ -18,9 +18,7 @@
  */
 #pragma once
 
-#if defined(__AVR__)
-#include <avr/pgmspace.h>
-#elif defined(__ESP32__)
+#if defined(__ESP32__)
 #include <pgmspace.h>
 #endif
 #include <Arduino.h>
@@ -394,13 +392,9 @@ extern void prepSteppingRel(int8_t index, long steps, bool ignoreEndstop = false
 extern void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndstop = false);
 extern void resetRevolver();
 extern void serialEvent();
-extern void serialEvent2();
-#ifdef __AVR__
-extern void wireReceiveEvent(int numBytes);
-#else
 extern void serialEvent1();
+extern void serialEvent2();
 extern void serialEvent3();
-#endif
 extern void beep(uint8_t count);
 extern void longBeep(uint8_t count);
 extern void userBeep();

@@ -348,15 +348,6 @@ void setupPortExpander() {
 }
 
 void setupI2C() {
-  #ifdef __AVR__
-  // We can't do Master and Slave on this device.
-  // Slave mode is used for the I2C OLE Display on SKR mini
-  if(smuffConfig.i2cAddress != 0) {
-    Wire.begin(smuffConfig.i2cAddress);
-    Wire.onReceive(wireReceiveEvent);
-  }
-  //__debugS(PSTR("DONE I2C init"));
- #endif
 }
 
 void setupBacklight() {
@@ -633,17 +624,7 @@ void setupTMCDrivers() {
 #endif
 
 void setupTimers() {
-#if defined(__AVR__)
-  // *****
-  // Attn:
-  //    Servo uses:         TIMER5 (if it's setup to create its own timer)
-  //    Steppers use:       TIMER4
-  //    Encoder uses:       gpTimer
-  // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER4, STEPPER_PSC);            // prescaler set to 4MHz, timer will be calculated as needed
-  gpTimer.setupTimer(ZTimer::ZTIMER3, ZTimer::PRESCALER256);      // round about 1ms on 16MHz CPU
-
-#elif  defined(__STM32F1__)
+#if  defined(__STM32F1__)
   // *****
   // Attn:
   //    PA8 (Fan) uses:     TIMER1 CH1 (predefined by libmaple for PWM)
@@ -683,9 +664,7 @@ void setupTimers() {
   stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers
   gpTimer.setupTimerHook(isrGPTimerHandler);              // setup the ISR for rotary encoder, servo and general timers
 
-#if defined(__AVR__)
-  gpTimer.setNextInterruptInterval(3);                    // run general purpose (gp)timer on 48uS (AVR)
-#elif defined(__STM32F1__)
+#if defined(__STM32F1__)
   gpTimer.setNextInterruptInterval(450);                  // run general purpose (gp)timer on 50uS (STM32)
 #elif defined(__ESP32__)
   gpTimer.setNextInterruptInterval(50);                   // run general purpose (gp)timer on 50uS (ESP32)

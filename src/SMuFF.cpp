@@ -73,10 +73,7 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
 U8G2_UC1701_MINI12864_F_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
 #endif
 
-#if defined(__AVR__)
-Stream*                 debugSerial = &Serial;
-
-#elif defined(__STM32F1__)
+#if defined(__STM32F1__)
   #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
 Stream*                 debugSerial = &Serial2;
   #else
@@ -819,7 +816,6 @@ bool checkUserMessage() {
 
 
 void checkSerialPending() {
-#ifndef __AVR__
   if(Serial.available()) {
     serialEvent();
   }
@@ -836,7 +832,6 @@ void checkSerialPending() {
     if(Serial3.available())
       serialEvent3();
   }
-#endif
 }
 
 void resetSerialBuffer(int8_t serial) {
@@ -1015,9 +1010,7 @@ void serialEvent2() {
   processingSerial2 = false;
 }
 
-#ifndef __AVR__
 void serialEvent1() {
-
   uint16_t avail = 0;
   while((avail = Serial1.available())) {
     processingSerial1 = true;
@@ -1037,11 +1030,9 @@ void serialEvent1() {
     }
   }
   processingSerial1 = false;
-
 }
 
 void serialEvent3() {
-
   uint16_t avail = 0;
   while((avail = Serial3.available())) {
     processingSerial3 = true;
@@ -1064,4 +1055,3 @@ void serialEvent3() {
   }
   processingSerial3 = false;
 }
-#endif
