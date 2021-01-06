@@ -41,7 +41,7 @@ extern void __debugS(const char* fmt, ...);
 
 void isrSerialTimerHandler();
 
-static ZTimer serialTimer;
+static Timer serialTimer;
 
 typedef enum {
     BAUD_300_TIM    = 3333,

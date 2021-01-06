@@ -54,7 +54,7 @@ void ZStepper::defaultStepFunc(void) {
 
 void ZStepper::resetStepper() {
   _duration = _acceleration;
-  _durationInt = (uint16_t)_duration;
+  _durationInt = (timerVal_t)_duration;
   _stepCount = 0;
   _movementDone = false;
   _endstopHit = false;

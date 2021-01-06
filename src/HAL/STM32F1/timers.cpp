@@ -22,70 +22,74 @@
 /*
  * STM32F1 HAL timers handling
  */
+#include <Arduino.h>
 #include "timers.h"
 
-static STM32_timer_t timers[] = {
-  { .timer = HardwareTimer(1),
-    .serviceFunPtr = nullptr },
-  { .timer = HardwareTimer(2),
-    .serviceFunPtr = nullptr },
-  { .timer = HardwareTimer(3),
-    .serviceFunPtr = nullptr },
-  { .timer = HardwareTimer(4),
-    .serviceFunPtr = nullptr },
-#ifdef STM32_HIGH_DENSITY
-  { .timer = HardwareTimer(5),
-    .serviceFunPtr = nullptr },
-  { .timer = HardwareTimer(6),
-    .serviceFunPtr = nullptr },
-  { .timer = HardwareTimer(7),
-    .serviceFunPtr = nullptr },
-  { .timer = HardwareTimer(8),
-    .serviceFunPtr = nullptr }
-#endif
+static struct {
+  HardwareTimer timer;
+  void (* serviceFunPtr)(void);
+  } timers[] = {
+    { .timer = HardwareTimer(1),
+      .serviceFunPtr = nullptr },
+    { .timer = HardwareTimer(2),
+      .serviceFunPtr = nullptr },
+    { .timer = HardwareTimer(3),
+      .serviceFunPtr = nullptr },
+    { .timer = HardwareTimer(4),
+      .serviceFunPtr = nullptr },
+  #ifdef STM32_HIGH_DENSITY
+    { .timer = HardwareTimer(5),
+      .serviceFunPtr = nullptr },
+    { .timer = HardwareTimer(6),
+      .serviceFunPtr = nullptr },
+    { .timer = HardwareTimer(7),
+      .serviceFunPtr = nullptr },
+    { .timer = HardwareTimer(8),
+      .serviceFunPtr = nullptr }
+  #endif
 };
 
-void timerISRService(ZTimer::IsrTimer t) {
+void timerISRService(Timer::timerNum_t t) {
   if (timers[t].serviceFunPtr != nullptr)
     timers[t].serviceFunPtr();
 }
 
 void ISR1() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER1);
+  timerISRService(Timer::TIMER1);
 }
 
 void ISR2() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER2);
+  timerISRService(Timer::TIMER2);
 }
 
 void ISR3() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER3);
+  timerISRService(Timer::TIMER3);
 }
 
 void ISR4() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER4);
+  timerISRService(Timer::TIMER4);
 }
 
 #ifdef STM32_HIGH_DENSITY
 void ISR5() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER5);
+  timerISRService(Timer::TIMER5);
 }
 
 void ISR6() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER6);
+  timerISRService(Timer::TIMER6);
 }
 
 void ISR7() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER7);
+  timerISRService(Timer::TIMER7);
 }
 
 void ISR8() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER8);
+  timerISRService(Timer::TIMER8);
 }
 #endif
 
-void ZTimer::setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, uint16_t compare) {
-  if (timer < ZTIMER1 || (unsigned)timer >= COUNT(timers))
+void Timer::setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare) {
+  if (timer < TIMER1 || timer >= MAX_TIMERS)
     return;
 
   _timer = timer;
@@ -94,7 +98,7 @@ void ZTimer::setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, uin
   HardwareTimer * hwTimer = &timers[_timer].timer;
   hwTimer->pause();
   noInterrupts();
-  if (_timer == ZTIMER6 || _timer == ZTIMER7) {
+  if (_timer == TIMER6 || _timer == TIMER7) {
     // since these timers don't have a compare mode, we're using
     // the compare value as a period (in uS)
     hwTimer->setPeriod(compare);
@@ -112,40 +116,36 @@ void ZTimer::setupTimer(IsrTimer timer, uint8_t channel, uint16_t prescaler, uin
   interrupts();
 }
 
-void ZTimer::setupTimerHook(void (*function)(void)) {
-  if (_timer != ZUNDEFINED)
+void Timer::setupHook(void (*function)(void)) {
+  if (_timer != UNDEFINED)
     timers[_timer].serviceFunPtr = function;
 }
 
-timerVal_t ZTimer::getOverflow() {
-  return (_timer != ZUNDEFINED) ? timers[_timer].timer.getOverflow() : 0;
+void Timer::setNextInterruptInterval(timerVal_t interval) {
+  stop();
+  setOverflow(interval);
+  start();
 }
 
-void ZTimer::setOverflow(timerVal_t value) {
-  if (_timer != ZUNDEFINED)
+timerVal_t Timer::getOverflow() {
+  return (_timer != UNDEFINED) ? timers[_timer].timer.getOverflow() : 0;
+}
+
+void Timer::setOverflow(timerVal_t value) {
+  if (_timer != UNDEFINED)
     timers[_timer].timer.setOverflow(value);
 }
 
-void ZTimer::setCompare(timerVal_t value) {
-  if (_timer != ZUNDEFINED)
-    timers[_timer].timer.setCompare(_channel, value);
-}
-
-void ZTimer::setCounter(timerVal_t value) {
-  if (_timer != ZUNDEFINED)
-    timers[_timer].timer.setCount(value);
-}
-
-void ZTimer::startTimer() {
-  if (_timer != ZUNDEFINED) {
+void Timer::start() {
+  if (_timer != UNDEFINED) {
     HardwareTimer * hwTimer = &timers[_timer].timer;
     hwTimer->refresh();
     hwTimer->resume();
   }
 }
 
-void ZTimer::stopTimer() {
-  if (_timer != ZUNDEFINED)
+void Timer::stop() {
+  if (_timer != UNDEFINED)
     timers[_timer].timer.pause();
 }
 

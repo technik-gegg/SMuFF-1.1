@@ -640,10 +640,10 @@ void setupTimers() {
   //          communication interrupts/breaks. Read the STM32F1 MCU spec. and check
   //          the libmaple library settings before you do so.
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER2, ZTimer::CH1, STEPPER_PSC, 1);   // prescaler set to STEPPER_PSC, timer will be calculated as needed
-  gpTimer.setupTimer(ZTimer::ZTIMER8, ZTimer::CH1, 8, 0);                  // prescaler set to 9MHz, timer will be set to 50uS
+  stepperTimer.setupTimer(Timer::TIMER2, Timer::CH1, STEPPER_PSC, 1);   // prescaler set to STEPPER_PSC, timer will be calculated as needed
+  gpTimer.setupTimer(Timer::TIMER8, Timer::CH1, 8, 0);                  // prescaler set to 9MHz, timer will be set to 50uS
   #if !defined(USE_LEONERD_DISPLAY)
-  setToneTimerChannel(ZTimer::ZTIMER4, ZTimer::CH3);                       // force TIMER4 / CH3 on STM32F1x for tone library
+  setToneTimerChannel(Timer::TIMER4, Timer::CH3);                       // force TIMER4 / CH3 on STM32F1x for tone library
   #endif
   nvic_irq_set_priority(NVIC_TIMER8_CC, 0);
   nvic_irq_set_priority(NVIC_TIMER2, 1);
@@ -657,12 +657,12 @@ void setupTimers() {
   //    Steppers use:       TIMER1
   //    Encoder uses:       gpTimer
   // *****
-  stepperTimer.setupTimer(ZTimer::ZTIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
-  gpTimer.setupTimer(ZTimer::ZTIMER2, 80);                // 1ms on 80MHz timer clock
+  stepperTimer.setupTimer(Timer::TIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
+  gpTimer.setupTimer(Timer::TIMER2, 80);                // 1ms on 80MHz timer clock
 #endif
 
-  stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers
-  gpTimer.setupTimerHook(isrGPTimerHandler);              // setup the ISR for rotary encoder, servo and general timers
+  stepperTimer.setupHook(isrStepperHandler);            // setup the ISR for the steppers
+  gpTimer.setupHook(isrGPTimerHandler);                 // setup the ISR for rotary encoder, servo and general timers
 
 #if defined(__STM32F1__)
   gpTimer.setNextInterruptInterval(450);                  // run general purpose (gp)timer on 50uS (STM32)

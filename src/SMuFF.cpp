@@ -93,8 +93,8 @@ HardwareSerial          Serial3(1);               // dummy declaration to keep t
 Stream*                 logSerial = &Serial;
 
 ZStepper                steppers[NUM_STEPPERS];
-ZTimer                  stepperTimer;
-ZTimer                  gpTimer;
+Timer                  stepperTimer;
+Timer                   gpTimer;
 ZServo                  servo;
 ZServo                  servoLid;
 ZServo                  servoCutter;
@@ -439,7 +439,7 @@ void setup() {
 }
 
 void startStepperInterval() {
-  uint16_t minDuration = 65535;
+  timerVal_t minDuration = 65535;
   for(uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration ) {
       minDuration = steppers[i].getDuration();
@@ -453,7 +453,7 @@ void startStepperInterval() {
   }
 
   if(remainingSteppersFlag == 0) {
-    stepperTimer.stopTimer();
+    stepperTimer.stop();
     stepperTimer.setOverflow(65535);
   }
   else {
@@ -462,8 +462,8 @@ void startStepperInterval() {
 }
 
 void isrStepperHandler() {
-  stepperTimer.stopTimer();
-  uint16_t tmp = stepperTimer.getOverflow();
+  stepperTimer.stop();
+  timerVal_t tmp = stepperTimer.getOverflow();
   stepperTimer.setOverflow(65535);
 
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {

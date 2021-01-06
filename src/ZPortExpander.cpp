@@ -58,9 +58,9 @@ void ZPortExpander::begin(uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate
 #if defined(__ESP32__)
     // xTaskCreate(timerServiceTask, "ZPEServiceTask", 10000, this, 1, &taskHandle);
 
-    serialTimer.setupTimer(ZTimer::ZTIMER3, 80);                // 1us on 80MHz Timer Clock
-    serialTimer.setupTimerHook(isrSerialTimerHandler);
-    serialTimer.setNextInterruptInterval((uint16_t)_baudrate); // run serial timer to generate clock for baud rate
+    serialTimer.setupTimer(Timer::TIMER3, 80);                  // 1us on 80MHz Timer Clock
+    serialTimer.setupHook(isrSerialTimerHandler);
+    serialTimer.setNextInterruptInterval((timerVal_t)_baudrate); // run serial timer to generate clock for baud rate
 #endif
     for(uint8_t i=0; i < MAX_SERIAL; i++) {
         peSerials[i] = ZPESerial();

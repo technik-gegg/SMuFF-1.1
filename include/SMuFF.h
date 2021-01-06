@@ -256,8 +256,8 @@ extern void muteTone(int8_t pin);
 #endif
 
 extern ZStepper       steppers[];
-extern ZTimer         stepperTimer;
-extern ZTimer         gpTimer;
+extern Timer          stepperTimer;
+extern Timer          gpTimer;
 extern ZServo         servo;
 extern ZServo         servoLid;
 extern ZServo         servoCutter;

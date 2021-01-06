@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <Arduino.h>
 #include "Config.h"
+#include "HAL/HAL.h"
 
 extern void __debugS(const char* fmt, ...);
 
@@ -98,8 +99,8 @@ public:
   bool          getInvertDir() { return _invertDir; }
   void          setInvertDir(bool state) { _invertDir = state; }
 
-  uint16_t      getDuration() { return _durationInt; }
-  void          setDuration(uint16_t value) { _durationInt = value; }
+  timerVal_t    getDuration() { return _durationInt; }
+  void          setDuration(timerVal_t value) { _durationInt = value; }
   uint16_t      getStepsPerMM() { return _stepsPerMM; }
   void          setStepsPerMM(uint16_t steps) { _stepsPerMM = steps; }
   float         getStepsPerDegree() { return _stepsPerDegree; }
@@ -166,7 +167,7 @@ private:
 
   // per iteration variables (potentially changed every interrupt)
   volatile float          _duration;            // current interval length
-  volatile uint16_t       _durationInt;         // above variable truncated
+  volatile timerVal_t     _durationInt;         // above variable truncated
   volatile long           _accelDistSteps = 0;  // amount of steps for acceleration/deceleration
   volatile float          _stepsAcceleration  = 0.0;
 

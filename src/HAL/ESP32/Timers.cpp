@@ -24,22 +24,26 @@
  */
 #include "timers.h"
 
-static ESP32_timer_t timers[] = {
-  { .timer = nullptr,
-    .mux = portMUX_INITIALIZER_UNLOCKED,
-    .serviceFunPtr = nullptr },
-  { .timer = nullptr,
-    .mux = portMUX_INITIALIZER_UNLOCKED,
-    .serviceFunPtr = nullptr },
-  { .timer = nullptr,
-    .mux = portMUX_INITIALIZER_UNLOCKED,
-    .serviceFunPtr = nullptr },
-  { .timer = nullptr,
-    .mux = portMUX_INITIALIZER_UNLOCKED,
-    .serviceFunPtr = nullptr }
-};
+static struct {
+  hw_timer_t * timer;
+  portMUX_TYPE mux;
+  void (* serviceFunPtr)(void);
+  } timers[] = {
+    { .timer = nullptr,
+      .mux = portMUX_INITIALIZER_UNLOCKED,
+      .serviceFunPtr = nullptr },
+    { .timer = nullptr,
+      .mux = portMUX_INITIALIZER_UNLOCKED,
+      .serviceFunPtr = nullptr },
+    { .timer = nullptr,
+      .mux = portMUX_INITIALIZER_UNLOCKED,
+      .serviceFunPtr = nullptr },
+    { .timer = nullptr,
+      .mux = portMUX_INITIALIZER_UNLOCKED,
+      .serviceFunPtr = nullptr }
+  };
 
-void timerISRService(ZTimer::IsrTimer t) {
+void timerISRService(Timer::timerNum_t t) {
   if (timers[t].serviceFunPtr == nullptr)
     return;
 
@@ -49,23 +53,23 @@ void timerISRService(ZTimer::IsrTimer t) {
 }
 
 void IRAM_ATTR ISR1() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER1);
+  timerISRService(Timer::TIMER1);
 }
 
 void IRAM_ATTR ISR2() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER2);
+  timerISRService(Timer::TIMER2);
 }
 
 void IRAM_ATTR ISR3() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER3);
+  timerISRService(Timer::TIMER3);
 }
 
 void IRAM_ATTR ISR4() {
-  timerISRService(ZTimer::IsrTimer::ZTIMER4);
+  timerISRService(Timer::TIMER4);
 }
 
-void ZTimer::setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare) {
-  if (timer < ZTIMER1 || (unsigned)timer >= COUNT(timers))
+void Timer::setupTimer(timerNum_t timer, uint16_t prescaler, timerVal_t compare) {
+  if (timer < TIMER1 || timer >= MAX_TIMERS)
     return;
 
   _timer = timer;
@@ -77,35 +81,33 @@ void ZTimer::setupTimer(IsrTimer timer, uint16_t prescaler, timerVal_t compare) 
   interrupts();
 }
 
-void ZTimer::setupTimerHook(void (*function)(void)) {
-  if (_timer != ZUNDEFINED)
+void Timer::setupHook(void (*function)(void)) {
+  if (_timer != UNDEFINED)
     timers[_timer].serviceFunPtr = function;
 }
 
-timerVal_t ZTimer::getOverflow() {
-  return (_timer != ZUNDEFINED) ? timerAlarmReadMicros(timers[_timer].timer) : 0;
+void Timer::setNextInterruptInterval(timerVal_t interval) {
+  stop();
+  setOverflow(interval);
+  start();
 }
 
-void ZTimer::setOverflow(timerVal_t value) {
-  if (_timer != ZUNDEFINED)
+timerVal_t Timer::getOverflow() {
+  return (_timer != UNDEFINED) ? timerAlarmReadMicros(timers[_timer].timer) : 0;
+}
+
+void Timer::setOverflow(timerVal_t value) {
+  if (_timer != UNDEFINED)
     timerAlarmWrite(timers[_timer].timer, value, true);
 }
 
-void ZTimer::setCompare(timerVal_t value) {
-  // Not implemented
-}
-
-void ZTimer::setCounter(timerVal_t value) {
-  // Not implemented
-}
-
-void ZTimer::startTimer() {
-  if (_timer != ZUNDEFINED)
+void Timer::start() {
+  if (_timer != UNDEFINED)
     timerAlarmEnable(timers[_timer].timer);
 }
 
-void ZTimer::stopTimer() {
-  if (_timer != ZUNDEFINED)
+void Timer::stop() {
+  if (_timer != UNDEFINED)
     timerAlarmDisable(timers[_timer].timer);
 }
 
