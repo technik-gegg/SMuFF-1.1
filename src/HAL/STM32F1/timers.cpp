@@ -122,8 +122,12 @@ void Timer::setupHook(void (*function)(void)) {
 }
 
 void Timer::setNextInterruptInterval(timerVal_t interval) {
+  if (_timer == UNDEFINED)
+    return;
+
   stop();
   setOverflow(interval);
+  timers[_timer].timer.setCount(0);
   start();
 }
 
