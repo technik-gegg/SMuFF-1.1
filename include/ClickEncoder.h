@@ -14,7 +14,6 @@
 
 #include <stdint.h>
 #include "Arduino.h"
-#include "CommonMacros.h"
 #include "ButtonState.h"
 
 // ----------------------------------------------------------------------------

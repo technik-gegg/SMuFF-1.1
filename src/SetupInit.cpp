@@ -629,9 +629,9 @@ void setupTimers() {
   // Attn:
   //    PA8 (Fan) uses:     TIMER1 CH1 (predefined by libmaple for PWM)
   //    Steppers use:       TIMER2 CH1 (may corrupt TH0 readings)
-  //    GP timer uses:      TIMER8 CH1 (general, encoder, servo)
-  //    Beeper uses:        TIMER4 CH3
   //    SW-Serial uses:     TIMER3 CH4 (see SoftwareSerialM library)
+  //    Beeper uses:        TIMER4 CH3
+  //    GP timer uses:      TIMER8 CH1 (general, encoder, servo)
   //    PC8 (Heater0) uses: TIMER8 CH3 (predefined by libmaple for PWM)
   //    PC9 (Heatbed) uses: TIMER8 CH4 (predefined by libmaple for PWM)
   //
@@ -652,9 +652,9 @@ void setupTimers() {
 #elif defined(__ESP32__)
   // *****
   // Attn:
+  //    Steppers use:       TIMER1
   //    Servo uses:         TIMER3 (if it's setup to create its own timer)
   //    PortExpander uses:  TIMER3 (via general purpose timer)
-  //    Steppers use:       TIMER1
   //    Encoder uses:       gpTimer
   // *****
   stepperTimer.setupTimer(Timer::TIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
