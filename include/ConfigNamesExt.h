@@ -77,5 +77,16 @@ extern char* tool;
 extern char* positions;
 extern char* swaps;
 extern char* useCutter;
+extern char* usePurge;
 extern char* cutterOpen;
 extern char* cutterClose;
+extern char* purgeSpeed;
+extern char* purgeLength;
+extern char* purges;
+extern char* cutterLength;
+extern char* endstop2;
+extern char* color;
+extern char* pfactor;
+extern char* autoWipe;
+
+

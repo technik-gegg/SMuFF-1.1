@@ -7,17 +7,20 @@ Available M Commands
   M100	-	Show memory info
   M106	-	Fan on
   M107	-	Fan off
+  M111	-	Turn debugging on/off
   M114	-	Report current positions
   M115	-	Report version
   M117	-	Display message
   M119	-	Report endstop status
   M122	-	Report TMC driver status
+  M145	-	Set Material color/purge factor
   M150	-	Set FastLED color
   M201	-	Set max. acceleration
   M203	-	Set max. feedrate
   M205	-	Set advanced options
   M206	-	Set offsets
   M250	-	LCD contrast
+  M280  - Set Servo position
   M300	-	Play a tone or a tune
   M350	-	Set motor microstepping
   M412	-	JAM detection on/off

@@ -1,9 +1,7 @@
 {
-   "Materials": {
-      "T0": "PLA Green",
-      "T1": "PLA White",
-      "T2": "PLA Red",
-      "T3": "PLA Black",
-      "T4": "PLA Silver"
-   }
+   "T0": { "Material": "PLA", "Color": "Green",  "PFactor": 100 },
+   "T1": { "Material": "PLA", "Color": "White",  "PFactor": 100 },
+   "T2": { "Material": "PLA", "Color": "Red",    "PFactor": 100 },
+   "T3": { "Material": "PLA", "Color": "Black",  "PFactor": 100 },
+   "T4": { "Material": "PLA", "Color": "Silver", "PFactor": 100 }
 }

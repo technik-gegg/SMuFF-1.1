@@ -18,14 +18,15 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.18"
+#define VERSION_STRING    "V2.19"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2020-12-20"
+#define VERSION_DATE      "2021-01-02"
 #define CONFIG_FILE       "SMUFF.CFG"
 #define MATERIALS_FILE    "MATERIALS.CFG"
 #define TMC_CONFIG_FILE   "TMCDRVR.CFG"
 #define SERVOMAP_FILE     "SERVOMAP.CFG"
+#define PURGE_FILE        "PURGE.CFG"
 #define DATASTORE_FILE    "EEPROM.DAT"
 #define TUNE_FILE         "TUNE.DAT"
 #define BEEP_FILE         "BEEP.DAT"
@@ -86,7 +87,7 @@
 #define MAX_POWER           2000        // maximum allowed power for rms_current()
 #define MAX_STALL_COUNT     100         // maximum stall counter for stepper
 #define MAX_MMS             700         // maximum mm/s for in menus
-#define MAX_TICKS           32000       // maximum ticks in menus
+#define MAX_TICKS           65000       // maximum ticks in menus
 #define INC_MMS             5           // speed increment for mm/s
 #define INC_TICKS           50          // speed increment for ticks
 #define MAX_MENU_ORDINALS   40
@@ -124,4 +125,5 @@
 #define LOGO_FONT               BASE_FONT
 #define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
 #define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x
+#define ICONIC_FONT_S           u8g2_font_open_iconic_check_1x_t
 //#define SYMBOL_FONT             u8g2_font_unifont_t_symbols

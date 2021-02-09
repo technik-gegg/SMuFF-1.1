@@ -140,8 +140,15 @@ void drawStatus() {
   display.setFontMode(0);
   display.setDrawColor(1);
   if(steppers[FEEDER].getMovementDone()) {
-    display.setFont(ICONIC_FONT);
-    display.drawGlyph(110, 38, feederEndstop() ? 0x41 : 0x42);
+    if(!smuffConfig.useEndstop2) {
+      display.setFont(ICONIC_FONT);
+      display.drawGlyph(110, 38, feederEndstop() ? 0x41 : 0x42);
+    }
+    else {
+      display.setFont(ICONIC_FONT);
+      display.drawGlyph(94, 38, feederEndstop() ? 0x41 : 0x42);
+      display.drawGlyph(112, 38, feederEndstop(2) ? 0x41 : 0x42);
+    }
     display.setFont(BASE_FONT);
   }
   else {
@@ -360,6 +367,29 @@ void drawSelectingMessage(uint8_t tool) {
   } while(display.nextPage());
 }
 
+void drawPurgingMessage(uint16_t len, uint8_t tool) {
+  char _sel[128];
+  char _wait[128];
+  char tmp[80];
+
+  if(displayingUserMessage)     // don't show if something else is being displayed
+    return;
+  display.firstPage();
+  do {
+    resetDisplay();
+    sprintf_P(_sel, P_Purging);
+    sprintf_P(_wait, P_Wait);
+    sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((float)len*2.4).c_str());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2-10, _sel);
+    display.setFont(BASE_FONT);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+4, tmp);
+    sprintf_P(tmp, P_PurgeCubic, String((float)len*2.4).c_str());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+15, tmp);
+    display.setFont(BASE_FONT);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2 + display.getMaxCharHeight()+15, _wait);
+  } while(display.nextPage());
+}
+
 void drawTestrunMessage(unsigned long loop, char* msg) {
   char _sel[128];
   char _wait[128];
@@ -470,6 +500,9 @@ void drawSDStatus(int8_t stat) {
       break;
     case SD_READING_MATERIALS:
       sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
+      break;
+    case SD_READING_PURGES:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
       break;
   }
   display.firstPage();
@@ -647,7 +680,7 @@ void switchFeederStepper(uint8_t stepper) {
       smuffConfig.externalStepper = false;
     }
     // gain the relay some time to debounce
-    delay(50);
+    delay(250);
   }
 }
 
@@ -718,7 +751,7 @@ void changeFeederInsertSpeed(uint16_t speed) {
 }
 
 void repositionSelector(bool retractFilament) {
-  int8_t tool = toolSelected;
+  int8_t tool = getToolSelected();
   if(retractFilament && !smuffConfig.revolverIsServo) {
     char tmp[15];
     uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
@@ -901,6 +934,15 @@ bool feedToNozzle(bool showMessage) {
         remains = steppers[FEEDER].getStepPositionMM();
         __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
       }
+      // check whether the 2nd endstop has triggered as well if configured to do so
+      if(Z_END2_PIN != -1 && smuffConfig.useEndstop2 && stat) {
+        if(!steppers[FEEDER].getEndstopHit(2))
+          stat = false;
+        if(!stat) {
+          remains = steppers[FEEDER].getStepPositionMM();
+          __debugS(PSTR("E-Stop2 failed. Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+        }
+      }
     } while(!stat && retries > 0);
     if(stat) {
       retries = FEED_ERROR_RETRIES;
@@ -959,8 +1001,22 @@ bool loadFilament(bool showMessage) {
 
   if(smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort()) {
     resetRevolver();
+    changeFeederInsertSpeed(smuffConfig.insertSpeed);
+    delay(150);
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
+  }
+
+  if(smuffConfig.usePurge && smuffConfig.purgeLength > 0 && !steppers[FEEDER].getAbort()) {
+    changeFeederInsertSpeed(smuffConfig.purgeSpeed);
+    uint16_t len = smuffConfig.purgeLength;
+    if(smuffConfig.purges[toolSelected] > 100) {
+      len *= ((float)smuffConfig.purges[toolSelected]/100);
+    }
+    drawPurgingMessage(len, toolSelected);
+    prepSteppingRelMillimeter(FEEDER, len, true);
+    runAndWait(FEEDER);
+    delay(250);
   }
 
   steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -982,6 +1038,7 @@ bool loadFilament(bool showMessage) {
   }
 
   parserBusy = false;
+  drawStatus();
   return true; //aborted ? false : true;
 }
 
@@ -1048,6 +1105,7 @@ bool loadFilamentPMMU2(bool showMessage) {
   }
 
   parserBusy = false;
+  drawStatus();
   return true;
 }
 
@@ -1055,6 +1113,7 @@ bool unloadFromNozzle(bool showMessage) {
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
   int8_t retries = FEED_ERROR_RETRIES;
+  float posNow = steppers[FEEDER].getStepPositionMM();
 
   if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
     __debugS(PSTR("Unloading in %d chunks "), smuffConfig.feedChunks);
@@ -1073,9 +1132,30 @@ bool unloadFromNozzle(bool showMessage) {
       runAndWait(FEEDER);
       // did the Feeder stall?
       stat = handleFeederStall(&speed, &retries);
+      // check whether the 2nd endstop has triggered as well if configured to do so
+      if(Z_END2_PIN != -1 && smuffConfig.useEndstop2 && stat) {
+        // endstop still triggered?
+        if(steppers[FEEDER].getEndstopHit(2)) {
+          retries--;
+          stat = false;
+          __debugS(PSTR("E-Stop2 failed. Retrying"));
+          // if only one retry is left, try cutting the filament again (if the cutter is configured)
+          if(retries == 1) {
+            cutFilament();
+          }
+        }
+      }
     } while(!stat && retries > 0);
   }
-  //__debugS(PSTR("Feeder endstop now %d (%d)"), feederEndstop(), steppers[FEEDER].getEndstopState());
+  // do some calculations in order to give some hints
+  float posEnd = posNow - steppers[FEEDER].getStepPositionMM();
+  // calculate supposed length;
+  float dist = smuffConfig.bowdenLength + smuffConfig.cutterLength - smuffConfig.unloadRetract;
+  if(posEnd < dist-5 || posEnd > dist+5) {
+    __debugS(PSTR("HINT: Feeder endstop triggered after %s mm where it's supposed to be %s mm"), String(posEnd).c_str(), String(dist).c_str());
+    __debugS(PSTR("Params: Bowden length: %s mm; Unload retract: -%s mm"), String(smuffConfig.bowdenLength).c_str(), String(smuffConfig.unloadRetract).c_str());
+    __debugS(PSTR("Suggestion: Try adjusting BowdenLength to %s mm"), String(smuffConfig.bowdenLength + (posEnd - dist)).c_str());
+  }
   // reset feeder to max. speed
   changeFeederInsertSpeed(smuffConfig.maxSpeed[FEEDER]);
   delay(500);
@@ -1100,6 +1180,26 @@ bool unloadFromSelector() {
   return stat;
 }
 
+void cutFilament(bool keepClosed /* = true */) {
+    // use the filament cutter?
+  if(smuffConfig.useCutter) {
+    // run the cutter 3 times to be on the save side
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
+    delay(500);
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+    delay(300);
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
+    delay(300);
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+    delay(200);
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
+    if(!keepClosed) {
+      delay(200);
+      setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+    }
+  }
+}
+
 bool unloadFilament() {
   if (toolSelected == -1) {
     signalNoTool();
@@ -1122,26 +1222,26 @@ bool unloadFilament() {
 
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
 
-  // use the filament cutter?
-  if(smuffConfig.useCutter) {
-    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
-    delay(500);
-    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
-    delay(200);
-    setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
-  }
-
   if(smuffConfig.unloadRetract != 0) {
-    prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadRetract);
+    __debugS(PSTR("Unload retract: %s mm"), String(smuffConfig.unloadRetract).c_str());
+    prepSteppingRelMillimeter(FEEDER, -smuffConfig.unloadRetract, true);
     runAndWait(FEEDER);
     if(smuffConfig.unloadPushback != 0) {
+      __debugS(PSTR("Unload pushback: %s mm"), String(smuffConfig.unloadPushback).c_str());
       changeFeederInsertSpeed(smuffConfig.insertSpeed);
-      prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadPushback);
+      prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadPushback, true);
       runAndWait(FEEDER);
       delay(smuffConfig.pushbackDelay*1000);
       steppers[FEEDER].setMaxSpeed(curSpeed);
     }
   }
+  // wipe nozzle if configured
+  if(smuffConfig.wipeBeforeUnload) {
+    G12("G12", "", 255);
+  }
+  // cut the filament if configured likewise
+  cutFilament();
+
   // invert endstop trigger state for unloading
   bool endstopState = steppers[FEEDER].getEndstopState();
   steppers[FEEDER].setEndstopState(!endstopState);
@@ -1197,6 +1297,7 @@ bool unloadFilament() {
     switchFeederStepper(EXTERNAL);
   }
   parserBusy = false;
+  drawStatus();
   return true;
 }
 
@@ -1376,10 +1477,10 @@ bool selectTool(int8_t ndx, bool showMessage) {
         printResponse(_tmp, 2);
       }
     }
-    if(smuffConfig.revolverIsServo) {
-      // release servo prior moving the selector
-      setServoLid(SERVO_OPEN);
-    }
+  }
+  if(smuffConfig.revolverIsServo) {
+    // release servo prior moving the selector
+    setServoLid(SERVO_OPEN);
   }
   //__debugS(PSTR("Selecting tool: %d"), ndx);
   parserBusy = true;
@@ -1427,7 +1528,7 @@ bool selectTool(int8_t ndx, bool showMessage) {
     saveStore();
     //__debugS(PSTR("Data stored"));
 
-    if (!smuffConfig.extControlFeeder && showMessage) {
+    if (showMessage && (!smuffConfig.extControlFeeder || (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper))) {
       showFeederLoadMessage();
     }
     if(smuffConfig.extControlFeeder) {
@@ -1498,13 +1599,25 @@ void printPeriodicalState(int8_t serial) {
 
   const char* _triggered = "on";
   const char* _open      = "off";
+  int8_t tool = getToolSelected();
+
   sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\n"),
-          toolSelected,
+          tool,
           selectorEndstop()  ? _triggered : _open,
           revolverEndstop()  ? _triggered : _open,
           feederEndstop(1)   ? _triggered : _open,
           feederEndstop(2)   ? _triggered : _open);
   printResponse(tmp, serial);
+}
+
+int8_t getToolSelected() {
+  int8_t tool;
+  // rather return the swapped tool than the currently selected
+  if(toolSelected >= 0 && toolSelected <= MAX_TOOLS)
+    tool = swapTools[toolSelected];
+  else
+    tool = toolSelected;
+  return tool;
 }
 
 void printDriverMode(int8_t serial) {
@@ -1809,6 +1922,22 @@ void setServoMaxPwm(int8_t servoNum, uint16_t pwm) {
   }
 }
 
+void disableServo(int8_t servoNum) {
+  switch(servoNum) {
+    case SERVO_WIPER:   servo.disable(); break;
+    case SERVO_LID:     servoLid.disable(); break;
+    case SERVO_CUTTER:  servoCutter.disable(); break;
+  }
+}
+
+void enableServo(int8_t servoNum) {
+  switch(servoNum) {
+    case SERVO_WIPER:   servo.enable(); break;
+    case SERVO_LID:     servoLid.enable(); break;
+    case SERVO_CUTTER:  servoCutter.enable(); break;
+  }
+}
+
 bool setServoPos(int8_t servoNum, uint8_t degree) {
   #if defined(MULTISERVO)
   uint16_t pulseLen = map(degree, 0, 180, smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
@@ -1821,13 +1950,13 @@ bool setServoPos(int8_t servoNum, uint8_t degree) {
     }
     #else
     servo.write(degree);
-    delay(250);
+    delay(100);
     #endif
     return true;
   }
   else if(servoNum == SERVO_LID) {
     servoLid.write(degree);
-    delay(250);
+    delay(100);
     return true;
   }
   else if(servoNum == SERVO_CUTTER) {
@@ -1837,7 +1966,7 @@ bool setServoPos(int8_t servoNum, uint8_t degree) {
     }
     #else
     servoCutter.write(degree);
-    delay(250);
+    delay(100);
     #endif
     return true;
   }
@@ -1861,7 +1990,7 @@ bool setServoMS(int8_t servoNum, uint16_t microseconds) {
     }
     #else
     servo.writeMicroseconds(microseconds);
-    delay(250);
+    delay(100);
     #endif
     return true;
   }
@@ -1872,7 +2001,7 @@ bool setServoMS(int8_t servoNum, uint16_t microseconds) {
       servoPwm.writeMicroseconds(servo, microseconds);
     #else
     servoLid.writeMicroseconds(microseconds);
-    delay(250);
+    delay(100);
     #endif
     return true;
   }
@@ -1883,7 +2012,7 @@ bool setServoMS(int8_t servoNum, uint16_t microseconds) {
     }
     #else
     servoCutter.writeMicroseconds(microseconds);
-    delay(250);
+    delay(100);
     #endif
     return true;
   }
@@ -2198,6 +2327,7 @@ void listTextFile(const char* filename PROGMEM, int8_t serial) {
 
   sprintf_P(fname, PSTR("help/%s.txt"), filename);
   if(file.open(fname, O_READ)) {
+    printResponseP(P_Usage, serial);
     while(file.fgets(line, sizeof(line)-1, delimiter) > 0) {
       printResponse(line, serial);
     }
@@ -2349,7 +2479,7 @@ void maintainTool() {
   }
   else {
     maintainingMode = true;
-    maintainingTool = toolSelected;
+    maintainingTool = getToolSelected();
 
     if(toolSelected <= (smuffConfig.toolCount/2)) {
       newTool = toolSelected+2;
@@ -2445,14 +2575,15 @@ uint8_t scanI2CDevices(uint8_t *devices) {
   uint8_t cnt = 0;
   Wire.begin();
   memset(devices, 0, ArraySize(devices));
-  for(uint8_t address = 1; address < 127; address++)
+  for(uint8 address = 1; address < 127; address++)
   {
     Wire.beginTransmission(address);
     uint8 stat = Wire.endTransmission();
+    //__debugS(PSTR("Scanning at address 0x%02x returned 0x%x"), address, stat);
     if (stat == SUCCESS) {
       *(devices+cnt) = address;
       cnt++;
-      //__debugS(PSTR("I2C device found at address 0x%2x"), address);
+      __debugS(PSTR("I2C device found at address 0x%02x"), address);
     }
     delay(3);
   }
@@ -2466,20 +2597,22 @@ void __debugS(const char* fmt, ...) {
   if(debugSerial == nullptr)
     return;
 #ifdef DEBUG
-  char _dbg[512];
-  va_list arguments;
-  va_start(arguments, fmt);
-  vsnprintf_P(_dbg, ArraySize(_dbg)-1, fmt, arguments);
-  va_end (arguments);
-  debugSerial->print(F("echo: dbg: "));
-  debugSerial->println(_dbg);
+  if(testMode) {
+    char _dbg[512];
+    va_list arguments;
+    va_start(arguments, fmt);
+    vsnprintf_P(_dbg, ArraySize(_dbg)-1, fmt, arguments);
+    va_end (arguments);
+    debugSerial->print(F("echo: dbg: "));
+    debugSerial->println(_dbg);
+  }
 #endif
 }
 
 void __log(const char* fmt, ...) {
   if(logSerial == nullptr)
     return;
-  char _log[1024];
+  char _log[512];
   va_list arguments;
   va_start(arguments, fmt);
   vsnprintf_P(_log, ArraySize(_log)-1, fmt, arguments);

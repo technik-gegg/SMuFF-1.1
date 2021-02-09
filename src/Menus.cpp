@@ -107,8 +107,9 @@ void setupToolsMenu(char* menu) {
   sprintf_P(menu, P_MenuItemBack);
   memset(toolSelections, 0, sizeof(int)*MAX_TOOLS);
   uint8_t n = 0;
+  int8_t tool = toolSelected;
   for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
-    if(i == toolSelected)
+    if(i == tool)
       continue;
     toolSelections[n] = i;
     sprintf_P(tmp, P_ToolMenu, i);
@@ -181,8 +182,29 @@ void setupOptionsMenu(char* menu) {
     smuffConfig.servoMaxPwm,
     smuffConfig.useCutter ? P_Yes : P_No,
     smuffConfig.cutterOpen,
-    smuffConfig.cutterClose
+    smuffConfig.cutterClose,
+    smuffConfig.usePurge ? P_Yes : P_No
   );
+}
+
+void setupPurgeMenu(char* menu) {
+  char tmp[50];
+
+  sprintf(menu, loadMenu(P_MnuPurge, menuOrdinals),
+    smuffConfig.usePurge  ? P_Yes : P_No,
+    smuffConfig.purgeSpeed,
+    String(smuffConfig.purgeLength).c_str(),
+    String(smuffConfig.unloadRetract).c_str()
+  );
+
+  uint8_t n=7;    // next possible ordinal (after separator)
+  for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
+    uint8_t ndx = swapTools[i];
+    sprintf_P(tmp, P_ToolPurgeMenu, i, smuffConfig.materials[ndx], smuffConfig.purges[ndx]);
+    strcat(menu, tmp);
+    menuOrdinals[n++] = 10+i;
+  }
+  menu[strlen(menu)-1] = '\0';
 }
 
 void setupBaudrateMenu(char* menu) {
@@ -270,7 +292,9 @@ void setupFeederMenu(char* menu) {
     smuffConfig.extControlFeeder ? P_Yes : P_No,
     smuffConfig.isSharedStepper ? P_Yes : P_No,
     translateMS3State(smuffConfig.ms3config[FEEDER]),
-    smuffConfig.endstopTrg[3] ? P_High : P_Low
+    smuffConfig.endstopTrg[3] ? P_High : P_Low,
+    smuffConfig.useEndstop2 ? P_Yes : P_No,
+    smuffConfig.wipeBeforeUnload ? P_Yes : P_No
   );
 }
 
@@ -390,23 +414,32 @@ void showMainMenu() {
           loadFilament();
           break;
 
-        case 11:
+        case 10: // Wipe Nozzle
+          G12("G12", "", 255);
+          break;
+
+        case 11: // Cut Filament
+          cutFilament(false);
+          break;
+
+        case 13:
           showSwapMenu(title);
           break;
 
-        case 12:
+        case 14:
           showStatusInfoMenu(title);
           break;
 
-        case 14:
+        case 16:
           showSettingsMenu(title);
           current_selection = 1;
           break;
 
-        case 16:
+        case 18:
           showTestrunMenu(title);
           current_selection = 1;
           break;
+
       }
       startTime = millis();
     }
@@ -1202,6 +1235,19 @@ void showFeederMenu(char* menuTitle) {
               steppers[FEEDER].setEndstopState(smuffConfig.endstopTrg[3], 2);
             }
             break;
+
+        case 19: // Use Endstop2
+            bVal = smuffConfig.useEndstop2;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.useEndstop2 = bVal;
+            break;
+
+        case 20: // Auto Wipe
+            bVal = smuffConfig.wipeBeforeUnload;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.wipeBeforeUnload = bVal;
+            break;
+
       }
       startTime = millis();
     }
@@ -1320,13 +1366,11 @@ void saveSettings() {
   bool stat = false;
   if(writeConfig()) {
     if(writeTmcConfig()){
-      #if defined(MULTISERVO)
       if(writeServoMapping()) {
-        stat = true;
+        if(writeMaterials()) {
+          stat = true;
+        }
       }
-      #else
-        stat = true;
-      #endif
     }
   }
   char msg[60];
@@ -1340,7 +1384,7 @@ void saveSettings() {
     sprintf_P(msg, P_ConfigWriteFail);
   }
   drawUserMessage(msg);
-  delay(3000);
+  delay(2000);
 }
 
 void checkSaveSettings() {
@@ -1427,7 +1471,12 @@ void showSettingsMenu(char* menuTitle) {
             current_selection = 1;
             break;
 
-        case 11: // Save To SD-Card
+        case 10: // Purge Control
+            showPurgeMenu(title);
+            current_selection = 1;
+            break;
+
+        case 12: // Save To SD-Card
             saveSettings();
             current_selection = 1;
             break;
@@ -1565,8 +1614,78 @@ void showOptionsMenu(char* menuTitle) {
               smuffConfig.cutterClose = iVal;
             }
             break;
+
       }
       startTime = millis();
+    }
+  }
+}
+
+void showPurgeMenu(char* menuTitle) {
+  bool stopMenu = false;
+  uint32 startTime = millis();
+  uint8_t current_selection = 0;
+  float fVal;
+  int iVal;
+  bool bVal;
+  char *title;
+  char msg[128];
+  char _menu[300];
+
+  while(!stopMenu) {
+    setupPurgeMenu(_menu);
+    #if defined(CHECK_MENU)
+    checkMenuSize(P_MnuPurge, _menu, ArraySize(_menu));
+    #endif
+    resetAutoClose();
+    stopMenu = checkStopMenu(startTime);
+
+    current_selection = display.userInterfaceSelectionList(menuTitle, current_selection, _menu);
+    uint8_t fnc = menuOrdinals[current_selection];
+
+    //__debugS(PSTR("Ordinal FNC: %d"), fnc);
+
+    if(current_selection == 0)
+      return;
+    else {
+      title = extractTitle(_menu, current_selection-1);
+      switch(fnc) {
+        case 1:
+            stopMenu = true;
+            break;
+        case 2: // Use Purge
+            bVal = smuffConfig.usePurge;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.usePurge = bVal;
+            break;
+        case 3: // Purge Speed
+            iVal = smuffConfig.purgeSpeed;
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.purgeSpeed = (uint16_t)iVal;
+            }
+            break;
+
+        case 4: // Purge length
+            fVal = smuffConfig.purgeLength;
+            if(showInputDialog(title, P_InMillimeter, &fVal, 1, 400))
+              smuffConfig.purgeLength = fVal;
+            break;
+
+        case 5: // Cutter length
+            fVal = smuffConfig.unloadRetract;
+            if(showInputDialog(title, P_InMillimeter, &fVal, 0, 150))
+              smuffConfig.unloadRetract = fVal;
+            break;
+
+        default:
+          if(fnc >=10 && fnc <= 10+MAX_TOOLS) {
+            uint8_t ndx = swapTools[fnc-10];
+            iVal = smuffConfig.purges[ndx];
+            if(showInputDialog(title, P_InPercent, &iVal, 50, 500, nullptr, 1)) {
+              smuffConfig.purges[ndx] = (uint16_t)iVal;
+            }
+          }
+      }
     }
   }
 }

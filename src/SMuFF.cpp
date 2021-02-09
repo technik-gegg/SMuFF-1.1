@@ -134,7 +134,11 @@ String                          wirelessHostname = "";
 volatile byte                   nextStepperFlag = 0;
 volatile byte                   remainingSteppersFlag = 0;
 volatile unsigned long          lastEncoderButtonTime = 0;
+#ifdef DEBUG
+bool                            testMode = true;
+#else
 bool                            testMode = false;
+#endif
 bool                            timerRunning = false;
 int8_t                          toolSelections[MAX_TOOLS];
 uint32_t                        pwrSaveTime;
@@ -652,10 +656,10 @@ void loop() {
   if(digitalRead(SD_DETECT_PIN) == HIGH) {
     if(!sdRemoved) {
       userBeep();
-      LeoNerdBlinkRed = true;
+      leoNerdBlinkRed = true;
     }
     sdRemoved = true;
-    char tmp[128];
+    char tmp[50];
     sprintf_P(tmp, P_SDCardRemoved);
     drawUserMessage(tmp);
     return;
@@ -664,8 +668,8 @@ void loop() {
     if(sdRemoved) {
       if(initSD(false)) {
         sdRemoved = false;
+        leoNerdBlinkRed = false;
         refreshStatus(true, false);
-        LeoNerdBlinkRed = false;
       }
     }
     else

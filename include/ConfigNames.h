@@ -69,6 +69,8 @@ const char* maxStallCount PROGMEM      = "MaxStall";
 const char* spacing PROGMEM            = "Spacing";
 const char* externalControl PROGMEM    = "ExtCtrl";
 const char* insertSpeed PROGMEM        = "InsSpeed";
+const char* purgeSpeed PROGMEM         = "PurgeSpeed";
+const char* purgeLength PROGMEM        = "PurgeLen";
 const char* reinforceLength PROGMEM    = "ReinforceLen";
 const char* unloadRetract PROGMEM      = "UnldRetract";
 const char* unloadPushback PROGMEM     = "UnldPushback";
@@ -104,5 +106,15 @@ const char* speedsInMMS PROGMEM        = "SpdsInMms";
 const char* ms3Config PROGMEM          = "MS3";
 const char* motDelay PROGMEM           = "MDly";
 const char* useCutter PROGMEM          = "UseCutter";
+const char* usePurge PROGMEM           = "UsePurge";
 const char* cutterOpen PROGMEM         = "CutOpen";
 const char* cutterClose PROGMEM        = "CutClose";
+const char* purges PROGMEM             = "Purges";
+const char* cutterLength PROGMEM       = "CutterLen";
+const char* endstop2 PROGMEM           = "UseEStop2";
+const char* color PROGMEM              = "Color";
+const char* pfactor PROGMEM            = "PFactor";
+const char* autoWipe PROGMEM           = "AutoWipe";
+
+
+

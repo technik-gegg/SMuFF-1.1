@@ -18,7 +18,7 @@ To use this firmware, you have to [compile it](https://sites.google.com/view/the
 
 The SKR mini series boards are very small and yet more powerful because of the 32-Bit STM micro controller unit.
 
-Of course, this firmware can be configured to run on any other controller board, as long as it meats the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. It's recommended using a 32 bit controller board instead.
+Of course, this firmware can be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. It's recommended using a 32 bit controller board instead.
 Make sure your board of choice has least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are (at least):
 
 + two stepper motor driver (sockets)
@@ -41,6 +41,25 @@ For more information about building the SMuFF and some more detailed stuff, head
 ---
 
 ## Recent changes
+
+**2.19** - STM32 platform update / SKR E3 bug fixing / Purge added
+
++ updated STM32 platform to version **11.0.0**. Please do the same, since 10.0.1 seems to have a lot of issues. Also, be aware that 11.0.0 also still has bugs, i.e. the I2C bus enumeration will not report any device available! Though, devices attached work flawlessly (as far as I can tell).
++ swapped signal pins for TX on Z and E stepper driver.
++ changed **board** setting in *platformio.ini* for E3-DIP to genericSTM32F103**RE**, since newer boards come with the RET6 MCU (means: twice as much Flash and RAM). Please check the MCU on your board and set it back to genericSTM32F103**RC** if it says STM32F103**RC**T6!
++ added **PurgeSpeed** and **PurgeLen** to the configuration and menus (*Purge Control* in settings). If *PurgeLen* is set to a value greater 0 and the purge feature is enabled, the SMuFF will purge the amount given in *PurgeLen* with the given *PurgeSpeed* after the tool change. This configuration is needed because under some (so far unknown) circumstances, the OctoPrint plugin (or even the printer, not sure which one to blame) tends to hang when extrusions are being executed within the tool changing process (that is: within the **BeforeToolChange** and **AfterToolChange** scripts).
+You have to figure the correct length for purging yourself. However, if you happen to know the purge volume for your filament, you can easily calculate the length by dividing the purge volume by 2.4 (for a 1.75 diameter filament this equals to: 280 mm³ / 2.4 = 116 mm). You may have to adjust this value but at least it's a good starting point.
++ modified contents of **MATERIALS.CFG**. Restructured the file contents and added *Material*, *Color* and *PFactor* settings to it.**Copy the new one onto your SD-Card**.
++ added **PFactor** setting in **MATERIALS.CFG**. This configuration file lets you define and store the purge factor (in percent) related to the initial **PurgeLen** definition. This might be useful when you experience color bleeding on lighter colors (such as white).
++ added **M145** GCode command which lets you define material colors/names and the purge factor for each material conveniently via terminal app. That's because the purge factors in the purge menu will show the tool number and material/color name. This way it's easier to determine on which to modify the purge factor.
++ fixed a bug which caused the tool change to fail when initiated via the tools menu because the lid servo didn't open correctly.
++ modified existing / added new menus (*settings.mnu*, *purge.mnu*). Copy those to the **menus folder** on your SD-Card.
++ added *UnloadRetract* to the **Purge Control** menu. This value retracts the filament the given amount before it gets cut. I did this to reduce the amount of filament that remains in the hotend and thus reduce the amount that needs to be purged at all. You're supposed to set this value to the distance between the nozzle and the cutters blade (somewhere around 50 mm for my Ender-3 Cutter design, for example).
++ added **UseEStop2** setting for the feeder. If you enable this setting, the SMuFF will check whether or not the 2nd endstop is being triggered when loading/unloading and take actions if not (also related to it is setting EStopTest, which defines the trigger state). This endstop is supposed to sit near the very end of the bowden tube (right on top of the cutter, in case you use that).
++ added **Wipe Nozzle** and **Cut Filament** to the main menu. Copy the newer main*.mnu files to your SD-Cards menu folder.
++ added a constraint for version **>=11.0.0** to the STSTM32 platform in all STM32 releated build environments (for good measure).
++ added a constraint for version **=1.1.4** to the SdFat library. This library has been updated to 2.0.0 and seems to have issues when compiling.
++ changed the default setting **SpeedsInMms** to **false**. This means, speeds are **no** longer defined in mm/s by default but in ticks. **Keep in mind:** Ticks have to go up when you want to **slow down** the stepper movement and, vice versa, decrement if you want to speed the motion up. The SMUFF.CFG contains some conservative values for you to begin with. Using ticks instead of mm/s makes controlling the motion of the stepper motors much more fine tuneable.
 
 **2.18** - SKR E3 V2.0 bug fixing
 

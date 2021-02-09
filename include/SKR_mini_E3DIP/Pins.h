@@ -59,7 +59,7 @@
 
 #define BEEPER_PIN          PA15    // EXP1.10
 
-#define RELAY_PIN           PC14    // PROBE (Relay for stepper motor switching)
+#define RELAY_PIN           PC14     // PROBE (Relay for stepper motor switching)
 
 #if !defined(SMUFF_V5)
 #define SERVO_OPEN_DRAIN    0
@@ -67,7 +67,7 @@
 #define SERVO2_PIN          PA1     // SERVO
 #define SERVO3_PIN          -1      // SERVO -- can use only one servo; pick either WIPER or CUTTER
 #else
-#define SERVO_OPEN_DRAIN    1
+#define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PB13    // Y STEP pin used because of 5V tolerance
 #define SERVO2_PIN          PB12    // Y DIR pin
 #define SERVO3_PIN          PB14    // Y EN pin

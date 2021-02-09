@@ -25,6 +25,7 @@ extern void setupSwapMenu(char* menu);
 extern void setupSettingsMenu(char* menu);
 extern void setupTestrunMenu(char* menu);
 extern void setupOptionsMenu(char* menu);
+extern void setupPurgeMenu(char* menu);
 
 extern void showMainMenu();
 extern void showToolsMenu();
@@ -38,6 +39,7 @@ extern void showTMCStatus(uint8_t axis);
 extern void changeOffset(uint8_t index);
 extern bool selectBaudrate(uint8_t port, char* menuTitle);
 extern void selectPanelDuePort(char* menuTitle);
+extern void showPurgeMenu(char* menuTitle);
 
 extern const char* translateColor(uint8_t color);
 extern const char* translatePanelDuePort(uint8_t port);

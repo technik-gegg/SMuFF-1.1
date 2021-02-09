@@ -1,0 +1,5 @@
+M145 Fn Sn P"..."
+----------------------------
+Fn      the length to purge in percent (n:50..500)
+Pn 		the color/material name
+Sn 		the tool index (n: 0..tool_count)

@@ -91,7 +91,7 @@ const char* readTune(const char* filename) {
   static char data[150];
   char fname[80];
 
-  sprintf_P(fname, PSTR("sounds/"), filename);
+  sprintf_P(fname, PSTR("sounds/%s"), filename);
   if (initSD(false)) {
     SdFile tune;
     if (!tune.open(fname)) {

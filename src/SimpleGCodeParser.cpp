@@ -543,7 +543,8 @@ void sendM205List(int8_t serial) {
 
 void sendToolResponse(int8_t serial) {
   char tmp[80];
-  sprintf_P(tmp, P_TResponse, toolSelected);
+  int8_t tool = getToolSelected();
+  sprintf_P(tmp, P_TResponse, tool);
   printResponse(tmp, serial);
 }
 

@@ -28,8 +28,8 @@
 SdFat SD;
 
 #if defined(__STM32F1__)
-const size_t capacity = 2300;
-const size_t scapacity = 1500;
+const size_t capacity = 2400;
+const size_t scapacity = 1600;
 #elif defined(__ESP32__)
 const size_t capacity = 4500;     // since the ESP32 has more memory, we can do this
 const size_t scapacity = 1000;
@@ -127,8 +127,8 @@ bool readConfig()
       drawSDStatus(SD_READING_CONFIG);
       uint8_t toolCnt =                         jsonDoc[toolCount];
       smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
-      uint8_t contrast =                        jsonDoc[contrast];
-      smuffConfig.lcdContrast = (contrast >= MIN_CONTRAST && contrast <= MAX_CONTRAST) ? contrast : DSP_CONTRAST;
+      uint8_t _contrast =                        jsonDoc[contrast];
+      smuffConfig.lcdContrast = (_contrast >= MIN_CONTRAST && _contrast <= MAX_CONTRAST) ? _contrast : DSP_CONTRAST;
       uint8_t backlightColor =                  jsonDoc[backlightColor];
       smuffConfig.backlightColor = (backlightColor == 0 ? 7 : backlightColor);   // set backlight color to white if not set
       smuffConfig.encoderTickSound =            jsonDoc[encoderTicks];
@@ -190,6 +190,8 @@ bool readConfig()
       smuffConfig.useCutter =                   jsonDoc[useCutter];
       smuffConfig.cutterOpen =                  jsonDoc[cutterOpen];
       smuffConfig.cutterClose =                 jsonDoc[cutterClose];
+      smuffConfig.usePurge =                    jsonDoc[usePurge];
+      smuffConfig.cutterLength =                jsonDoc[cutterLength];
 
       /*
       SELECTOR
@@ -214,7 +216,7 @@ bool readConfig()
       /*
       REVOLVER
       */
-      smuffConfig.stepsPerRevolution =        jsonDoc[revolver][stepsPerRevolution];
+      smuffConfig.stepsPerRevolution =          jsonDoc[revolver][stepsPerRevolution];
       smuffConfig.firstRevolverOffset =         jsonDoc[revolver][offset];
       smuffConfig.revolverSpacing =             smuffConfig.stepsPerRevolution / 10;
       speed =                                   jsonDoc[revolver][maxSpeed];
@@ -226,7 +228,7 @@ bool readConfig()
       smuffConfig.maxSpeed[REVOLVER] =          speed;
       smuffConfig.accelSpeed[REVOLVER] =        accel;
       smuffConfig.accelDist[REVOLVER] =         jsonDoc[revolver][accelDist];
-      smuffConfig.resetBeforeFeed =           jsonDoc[revolver][resetBeforeFeed];
+      smuffConfig.resetBeforeFeed =             jsonDoc[revolver][resetBeforeFeed];
       smuffConfig.homeAfterFeed =               jsonDoc[revolver][homeAfterFeed];
       smuffConfig.invertDir[REVOLVER] =         jsonDoc[revolver][invertDir];
       smuffConfig.endstopTrg[REVOLVER] =        jsonDoc[revolver][endstopTrig];
@@ -241,24 +243,29 @@ bool readConfig()
       /*
       FEEDER
       */
-      smuffConfig.extControlFeeder =           jsonDoc[feeder][externalControl];
+      smuffConfig.extControlFeeder =            jsonDoc[feeder][externalControl];
       smuffConfig.stepsPerMM[FEEDER] =          jsonDoc[feeder][stepsPerMillimeter];
       speed =                                   jsonDoc[feeder][maxSpeed];
       accel =                                   jsonDoc[feeder][accelSpeed];
       uint16_t ispeed =                         jsonDoc[feeder][insertSpeed];
+      uint16_t pspeed =                         jsonDoc[feeder][purgeSpeed];
       if(speed < mmsMin || speed > mmsMax)
         speed = mmsMin;
       if(accel < mmsMin || accel > mmsMax)
         accel = mmsMin;
       if(ispeed < mmsMin || ispeed > mmsMax)
         ispeed = mmsMin;
+      if(pspeed < mmsMin || ispeed > mmsMax)
+        pspeed = mmsMin;
       smuffConfig.maxSpeed[FEEDER] =            speed;
       smuffConfig.accelSpeed[FEEDER] =          accel;
       smuffConfig.insertSpeed =                 ispeed;
+      smuffConfig.purgeSpeed =                  pspeed;
       smuffConfig.accelDist[FEEDER] =           jsonDoc[feeder][accelDist];
       smuffConfig.invertDir[FEEDER] =           jsonDoc[feeder][invertDir];
       smuffConfig.endstopTrg[FEEDER] =          jsonDoc[feeder][endstopTrig];
       smuffConfig.endstopTrg[3] =               jsonDoc[feeder][endstopTest];
+      smuffConfig.useEndstop2 =                 jsonDoc[feeder][endstop2];
       smuffConfig.stepDelay[FEEDER] =           jsonDoc[feeder][stepDelay];
       smuffConfig.reinforceLength =             jsonDoc[feeder][reinforceLength];
       smuffConfig.unloadRetract =               jsonDoc[feeder][unloadRetract];
@@ -274,6 +281,8 @@ bool readConfig()
       smuffConfig.useDuetLaser =                jsonDoc[feeder][duetLaser];
       smuffConfig.isSharedStepper =             jsonDoc[feeder][sharedStepper];
       smuffConfig.ms3config[FEEDER] =           jsonDoc[feeder][ms3Config];
+      smuffConfig.purgeLength =                 jsonDoc[feeder][purgeLength];
+      smuffConfig.wipeBeforeUnload =            jsonDoc[feeder][autoWipe];
 
       __debugS(PSTR("Config: DONE reading config"));
     }
@@ -438,7 +447,7 @@ bool readMaterials() {
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
         memset(smuffConfig.materials[i], 0, ArraySize(smuffConfig.materials[i]));
         sprintf_P(item, P_Tool, i);
-        const char* pItem = jsonDoc[materials][item];
+        const char* pItem = jsonDoc[item][color];
         if(pItem == nullptr) {
           sprintf(smuffConfig.materials[i],"Tool%d", i);
         }
@@ -446,6 +455,17 @@ bool readMaterials() {
           strncpy(smuffConfig.materials[i], pItem, ArraySize(smuffConfig.materials[i]));
         }
         //__debugS(PSTR("%s: %s"), item, smuffConfig.materials[i]);
+        uint16_t len = jsonDoc[item][pfactor];
+        if(len > 0) {
+          smuffConfig.purges[i] = len;
+        }
+        else {
+          smuffConfig.purges[i] = 100;
+        }
+        const char* pFItem = jsonDoc[item][material];
+        if(pFItem != nullptr) {
+          __debugS(PSTR("%s: %s"), item, pFItem);
+        }
       }
 #else
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
@@ -458,6 +478,7 @@ bool readMaterials() {
   }
   return true;
 }
+
 
 /*
   Writes the basic configuration to SD-Card or Serial
@@ -502,6 +523,8 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[useCutter]            = smuffConfig.useCutter;
   jsonDoc[cutterOpen]           = smuffConfig.cutterOpen;
   jsonDoc[cutterClose]          = smuffConfig.cutterClose;
+  jsonDoc[usePurge]             = smuffConfig.usePurge;
+  jsonDoc[cutterLength]         = smuffConfig.cutterLength;
 
   JsonObject node = jsonObj.createNestedObject(selector);
   node[offset]                = smuffConfig.firstToolOffset;
@@ -555,6 +578,10 @@ bool writeConfig(Print* dumpTo) {
   node[duetLaser]             = smuffConfig.useDuetLaser;
   node[sharedStepper]         = smuffConfig.isSharedStepper;
   node[ms3Config]             = smuffConfig.ms3config[FEEDER];
+  node[purgeSpeed]            = smuffConfig.purgeSpeed;
+  node[purgeLength]           = smuffConfig.purgeLength;
+  node[endstop2]              = smuffConfig.useEndstop2;
+  node[autoWipe]              = smuffConfig.wipeBeforeUnload;
 
   if(dumpTo == nullptr) {
     dumpTo = openCfgFileWrite(CONFIG_FILE);
@@ -674,6 +701,37 @@ bool writeServoMapping(Print* dumpTo)
     serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
     //__debugS(PSTR("Serializing '%s' done"), SERVOMAP_FILE);
+    return true;
+  }
+  return false;
+}
+
+/*
+  Writes materials configuration.
+*/
+bool writeMaterials(Print* dumpTo) {
+  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
+
+  if(dumpTo == nullptr) {
+    if(!initSD())
+      return false;
+  }
+  // create materials
+  JsonObject jsonObj = jsonDoc.to<JsonObject>();
+  char item[15];
+  for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
+    sprintf_P(item, P_Tool, i);
+    JsonObject node = jsonObj.createNestedObject(item);
+    node[color] = smuffConfig.materials[i];
+    node[pfactor] = smuffConfig.purges[i];
+  }
+  if(dumpTo == nullptr) {
+    dumpTo = openCfgFileWrite(MATERIALS_FILE);
+  }
+  if(dumpTo != nullptr) {
+    serializeJsonPretty(jsonDoc, *dumpTo);
+    closeCfgFile();
+    //__debugS(PSTR("Serializing '%s' done"), MATERIALS_FILE);
     return true;
   }
   return false;

@@ -28,6 +28,7 @@
 #define SD_READING_MATERIALS  3
 #define SD_READING_TMC        4
 #define SD_READING_SERVOS     5
+#define SD_READING_PURGES     6
 
 const char P_MenuItemBack [] PROGMEM        = { "\u25c0 BACK\n" };
 const char P_MenuItemSeparator [] PROGMEM   = { "\035\n"};
@@ -50,6 +51,7 @@ const char P_MnuSelector [] PROGMEM         = { "selector" };
 const char P_MnuDisplay [] PROGMEM          = { "display" };
 const char P_MnuSteppers [] PROGMEM         = { "steppers1" };
 const char P_MnuSteppersServo [] PROGMEM    = { "steppers0" };
+const char P_MnuPurge [] PROGMEM            = { "purge" };
 
 const char P_OptColors [] PROGMEM           = { "colors" };
 const char P_OptPanelDue [] PROGMEM         = { "paneldue" };
@@ -87,6 +89,7 @@ const char P_ConfigFail1 [] PROGMEM         = { "Config file is" };
 const char P_ConfigFail5 [] PROGMEM         = { "Materials file is" };
 const char P_ConfigFail6 [] PROGMEM         = { "TMC config file is" };
 const char P_ConfigFail7 [] PROGMEM         = { "ServoMap file is" };
+const char P_ConfigFail8 [] PROGMEM         = { "Purge file is" };
 const char P_ConfigFail2 [] PROGMEM         = { "possibly corrupted,\nplease check!" };
 const char P_ConfigFail3 [] PROGMEM         = { "too big,\nplease reduce content!" };
 const char P_ConfigFail4 [] PROGMEM         = { "data inconsistent\nor memory failure!" };
@@ -95,12 +98,18 @@ const char P_ToolMenu [] PROGMEM            = { "Tool %d" };
 const char P_SwapMenu [] PROGMEM            = { "Slot %d: T%d" };
 const char P_SwapReset [] PROGMEM           = { "Reset swaps\n" };
 const char P_SwapToolDialog [] PROGMEM      = { "Swap Tool %d\nwith Tool %d" };
+const char P_ToolPurgeMenu [] PROGMEM       = { "%d - %s\t%d%%\n" };
+const char P_ToolMaterial [] PROGMEM        = { "Tool %d: %s, %d%%\n" };
 
 const char P_Selecting [] PROGMEM           = { "Selecting" };
 const char P_Wait [] PROGMEM                = { "please wait..." };
 const char P_Busy[] PROGMEM                 = { "busy..." };
 const char P_Ready[] PROGMEM                = { "ready." };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
+const char P_Purging [] PROGMEM             = { "Purging" };
+const char P_PurgeLen [] PROGMEM            = { "%d%% = %smm" };
+const char P_PurgeCubic [] PROGMEM          = { "(= %smm3)" };
+const char P_Usage [] PROGMEM               = { "USAGE:\n" };
 
 const char P_Off[] PROGMEM                  = { "OFF" };
 const char P_On[] PROGMEM                   = { "ON" };
@@ -151,6 +160,8 @@ const char P_MS3State[] PROGMEM             = { "state:" };
 const char P_M503S1[] PROGMEM               = { "\n/* Basic */\n" };
 const char P_M503S2[] PROGMEM               = { "\n/* TMC Driver */\n" };
 const char P_M503S3[] PROGMEM               = { "\n/* Servo mapping */\n" };
+const char P_M503S4[] PROGMEM               = { "\n/* Materials */\n" };
+const char P_M503S5[] PROGMEM               = { "\n\n" };
 
 const char P_ConfigWriteSuccess[] PROGMEM   = { "Config\nsuccessfully\nwritten!" };
 const char P_ConfigWriteFail[] PROGMEM      = { "Saving failed!\nPlease check SD-Card." };
@@ -176,6 +187,7 @@ const char P_SD_ReadingConfig[] PROGMEM     = { "Config" };
 const char P_SD_ReadingMaterials[] PROGMEM  = { "Materials" };
 const char P_SD_ReadingTmc[] PROGMEM        = { "TMC" };
 const char P_SD_ReadingServos[] PROGMEM     = { "Servos" };
+const char P_SD_ReadingPurges[] PROGMEM     = { "Purges" };
 const char P_SD_InitError[] PROGMEM         = { "SD-Card not ready!" };
 const char P_SD_NoConfig[] PROGMEM          = { "No config file found!" };
 
@@ -212,9 +224,9 @@ const char P_FileNotFound [] PROGMEM        = { "File '%s' not found!" };
 
 const char P_WrongFormat [] PROGMEM         = { "Wrong format. Use Bdd:dd:dd...\n" };
 const char P_RangeError[] PROGMEM           = { "Invalid parameter value. Allowed range: " };
-const char P_UseRangeI[] PROGMEM            = { "%d\u2026%d\n" };
-const char P_UseRangeF[] PROGMEM            = { "%s\u2026%s\n" };
-const char P_UseRangeL[] PROGMEM            = { "%ld\u2026%ld\n" };
+const char P_UseRangeI[] PROGMEM            = { "%d...%d\n" };
+const char P_UseRangeF[] PROGMEM            = { "%s...%s\n" };
+const char P_UseRangeL[] PROGMEM            = { "%ld...%ld\n" };
 
 const char P_NoPrusa [] PROGMEM             = { "Prusa MMU2 mode is not configured." };
 const char P_PMMU_Title [] PROGMEM          = { "Waiting..." };

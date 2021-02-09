@@ -48,6 +48,9 @@ const char* B_Param = (char*)"B";
 const char* D_Param = (char*)"D";
 const char* H_Param = (char*)"H";
 
+void rangeError(int8_t serial, int min, int max);
+void rangeError(int8_t serial, long min, long max);
+void rangeError(int8_t serial, float min, float max);
 
 GCodeFunctions gCodeFuncsM[] PROGMEM = {
   {   0, dummy },     // used in Prusa Emulation mode to switch to normal mode
@@ -77,6 +80,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
   { 117, M117 },
   { 119, M119 },
   { 122, M122 },
+  { 145, M145 },
   { 150, M150 },
   { 201, M201 },
   { 202, M202 },
@@ -356,7 +360,7 @@ bool M115(const char* msg, String buf, int8_t serial) {
   #if defined(DEBUG)
   strcat(ver, "D");
   #endif
-  sprintf_P(tmp, P_GVersion, ver, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "Duet");
+  sprintf_P(tmp, P_GVersion, ver, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "SMuFF");
   printResponse(tmp, serial);
   return true;
 }
@@ -800,6 +804,36 @@ bool M122(const char* msg, String buf, int8_t serial) {
   return true;
 }
 
+bool M145(const char* msg, String buf, int8_t serial) {
+  char color[50];
+  char tmp[40];
+  uint8_t tool;
+
+  printResponse(msg, serial);
+  if((param = getParam(buf, S_Param)) != -1) {
+    tool = (uint8_t)param;
+    if(tool >=0 && tool <= smuffConfig.toolCount) {
+      if(getParamString(buf, P_Param, color, sizeof(color))) {
+        strncpy(smuffConfig.materials[tool], color, ArraySize(smuffConfig.materials[tool]));
+        return true;
+      }
+      else if((param = getParam(buf, F_Param)) != -1) {
+        if(param >50 && param < 500)
+          smuffConfig.purges[tool] = param;
+        return true;
+      }
+      else {
+        sprintf_P(tmp, P_ToolMaterial, tool, smuffConfig.materials[tool], smuffConfig.purges[tool]);
+        printResponse(tmp, serial);
+        return true;
+      }
+    }
+    else
+      rangeError(serial, 0, smuffConfig.toolCount);
+  }
+  return false;
+}
+
 bool M150(const char* msg, String buf, int8_t serial) {
   uint8_t red=0, green=0, blue=0;
   int8_t index=-1, colorNdx=-1;
@@ -980,7 +1014,7 @@ bool M205(const char* msg, String buf, int8_t serial) {
 
   char cmd[80];
   char tmp[50];
-  if((param = getParamString(buf, P_Param, cmd, sizeof(cmd)))  != -1) {
+  if(getParamString(buf, P_Param, cmd, sizeof(cmd))) {
     float fParam = getParamF(buf, S_Param);
     if((param = getParam(buf, S_Param)) != -1) {
       //__debugS(PSTR("Value: %d"), param);
@@ -999,6 +1033,12 @@ bool M205(const char* msg, String buf, int8_t serial) {
       }
       else if(strcmp(cmd, insertLength)==0) {
         smuffConfig.insertLength = fParam;
+      }
+      else if(strcmp(cmd, purgeLength)==0) {
+        smuffConfig.purgeLength = fParam;
+      }
+      else if(strcmp(cmd, purgeSpeed)==0) {
+        smuffConfig.purgeSpeed = (uint16_t)param;
       }
       else if(strcmp(cmd, reinforceLength)==0) {
         smuffConfig.reinforceLength = fParam;
@@ -1179,9 +1219,10 @@ bool M205(const char* msg, String buf, int8_t serial) {
           }
           if(hasParam(buf, Z_Param)) {
             smuffConfig.stepperCSdown[FEEDER] = (int8_t)param;
-            if(drivers[FEEDER] != nullptr)
+            if(drivers[FEEDER] != nullptr) {
               drivers[FEEDER]->sedn(smuffConfig.stepperCSdown[FEEDER]);
               drivers[FEEDER]->seup(smuffConfig.stepperCSdown[FEEDER]);
+            }
           }
         }
         else
@@ -1480,6 +1521,12 @@ bool M503(const char* msg, String buf, int8_t serial) {
       printResponseP(P_M503S3, serial);
       writeServoMapping(_print);
     }
+    if(part==0 || part==4) {
+      printResponseP(P_M503S4, serial);
+      writeMaterials(_print);
+    }
+    if(part==0 || part==5) {
+    }
     printResponseP(PSTR("\n"), serial);
     return true;
 }
@@ -1597,9 +1644,10 @@ bool M575(const char* msg, String buf, int8_t serial) {
 bool M700(const char* msg, String buf, int8_t serial) {
   bool stat = true;
   printResponse(msg, serial);
-  if(toolSelected >= 0 && toolSelected <= MAX_TOOLS) {
-    getParamString(buf, S_Param, smuffConfig.materials[toolSelected], sizeof(smuffConfig.materials[0]));
-    //__debugS(PSTR("Material: %s\n"),smuffConfig.materials[toolSelected]);
+  int8_t tool = toolSelected;
+  if(tool >= 0 && tool <= MAX_TOOLS) {
+    getParamString(buf, S_Param, smuffConfig.materials[tool], sizeof(smuffConfig.materials[0]));
+    //__debugS(PSTR("Material: %s\n"),smuffConfig.materials[tool]);
     return loadFilament();
   }
   else
@@ -2002,13 +2050,7 @@ bool G12(const char* msg, String buf, int8_t serial) {
     repeat = param; // defines the number of repeats
   }
   if(hasParam(p, C_Param) && smuffConfig.useCutter) {
-    uint8_t p1 = hasParam(p, I_Param) ? pos1 : (uint8_t)smuffConfig.cutterClose;
-    uint8_t p2 = hasParam(p, J_Param) ? pos2 : (uint8_t)smuffConfig.cutterOpen;
-    //__debugS(PSTR("Cutter activated: Close @ %d  Open @ %d"), p1, p2);
-    setServoPos(SERVO_CUTTER, p1);
-    delay(wait);
-    setServoPos(SERVO_CUTTER, p2);
-    delay(100);
+    cutFilament(false);
     return true;
   }
 
@@ -2021,6 +2063,7 @@ bool G12(const char* msg, String buf, int8_t serial) {
   }
   setServoPos(SERVO_WIPER, pos0);
   delay(100);
+  disableServo(SERVO_WIPER);
   return true;
 }
 

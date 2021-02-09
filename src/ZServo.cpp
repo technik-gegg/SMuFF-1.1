@@ -51,15 +51,7 @@ void ZServo::attach(int8_t pin, bool useTimer, int8_t servoIndex) {
 
 void ZServo::attach(int8_t pin) {
   _pin = pin;
-  #if defined(__STM32F1__)
-    #if SERVO_OPEN_DRAIN == 1
-    pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set to Open Drain for the +5V pullup resistor
-    #else
-    pinMode(_pin, OUTPUT);
-    #endif
-  #else
-    pinMode(_pin, OUTPUT);
-  #endif
+  enable();
   digitalWrite(_pin, 0);
 }
 
@@ -70,6 +62,46 @@ void ZServo::detach() {
       ledcDetachPin(_pin);
   #endif
   _pin = 0;
+}
+
+/*
+  Disable the servo by setting the port pin to INPUT
+*/
+void ZServo::disable() {
+  if(_pin <= 0)
+    return;
+  _disabled = true;
+  #if defined(__STM32F1__)
+    #if SERVO_OPEN_DRAIN == 1
+      #if defined(__BRD_SKR_MINI)
+        pinMode(_pin, INPUT);               // weird... no open drain!?
+      #else
+        pinMode(_pin, INPUT_OPEN_DRAIN);    // set to Open Drain for the +5V pullup resistor
+      #endif
+    #else
+    pinMode(_pin, INPUT);
+    #endif
+  #else
+    pinMode(_pin, INPUT);
+  #endif
+}
+
+/*
+  Enable the servo
+*/
+void ZServo::enable() {
+  if(_pin <= 0)
+    return;
+  _disabled = false;
+  #if defined(__STM32F1__)
+    #if SERVO_OPEN_DRAIN == 1
+    pinMode(_pin, OUTPUT_OPEN_DRAIN);   // set to Open Drain for the +5V pullup resistor
+    #else
+    pinMode(_pin, OUTPUT);
+    #endif
+  #else
+    pinMode(_pin, OUTPUT);
+  #endif
 }
 
 /*
@@ -99,6 +131,9 @@ bool ZServo::setServoPos(uint8_t degree) {
   if(_pin <= 0)
     return false;
 
+  if(_disabled)
+    enable();
+
   #if defined(__ESP32__)
   if(!_useTimer) {
     _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
@@ -121,6 +156,8 @@ bool ZServo::setServoPos(uint8_t degree) {
 }
 
 void ZServo::setServoMS(uint16_t microseconds) {
+  if(_disabled)
+    enable();
   _pulseLen = microseconds;
   _degree = map(_pulseLen, _minPw, _maxPw, _minDegree, _maxDegree);
   _tickCnt = 0;
@@ -134,6 +171,9 @@ void ZServo::setServoMS(uint16_t microseconds) {
   more often.
 */
 void ZServo::setServo() {
+  if(_disabled)
+    return;
+
   if(!_useTimer) {
     if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call
   #if defined(__ESP32__)
@@ -151,12 +191,13 @@ void ZServo::setServo() {
     // sets the output to low.
     // This way, blocking the whole CPU while the delay is being active as it's in the method above
     // isn't happening.
+    if(_tickCnt != 0) {
+      if(_tickCnt <= _pulseLen)
+        setServoPin(HIGH);
+      else
+        setServoPin(LOW);
+    }
     _tickCnt += 50;
-
-    if(_tickCnt <= _pulseLen)
-      setServoPin(HIGH);
-    else
-      setServoPin(LOW);
     // reset tick counter after the duty cycle for the next cycle
     if(_tickCnt >= DUTY_CYCLE) {
       if(_maxCycles == 0 || ++_dutyCnt < _maxCycles)  // but no more cycles than defined to avoid jitter on the servo

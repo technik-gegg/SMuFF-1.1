@@ -42,22 +42,23 @@ void every500ms() {
   // Add your periodical code here
 }
 
-bool leoNerdBlinkState  = false;
-bool LeoNerdBlinkGreen  = false;
-bool LeoNerdBlinkRed    = false;
+volatile bool leoNerdBlinkState  = false;
+volatile bool leoNerdBlinkGreen  = false;
+volatile bool leoNerdBlinkRed    = false;
 
 void every1s() {
   #if defined(USE_LEONERD_DISPLAY)
-  if(LeoNerdBlinkGreen || LeoNerdBlinkRed) {
+  if(leoNerdBlinkGreen || leoNerdBlinkRed) {
     leoNerdBlinkState = !leoNerdBlinkState;
-    encoder.setLED((LeoNerdBlinkGreen ? LED_GREEN : LED_RED), leoNerdBlinkState);
+    if(leoNerdBlinkGreen)
+      encoder.setLED(LED_GREEN, leoNerdBlinkState);
+    if(leoNerdBlinkRed)
+      encoder.setLED(LED_RED, leoNerdBlinkState);
   }
   else {
-    if(leoNerdBlinkState) {
-      leoNerdBlinkState = false;
-      encoder.setLED(LED_GREEN, false);
-      encoder.setLED(LED_RED, false);
-    }
+    leoNerdBlinkState = false;
+    encoder.setLED(LED_GREEN, false);
+    encoder.setLED(LED_RED, false);
   }
   #endif
   // Add your periodical code here

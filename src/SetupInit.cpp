@@ -226,6 +226,7 @@ void setupServos() {
       resetPos = (uint8_t)param;
     }
     setServoPos(SERVO_WIPER, resetPos);
+    disableServo(SERVO_WIPER);
   }
 
   #if !defined(MULTISERVO)
@@ -431,7 +432,7 @@ void setupSteppers() {
   steppers[REVOLVER].stepFunc = overrideStepY;
   steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerRevolution);
   steppers[REVOLVER].setStepsPerDegree(smuffConfig.stepsPerRevolution/360);
-  steppers[REVOLVER].endstopFunc = endstopYevent;
+  steppers[REVOLVER].endstopFunc = endstopEventY;
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir[REVOLVER]);
   steppers[REVOLVER].setAccelDistance(smuffConfig.accelDist[REVOLVER]);
   steppers[REVOLVER].setStopOnStallDetected(false);
@@ -464,7 +465,7 @@ void setupSteppers() {
   else
     steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
   if(Z_END2_PIN != -1)
-    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MAX, 2); // optional; used for testing only
+    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2); // optional
   steppers[FEEDER].stepFunc = overrideStepZ;
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM[FEEDER]);
   steppers[FEEDER].endstopFunc = endstopEventZ;
@@ -665,7 +666,7 @@ void setupTimers() {
   //    Encoder uses:       gpTimer
   // *****
   stepperTimer.setupTimer(ZTimer::ZTIMER1, STEPPER_PSC);  // prescaler set to 4MHz, timer will be calculated as needed
-  gp.setupTimer(ZTimer::ZTIMER2, 80);                     // 1ms on 80MHz timer clock
+  gpTimer.setupTimer(ZTimer::ZTIMER2, 80);                // 1ms on 80MHz timer clock
 #endif
 
   stepperTimer.setupTimerHook(isrStepperHandler);         // setup the ISR for the steppers

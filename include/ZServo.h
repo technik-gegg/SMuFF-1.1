@@ -59,8 +59,10 @@ public:
   void    stop(bool state) { _timerStopped = state; }
   bool    isTimerStopped() { return _timerStopped; }
   bool    hasTimer() { return _useTimer; }
-  void    setMaxCycles(uint8_t val) { _maxCycles = val;}
-  uint8_t getMaxCycles() { return _maxCycles;}
+  void    setMaxCycles(uint8_t val) { _maxCycles = val; }
+  uint8_t getMaxCycles() { return _maxCycles; }
+  void    disable();
+  void    enable();
 
   uint8_t getDegree() { return _degree; }
   void    getDegreeMinMax(uint8_t* min, uint8_t* max) { *min = _minDegree; *max = _maxDegree; }
@@ -72,6 +74,7 @@ private:
   int8_t            _pinState;
   bool              _useTimer = false;
   bool              _timerStopped = false;
+  bool              _disabled = false;
   int8_t            _servoIndex;
   uint8_t           _degree;
   uint8_t           _lastDegree;
