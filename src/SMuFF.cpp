@@ -73,10 +73,7 @@ U8G2_ST7565_64128N_F_4W_HW_SPI  display(U8G2_R2, /* cs=*/ DSP_CS_PIN, /* dc=*/ D
 U8G2_UC1701_MINI12864_F_4W_HW_SPI display(U8G2_R0, /* cs=*/ DSP_CS_PIN, /* dc=*/ DSP_DC_PIN, /* reset=*/ DSP_RESET_PIN);
 #endif
 
-#if defined(__AVR__)
-Stream*                 debugSerial = &Serial;
-
-#elif defined(__STM32F1__)
+#if defined(__STM32F1__)
   #if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
 Stream*                 debugSerial = &Serial2;
   #else
@@ -96,8 +93,8 @@ HardwareSerial          Serial3(1);               // dummy declaration to keep t
 Stream*                 logSerial = &Serial;
 
 ZStepper                steppers[NUM_STEPPERS];
-ZTimer                  stepperTimer;
-ZTimer                  gpTimer;
+Timer                  stepperTimer;
+Timer                   gpTimer;
 ZServo                  servo;
 ZServo                  servoLid;
 ZServo                  servoCutter;
@@ -120,7 +117,9 @@ USBCompositeSerial      CompositeSerial;
 ZPortExpander           portEx;
 #endif
 
+#ifdef HAS_TMC_SUPPORT
 TMC2209Stepper* drivers[NUM_STEPPERS];
+#endif
 
 #if defined(MULTISERVO)
 Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
@@ -290,7 +289,9 @@ void isrGPTimerHandler() {
       duetLS.service();               // service the Duet3D laser Sensor reader
     }
     playSequenceBackgnd();            // handle background playing of a sequence
+#ifdef FLIPDBG
     FLIPDBG
+#endif
     isrFanTimerHandler();             // call the fan interrupt routines also every 1ms
   }
   if(tickCounter == 1000)             // reset counter to avoid overrun
@@ -396,8 +397,10 @@ void setup() {
   __debugS(PSTR("[ after setupServos ]"));
   setupRelay();
   __debugS(PSTR("[ after setupRelay ]"));
+#ifdef HAS_TMC_SUPPORT
   setupTMCDrivers();                  // setup TMC drivers if any were used
   __debugS(PSTR("[ after setupTMCdrivers ]"));
+#endif
   setupSwSerial0();                   // used only for testing purposes
   setupBacklight();
   setupDuetLaserSensor();             // setup other peripherials
@@ -436,7 +439,7 @@ void setup() {
 }
 
 void startStepperInterval() {
-  uint16_t minDuration = 65535;
+  timerVal_t minDuration = 65535;
   for(uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration ) {
       minDuration = steppers[i].getDuration();
@@ -450,7 +453,7 @@ void startStepperInterval() {
   }
 
   if(remainingSteppersFlag == 0) {
-    stepperTimer.stopTimer();
+    stepperTimer.stop();
     stepperTimer.setOverflow(65535);
   }
   else {
@@ -459,8 +462,8 @@ void startStepperInterval() {
 }
 
 void isrStepperHandler() {
-  stepperTimer.stopTimer();
-  uint16_t tmp = stepperTimer.getOverflow();
+  stepperTimer.stop();
+  timerVal_t tmp = stepperTimer.getOverflow();
   stepperTimer.setOverflow(65535);
 
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
@@ -519,13 +522,13 @@ void refreshStatus(bool withLogo, bool feedOnly) {
   }
 }
 
+#ifdef HAS_TMC_SUPPORT
 void reportTMC(uint8_t axis, const char* PROGMEM msg) {
   // for now, only debug message, subject to change in the future
   __debugS(PSTR("Driver %c: reports '%s'"), 'X'+axis, msg);
 }
 
 void monitorTMC(uint8_t axis) {
-
   uint16_t temp;
   if(drivers[axis] != nullptr) {
     // has any error occured?
@@ -565,6 +568,7 @@ void monitorTMC(uint8_t axis) {
     }
   }
 }
+#endif
 
 /*
 * For testing only
@@ -773,6 +777,7 @@ void loop() {
     setPwrSave(1);
   }
 
+#ifdef HAS_TMC_SUPPORT
   if(smuffConfig.stepperStall[SELECTOR]) {
     monitorTMC(SELECTOR);
   }
@@ -782,6 +787,7 @@ void loop() {
   if(smuffConfig.stepperStall[FEEDER]) {
     monitorTMC(FEEDER);
   }
+#endif
   // For testing only
   // loopEx();
 }
@@ -810,7 +816,6 @@ bool checkUserMessage() {
 
 
 void checkSerialPending() {
-#ifndef __AVR__
   if(Serial.available()) {
     serialEvent();
   }
@@ -827,7 +832,6 @@ void checkSerialPending() {
     if(Serial3.available())
       serialEvent3();
   }
-#endif
 }
 
 void resetSerialBuffer(int8_t serial) {
@@ -1006,9 +1010,7 @@ void serialEvent2() {
   processingSerial2 = false;
 }
 
-#ifndef __AVR__
 void serialEvent1() {
-
   uint16_t avail = 0;
   while((avail = Serial1.available())) {
     processingSerial1 = true;
@@ -1028,11 +1030,9 @@ void serialEvent1() {
     }
   }
   processingSerial1 = false;
-
 }
 
 void serialEvent3() {
-
   uint16_t avail = 0;
   while((avail = Serial3.available())) {
     processingSerial3 = true;
@@ -1055,4 +1055,3 @@ void serialEvent3() {
   }
   processingSerial3 = false;
 }
-#endif

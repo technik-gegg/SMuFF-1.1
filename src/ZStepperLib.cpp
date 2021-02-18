@@ -54,7 +54,7 @@ void ZStepper::defaultStepFunc(void) {
 
 void ZStepper::resetStepper() {
   _duration = _acceleration;
-  _durationInt = (uint16_t)_duration;
+  _durationInt = (timerVal_t)_duration;
   _stepCount = 0;
   _movementDone = false;
   _endstopHit = false;
@@ -138,6 +138,7 @@ void ZStepper::handleISR() {
     return;
   }
   updateAcceleration();
+#ifdef HAS_TMC_SUPPORT
   // check stepper motor stall on TMC2209 if configured likewise
   if(_stallCountThreshold > 0 && _stallCount > _stallCountThreshold) {
     _stallDetected = true;
@@ -147,6 +148,7 @@ void ZStepper::handleISR() {
       return;
     }
   }
+#endif
 
   bool hit = false;
   if((_endstopType == MIN && _dir == CCW) ||
