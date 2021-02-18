@@ -231,6 +231,58 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
   return stat;
 }
 
+bool showInputDialog(const char* title, const char* PROGMEM message, uint16_t* val, uint16_t min, uint16_t max, iCallback cb, int16_t increment) {
+  bool stat = true;
+  int16_t turn;
+  uint8_t wheelBtn;
+  bool isHeld, isClicked;
+
+  if(cb == nullptr && min == 0 && max == 1) {
+    // if there's no callback set, and min, max equals 0,1 don't show the dialog
+    // just return the inverted value (used for HI / LO)
+    *val = (*val==min ? max : min);
+    settingsChanged = settingsChanged | stat;
+    return true;
+  }
+  debounceButton();
+  encoder.setAccelerationEnabled(true);
+  drawValue(title, message, String(*val));
+  if(cb != nullptr) {
+    cb(*val);
+  }
+
+  while(1) {
+    getInput(&turn, &wheelBtn, &isHeld, &isClicked);
+    if(isHeld || isClicked) {
+      stat = !isHeld;
+      break;
+    }
+    if(turn != 0) {
+      *val += (turn*increment);
+      if(turn < 0) {
+        if(*val < min || *val > max) {
+          *val = min;
+          beep(1);
+        }
+      }
+      else if(turn > 0) {
+        if(*val > max) {
+          *val = max;
+          beep(1);
+        }
+      }
+      drawValue(title, message, String(*val));
+      if(cb != nullptr) {
+        cb(*val);
+      }
+    }
+  }
+  //__debugS(PSTR("Stopped %d"),stat);
+  encoder.setAccelerationEnabled(false);
+  settingsChanged = settingsChanged | stat;
+  return stat;
+}
+
 bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, bCallback cb) {
   bool stat = true;
   int16_t turn;

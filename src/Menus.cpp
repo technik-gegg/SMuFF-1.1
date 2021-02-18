@@ -851,6 +851,7 @@ void showRevolverMenu(char* menuTitle) {
   char* title;
   bool bVal;
   int iVal;
+  uint16_t uiVal;
   char _menu[350];
   char tmp[50];
 
@@ -903,19 +904,19 @@ void showRevolverMenu(char* menuTitle) {
             break;
 
         case 6: // Max. Speed
-            iVal = smuffConfig.maxSpeed[REVOLVER];
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+            uiVal = smuffConfig.maxSpeed[REVOLVER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               validateSpeed(iVal, &smuffConfig.accelSpeed[REVOLVER], 2);
-              smuffConfig.maxSpeed[REVOLVER] = (uint16_t)iVal;
-              steppers[REVOLVER].setMaxSpeed(translateSpeed((uint16_t)iVal, REVOLVER));
+              smuffConfig.maxSpeed[REVOLVER] = uiVal;
+              steppers[REVOLVER].setMaxSpeed(translateSpeed(uiVal, REVOLVER));
             }
             break;
 
         case 7: // Acceleration
-            iVal = smuffConfig.accelSpeed[REVOLVER];
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
-              smuffConfig.accelSpeed[REVOLVER] = (uint16_t)iVal;
-              steppers[REVOLVER].setAcceleration(translateSpeed((uint16_t)iVal, REVOLVER));
+            uiVal = smuffConfig.accelSpeed[REVOLVER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.accelSpeed[REVOLVER] = uiVal;
+              steppers[REVOLVER].setAcceleration(translateSpeed(uiVal, REVOLVER));
             }
             break;
 
@@ -983,6 +984,7 @@ void showSelectorMenu(char* menuTitle) {
   char* title;
   bool bVal;
   int iVal;
+  uint16_t uiVal;
   char _menu[350];
   char tmp[50];
 
@@ -1035,19 +1037,19 @@ void showSelectorMenu(char* menuTitle) {
             break;
 
         case 6: // Max. Speed
-            iVal = smuffConfig.maxSpeed[SELECTOR];
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+            uiVal = smuffConfig.maxSpeed[SELECTOR];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
               validateSpeed(iVal, &smuffConfig.accelSpeed[SELECTOR], 5);
-              smuffConfig.maxSpeed[SELECTOR] = (uint16_t)iVal;
-              steppers[SELECTOR].setMaxSpeed(translateSpeed((uint16_t)iVal, SELECTOR));
+              smuffConfig.maxSpeed[SELECTOR] = uiVal;
+              steppers[SELECTOR].setMaxSpeed(translateSpeed(uiVal, SELECTOR));
             }
             break;
 
         case 7: // Acceleration
-            iVal = smuffConfig.accelSpeed[SELECTOR];
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
-              smuffConfig.accelSpeed[SELECTOR] = (uint16_t)iVal;
-              steppers[SELECTOR].setAcceleration(translateSpeed((uint16_t)iVal, SELECTOR));
+            uiVal = smuffConfig.accelSpeed[SELECTOR];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.accelSpeed[SELECTOR] = uiVal;
+              steppers[SELECTOR].setAcceleration(translateSpeed(uiVal, SELECTOR));
             }
             break;
 
@@ -1090,6 +1092,7 @@ void showFeederMenu(char* menuTitle) {
   char* title;
   bool bVal;
   int iVal;
+  uint16_t uiVal;
   float fVal;
   char _menu[700];
   char tmp[50];
@@ -1143,20 +1146,20 @@ void showFeederMenu(char* menuTitle) {
             break;
 
         case 6: // Max. Speed
-            iVal = smuffConfig.maxSpeed[FEEDER];
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
-              validateSpeed(iVal, &smuffConfig.accelSpeed[FEEDER], 5);
-              validateSpeed(iVal, &smuffConfig.insertSpeed, 10);
-              smuffConfig.maxSpeed[FEEDER] = (uint16_t)iVal;
-              steppers[FEEDER].setMaxSpeed(translateSpeed((uint16_t)iVal, FEEDER));
+            uiVal = smuffConfig.maxSpeed[FEEDER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              validateSpeed(uiVal, &smuffConfig.accelSpeed[FEEDER], 5);
+              validateSpeed(uiVal, &smuffConfig.insertSpeed, 10);
+              smuffConfig.maxSpeed[FEEDER] = uiVal;
+              steppers[FEEDER].setMaxSpeed(translateSpeed(uiVal, FEEDER));
             }
             break;
 
         case 7: // Acceleration
-            iVal = smuffConfig.accelSpeed[FEEDER];
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
-              smuffConfig.accelSpeed[FEEDER] = (uint16_t)iVal;
-              steppers[FEEDER].setAcceleration(translateSpeed((uint16_t)iVal, FEEDER));
+            uiVal = smuffConfig.accelSpeed[FEEDER];
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.accelSpeed[FEEDER] = uiVal;
+              steppers[FEEDER].setAcceleration(translateSpeed(uiVal, FEEDER));
             }
             break;
 
@@ -1197,9 +1200,9 @@ void showFeederMenu(char* menuTitle) {
             break;
 
         case 13: // Insert Speed
-            iVal = smuffConfig.insertSpeed;
-            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &iVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
-              smuffConfig.insertSpeed = (uint16_t)iVal;
+            uiVal = smuffConfig.insertSpeed;
+            if(showInputDialog(title, smuffConfig.speedsInMMS ?  P_InMMS : P_InTicks, &uiVal, mmsMin, mmsMax, nullptr, speedIncrement)) {
+              smuffConfig.insertSpeed = uiVal;
             }
             break;
 
