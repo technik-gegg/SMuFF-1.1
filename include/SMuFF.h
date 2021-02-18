@@ -18,9 +18,7 @@
  */
 #pragma once
 
-#if defined(__AVR__)
-#include <avr/pgmspace.h>
-#elif defined(__ESP32__)
+#if defined(__ESP32__)
 #include <pgmspace.h>
 #endif
 #include <Arduino.h>
@@ -42,14 +40,16 @@
 #if defined(USE_FASTLED_BACKLIGHT)
 #include "FastLED.h"
 #endif
-#include "ZTimerLib.h"
+#include "HAL/HAL.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
 #include "ZPortExpander.h"
 #include "ZFan.h"
 #include "DuetLaserSensor.h"
+#if defined(HAS_TMC_SUPPORT)
 #include <TMCStepper.h>
 #include "SoftwareSerial.h"
+#endif
 #if defined(MULTISERVO)
 #include <Adafruit_PWMServoDriver.h>
 #endif
@@ -256,8 +256,8 @@ extern void muteTone(int8_t pin);
 #endif
 
 extern ZStepper       steppers[];
-extern ZTimer         stepperTimer;
-extern ZTimer         gpTimer;
+extern Timer          stepperTimer;
+extern Timer          gpTimer;
 extern ZServo         servo;
 extern ZServo         servoLid;
 extern ZServo         servoCutter;
@@ -331,7 +331,9 @@ extern bool           lidOpen;
 extern uint16_t       mmsMin, mmsMax;
 extern uint16_t       speedIncrement;
 
+#ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper* drivers[];
+#endif
 
 extern void setupSerial();
 extern void setupSwSerial0();
@@ -390,13 +392,9 @@ extern void prepSteppingRel(int8_t index, long steps, bool ignoreEndstop = false
 extern void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndstop = false);
 extern void resetRevolver();
 extern void serialEvent();
-extern void serialEvent2();
-#ifdef __AVR__
-extern void wireReceiveEvent(int numBytes);
-#else
 extern void serialEvent1();
+extern void serialEvent2();
 extern void serialEvent3();
-#endif
 extern void beep(uint8_t count);
 extern void longBeep(uint8_t count);
 extern void userBeep();
@@ -473,7 +471,9 @@ extern void every1s();
 extern void every2s();
 extern void every5s();
 extern void blinkLED();
+#ifdef HAS_TMC_SUPPORT
 extern void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t stallThrs, uint8_t csmin=0, uint8_t csmax=0, uint8_t csdown=0, uint8_t toff=3);
+#endif
 
 extern void printEndstopState(int8_t serial);
 extern void printPos(int8_t index, int8_t serial);

@@ -19,7 +19,6 @@
 #pragma once
 
 #include "SMuFF.h"
-#include "ZTimerLib.h"
 #include "PCF857X.h"
 
 extern void __debugS(const char* fmt, ...);
@@ -42,7 +41,7 @@ extern void __debugS(const char* fmt, ...);
 
 void isrSerialTimerHandler();
 
-static ZTimer serialTimer;
+static Timer serialTimer;
 
 typedef enum {
     BAUD_300_TIM    = 3333,

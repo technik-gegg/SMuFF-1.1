@@ -124,7 +124,6 @@ void setupMainMenu(char* menu) {
     char motors[10];
     char servo[30];
     char maint[10];
-    char pmmu[30] = "";
 
     steppers[SELECTOR].getEnabled() ? sprintf_P(motors, P_Off) : sprintf_P(motors, P_On);
     lidOpen ? sprintf_P(servo, P_Close) : sprintf_P(servo, P_Open);
@@ -336,12 +335,11 @@ void setupTestrunMenu(char* menu, uint8_t maxFiles) {
 
 void showMainMenu() {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char tmp[128];
   char _title[40];
   char _menu[700];
-  uint8_t menuIdx[20];
 
   while(!stopMenu) {
     sprintf_P(_title, P_TitleMainMenu);
@@ -449,7 +447,7 @@ void showMainMenu() {
 
 void showTestrunMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char _menu[600];
   char* _file;
@@ -528,9 +526,7 @@ const char* translateMS3State(uint8_t mode) {
 }
 
 void selectPanelDuePort(char* menuTitle) {
-  int val;
-  char tmp[128];
-  val = smuffConfig.hasPanelDue;
+  int val = smuffConfig.hasPanelDue;
   if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptPanelDue)), nullptr, true))
     smuffConfig.hasPanelDue = val;
 }
@@ -605,7 +601,7 @@ void positionServoCallback(int val) {
 
 void showTMCMenu(char* menuTitle, uint8_t axis) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   bool bVal;
   int iVal;
@@ -651,8 +647,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperPower[axis];
             if(showInputDialog(title, P_InMilliAmpere, &iVal, 0, MAX_POWER, nullptr, 10)) {
               smuffConfig.stepperPower[axis] = (uint16_t)iVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->rms_current(smuffConfig.stepperPower[axis]);
+#endif
             }
             break;
 
@@ -660,8 +658,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             fVal = smuffConfig.stepperRSense[axis];
             if(showInputDialog(title, P_InOhm, &fVal, 0, 1, nullptr, 0.01)) {
               smuffConfig.stepperRSense[axis] = fVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->Rsense = fVal;
+#endif
             }
             break;
 
@@ -670,8 +670,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             sprintf_P(tmp, loadOptions(P_OptMicrosteps));
             if(showInputDialog(title, P_Microsteps, &iVal, String(tmp), nullptr, false)) {
               smuffConfig.stepperMicrosteps[axis] = (uint16_t)iVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->microsteps(smuffConfig.stepperMicrosteps[axis]);
+#endif
             }
             break;
 
@@ -679,8 +681,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperStall[axis];
             if(showInputDialog(title, P_Threshold, &iVal, 0, 255)) {
               smuffConfig.stepperStall[axis] = (int8_t)iVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->SGTHRS(smuffConfig.stepperStall[axis]);
+#endif
             }
             break;
 
@@ -688,8 +692,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperCSmin[axis];
             if(showInputDialog(title, P_Min, &iVal, 0, 15)) {
               smuffConfig.stepperCSmin[axis] = (int8_t)iVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->semin(smuffConfig.stepperCSmin[axis]);
+#endif
             }
             break;
 
@@ -697,8 +703,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperCSmax[axis];
             if(showInputDialog(title, P_Max, &iVal, 0, 15)) {
               smuffConfig.stepperCSmax[axis] = (int8_t)iVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->semax(smuffConfig.stepperCSmax[axis]);
+#endif
             }
             break;
 
@@ -706,9 +714,12 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperCSdown[axis];
             if(showInputDialog(title, P_Down, &iVal, 0, 15)) {
               smuffConfig.stepperCSdown[axis] = (int8_t)iVal;
-              if(drivers[axis] != nullptr)
+#ifdef HAS_TMC_SUPPORT
+              if(drivers[axis] != nullptr) {
                 drivers[axis]->sedn(smuffConfig.stepperCSdown[axis]);
                 drivers[axis]->seup(smuffConfig.stepperCSdown[axis]);
+              }
+#endif
             }
             break;
 
@@ -723,8 +734,10 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
             iVal = smuffConfig.stepperToff[axis];
             if(showInputDialog(title, P_Value, &iVal, 0, 15)) {
               smuffConfig.stepperToff[axis] = (int8_t)iVal;
+#ifdef HAS_TMC_SUPPORT
               if(drivers[axis] != nullptr)
                 drivers[axis]->toff(smuffConfig.stepperToff[axis]);
+#endif
             }
             break;
 
@@ -751,7 +764,7 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
 
 void showServoMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
@@ -846,7 +859,7 @@ void showServoMenu(char* menuTitle) {
 
 void showRevolverMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
@@ -875,7 +888,7 @@ void showRevolverMenu(char* menuTitle) {
             stopMenu = true;
             break;
 
-        case 2: // TMC-Paramters
+        case 2: // TMC-Parameters
             showTMCMenu(title, REVOLVER);
             current_selection = 1;
             break;
@@ -979,7 +992,7 @@ void showRevolverMenu(char* menuTitle) {
 
 void showSelectorMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
@@ -1087,7 +1100,7 @@ void showSelectorMenu(char* menuTitle) {
 
 void showFeederMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   bool bVal;
@@ -1259,7 +1272,7 @@ void showFeederMenu(char* menuTitle) {
 
 void showSteppersMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   char _menu[128];
@@ -1311,7 +1324,7 @@ void showSteppersMenu(char* menuTitle) {
 
 void showDisplayMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   char _menu[128];
@@ -1401,11 +1414,10 @@ void checkSaveSettings() {
 
 void showSettingsMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   float fVal;
   int iVal;
-  bool bVal;
   char *title;
   char _menu[300];
 
@@ -1501,13 +1513,11 @@ void setLiveFanSpeed(int val) {
 
 void showOptionsMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
-  float fVal;
   int iVal;
   bool bVal;
   char *title;
-  char msg[128];
   char _menu[300];
 
   while(!stopMenu) {
@@ -1730,7 +1740,7 @@ uint8_t swapTool(uint8_t index) {
 
 void showSwapMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char _menu[128];
 
@@ -1767,7 +1777,7 @@ void showSwapMenu(char* menuTitle) {
 
 void showBaudratesMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
   char _menu[300];
@@ -1819,7 +1829,7 @@ void showBaudratesMenu(char* menuTitle) {
 
 void showStatusInfoMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char _menu[120];
 
@@ -1947,7 +1957,7 @@ void changeOffset(uint8_t index) {
 void showToolsMenu() {
 
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char _title[60];
   char _menu[128];

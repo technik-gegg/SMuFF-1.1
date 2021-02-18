@@ -260,6 +260,7 @@ void showDuetLS() {
     switchFeederStepper(EXTERNAL);
 }
 
+#ifdef HAS_TMC_SUPPORT
 TMC2209Stepper* showDriver = nullptr;
 
 void drawStallCallback() {
@@ -272,22 +273,28 @@ void drawStallCallback() {
   stat = showDriver->SG_RESULT() < showDriver->SGTHRS()*2;
   display.drawGlyph(114, 11, symbols[stat+2]);
 }
+#endif
 
 void showTMCStatus(uint8_t axis) {
-  char _msg[256];
-  int16_t turn;
-  uint8_t btn;
-  bool isHeld, isClicked;
-
   debounceButton();
   encoder.setAccelerationEnabled(true);
+#ifdef HAS_TMC_SUPPORT
   showDriver = drivers[axis];
+#else
+  #define showDriver nullptr
+#endif
   if(showDriver == nullptr) {
     debounceButton();
     drawUserMessage(P_StepperNotCfg);
     delay(3000);
     return;
   }
+#ifdef HAS_TMC_SUPPORT
+  char _msg[256];
+  int16_t turn;
+  uint8_t btn;
+  bool isHeld, isClicked;
+
   steppers[axis].setEnabled(true);
   displayingUserMessage = true;
   uint8_t n=0;
@@ -331,6 +338,7 @@ void showTMCStatus(uint8_t axis) {
     }
   }
   displayingUserMessage = false;
+#endif
 }
 
 void resetDisplay() {
@@ -1030,7 +1038,7 @@ bool loadFilament(bool showMessage) {
     else
       steppers[REVOLVER].home();
   }
-  bool wasAborted = steppers[FEEDER].getAbort();
+  /*bool wasAborted =*/ steppers[FEEDER].getAbort();
   steppers[FEEDER].setAbort(false);
 
   if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
@@ -1648,6 +1656,7 @@ void printDriverStallThrs(int8_t serial) {
           drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->SGTHRS()).c_str());
   printResponse(tmp, serial);
 }
+#endif
 
 void printEndstopState(int8_t serial) {
   char tmp[128];
@@ -1710,8 +1719,7 @@ void printOffsets(int8_t serial) {
   sprintf_P(tmp, P_TMC_StatusAll,
           String((int)(smuffConfig.firstToolOffset*10)).c_str(),
           String(smuffConfig.firstRevolverOffset).c_str(),
-          "--",
-          "");
+          "--");
   printResponse(tmp, serial);
 }
 
@@ -2578,9 +2586,9 @@ uint8_t scanI2CDevices(uint8_t *devices) {
   for(uint8 address = 1; address < 127; address++)
   {
     Wire.beginTransmission(address);
-    uint8 stat = Wire.endTransmission();
+    uint8_t stat = Wire.endTransmission();
     //__debugS(PSTR("Scanning at address 0x%02x returned 0x%x"), address, stat);
-    if (stat == SUCCESS) {
+    if (stat == I2C_SUCCESS) {
       *(devices+cnt) = address;
       cnt++;
       __debugS(PSTR("I2C device found at address 0x%02x"), address);
@@ -2619,4 +2627,3 @@ void __log(const char* fmt, ...) {
   va_end (arguments);
   logSerial->print(_log);
 }
-

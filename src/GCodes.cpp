@@ -25,6 +25,11 @@
 #include "SMuFF.h"
 #include "GCodes.h"
 #include "ConfigNamesExt.h"
+#ifdef __ESP32__
+#include "ZPortExpander.h"
+
+extern ZPortExpander portEx;
+#endif
 
 extern SdFat SD;
 
@@ -244,11 +249,7 @@ bool M42(const char* msg, String buf, int8_t serial) {
           case 1: pinMode(pin, OUTPUT); break;
           case 2: pinMode(pin, INPUT_PULLUP); break;
           case 3:
-            #if defined(__AVR__)
-            pinMode(pin, INPUT);
-            #else
             pinMode(pin, INPUT_PULLDOWN);
-            #endif
             break;
          }
       }
@@ -290,11 +291,6 @@ bool M98(const char* msg, String buf, int8_t serial) {
 
 bool M100(const char* msg, String buf, int8_t serial) {
   printResponse(msg, serial);
-  char tmp[50];
-  #if defined(__AVR__)
-  sprintf_P(tmp, P_FreeMemory, freeMemory());
-  printResponseP(tmp, serial);
-  #endif
   return true;
 }
 
@@ -347,8 +343,7 @@ bool M114(const char* msg, String buf, int8_t serial) {
   sprintf_P(tmp, P_TMC_StatusAll,
   String(steppers[SELECTOR].getStepPositionMM()).c_str(),
   String(steppers[REVOLVER].getStepPosition()).c_str(),
-  String(steppers[FEEDER].getStepPositionMM()).c_str(),
-  "");
+  String(steppers[FEEDER].getStepPositionMM()).c_str());
   printResponse(tmp, serial);
   return true;
 }
@@ -394,6 +389,9 @@ bool M119(const char* msg, String buf, int8_t serial) {
   it's ok for now.
 */
 bool M122(const char* msg, String buf, int8_t serial) {
+#ifndef HAS_TMC_SUPPORT
+  return false;
+#else
   char dbg[20];
   printResponse(msg, serial);
 
@@ -553,7 +551,6 @@ bool M122(const char* msg, String buf, int8_t serial) {
       printResponse(spacer, serial);
   }
   printResponse(eol, serial);
-
   // semin
   printResponseP(P_TMC_Setup13, serial);
   for(uint8_t i=0; i<NUM_STEPPERS; i++) {
@@ -677,18 +674,16 @@ bool M122(const char* msg, String buf, int8_t serial) {
   printResponse(eol, serial);
   // PWM Scale
   printResponseP(P_TMC_Setup24, serial);
-  for(uint8_t i=0; i<NUM_STEPPERS; i++) {
-    if(drivers[i] != nullptr) {
-      sprintf_P(dbg, P_F33d, drivers[i]->pwm_ofs(), drivers[i]->pwm_scale_sum());
-      printResponse(dbg, serial);
+    for(uint8_t i=0; i<NUM_STEPPERS; i++) {
+      if(drivers[i] != nullptr) {
+        sprintf_P(dbg, P_F33d, drivers[i]->pwm_ofs(), drivers[i]->pwm_scale_sum());
+        printResponse(dbg, serial);
+      }
+      else
+        printResponse(spacer, serial);
     }
-    else
-      printResponse(spacer, serial);
-  }
+    printResponse(eol, serial);
   printResponse(eol, serial);
-
-  printResponse(eol, serial);
-
   // ---- STATUS ----
   printResponseP(P_TMC_Status00, serial);
   // Mode
@@ -802,6 +797,7 @@ bool M122(const char* msg, String buf, int8_t serial) {
   }
   printResponse(eol, serial);
   return true;
+#endif
 }
 
 bool M145(const char* msg, String buf, int8_t serial) {
@@ -835,12 +831,13 @@ bool M145(const char* msg, String buf, int8_t serial) {
 }
 
 bool M150(const char* msg, String buf, int8_t serial) {
-  uint8_t red=0, green=0, blue=0;
-  int8_t index=-1, colorNdx=-1;
-  uint8_t intensity = 255;
   printResponse(msg, serial);
 
 #if defined(USE_FASTLED_BACKLIGHT)
+  uint8_t red=0, green=0, blue=0;
+  int8_t index=-1, colorNdx=-1;
+  uint8_t intensity = 255;
+
   if(NEOPIXEL_PIN == -1)
       return false;
 
@@ -1165,18 +1162,24 @@ bool M205(const char* msg, String buf, int8_t serial) {
         if(param >=0 && param <= 15) {
           if(hasParam(buf, X_Param)) {
             smuffConfig.stepperCSmin[SELECTOR] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[SELECTOR] != nullptr)
               drivers[SELECTOR]->semin(smuffConfig.stepperCSmin[SELECTOR]);
+#endif
           }
           if(hasParam(buf, Y_Param)) {
             smuffConfig.stepperCSmin[REVOLVER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[REVOLVER] != nullptr)
               drivers[REVOLVER]->semin(smuffConfig.stepperCSmin[REVOLVER]);
+#endif
           }
           if(hasParam(buf, Z_Param)) {
             smuffConfig.stepperCSmin[FEEDER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[FEEDER] != nullptr)
               drivers[FEEDER]->semin(smuffConfig.stepperCSmin[FEEDER]);
+#endif
           }
         }
         else
@@ -1186,18 +1189,24 @@ bool M205(const char* msg, String buf, int8_t serial) {
         if(param >=0 && param <= 15) {
           if(hasParam(buf, X_Param)) {
             smuffConfig.stepperCSmax[SELECTOR] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[SELECTOR] != nullptr)
               drivers[SELECTOR]->semax(smuffConfig.stepperCSmax[SELECTOR]);
+#endif
           }
           if(hasParam(buf, Y_Param)) {
             smuffConfig.stepperCSmax[REVOLVER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[REVOLVER] != nullptr)
               drivers[REVOLVER]->semax(smuffConfig.stepperCSmax[REVOLVER]);
+#endif
           }
           if(hasParam(buf, Z_Param)) {
             smuffConfig.stepperCSmax[FEEDER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[FEEDER] != nullptr)
               drivers[FEEDER]->semax(smuffConfig.stepperCSmax[FEEDER]);
+#endif
           }
         }
         else
@@ -1207,22 +1216,30 @@ bool M205(const char* msg, String buf, int8_t serial) {
         if(param >=0 && param <= 15) {
           if(hasParam(buf, X_Param)) {
             smuffConfig.stepperCSdown[SELECTOR] = (int8_t)param;
-            if(drivers[SELECTOR] != nullptr)
+#ifdef HAS_TMC_SUPPORT
+            if(drivers[SELECTOR] != nullptr) {
               drivers[SELECTOR]->sedn(smuffConfig.stepperCSdown[SELECTOR]);
               drivers[SELECTOR]->seup(smuffConfig.stepperCSdown[SELECTOR]);
+            }
+#endif
           }
           if(hasParam(buf, Y_Param)) {
             smuffConfig.stepperCSdown[REVOLVER] = (int8_t)param;
-            if(drivers[REVOLVER] != nullptr)
+#ifdef HAS_TMC_SUPPORT
+            if(drivers[REVOLVER] != nullptr) {
               drivers[REVOLVER]->sedn(smuffConfig.stepperCSdown[REVOLVER]);
               drivers[REVOLVER]->seup(smuffConfig.stepperCSdown[REVOLVER]);
+            }
+#endif
           }
           if(hasParam(buf, Z_Param)) {
             smuffConfig.stepperCSdown[FEEDER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[FEEDER] != nullptr) {
               drivers[FEEDER]->sedn(smuffConfig.stepperCSdown[FEEDER]);
               drivers[FEEDER]->seup(smuffConfig.stepperCSdown[FEEDER]);
             }
+#endif
           }
         }
         else
@@ -1247,18 +1264,24 @@ bool M205(const char* msg, String buf, int8_t serial) {
         if(param >=0 && param <= 15) {
           if(hasParam(buf, X_Param)) {
             smuffConfig.stepperToff[SELECTOR] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[SELECTOR] != nullptr)
               drivers[SELECTOR]->toff(smuffConfig.stepperToff[SELECTOR]);
+#endif
           }
           if(hasParam(buf, Y_Param)) {
             smuffConfig.stepperToff[REVOLVER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[REVOLVER] != nullptr)
               drivers[REVOLVER]->toff(smuffConfig.stepperToff[REVOLVER]);
+#endif
           }
           if(hasParam(buf, Z_Param)) {
             smuffConfig.stepperToff[FEEDER] = (int8_t)param;
+#ifdef HAS_TMC_SUPPORT
             if(drivers[FEEDER] != nullptr)
               drivers[FEEDER]->toff(smuffConfig.stepperToff[FEEDER]);
+#endif
           }
         }
         else
@@ -1428,8 +1451,10 @@ bool M350(const char* msg, String buf, int8_t serial) {
     if(param==1 || param==2 || param==4 || param==8 || param==16 || param==32 || param==64 || param==128) {
       smuffConfig.stepperMicrosteps[SELECTOR] = (uint16_t)param;
       steppers[SELECTOR].setEnabled(true);
+#ifdef HAS_TMC_SUPPORT
       if(drivers[SELECTOR] != nullptr)
         drivers[SELECTOR]->microsteps(smuffConfig.stepperMicrosteps[SELECTOR]);
+#endif
     }
     else stat = false;
   }
@@ -1437,8 +1462,10 @@ bool M350(const char* msg, String buf, int8_t serial) {
     if(param==1 || param==2 || param==4 || param==8 || param==16 || param==32 || param==64 || param==128) {
       smuffConfig.stepperMicrosteps[REVOLVER] = (uint16_t)param;
       steppers[REVOLVER].setEnabled(true);
+#ifdef HAS_TMC_SUPPORT
       if(drivers[REVOLVER] != nullptr)
         drivers[REVOLVER]->microsteps(smuffConfig.stepperMicrosteps[REVOLVER]);
+#endif
     }
     else stat = false;
   }
@@ -1446,8 +1473,10 @@ bool M350(const char* msg, String buf, int8_t serial) {
     if(param==1 || param==2 || param==4 || param==8 || param==16 || param==32 || param==64 || param==128) {
       smuffConfig.stepperMicrosteps[FEEDER] = (uint16_t)param;
       steppers[FEEDER].setEnabled(true);
+#ifdef HAS_TMC_SUPPORT
       if(drivers[FEEDER] != nullptr)
         drivers[FEEDER]->microsteps(smuffConfig.stepperMicrosteps[FEEDER]);
+#endif
     }
     else stat = false;
   }
@@ -1532,6 +1561,9 @@ bool M503(const char* msg, String buf, int8_t serial) {
 }
 
 bool M569(const char* msg, String buf, int8_t serial) {
+#ifndef HAS_TMC_SUPPORT
+  return false;
+#else
   bool stat = true;
   char tmp[128];
   printResponse(msg, serial);
@@ -1605,6 +1637,7 @@ bool M569(const char* msg, String buf, int8_t serial) {
   }
 
   return stat;
+#endif
 }
 
 bool M575(const char* msg, String buf, int8_t serial) {
@@ -1661,6 +1694,9 @@ bool M701(const char* msg, String buf, int8_t serial) {
 }
 
 bool M906(const char* msg, String buf, int8_t serial) {
+#ifndef HAS_TMC_SUPPORT
+  return false;
+#else
   bool stat = true;
   printResponse(msg, serial);
 
@@ -1720,9 +1756,13 @@ bool M906(const char* msg, String buf, int8_t serial) {
     else stat = false;
   }
   return stat;
+#endif
 }
 
 bool M914(const char* msg, String buf, int8_t serial) {
+#ifndef HAS_TMC_SUPPORT
+  return false;
+#else
   bool stat = true;
   uint16_t cool = 0;
   printResponse(msg, serial);
@@ -1800,14 +1840,13 @@ bool M914(const char* msg, String buf, int8_t serial) {
     else stat = false;
   }
   return stat;
+#endif
 }
 
 bool M999(const char* msg, String buf, int8_t serial) {
   printResponse(msg, serial);
   delay(500);
-#ifdef __AVR__
-  __asm__ volatile ("jmp 0x0000");
-#elif __STM32F1__
+#if __STM32F1__
   nvic_sys_reset();
 #elif __ESP32__
   ESP.restart();
@@ -1971,10 +2010,11 @@ bool G1(const char* msg, String buf, int8_t serial) {
     steppers[FEEDER].setEnabled(true);
     prepStepping(FEEDER, paramL, false, true);
   }
-  uint32 start = millis();
+  uint32_t start = millis();
   runAndWait(-1);
   // for testing only: check if stall was detected
   __debugS(PSTR("Move took: %d ms"), millis()-start);
+#ifdef HAS_TMC_SUPPORT
   const char P_StallRes[] PROGMEM = { "G1 StallResult %c: %d  Stalled: %s" };
   if(hasParam(buf, X_Param) && drivers[SELECTOR] != nullptr && !drivers[SELECTOR]->spread_en()) {
     uint16_t sr = drivers[SELECTOR]->SG_RESULT();
@@ -1988,6 +2028,7 @@ bool G1(const char* msg, String buf, int8_t serial) {
     uint16_t sr = drivers[FEEDER]->SG_RESULT();
     __debugS(P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
   }
+#endif
   // set all speeds back to the configured values
   if(hasParam(buf, F_Param)) {
     steppers[SELECTOR].setMaxSpeed(curSpeed[SELECTOR]);
