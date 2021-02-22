@@ -18,6 +18,7 @@
    "ServoMaxPwm":       2400,
    "WipeSeq":           "S200 I140 J160 P90 R20",
    "BackColor":         4,
+   "ToolColor":         5,
    "HasPanelDue":       0,
    "EncTicks":          true,
    "SendStats":         true,

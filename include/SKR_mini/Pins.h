@@ -80,7 +80,8 @@ _DEFPIN_ARM(PB9, 9, B);
 #define NEOPIXEL_PIN        PB7
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #elif defined(USE_TWI_DISPLAY)
-#define NEOPIXEL_PIN        PB9     // PC12
+#define NEOPIXEL_PIN        PB9     // EXP2.4 (alternatively PC12/EXP1.7 if used on DIY TWI display)
+#define NEOPIXEL_TOOL_PIN   PB8     // for tools (EXP2.6)
 #define NUM_LEDS            5       // number of Neopixel LEDS
 #else
 #define NEOPIXEL_PIN        PB9

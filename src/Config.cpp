@@ -130,7 +130,9 @@ bool readConfig()
       uint8_t _contrast =                        jsonDoc[contrast];
       smuffConfig.lcdContrast = (_contrast >= MIN_CONTRAST && _contrast <= MAX_CONTRAST) ? _contrast : DSP_CONTRAST;
       uint8_t _backlightColor =                  jsonDoc[backlightColor];
-      smuffConfig.backlightColor = (_backlightColor == 0 ? 7 : _backlightColor);   // set backlight color to white if not set
+      smuffConfig.backlightColor = (_backlightColor == 0 ? 7 : _backlightColor);  // set backlight color to White if not set
+      uint8_t _toolColor =                       jsonDoc[toolColor];
+      smuffConfig.toolColor = (_toolColor == 0 ? 5 : _toolColor);                 // set tool color to Magenta if not set
       smuffConfig.encoderTickSound =            jsonDoc[encoderTicks];
       smuffConfig.bowdenLength =                jsonDoc[bowdenLength];
       smuffConfig.selectorDistance =            jsonDoc[selectorDist];
@@ -513,6 +515,7 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[periodicalStats]      = smuffConfig.sendPeriodicalStats;
   jsonDoc[wipeSequence]         = smuffConfig.wipeSequence;
   jsonDoc[backlightColor]       = smuffConfig.backlightColor;
+  jsonDoc[toolColor]            = smuffConfig.toolColor;
   jsonDoc[encoderTicks]         = smuffConfig.encoderTickSound;
   jsonDoc[lButtonDown]          = smuffConfig.lButtonDown;
   jsonDoc[lButtonHold]          = smuffConfig.lButtonHold;

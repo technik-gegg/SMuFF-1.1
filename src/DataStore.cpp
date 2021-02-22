@@ -52,7 +52,10 @@ void saveStore() {
         serializeJsonPretty(jsonDoc, cfg);
     }
     cfg.close();
-    //__debugS(PSTR("DataStore updated"));
+    //__debugS(PSTR("%s updated."), DATASTORE_FILE);
+  }
+  else {
+    __debugS(PSTR("ERROR: %s not updated. Can't init SD-Card!"), DATASTORE_FILE);
   }
 }
 

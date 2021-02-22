@@ -101,11 +101,21 @@ void readSequences() {
 /*
   Initialize FastLED library for NeoPixels.
   Primarily used for backlight on some displays (i.e. FYSETC 12864 Mini V2.1)
+  but also for the tool status if wired and defined.
 */
 void initFastLED() {
+
   #if NEOPIXEL_PIN != -1 && defined(USE_FASTLED_BACKLIGHT)
     FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(BRIGHTNESS);
+    __debugS(PSTR("FastLED initialized"));
+  #else
+    __debugS(PSTR("FastLED not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
+  #endif
+  #if NEOPIXEL_TOOL_PIN != -1 && defined(USE_FASTLED_BACKLIGHT)
+    FastLED.addLeds<LED_TYPE, NEOPIXEL_TOOL_PIN, COLOR_ORDER>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
+    FastLED.setBrightness(BRIGHTNESS);
+    __debugS(PSTR("FastLED for tools initialized"));
   #endif
 }
 

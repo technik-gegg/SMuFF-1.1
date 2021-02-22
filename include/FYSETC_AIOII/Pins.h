@@ -57,6 +57,7 @@
 #define HEATBED_PIN         PC6      // END
 
 #define NEOPIXEL_PIN        -1
+#define NEOPIXEL_TOOL_PIN   -1      // for tools
 #define DEBUG_PIN           -1
 #define RELAY_PIN           -1      // Relais for stepper motor switching
 

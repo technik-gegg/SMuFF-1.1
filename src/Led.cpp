@@ -18,9 +18,17 @@
  */
 #include "SMuFF.h"
 
+#define FADE_SPEED  80
+#define FADE_SPEED_MARQUEE  30
+
+uint8_t last_index, last_color;
+bool fastLedStatus = false;
+uint8_t colorMap[8] PROGMEM = { 0, 1, 2, 4, 6, 5, 3, 7 };
+
 #if defined(USE_FASTLED_BACKLIGHT)
 CRGB leds[NUM_LEDS];
-static CRGB ColorsFastLED[8] = { CRGB::Black, CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Cyan, CRGB::Magenta, CRGB::Yellow, CRGB::White };
+CRGB ledsTool[MAX_TOOLS];
+const CRGB ColorsFastLED[8] PROGMEM = { CRGB::Black, CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Cyan, CRGB::Magenta, CRGB::Yellow, CRGB::White };
 #endif
 
 // simulate beeps with different LEDs on LeoNerd display
@@ -44,8 +52,6 @@ void showLed(uint8_t mode, uint8_t count) {
   }
 #endif
 }
-
-uint8_t colorMap[8] PROGMEM = { 0, 1, 2, 4, 6, 5, 3, 7 };
 
 void setBacklightRGB(uint8_t color) {
   if(color >= 0 && color <= 7) {
@@ -84,20 +90,75 @@ void setBacklightCRGB(CRGB color) {
 void setFastLED(uint8_t index, CRGB color) {
 #if defined(USE_FASTLED_BACKLIGHT)
   leds[index] = color;
-  FastLED.show();
 #endif
 }
 
 void setFastLEDIndex(uint8_t index, uint8_t color) {
 #if defined(USE_FASTLED_BACKLIGHT)
-    leds[index] = ColorsFastLED[color];
-    FastLED.show();
+  leds[index] = ColorsFastLED[color];
+#endif
+}
+
+void setFastLEDToolsStatus(uint8_t status) {
+  fastLedStatus = true;
+  switch(status) {
+    case 0: fastLedStatus = false; setFastLEDTools(); break;
+    case 1: setFastLEDToolsMarquee(); break;
+    case 2: setFastLEDToolsRainbow(); break;
+  }
+}
+
+void setFastLEDToolsRainbow() {
+#if defined(USE_FASTLED_BACKLIGHT)
+  // FastLED's built-in rainbow generator
+  fill_rainbow(ledsTool, smuffConfig.toolCount, fastLedHue);
+#endif
+}
+
+void setFastLEDToolsMarquee() {
+#if defined(USE_FASTLED_BACKLIGHT)
+  uint8_t bpm = 10;
+  static uint32_t lastUpdate;
+  if((millis()-lastUpdate) < 20)
+    return;
+  lastUpdate = millis();
+  // taken from: Sinelon by Kriegsman (https://gist.github.com/kriegsman/261beecba85519f4f934)
+  fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
+  int8_t pos = beatsin16(bpm, 0, smuffConfig.toolCount);
+  static int8_t prevpos = 0;
+  if( pos < prevpos ) {
+    fill_solid(ledsTool+pos, (prevpos-pos)+1, CHSV(fastLedHue, 220, 255));
+  }
+  else {
+    fill_solid(ledsTool+prevpos, (pos-prevpos)+1, CHSV(fastLedHue, 220, 255));
+  }
+  prevpos = pos;
+#endif
+}
+
+void setFastLEDTools() {
+  setFastLEDToolIndex(last_index, last_color);
+}
+
+void setFastLEDToolIndex(uint8_t index, uint8_t color) {
+#if defined(USE_FASTLED_BACKLIGHT)
+  if(fastLedStatus) {
+    last_index = index;
+    last_color = color;
+    return;
+  }
+  fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED);
+  if(index >= 0 && index < smuffConfig.toolCount) {
+    ledsTool[smuffConfig.toolCount-index-1] = ColorsFastLED[color];
+    last_index = index;
+    last_color = color;
+  }
 #endif
 }
 
 void setFastLEDIntensity(uint8_t intensity) {
 #if defined(USE_FASTLED_BACKLIGHT)
-    FastLED.setBrightness(intensity);
+  FastLED.setBrightness(intensity);
 #endif
 }
 
@@ -116,6 +177,10 @@ void testFastLED() {
     FastLED.show();
     delay(250);
     leds[i] = ColorsFastLED[0];
+  }
+  // set black as active tool color
+  for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
+    ledsTool[i] = ColorsFastLED[0];
   }
 #endif
 }

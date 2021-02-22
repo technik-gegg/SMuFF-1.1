@@ -159,6 +159,8 @@ volatile bool                   sdRemoved = false;
 uint16_t                        mmsMin = 1;               // minimum moving speed for stepper in mm/s
 uint16_t                        mmsMax = 800;             // maximum moving speed for stepper in mm/s
 uint16_t                        speedIncrement = 5;       // increment for speeds in menus
+uint8_t                         fastLedHue = 0;
+uint32_t                        lastEvent = 0;
 
 
 static volatile uint16_t        intervalMask;  // bit-mask for interval reached
@@ -293,6 +295,12 @@ void isrGPTimerHandler() {
     FLIPDBG
 #endif
     isrFanTimerHandler();             // call the fan interrupt routines also every 1ms
+#if defined(USE_FASTLED_BACKLIGHT)
+    if(initDone && (tickCounter %  400 == 0)) {
+      FastLED.show();                   // refresh Neopixels every 20ms to allow fading and stuff
+      fastLedHue++;
+    }
+#endif
   }
   if(tickCounter == 1000)             // reset counter to avoid overrun
     tickCounter = 0;
@@ -639,6 +647,7 @@ void fncKey4() {
 }
 
 void loop() {
+
   // Call periodical functions as the timeout has reached.
   // Add your specific code there, if you need to have something
   // managed periodically.
@@ -666,6 +675,7 @@ void loop() {
     char tmp[50];
     sprintf_P(tmp, P_SDCardRemoved);
     drawUserMessage(tmp);
+    setFastLEDToolsStatus(2);
     return;
   }
   else {
@@ -673,6 +683,7 @@ void loop() {
       if(initSD(false)) {
         sdRemoved = false;
         leoNerdBlinkRed = false;
+        setFastLEDToolsStatus(0);
         refreshStatus(true, false);
       }
     }
@@ -726,9 +737,12 @@ void loop() {
     }
 
     getInput(&turn, &button, &isHeld, &isClicked);
-    if(isPwrSave && (isClicked || turn != 0)) {
-      setPwrSave(0);
-      refreshStatus(true, false);
+    if(isClicked || turn != 0) {
+      if(isPwrSave) {
+        setPwrSave(0);
+        refreshStatus(true, false);
+      }
+      lastEvent = millis();
     }
 
     if((button == MainButton && isClicked) || (button == WheelButton && isHeld)) {
@@ -776,6 +790,12 @@ void loop() {
     refreshStatus(true, false);
     setPwrSave(1);
   }
+  if((millis() - lastEvent)/1000 >= (unsigned long)smuffConfig.powerSaveTimeout) {
+    setFastLEDToolsStatus(1);
+  }
+  else {
+    setFastLEDToolsStatus(0);
+  }
 
 #ifdef HAS_TMC_SUPPORT
   if(smuffConfig.stepperStall[SELECTOR]) {
@@ -788,6 +808,7 @@ void loop() {
     monitorTMC(FEEDER);
   }
 #endif
+
   // For testing only
   // loopEx();
 }
@@ -818,19 +839,25 @@ bool checkUserMessage() {
 void checkSerialPending() {
   if(Serial.available()) {
     serialEvent();
+    lastEvent = millis();
   }
   if(CAN_USE_SERIAL1) {
-    if(Serial1.available())
+    if(Serial1.available()) {
       serialEvent1();
+      lastEvent = millis();
+    }
   }
   if(CAN_USE_SERIAL2) {
     if(Serial2.available()) {
       serialEvent2();
+      lastEvent = millis();
     }
   }
   if(CAN_USE_SERIAL3) {
-    if(Serial3.available())
+    if(Serial3.available()) {
       serialEvent3();
+      lastEvent = millis();
+    }
   }
 }
 

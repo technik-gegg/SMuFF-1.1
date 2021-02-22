@@ -115,6 +115,6 @@ const char* endstop2 PROGMEM           = "UseEStop2";
 const char* color PROGMEM              = "Color";
 const char* pfactor PROGMEM            = "PFactor";
 const char* autoWipe PROGMEM           = "AutoWipe";
-
+const char* toolColor PROGMEM          = "ToolColor";
 
 

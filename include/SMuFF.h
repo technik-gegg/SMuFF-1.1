@@ -200,6 +200,7 @@ typedef struct {
   char      materials[MAX_TOOLS][MAX_MATERIAL_LEN];
   uint16_t  purges[MAX_TOOLS];
   bool      wipeBeforeUnload                = false;
+  uint8_t   toolColor                       = 5;
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -269,6 +270,7 @@ extern ClickEncoder   encoder;
 #endif
 #if defined(USE_FASTLED_BACKLIGHT)
 extern CRGB           leds[];
+extern CRGB           ledsTool[];
 #else
 #endif
 #if defined(MULTISERVO)
@@ -330,6 +332,8 @@ extern bool           isWarning;
 extern bool           lidOpen;
 extern uint16_t       mmsMin, mmsMax;
 extern uint16_t       speedIncrement;
+extern uint8_t        fastLedHue;
+extern bool           fastLedStatus;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper* drivers[];
@@ -474,6 +478,7 @@ extern void blinkLED();
 #ifdef HAS_TMC_SUPPORT
 extern void setDriverSpreadCycle(TMC2209Stepper* driver, bool spread, uint8_t stallThrs, uint8_t csmin=0, uint8_t csmax=0, uint8_t csdown=0, uint8_t toff=3);
 #endif
+void waitFor(uint32_t ms);
 
 extern void printEndstopState(int8_t serial);
 extern void printPos(int8_t index, int8_t serial);
@@ -518,8 +523,13 @@ extern void showLed(uint8_t mode, uint8_t count);
 extern void setBacklightIndex(int color);
 extern void setFastLED(uint8_t index, CRGB color);
 extern void setFastLEDIndex(uint8_t index, uint8_t color);
+extern void setFastLEDToolIndex(uint8_t index, uint8_t color);
+extern void setFastLEDTools();
 extern void setFastLEDIntensity(uint8_t intensity);
 extern void testFastLED();
+extern void setFastLEDToolsStatus(uint8_t status);
+extern void setFastLEDToolsMarquee();
+extern void setFastLEDToolsRainbow();
 
 extern void showDuetLS();
 extern void switchFeederStepper(uint8_t stepper);

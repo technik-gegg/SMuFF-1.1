@@ -1,7 +1,7 @@
 ; --------------------------------------------
 ; SMuFF test script for 9 tools
 ; --------------------------------------------
-M205 P"EmulatePrusa" S1
+M205 P"EmulPrusa" S1
 G28
 G4 S3
 T0

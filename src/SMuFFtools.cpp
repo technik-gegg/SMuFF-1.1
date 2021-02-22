@@ -579,6 +579,7 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
 
   //__debugS(PSTR("DONE Stepper home"));
   if (index == SELECTOR) {
+    setFastLEDToolIndex(toolSelected, 0);
     toolSelected = -1;
   }
   long pos = steppers[index].getStepPosition();
@@ -1534,6 +1535,8 @@ bool selectTool(int8_t ndx, bool showMessage) {
     dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
     dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
     saveStore();
+    setFastLEDToolIndex(toolSelected, smuffConfig.toolColor);
+
     //__debugS(PSTR("Data stored"));
 
     if (showMessage && (!smuffConfig.extControlFeeder || (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper))) {
@@ -1656,7 +1659,6 @@ void printDriverStallThrs(int8_t serial) {
           drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->SGTHRS()).c_str());
   printResponse(tmp, serial);
 }
-#endif
 
 void printEndstopState(int8_t serial) {
   char tmp[128];
@@ -2033,6 +2035,7 @@ void getStoredData() {
   steppers[REVOLVER].setStepPosition(dataStore.stepperPos[REVOLVER]);
   steppers[FEEDER].setStepPosition(dataStore.stepperPos[FEEDER]);
   toolSelected = dataStore.tool;
+  setFastLEDToolIndex(toolSelected, smuffConfig.toolColor);
   //__debugS(PSTR("Recovered tool: %d"), toolSelected);
 }
 
@@ -2268,6 +2271,9 @@ void testRun(const char* fname) {
             } while(tool == lastTool);
             gCode.replace("{RNDT}", String(tool));
           }
+          if(gCode.indexOf("{RNDTL}") >-1) {
+            gCode.replace("{RNDTL}", String(tool));
+          }
           parseGcode(gCode, -1);
           //__debugS(PSTR("GCode: %s"), gCode.c_str());
           if(*line=='T') {
@@ -2309,10 +2315,6 @@ void testRun(const char* fname) {
             break;
         }
         drawTestrunMessage(loopCnt, msg);
-        getInput(&turn, &btn, &isHeld, &isClicked, false);
-        if(isHeld || isClicked) {
-          break;
-        }
       }
       file.close();
       #if defined(USE_LEONERD_DISPLAY)
@@ -2325,6 +2327,15 @@ void testRun(const char* fname) {
       delay(3000);
     }
   }
+}
+
+void waitFor(uint32_t ms) {
+  uint32_t start = millis();
+  do {
+    uint32_t now = millis()-start;
+    if(now >= ms)
+      break;
+  } while(1);
 }
 
 void listTextFile(const char* filename PROGMEM, int8_t serial) {

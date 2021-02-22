@@ -88,5 +88,6 @@ extern char* endstop2;
 extern char* color;
 extern char* pfactor;
 extern char* autoWipe;
+extern char* toolColor;
 
 

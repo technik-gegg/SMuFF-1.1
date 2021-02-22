@@ -42,6 +42,14 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.20** - Minor bugfix for test scripts / Overhaul for 32-Bit only
+
++ GMagican kindly did some code review and removed code that was releated to the 8-Bit AVR MCUs. He also added a HAL for ESP32 MCUs (just in case for future controllers based on this MCU family).
++ fixed some outdated settings in the test scripts which caused the test scripts not running correctly (i.e. Feeder-Test).
++ added an InputDialog for 16 bit values.
++ Original SdFat from greiman version 2.x will compile now.
++ added FastLED support for tools. This one has to be enabled by setting the **USE_FASTLED_BACKLIGHT** flag and the **NEOPIXEL_TOOL_PIN**. **Using this feature may render your controller unstable if it has not enough RAM**. Newer boards such as the E3-DIP with 64KB of RAM outght to be preferred.
+
 **2.19** - STM32 platform update / SKR E3 bug fixing / Purge added
 
 + updated STM32 platform to version **11.0.0**. Please do the same, since 10.0.1 seems to have a lot of issues. Also, be aware that 11.0.0 also still has bugs, i.e. the I2C bus enumeration will not report any device available! Though, devices attached work flawlessly (as far as I can tell).

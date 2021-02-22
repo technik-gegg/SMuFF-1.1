@@ -74,6 +74,8 @@
 _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specified" while compiling
 
 #define NEOPIXEL_PIN        -1 //PC7     // NEOPIXEL
+#define NEOPIXEL_TOOL_PIN   -1 // for tools
+
 #define NUM_LEDS            5       // number of Neopixel LEDS
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B

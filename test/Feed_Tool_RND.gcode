@@ -2,7 +2,7 @@
 ; SMuFF test script for random tools selects
 ; The {RNDT} parameter gets replaced dynamically
 ; --------------------------------------------
-M205 P"EmulatePrusa" S1
+M205 P"EmulPrusa" S1
 G28
 G4 S1
 T{RNDT}

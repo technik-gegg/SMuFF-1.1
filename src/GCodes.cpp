@@ -859,6 +859,12 @@ bool M150(const char* msg, String buf, int8_t serial) {
   if((param = getParam(buf, C_Param)) != -1) {
     colorNdx = (int8_t)param;
   }
+  if((param = getParam(buf, T_Param)) != -1) {
+    index = (int8_t)param;
+    setFastLEDIntensity(intensity);
+    setFastLEDToolIndex(index, colorNdx);
+    return true;
+  }
   setFastLEDIntensity(intensity);
   if(colorNdx != -1) {
     if(index == -1)
@@ -2044,12 +2050,14 @@ bool G1(const char* msg, String buf, int8_t serial) {
 bool G4(const char* msg, String buf, int8_t serial) {
   bool stat = true;
   printResponse(msg, serial);
+  long val;
   if((param = getParam(buf, S_Param)) != -1) {
-    if(param > 0 && param < 500)
-      delay(param*1000);
+    if(param > 0 && param < 500) {
+     waitFor(param*1000);
+    }
   }
-  else if((param = getParam(buf, P_Param)) != -1) {
-      delay(param);
+  else if((val = getParamL(buf, P_Param)) != -1) {
+    waitFor(val);
   }
   else {
     stat = false;
