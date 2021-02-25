@@ -4,13 +4,21 @@ root = true
 [{*.patch,syntax_test_*}]
 trim_trailing_whitespace = false
 
-[{*.c,*.cpp,*.h,*.CFG}, *.gcode]
+[{*.c,*.cpp,*.h}, *.gcode]
 charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 end_of_line = lf
 indent_style = tab
 indent_size = 4
+
+[{*.CFG.json, *.CFG}]
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+end_of_line = crlf
+indent_style = tab
+indent_size = 2
 
 [*.mnu, *.opt]
 charset = utf-8

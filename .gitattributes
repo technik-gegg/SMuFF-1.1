@@ -5,7 +5,7 @@
 *.cpp text eol=lf
 *.h text eol=lf
 *.gcode text eol=lf
-*.CFG text eol=lf
+*.CFG.json text eol=lf
 *.mnu text eol=crlf
 *.opt text eol=crlf
 
