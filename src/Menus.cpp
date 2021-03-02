@@ -27,7 +27,7 @@ extern ZStepper steppers[];
 extern int8_t   toolSelections[];
 bool            forceStopMenu = false;
 
-char            colorName[10];
+char            selColorName[2][10];
 char            duePort[10];
 char            driverMode[10];
 char            ms3State[10];
@@ -182,7 +182,7 @@ void setupOptionsMenu(char* menu) {
     smuffConfig.useCutter ? P_Yes : P_No,
     smuffConfig.cutterOpen,
     smuffConfig.cutterClose,
-    smuffConfig.usePurge ? P_Yes : P_No
+    smuffConfig.useIdleAnimation ? P_Yes : P_No
   );
 }
 
@@ -317,8 +317,9 @@ void setupDisplayMenu(char* menu) {
   sprintf(menu, loadMenu(P_MnuDisplay, menuOrdinals),
     smuffConfig.powerSaveTimeout,
     smuffConfig.lcdContrast,
-    translateColor(smuffConfig.backlightColor),
-    smuffConfig.encoderTickSound ? P_Yes : P_No
+    smuffConfig.encoderTickSound ? P_Yes : P_No,
+    translateColor(smuffConfig.backlightColor, 0),
+    translateColor(smuffConfig.toolColor, 1)
   );
 }
 
@@ -481,15 +482,15 @@ void showTestrunMenu(char* menuTitle) {
   }
 }
 
-const char* translateColor(uint8_t color) {
+const char* translateColor(uint8_t color, uint8_t index) {
   char* colorNames[16];
   char tmp[80];
   sprintf_P(tmp, loadOptions(P_OptColors));
   splitStringLines(colorNames, (int)ArraySize(colorNames), tmp);
   if(color >= 0 && color < (int)ArraySize(colorNames))
-    strcpy(colorName, colorNames[color]);
-  else sprintf_P(colorName, P_Undefined);
-  return colorName;
+    strcpy(selColorName[index], colorNames[color]);
+  else sprintf_P(selColorName[index], P_Undefined);
+  return selColorName[index];
 }
 
 const char* translatePanelDuePort(uint8_t port) {
@@ -587,6 +588,19 @@ bool selectBacklightColor(int color, char* menuTitle) {
   if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setBacklightIndex, true)) {
     smuffConfig.backlightColor = val;
     //__debugS(PSTR("Backlight: %d"), val);
+  }
+  return true;
+}
+
+bool selectToolColor(int color, char* menuTitle) {
+  int val = color;
+  char tmp[80];
+  sprintf_P(tmp, loadOptions(P_OptColors));
+  if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setToolColorIndex, true)) {
+    smuffConfig.toolColor = val;
+  }
+  else {
+    smuffConfig.toolColor = color;
   }
   return true;
 }
@@ -1363,14 +1377,18 @@ void showDisplayMenu(char* menuTitle) {
               smuffConfig.lcdContrast = (uint8_t)iVal;
             break;
 
-        case 4: // Backlight Color
-            selectBacklightColor(smuffConfig.backlightColor, title);
-            break;
-
-        case 5: // Encoder Ticks
+        case 4: // Encoder Ticks
             bVal = smuffConfig.encoderTickSound;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.encoderTickSound = bVal;
+            break;
+
+        case 5: // Backlight Color
+            selectBacklightColor(smuffConfig.backlightColor, title);
+            break;
+
+        case 6: // Tool Color
+            selectToolColor(smuffConfig.toolColor, title);
             break;
       }
       startTime = millis();
@@ -1627,6 +1645,13 @@ void showOptionsMenu(char* menuTitle) {
               smuffConfig.cutterClose = iVal;
             }
             break;
+
+        case 14: // Idle Animation
+            bVal = smuffConfig.useIdleAnimation;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.useIdleAnimation = bVal;
+            break;
+
 
       }
       startTime = millis();

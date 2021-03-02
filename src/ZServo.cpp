@@ -131,6 +131,9 @@ bool ZServo::setServoPos(uint8_t degree) {
   if(_pin <= 0)
     return false;
 
+  if(millis()-_lastUpdate <= (DUTY_CYCLE/1000))
+    return false;
+
   if(_disabled)
     enable();
 
@@ -144,7 +147,7 @@ bool ZServo::setServoPos(uint8_t degree) {
     //__debugS(PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
   }
   #else
-  _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
+  _pulseLen = (uint16_t)map((int32_t)degree, (int32_t)_minDegree, (int32_t)_maxDegree, (int32_t)_minPw, (int32_t)_maxPw);
   //__debugS(PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
   #endif
   _degree = degree;
@@ -159,7 +162,7 @@ void ZServo::setServoMS(uint16_t microseconds) {
   if(_disabled)
     enable();
   _pulseLen = microseconds;
-  _degree = map(_pulseLen, _minPw, _maxPw, _minDegree, _maxDegree);
+  _degree = (uint8_t)map((int32_t)_pulseLen, (int32_t)_minPw, (int32_t)_maxPw, (int32_t)_minDegree, (int32_t)_maxDegree);
   _tickCnt = 0;
   _dutyCnt = 0;
 }
@@ -197,7 +200,7 @@ void ZServo::setServo() {
       else
         setServoPin(LOW);
     }
-    _tickCnt += 50;
+    _tickCnt += _tickRes;
     // reset tick counter after the duty cycle for the next cycle
     if(_tickCnt >= DUTY_CYCLE) {
       if(_maxCycles == 0 || ++_dutyCnt < _maxCycles)  // but no more cycles than defined to avoid jitter on the servo
@@ -207,8 +210,10 @@ void ZServo::setServo() {
 }
 
 void ZServo::setServoPin(int8_t state) {
+  /*
   if(_pinState == state)
     return;
+  */
   digitalWrite(_pin, state);
   _pinState = state;
 }

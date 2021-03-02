@@ -42,6 +42,22 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.21** - Minor changes / bug fixes
+
++ moved config files into Configs directory, since there are no specific configs for different controller boards anymore.
++ changed default speed of all serial ports to **115200** in SMUFF.CFG (which makes more sense nowadays).
++ fixed the bug that was causing stepper motors not moving when TMC2209s are being used in UART mode (which primarily affected E3 V1.2 and V2.0 boards).
++ splitted FastLED definition for BACKLIGHT and TOOLS.
++ added some FastLED code.
++ added menu entry in **Display** to define tool (LED) color when having set USE_FASTLED_TOOLS.
++ fixed bug that caused EEPROM.DAT not being created.
++ fixed bug that caused the main screen not to refresh after selecting a tool.
++ renamed build environments **\_E3\_SD** to **\_E3\_1.2\_SD** and **\_E3\_SD\_20** to **\_E3\_2.0\_SD** in order to make it more obvious.
++ display in Testrun mode isn't flickery anymore.
++ added a 2nd page to the status info for TMC2209 stepper drivers (uses encoder to flip between the pages).
++ case fan is now working correctly. It'll be controlled with a default frequency of 100 Hz. The frequency can be modified through *Config.h*. Make sure you have a fan with the corresponding voltage rating (same as you use to power the controller).
++ the positioning of servo angles is now more accurate (about 5 deg.; it was about 10 deg. before).
+
 **2.20** - Minor bugfix for test scripts / Overhaul for 32-Bit only
 
 + GMagican kindly did some code review and removed code that was releated to the 8-Bit AVR MCUs. He also added a HAL for ESP32 MCUs (just in case for future controllers based on this MCU family).

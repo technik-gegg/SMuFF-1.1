@@ -1,5 +1,6 @@
 ◀ BACK|1
 Screen Timeout	%d|2
 LCD Contrast	%d|3
-Backlight	%s|4
-Encoder Ticks	%s|5
+Encoder Ticks	%s|4
+Backlight	%s|5
+Tool Color	%s|6

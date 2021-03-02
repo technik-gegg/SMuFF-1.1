@@ -22,6 +22,7 @@
 const char* selector PROGMEM           = "Selector";
 const char* revolver PROGMEM           = "Revolver";
 const char* feeder PROGMEM             = "Feeder";
+const char* feeder2 PROGMEM            = "Feeder2";
 const char* toolCount PROGMEM          = "Tools";
 const char* serial0Baudrate PROGMEM    = "Ser0Spd";
 const char* serial1Baudrate PROGMEM    = "Ser1Spd";
@@ -116,5 +117,5 @@ const char* color PROGMEM              = "Color";
 const char* pfactor PROGMEM            = "PFactor";
 const char* autoWipe PROGMEM           = "AutoWipe";
 const char* toolColor PROGMEM          = "ToolColor";
-
+const char* idleAnim PROGMEM           = "IdleAnim";
 

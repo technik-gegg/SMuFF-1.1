@@ -125,7 +125,6 @@ void getInput(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked, boo
   if(checkSerial)
     checkSerialPending();
   #endif
-  setFastLEDTools();
   getEncoderButton(turn, button, isHeld, isClicked);
   if(*isClicked || *isHeld || *turn != 0) {
     if(smuffConfig.encoderTickSound)

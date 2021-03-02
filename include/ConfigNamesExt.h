@@ -21,6 +21,7 @@
 extern char* selector;
 extern char* revolver;
 extern char* feeder;
+extern char* feeder2;
 extern char* toolCount;
 extern char* bowdenLength;
 extern char* selectorDist;
@@ -89,5 +90,6 @@ extern char* color;
 extern char* pfactor;
 extern char* autoWipe;
 extern char* toolColor;
+extern char* idleAnim;
 
 

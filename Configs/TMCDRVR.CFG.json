@@ -24,7 +24,7 @@
 		"CSMin": 0,
 		"CSMax": 0,
 		"CSDown": 0,
-		"DrvAddr": 0,
+		"DrvAddr": 2,
 		"TOff": -1,
 		"StopOnStall": false,
 		"MaxStall": 10
@@ -39,7 +39,22 @@
 		"CSMin": 0,
 		"CSMax": 0,
 		"CSDown": 0,
-		"DrvAddr": 0,
+		"DrvAddr": 1,
+		"TOff": -1,
+		"StopOnStall": false,
+		"MaxStall": 10
+	},
+	"Feeder2": {
+		"Mode": 0,
+		"TMode": false,
+		"Power": 700,
+		"RSense": 0.11,
+		"MS": 16,
+		"Stall": 40,
+		"CSMin": 0,
+		"CSMax": 0,
+		"CSDown": 0,
+		"DrvAddr": 3,
 		"TOff": -1,
 		"StopOnStall": false,
 		"MaxStall": 10

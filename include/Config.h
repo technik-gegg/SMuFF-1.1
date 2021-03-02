@@ -18,16 +18,15 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.20"
+#define VERSION_STRING    "V2.21"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-02-18"
-#define CONFIG_FILE       "SMUFF.CFG"
-#define MATERIALS_FILE    "MATERIALS.CFG"
-#define TMC_CONFIG_FILE   "TMCDRVR.CFG"
-#define SERVOMAP_FILE     "SERVOMAP.CFG"
-#define PURGE_FILE        "PURGE.CFG"
-#define DATASTORE_FILE    "EEPROM.DAT"
+#define VERSION_DATE      "2021-02-28"
+#define CONFIG_FILE       "/SMUFF.CFG"
+#define MATERIALS_FILE    "/MATERIALS.CFG"
+#define TMC_CONFIG_FILE   "/TMCDRVR.CFG"
+#define SERVOMAP_FILE     "/SERVOMAP.CFG"
+#define DATASTORE_FILE    "/EEPROM.DAT"
 #define TUNE_FILE         "TUNE.DAT"
 #define BEEP_FILE         "BEEP.DAT"
 #define LONGBEEP_FILE     "LBEEP.DAT"
@@ -40,6 +39,7 @@
 #define SELECTOR          0
 #define REVOLVER          1
 #define FEEDER            2
+#define FEEDER2           3                 // added for boards with pre-installed stepper drivers
 
 #define MIN_TOOLS         2
 #define MAX_TOOLS         12
@@ -58,7 +58,13 @@
 #define SERVO_LID           1
 #define SERVO_CUTTER        2
 
-#define SERVO_CLOSED_OFS    35           // for Multiservo
+#define SERVO_CLOSED_OFS    35          // for Multiservo
+#define SERVO_RESOLUTION    50          // servo ISR service routine called every SERVO_RESOLUTION uS
+
+#define FAN_RESOLUTION      50          // fan ISR service routine called every FAN_RESOLUTION uS
+                                        // basically same as SERVO_RESOLUTION since both being handled in the same ISR
+#define FAN_FREQUENCY       100         // fan frequency in Hz
+#define FAN_BLIP_TIMEOUT    1000        // fan blip timeout in millis (0 to turn bliping off)
 
 #define FEED_ERROR_RETRIES  4
 
@@ -77,7 +83,6 @@
 #define REMOTE_PF4          12
 
 #if defined(__STM32F1__)
-//#define STEPPER_PSC         9           // 8MHz on STM32 (72MHz MCU)
 #define STEPPER_PSC         3           // 24MHz on STM32 (72MHz MCU)
 #elif defined(__ESP32__)
 #define STEPPER_PSC         10          // 8MHz on ESP32 (80MHz MCU)
@@ -127,3 +132,10 @@
 #define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x
 #define ICONIC_FONT_S           u8g2_font_open_iconic_check_1x_t
 //#define SYMBOL_FONT             u8g2_font_unifont_t_symbols
+
+#define FASTLED_STAT_NONE       0
+#define FASTLED_STAT_MARQUEE     1
+#define FASTLED_STAT_RAINBOW     2
+#define FASTLED_STAT_ERROR       3
+#define FASTLED_STAT_WARNING     4
+#define FASTLED_STAT_OK          5

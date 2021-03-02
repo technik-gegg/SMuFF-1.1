@@ -41,7 +41,7 @@ extern bool selectBaudrate(uint8_t port, char* menuTitle);
 extern void selectPanelDuePort(char* menuTitle);
 extern void showPurgeMenu(char* menuTitle);
 
-extern const char* translateColor(uint8_t color);
+extern const char* translateColor(uint8_t color, uint8_t index);
 extern const char* translatePanelDuePort(uint8_t port);
 extern const char* translateTMCDriverMode(uint8_t mode);
 extern const char* translateMS3State(uint8_t state);

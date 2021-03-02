@@ -72,6 +72,7 @@
 _DEFPIN_ARM(PC12, 12, C);           // needed to compensate "Invalid pin specified" while compiling
 _DEFPIN_ARM(PB9, 9, B);
 
+#define NEOPIXEL_TOOL_PIN   PB8     // for tools (EXP2.6)
 #if defined(USE_MINI12864_PANEL_V20)
 #define RGB_LED_R_PIN       PB7
 #define RGB_LED_G_PIN       PC14
@@ -81,7 +82,6 @@ _DEFPIN_ARM(PB9, 9, B);
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #elif defined(USE_TWI_DISPLAY)
 #define NEOPIXEL_PIN        PB9     // EXP2.4 (alternatively PC12/EXP1.7 if used on DIY TWI display)
-#define NEOPIXEL_TOOL_PIN   PB8     // for tools (EXP2.6)
 #define NUM_LEDS            5       // number of Neopixel LEDS
 #else
 #define NEOPIXEL_PIN        PB9

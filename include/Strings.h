@@ -240,7 +240,7 @@ const char P_StepperPDN [] PROGMEM          = { "PDN" };
 const char P_F4s [] PROGMEM                 = { "%4s      " };
 const char P_F4d [] PROGMEM                 = { "%4d      " };
 const char P_FL7s [] PROGMEM                = { "%-7s   " };
-const char P_F8x [] PROGMEM                 = { "%8lx   " };
+const char P_F8x [] PROGMEM                 = { "%8lx  " };
 const char P_F33d [] PROGMEM                = { "%3d/%3d   " };
 
 const char P_TMC_Setup00[] PROGMEM          = { "                    S/X       R/Y       F/Z\n" };
@@ -282,7 +282,8 @@ const char P_TMC_Status08[] PROGMEM         = { "Phase B short MOS  "};
 const char P_TMC_Status09[] PROGMEM         = { "Overtemp. Warning  "};
 const char P_TMC_Status10[] PROGMEM         = { "Overtemperature    "};
 
-const char P_TMC_Status[] PROGMEM           = { "Mode: %-7s\nRMS Cur.       %4dmA\nPh. A/B open  %3s/%3s\nPh. A/B short %3s/%3s\nOvertemp.     %7s"};
+const char P_TMC_Status0[] PROGMEM          = { "Mode: %-7s\nRMS Cur.       %4dmA\nMicrosteps        %3d\nMS1/MS2            %1d%1d\nUART mode         %3s"};
+const char P_TMC_Status1[] PROGMEM          = { "Mode: %-7s\nConfig. Cur.   %4dmA\nPh. A/B open  %3s/%3s\nPh. A/B short %3s/%3s\nOvertemp.     %7s"};
 const char P_TMC_StatusAll[] PROGMEM        = { "X (Selector): %s\tY (Revolver): %s\tZ (Feeder): %s\n" };
 const char P_OT_157[] PROGMEM               = { "> 157°C" };
 const char P_OT_150[] PROGMEM               = { "> 150°C" };

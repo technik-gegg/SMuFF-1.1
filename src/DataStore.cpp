@@ -45,14 +45,15 @@ void saveStore() {
     swps[tmp] = swapTools[i];
   }
 
-  //__debugS(PSTR("Updating dataStore"));
   if(initSD(false)) {
-    SdFile cfg;
-    if(cfg.open(DATASTORE_FILE, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
-        serializeJsonPretty(jsonDoc, cfg);
+    Print* cfg = openCfgFileWrite(DATASTORE_FILE);
+    if(cfg != nullptr) {
+      serializeJsonPretty(jsonDoc, *cfg);
+      closeCfgFile();
     }
-    cfg.close();
-    //__debugS(PSTR("%s updated."), DATASTORE_FILE);
+    else {
+      __debugS(PSTR("ERROR: Failed to open/create %s"), DATASTORE_FILE);
+    }
   }
   else {
     __debugS(PSTR("ERROR: %s not updated. Can't init SD-Card!"), DATASTORE_FILE);

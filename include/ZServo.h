@@ -24,8 +24,8 @@
 #include "HAL/HAL.h"
 
 #define MAX_SERVOS              5
-#define US_PER_PULSE_0DEG       1000      // microseconds for 0 degrees
-#define US_PER_PULSE_180DEG     2000      // microseconds for 180 degrees
+#define US_PER_PULSE_0DEG       800       // microseconds for 0 degrees
+#define US_PER_PULSE_180DEG     2200      // microseconds for 180 degrees
 #define DUTY_CYCLE              20000     // servo cycle in us (>= 20ms)
 #ifdef __ESP32__
 #define SERVO_CHANNEL           8
@@ -56,6 +56,8 @@ public:
   void    setPulseWidthMinMax(uint16_t min, uint16_t max) { _minPw = min; _maxPw = max; }
   void    setPulseWidthMin(uint16_t min) { _minPw = min; }
   void    setPulseWidthMax(uint16_t max) { _maxPw = max; }
+  void    setTickRes(uint8_t res) { _tickRes = res; }
+  uint8_t getTickRes() { return _tickRes; }
   void    stop(bool state) { _timerStopped = state; }
   bool    isTimerStopped() { return _timerStopped; }
   bool    hasTimer() { return _useTimer; }
@@ -87,4 +89,5 @@ private:
   uint16_t          _maxPw = US_PER_PULSE_180DEG;
   uint8_t           _minDegree = 0;
   uint8_t           _maxDegree = 180;
+  uint8_t           _tickRes = 50;
 };

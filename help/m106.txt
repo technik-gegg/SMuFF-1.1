@@ -1,3 +1,4 @@
-M106 Sn
+M106 Sn [Fn]
 -------
 Sn 		the percentage for the fan to spin (n: 0..100)
+Fn 		the PWM frequency in Hz (n:0..500)

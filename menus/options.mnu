@@ -11,3 +11,4 @@ Servo Max. PWM	%d|10
 Use Cutter	%s|11
 Cutter Open	%d|12
 Cutter close	%d|13
+Idle Animation	%s|14

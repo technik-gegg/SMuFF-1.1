@@ -40,23 +40,18 @@ const size_t scapacity = 1000;
 
 bool initSD(bool showStatus) {
   #if !defined(USE_COMPOSITE_SERIAL)
-  if(SDCS_PIN != -1) {
-    if (!SD.begin(SDCS_PIN, SD_SCK_MHZ(4))) {
-      if(showStatus) {
-        drawSDStatus(SD_ERR_INIT);
-        delay(5000);
-      }
-      return false;
+  bool sdStat;
+  if(SDCS_PIN != -1)
+    sdStat = SD.begin(SDCS_PIN, SD_SCK_MHZ(4));
+  else
+    sdStat = SD.begin();
+
+  if (!sdStat) {
+    if(showStatus) {
+      drawSDStatus(SD_ERR_INIT);
+      delay(5000);
     }
-  }
-  else {
-    if (!SD.begin()) {
-      if(showStatus) {
-        drawSDStatus(SD_ERR_INIT);
-        delay(5000);
-      }
-      return false;
-    }
+    return false;
   }
   #endif
   return true;
@@ -194,6 +189,7 @@ bool readConfig()
       smuffConfig.cutterClose =                 jsonDoc[cutterClose];
       smuffConfig.usePurge =                    jsonDoc[usePurge];
       smuffConfig.cutterLength =                jsonDoc[cutterLength];
+      smuffConfig.useIdleAnimation =            jsonDoc[idleAnim];
 
       /*
       SELECTOR
@@ -364,6 +360,22 @@ bool readTmcConfig()
       smuffConfig.stepperToff[FEEDER] =         jsonDoc[feeder][toff];
       smuffConfig.stepperStopOnStall[FEEDER]=   jsonDoc[feeder][stopOnStall];
       smuffConfig.stepperMaxStallCnt[FEEDER]=   jsonDoc[feeder][maxStallCount];
+      /*
+      FEEDER2 (only for boards with integarted drivers)
+      */
+      smuffConfig.stepperPower[FEEDER2] =       jsonDoc[feeder2][power];
+      smuffConfig.stepperMode[FEEDER2] =        jsonDoc[feeder2][mode];
+      smuffConfig.stepperStealth[FEEDER2] =     jsonDoc[feeder2][tmode];
+      smuffConfig.stepperRSense[FEEDER2] =      jsonDoc[feeder2][rsense];
+      smuffConfig.stepperMicrosteps[FEEDER2] =  jsonDoc[feeder2][msteps];
+      smuffConfig.stepperStall[FEEDER2] =       jsonDoc[feeder2][stall];
+      smuffConfig.stepperCSmin[FEEDER2] =       jsonDoc[feeder2][cstepmin];
+      smuffConfig.stepperCSmax[FEEDER2] =       jsonDoc[feeder2][cstepmax];
+      smuffConfig.stepperCSdown[FEEDER2] =      jsonDoc[feeder2][cstepdown];
+      smuffConfig.stepperAddr[FEEDER2] =        jsonDoc[feeder2][drvrAdr];
+      smuffConfig.stepperToff[FEEDER2] =        jsonDoc[feeder2][toff];
+      smuffConfig.stepperStopOnStall[FEEDER2]=  jsonDoc[feeder2][stopOnStall];
+      smuffConfig.stepperMaxStallCnt[FEEDER2]=  jsonDoc[feeder2][maxStallCount];
 
       __debugS(PSTR("Config: DONE reading TMC config"));
     }
@@ -528,6 +540,8 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[cutterClose]          = smuffConfig.cutterClose;
   jsonDoc[usePurge]             = smuffConfig.usePurge;
   jsonDoc[cutterLength]         = smuffConfig.cutterLength;
+  jsonDoc[idleAnim]             = smuffConfig.useIdleAnimation;
+
 
   JsonObject node = jsonObj.createNestedObject(selector);
   node[offset]                = smuffConfig.firstToolOffset;
@@ -654,6 +668,21 @@ bool writeTmcConfig(Print* dumpTo) {
   node[toff]                  = smuffConfig.stepperToff[FEEDER];
   node[stopOnStall]           = smuffConfig.stepperStopOnStall[FEEDER];
   node[maxStallCount]         = smuffConfig.stepperMaxStallCnt[FEEDER];
+
+  node = jsonObj.createNestedObject(feeder2);
+  node[power]                 = smuffConfig.stepperPower[FEEDER2];
+  node[mode]                  = smuffConfig.stepperMode[FEEDER2];
+  node[tmode]                 = smuffConfig.stepperStealth[FEEDER2];
+  node[rsense]                = smuffConfig.stepperRSense[FEEDER2];
+  node[msteps]                = smuffConfig.stepperMicrosteps[FEEDER2];
+  node[stall]                 = smuffConfig.stepperStall[FEEDER2];
+  node[cstepmin]              = smuffConfig.stepperCSmin[FEEDER2];
+  node[cstepmax]              = smuffConfig.stepperCSmax[FEEDER2];
+  node[cstepdown]             = smuffConfig.stepperCSdown[FEEDER2];
+  node[drvrAdr]               = smuffConfig.stepperAddr[FEEDER2];
+  node[toff]                  = smuffConfig.stepperToff[FEEDER2];
+  node[stopOnStall]           = smuffConfig.stepperStopOnStall[FEEDER2];
+  node[maxStallCount]         = smuffConfig.stepperMaxStallCnt[FEEDER2];
 
   if(dumpTo == nullptr) {
     dumpTo = openCfgFileWrite(TMC_CONFIG_FILE);

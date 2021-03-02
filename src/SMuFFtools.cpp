@@ -31,72 +31,73 @@
 extern BluetoothSerial SerialBT;
 #endif
 
-extern ZStepper       steppers[];
-extern ZServo         servo;
-extern ZServo         servoLid;
-extern SdFat           SD;
+extern ZStepper steppers[];
+extern ZServo servo;
+extern ZServo servoLid;
+extern SdFat SD;
 
-SMuFFConfig           smuffConfig;
-int8_t                toolSelected = -1;
-bool                  feederJammed = false;
-PositionMode          positionMode = RELATIVE;
-bool                  displayingUserMessage = false;
-bool                  isAbortRequested = false;
-uint16_t              userMessageTime = 0;
-uint8_t               swapTools[MAX_TOOLS];
-bool                  isWarning;
-bool                  lidOpen = true;
-unsigned long         feederErrors = 0;
-bool                  ignoreHoming = false;
-unsigned long         stallDetectedCountSelector = 0;
-unsigned long         stallDetectedCountFeeder = 0;
+SMuFFConfig smuffConfig;
+int8_t toolSelected = -1;
+bool feederJammed = false;
+PositionMode positionMode = RELATIVE;
+bool displayingUserMessage = false;
+bool isAbortRequested = false;
+uint16_t userMessageTime = 0;
+uint8_t swapTools[MAX_TOOLS];
+bool isWarning;
+bool lidOpen = true;
+unsigned long feederErrors = 0;
+bool ignoreHoming = false;
+unsigned long stallDetectedCountSelector = 0;
+unsigned long stallDetectedCountFeeder = 0;
 //char PROGMEM          tuneStartup[]  = { "F440D120P150.F523D120P80.F196D220P80.F196D120P80.F587D400P120.F349D80P240.F349D80P160." }; // the new tune
-char PROGMEM          tuneStartup[100] = { "F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50." };   // the "old" tune
-char PROGMEM          tuneUser[40]      = { "F1760D90P90.F440D90P90.F440D90P90." };
-char PROGMEM          tuneBeep[20]      = { "F1760D90P200." };
-char PROGMEM          tuneLongBeep[20]  = { "F1760D450P500." };
+char PROGMEM tuneStartup[100] = {"F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50."}; // the "old" tune
+char PROGMEM tuneUser[40] = {"F1760D90P90.F440D90P90.F440D90P90."};
+char PROGMEM tuneBeep[20] = {"F1760D90P200."};
+char PROGMEM tuneLongBeep[20] = {"F1760D450P500."};
 #if defined(USE_LEONERD_DISPLAY)
-char PROGMEM          tuneEncoder[20]   = { "F330D10P10." };
+char PROGMEM tuneEncoder[20] = {"F330D10P10."};
 #else
-char PROGMEM          tuneEncoder[20]   = { "F1440D3." };
+char PROGMEM tuneEncoder[20] = {"F1440D3."};
 #endif
 
-uint16_t              sequence[MAX_SEQUENCE][3];    // store for tune sequence for background playing
-uint8_t               sequenceCnt = 0;
-bool                  startSequence = false;        // trigger for background playing of tune sequence
-bool                  isPlaying = false;
+uint16_t sequence[MAX_SEQUENCE][3]; // store for tune sequence for background playing
+uint8_t sequenceCnt = 0;
+bool startSequence = false; // trigger for background playing of tune sequence
+bool isPlaying = false;
 
+#define _F_ 0
+#define _D_ 1
+#define _P_ 2
 
-#define _F_           0
-#define _D_           1
-#define _P_           2
-
-void setupDisplay() {
-  // The next code line (display.setI2CAddress) changes the address for your TWI_DISPLAY if it's
-  // configured differently.
-  // Usually, thoses displays are pre-configured at I2C address 0x78, which equals to 0x3c
-  // from the software side because of the 7-Bit address mode.
-  // If it's configured at 0x7a, you need to change the I2C_DISPLAY_ADDRESS in Config.h to 0x3d.
-  #if I2C_DISPLAY_ADDRESS != 0x3C
+void setupDisplay()
+{
+// The next code line (display.setI2CAddress) changes the address for your TWI_DISPLAY if it's
+// configured differently.
+// Usually, thoses displays are pre-configured at I2C address 0x78, which equals to 0x3c
+// from the software side because of the 7-Bit address mode.
+// If it's configured at 0x7a, you need to change the I2C_DISPLAY_ADDRESS in Config.h to 0x3d.
+#if I2C_DISPLAY_ADDRESS != 0x3C
   display.setI2CAddress(I2C_DISPLAY_ADDRESS);
   __debugS(PSTR("I2C display address set to 0x%02X"), I2C_DISPLAY_ADDRESS);
-  #endif
-  #if defined(USE_LEONERD_DISPLAY)
+#endif
+#if defined(USE_LEONERD_DISPLAY)
   display.begin();
-  #else
-  display.begin(/*Select=*/ ENCODER_BUTTON_PIN,  /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
-  #endif
+#else
+  display.begin(/*Select=*/ENCODER_BUTTON_PIN, /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
+#endif
   display.enableUTF8Print();
   resetDisplay();
   display.setContrast(smuffConfig.lcdContrast);
 }
 
-void drawLogo() {
+void drawLogo()
+{
   //__debugS(PSTR("drawLogo start..."));
   char brand[8] = VERSION_STRING;
-  #if defined(DEBUG)
-  strcat(brand,"D");
-  #endif
+#if defined(DEBUG)
+  strcat(brand, "D");
+#endif
 
   display.setBitmapMode(1);
   display.drawXBMP(0, 0, logo_width, logo_height, logo_bits);
@@ -109,7 +110,8 @@ void drawLogo() {
   //__debugS(PSTR("drawLogo end..."));
 }
 
-void drawStatus() {
+void drawStatus()
+{
   char _wait[128];
   char tmp[80];
   char pos[20];
@@ -120,7 +122,7 @@ void drawStatus() {
   display.setDrawColor(1);
   sprintf_P(tmp, P_CurrentTool);
   display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 14, tmp);
-  if((toolSelected >= 0 && toolSelected < smuffConfig.toolCount))
+  if ((toolSelected >= 0 && toolSelected < smuffConfig.toolCount))
     sprintf_P(tmp, PSTR("%2d"), toolSelected);
   else
     sprintf_P(tmp, PSTR("--"));
@@ -130,8 +132,9 @@ void drawStatus() {
   display.setFontMode(1);
   display.setFont(SMALL_FONT);
   display.setDrawColor(2);
-  display.drawBox(0, display.getDisplayHeight()-display.getMaxCharHeight()+2, display.getDisplayWidth(), display.getMaxCharHeight());
-  sprintf_P(_wait, parserBusy ? P_Busy : (smuffConfig.prusaMMU2) ? P_Pemu : P_Ready);
+  display.drawBox(0, display.getDisplayHeight() - display.getMaxCharHeight() + 2, display.getDisplayWidth(), display.getMaxCharHeight());
+  sprintf_P(_wait, parserBusy ? P_Busy : (smuffConfig.prusaMMU2) ? P_Pemu
+                                                                 : P_Ready);
 
   sprintf_P(pos, PSTR("%4.2f"), steppers[FEEDER].getStepsTakenMM());
   sprintf_P(tmp, PSTR("%-7s| %-4s | %-4s "), pos, smuffConfig.externalStepper ? P_External : P_Internal, _wait);
@@ -139,33 +142,39 @@ void drawStatus() {
 
   display.setFontMode(0);
   display.setDrawColor(1);
-  if(steppers[FEEDER].getMovementDone()) {
-    if(!smuffConfig.useEndstop2) {
+  if (steppers[FEEDER].getMovementDone())
+  {
+    if (!smuffConfig.useEndstop2)
+    {
       display.setFont(ICONIC_FONT);
       display.drawGlyph(110, 38, feederEndstop() ? 0x41 : 0x42);
     }
-    else {
+    else
+    {
       display.setFont(ICONIC_FONT);
       display.drawGlyph(94, 38, feederEndstop() ? 0x41 : 0x42);
       display.drawGlyph(112, 38, feederEndstop(2) ? 0x41 : 0x42);
     }
     display.setFont(BASE_FONT);
   }
-  else {
+  else
+  {
     drawFeed();
   }
   //__debugS(PSTR("drawStatus end..."));
 }
 
-void drawSDRemoved(bool removed) {
-  if(!removed)
+void drawSDRemoved(bool removed)
+{
+  if (!removed)
     return;
 
   display.setFont(ICONIC_FONT);
   display.drawGlyph(2, 10, 0x47);
 }
 
-void drawFeed() {
+void drawFeed()
+{
   char tmp[80];
   sprintf_P(tmp, PSTR("%-7s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
 #if defined(__STM32F1__) || defined(__ESP32__)
@@ -173,11 +182,11 @@ void drawFeed() {
   display.setFontMode(0);
   display.setDrawColor(0);
   uint16_t x = 0;
-  uint16_t y = display.getDisplayHeight()-display.getMaxCharHeight() + 2;
+  uint16_t y = display.getDisplayHeight() - display.getMaxCharHeight() + 2;
   uint16_t w = 40;
   uint16_t h = display.getMaxCharHeight();
   display.drawBox(x, y, w, h);
-  display.drawStr(x+1, display.getDisplayHeight(), tmp);
+  display.drawStr(x + 1, display.getDisplayHeight(), tmp);
   display.sendBuffer();
   //display.updateDisplayArea(x, y, w, h);
 
@@ -185,28 +194,32 @@ void drawFeed() {
   display.setFont(STATUS_FONT);
   display.setFontMode(0);
   display.setDrawColor(0);
-  display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight()-2);
+  display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight() - 2);
   display.setDrawColor(1);
   display.drawStr(62, 34, tmp);
 #endif
 }
 
 uint8_t duetTurn = 0;
-void drawSymbolCallback() {
-  uint16_t symbols[] = { 0x25ef, 0x25d0, 0x25d3, 0x25d1, 0x25d2 };
+void drawSymbolCallback()
+{
+  uint16_t symbols[] = {0x25ef, 0x25d0, 0x25d3, 0x25d1, 0x25d2};
 
-  if(duetLS.isMoving()) {
-    if(++duetTurn > 4)
+  if (duetLS.isMoving())
+  {
+    if (++duetTurn > 4)
       duetTurn = 1;
   }
-  else {
+  else
+  {
     duetTurn = 0;
   }
   display.setFont(ICONIC_FONT);
   display.drawGlyph(118, 10, symbols[duetTurn]);
 }
 
-void showDuetLS() {
+void showDuetLS()
+{
   char _msg[128];
   char _addData[15];
   char _dir[3];
@@ -218,72 +231,109 @@ void showDuetLS() {
   switchFeederStepper(INTERNAL);
   debounceButton();
   encoder.setAccelerationEnabled(true);
-  while(1) {
+  while (1)
+  {
     getInput(&turn, &btn, &isHeld, &isClicked);
-    if(isHeld || isClicked) {
+    if (isHeld || isClicked)
+    {
       break;
     }
     // if the encoder knob is being turned, extrude / retract filament by the value defined
-    switch(encoder.getValue()) {
-        case -1: moveFeeder(-0.25); break;
-        case  1: moveFeeder( 0.25); break;
-        case -2: moveFeeder(-0.50); break;
-        case  2: moveFeeder( 0.50); break;
-        case -3: moveFeeder(-1.00); break;
-        case  3: moveFeeder( 1.00); break;
-        case -4: moveFeeder(-2.00); break;
-        case  4: moveFeeder( 2.00); break;
-        case -5: moveFeeder(-5.00); break;
-        case  5: moveFeeder( 5.00); break;
-        default: break;
+    switch (encoder.getValue())
+    {
+    case -1:
+      moveFeeder(-0.25);
+      break;
+    case 1:
+      moveFeeder(0.25);
+      break;
+    case -2:
+      moveFeeder(-0.50);
+      break;
+    case 2:
+      moveFeeder(0.50);
+      break;
+    case -3:
+      moveFeeder(-1.00);
+      break;
+    case 3:
+      moveFeeder(1.00);
+      break;
+    case -4:
+      moveFeeder(-2.00);
+      break;
+    case 4:
+      moveFeeder(2.00);
+      break;
+    case -5:
+      moveFeeder(-5.00);
+      break;
+    case 5:
+      moveFeeder(5.00);
+      break;
+    default:
+      break;
     }
     uint8_t err = duetLS.getSensorError();
-    if(err != 0)
-      sprintf_P(_addData, PSTR("%4s/%04x"), err==E_SENSOR_INIT ? "INIT" : err==E_SENSOR_VCC ? "VCC" : String(err).c_str(), duetLS.getError());
-    else {
-      if(!duetLS.isValid())
+    if (err != 0)
+      sprintf_P(_addData, PSTR("%4s/%04x"), err == E_SENSOR_INIT ? "INIT" : err == E_SENSOR_VCC ? "VCC"
+                                                                                                : String(err).c_str(),
+                duetLS.getError());
+    else
+    {
+      if (!duetLS.isValid())
         sprintf_P(_addData, PSTR("-invalid-"));
       else
         sprintf_P(_addData, PSTR("none/%04x"), duetLS.getError());
     }
-    switch(duetLS.getDirection()) {
-      case DIR_NONE: sprintf(_dir,"  "); break;
-      case DIR_EXTRUDE: sprintf(_dir, "<<"); break;
-      case DIR_RETRACT: sprintf(_dir, ">>"); break;
+    switch (duetLS.getDirection())
+    {
+    case DIR_NONE:
+      sprintf(_dir, "  ");
+      break;
+    case DIR_EXTRUDE:
+      sprintf(_dir, "<<");
+      break;
+    case DIR_RETRACT:
+      sprintf(_dir, ">>");
+      break;
     }
 
-    sprintf_P(_msg, P_DuetLSData, _dir, String(duetLS.getPositionMM()).c_str(),  duetLS.getQuality(), duetLS.getBrightness(), duetLS.getShutter(), duetLS.getSwitch() ? P_On : P_Off, _addData, duetLS.getVersion());
+    sprintf_P(_msg, P_DuetLSData, _dir, String(duetLS.getPositionMM()).c_str(), duetLS.getQuality(), duetLS.getBrightness(), duetLS.getShutter(), duetLS.getSwitch() ? P_On : P_Off, _addData, duetLS.getVersion());
     drawUserMessage(_msg, true, false, drawSymbolCallback);
     delay(100);
   }
-  if(extStepper)
+  if (extStepper)
     switchFeederStepper(EXTERNAL);
 }
 
 #ifdef HAS_TMC_SUPPORT
-TMC2209Stepper* showDriver = nullptr;
+TMC2209Stepper *showDriver = nullptr;
 
-void drawStallCallback() {
-  uint16_t symbols[] = { 0x0020, 0x21af, 0x0020, 0x2607 };
-  if(showDriver == nullptr)
+void drawStallCallback()
+{
+  uint16_t symbols[] = {0x0020, 0x21af, 0x0020, 0x2607};
+  if (showDriver == nullptr)
     return;
   bool stat = showDriver->diag();
   display.setFont(ICONIC_FONT);
   display.drawGlyph(100, 11, symbols[stat]);
-  stat = showDriver->SG_RESULT() < showDriver->SGTHRS()*2;
-  display.drawGlyph(114, 11, symbols[stat+2]);
+  stat = showDriver->SG_RESULT() < showDriver->SGTHRS() * 2;
+  display.drawGlyph(114, 11, symbols[stat + 2]);
 }
 #endif
 
-void showTMCStatus(uint8_t axis) {
+void showTMCStatus(uint8_t axis)
+{
   debounceButton();
   encoder.setAccelerationEnabled(true);
 #ifdef HAS_TMC_SUPPORT
   showDriver = drivers[axis];
 #else
-  #define showDriver nullptr
+#define showDriver nullptr
 #endif
-  if(showDriver == nullptr) {
+  if (showDriver == nullptr)
+  {
     debounceButton();
     drawUserMessage(P_StepperNotCfg);
     delay(3000);
@@ -297,42 +347,69 @@ void showTMCStatus(uint8_t axis) {
 
   steppers[axis].setEnabled(true);
   displayingUserMessage = true;
-  uint8_t n=0;
-  while(1) {
+  uint8_t n = 0;
+  int8_t pg = 0;
+  while (1)
+  {
     getInput(&turn, &btn, &isHeld, &isClicked);
-    if(isHeld || isClicked) {
+    if (isHeld || isClicked)
+    {
       break;
     }
+    if(turn < 0) {
+      pg--;
+    }
+    else if(turn > 0) {
+      pg++;
+    }
+    if(pg > 1)
+      pg = 0;
+    if(pg < 0)
+      pg = 1;
 
-    const char* ot_stat = P_No;
-    if(showDriver->ot()) {
-      if(showDriver->t157())
+    const char *ot_stat = P_No;
+    if (showDriver->ot())
+    {
+      if (showDriver->t157())
         ot_stat = P_OT_157;
-      else if(showDriver->t150())
+      else if (showDriver->t150())
         ot_stat = P_OT_150;
-      else if(showDriver->t143())
+      else if (showDriver->t143())
         ot_stat = P_OT_143;
-      else if(showDriver->t120())
+      else if (showDriver->t120())
         ot_stat = P_OT_120;
     }
-    sprintf_P(_msg, P_TMC_Status,
+    if(pg == 1) {
+      sprintf_P(_msg, P_TMC_Status1,
                 showDriver->stealth() ? P_Stealth : P_Spread,
-                showDriver->rms_current(),
+                smuffConfig.stepperPower[axis],
                 showDriver->ola() ? P_Yes : P_No,
                 showDriver->olb() ? P_Yes : P_No,
                 showDriver->s2ga() ? P_Yes : P_No,
                 showDriver->s2gb() ? P_Yes : P_No,
                 ot_stat);
+    }
+    else {
+      sprintf_P(_msg, P_TMC_Status0,
+                showDriver->stealth() ? P_Stealth : P_Spread,
+                showDriver->rms_current(),
+                showDriver->microsteps(),
+                showDriver->ms2(), showDriver->ms1(),
+                showDriver->pdn_uart() ? P_Yes : P_No,
+                showDriver->diag() ? P_Low : P_High);
+    }
 
     drawUserMessage(_msg, true, false, showDriver->stealth() ? drawStallCallback : nullptr);
     delay(100);
-    if(showDriver->diag()) {
+    if (showDriver->diag())
+    {
       //if(n==0)
       //  __debugS(PSTR("Stepper stall detected @ %ld"), showDriver->SG_RESULT());
       n++;
     }
     // reset stall flag after 3 secs.
-    if(n % 30 == 0 && showDriver->diag()) {
+    if (n % 30 == 0 && showDriver->diag())
+    {
       n = 0;
       //__debugS(PSTR("Stall has been reset!"));
     }
@@ -341,77 +418,85 @@ void showTMCStatus(uint8_t axis) {
 #endif
 }
 
-void resetDisplay() {
+void resetDisplay()
+{
   display.clearDisplay();
   display.setFont(BASE_FONT);
   display.setFontMode(0);
   display.setDrawColor(1);
 }
 
-void drawSelectingMessage(uint8_t tool) {
+void drawSelectingMessage(uint8_t tool)
+{
   char _sel[128];
   char _wait[128];
   char tmp[80];
 
-
-  if(displayingUserMessage)     // don't show if something else is being displayed
+  if (displayingUserMessage) // don't show if something else is being displayed
     return;
+  display.clearBuffer();
   display.firstPage();
-  do {
-    resetDisplay();
+  do
+  {
     sprintf_P(_sel, P_Selecting);
     sprintf_P(_wait, P_Wait);
-    if(*smuffConfig.materials[tool] != 0) {
-      sprintf_P(tmp,PSTR("%s"), smuffConfig.materials[tool]);
+    if (*smuffConfig.materials[tool] != 0)
+    {
+      sprintf_P(tmp, PSTR("%s"), smuffConfig.materials[tool]);
     }
-    else {
+    else
+    {
       sprintf_P(tmp, P_ToolMenu, tool);
     }
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2-10, _sel);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
     display.setFont(BASE_FONT_BIG);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+9, tmp);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 9, tmp);
     display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2 + display.getMaxCharHeight()+10, _wait);
-  } while(display.nextPage());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 10, _wait);
+  } while (display.nextPage());
 }
 
-void drawPurgingMessage(uint16_t len, uint8_t tool) {
+void drawPurgingMessage(uint16_t len, uint8_t tool)
+{
   char _sel[128];
   char _wait[128];
   char tmp[80];
 
-  if(displayingUserMessage)     // don't show if something else is being displayed
+  if (displayingUserMessage) // don't show if something else is being displayed
     return;
+  display.clearBuffer();
   display.firstPage();
-  do {
-    resetDisplay();
+  do
+  {
     sprintf_P(_sel, P_Purging);
     sprintf_P(_wait, P_Wait);
-    sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((float)len*2.4).c_str());
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2-10, _sel);
+    sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((float)len * 2.4).c_str());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
     display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+4, tmp);
-    sprintf_P(tmp, P_PurgeCubic, String((float)len*2.4).c_str());
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+15, tmp);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 4, tmp);
+    sprintf_P(tmp, P_PurgeCubic, String((float)len * 2.4).c_str());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 15, tmp);
     display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2 + display.getMaxCharHeight()+15, _wait);
-  } while(display.nextPage());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
+  } while (display.nextPage());
 }
 
-void drawTestrunMessage(unsigned long loop, char* msg) {
+void drawTestrunMessage(unsigned long loop, char *msg)
+{
   char _sel[128];
   char _wait[128];
+  display.clearBuffer();
   display.firstPage();
-  do {
-    resetDisplay();
+  do
+  {
     sprintf_P(_sel, P_RunningCmd, loop);
     sprintf_P(_wait, P_ButtonToStop);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2-10, _sel);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
     display.setFont(BASE_FONT_BIG);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(msg))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2+12, msg);
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(msg)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 12, msg);
     display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait))/2, (display.getDisplayHeight() - display.getMaxCharHeight())/2 + display.getMaxCharHeight()+15, _wait);
-  } while(display.nextPage());
+    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
+  } while (display.nextPage());
 }
 
 /**
@@ -424,166 +509,192 @@ void drawTestrunMessage(unsigned long loop, char* msg) {
  * @param delimiter the EOL character to parse for
  * @returns the number of lines found
  */
-uint8_t splitStringLines(char* lines[], uint8_t maxLines, const char* message, const char* delimiter) {
+uint8_t splitStringLines(char *lines[], uint8_t maxLines, const char *message, const char *delimiter)
+{
 
-  char* tok = strtok((char*)message, delimiter);
-  char* lastTok = nullptr;
+  char *tok = strtok((char *)message, delimiter);
+  char *lastTok = nullptr;
   int8_t cnt = -1;
 
-  while(tok != nullptr) {
+  while (tok != nullptr)
+  {
     lines[++cnt] = tok;
     lastTok = tok;
     //__debugS(PSTR("Line: %s"), lines[cnt]);
-    if(cnt >= maxLines-1)
+    if (cnt >= maxLines - 1)
       break;
     tok = strtok(nullptr, delimiter);
   }
-  if(lastTok != nullptr && *lastTok != 0 && cnt <= maxLines-1) {
-    lines[cnt] = lastTok;   // copy the last line as well
+  if (lastTok != nullptr && *lastTok != 0 && cnt <= maxLines - 1)
+  {
+    lines[cnt] = lastTok; // copy the last line as well
     cnt++;
   }
 
   return cnt;
 }
 
-void drawUserMessage(String message, bool smallFont /* = false */, bool center /* = true */, void (*drawCallbackFunc)() /* = nullptr */) {
+void drawUserMessage(String message, bool smallFont /* = false */, bool center /* = true */, void (*drawCallbackFunc)() /* = nullptr */)
+{
 
-  char* lines[8];
+  char *lines[8];
   uint8_t lineCnt = splitStringLines(lines, (int)ArraySize(lines), message.c_str());
 
-  if(isPwrSave) {
+  if (isPwrSave)
+  {
     setPwrSave(0);
   }
   display.setDrawColor(0);
-  display.drawBox(1, 1, display.getDisplayWidth()-2, display.getDisplayHeight()-2);
+  display.drawBox(1, 1, display.getDisplayWidth() - 2, display.getDisplayHeight() - 2);
   display.setDrawColor(1);
   display.drawFrame(0, 0, display.getDisplayWidth(), display.getDisplayHeight());
   display.firstPage();
-  do {
+  do
+  {
     display.setFont(smallFont ? BASE_FONT : BASE_FONT_BIG);
-    uint16_t y = (display.getDisplayHeight()-(lineCnt-1)*display.getMaxCharHeight())/2;
+    uint16_t y = (display.getDisplayHeight() - (lineCnt - 1) * display.getMaxCharHeight()) / 2;
     display.firstPage();
-    do {
-      for(uint8_t i=0; i< lineCnt; i++) {
-        uint16_t x = center ? (display.getDisplayWidth() - display.getStrWidth(lines[i]))/2 : 0;
+    do
+    {
+      for (uint8_t i = 0; i < lineCnt; i++)
+      {
+        uint16_t x = center ? (display.getDisplayWidth() - display.getStrWidth(lines[i])) / 2 : 0;
         display.drawStr(x, y, lines[i]);
-        if(i==0) {
-          if(lineCnt > 1 && strcmp(lines[1]," ")==0) {
-            display.drawHLine(0, y+3, display.getDisplayWidth());
+        if (i == 0)
+        {
+          if (lineCnt > 1 && strcmp(lines[1], " ") == 0)
+          {
+            display.drawHLine(0, y + 3, display.getDisplayWidth());
           }
         }
         y += display.getMaxCharHeight();
       }
-    } while(display.nextPage());
-    if(drawCallbackFunc != nullptr)
+    } while (display.nextPage());
+    if (drawCallbackFunc != nullptr)
       drawCallbackFunc();
     display.setFont(BASE_FONT);
-  } while(display.nextPage());
-  displayingUserMessage  = true;
+  } while (display.nextPage());
+  displayingUserMessage = true;
   userMessageTime = millis();
 }
 
-
-void drawSDStatus(int8_t stat) {
+void drawSDStatus(int8_t stat)
+{
   char tmp[80];
 
-  //resetDisplay();
-  switch(stat) {
-    case SD_ERR_INIT:
-      sprintf_P(tmp, P_SD_InitError);
-      longBeep(2);
-      break;
-    case SD_ERR_NOCONFIG:
-      sprintf_P(tmp, P_SD_NoConfig);
-      longBeep(1);
-      break;
-    case SD_READING_CONFIG:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingConfig);
-      break;
-    case SD_READING_TMC:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingTmc);
-      break;
-    case SD_READING_SERVOS:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingServos);
-      break;
-    case SD_READING_MATERIALS:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
-      break;
-    case SD_READING_PURGES:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
-      break;
+  switch (stat)
+  {
+  case SD_ERR_INIT:
+    sprintf_P(tmp, P_SD_InitError);
+    longBeep(2);
+    break;
+  case SD_ERR_NOCONFIG:
+    sprintf_P(tmp, P_SD_NoConfig);
+    longBeep(1);
+    break;
+  case SD_READING_CONFIG:
+    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingConfig);
+    break;
+  case SD_READING_TMC:
+    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingTmc);
+    break;
+  case SD_READING_SERVOS:
+    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingServos);
+    break;
+  case SD_READING_MATERIALS:
+    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
+    break;
+  case SD_READING_PURGES:
+    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
+    break;
   }
+  display.clearBuffer();
   display.firstPage();
-  do {
+  do
+  {
     drawLogo();
-    display.setCursor((display.getDisplayWidth() - display.getStrWidth(tmp))/2, display.getDisplayHeight());
+    display.setCursor((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, display.getDisplayHeight());
     display.print(tmp);
-  } while(display.nextPage());
+  } while (display.nextPage());
 }
 
-bool selectorEndstop() {
+bool selectorEndstop()
+{
   return steppers[SELECTOR].getEndstopHit();
 }
 
-bool revolverEndstop() {
+bool revolverEndstop()
+{
   return steppers[REVOLVER].getEndstopHit();
 }
 
-bool feederEndstop(int8_t index) {
+bool feederEndstop(int8_t index)
+{
   return steppers[FEEDER].getEndstopHit(index);
 }
 
-void setAbortRequested(bool state) {
-  steppers[FEEDER].setAbort(state);  // stop any ongoing stepper movements
+void setAbortRequested(bool state)
+{
+  steppers[FEEDER].setAbort(state); // stop any ongoing stepper movements
 }
 
+bool moveHome(int8_t index, bool showMessage, bool checkFeeder)
+{
 
-bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
-
-  if(!steppers[index].getEnabled())
+  if (!steppers[index].getEnabled())
     steppers[index].setEnabled(true);
 
-  if(feederJammed) {
+  if (feederJammed)
+  {
     beep(4);
     return false;
   }
   parserBusy = true;
-  if (checkFeeder && feederEndstop()) {
-    if (showMessage) {
-      if (!showFeederLoadedMessage()) {
+  if (checkFeeder && feederEndstop())
+  {
+    if (showMessage)
+    {
+      if (!showFeederLoadedMessage())
+      {
         parserBusy = false;
         return false;
       }
     }
-    else {
-      if (feederEndstop()) {
+    else
+    {
+      if (feederEndstop())
+      {
         unloadFilament();
       }
     }
   }
-  if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.revolverIsServo)
+  {
     //__debugS(PSTR("Stepper home SERVO variant"));
     // don't release the servo when homing the Feeder but
     // release it when homing something else
-    if(index != FEEDER)
+    if (index != FEEDER)
       setServoLid(SERVO_OPEN);
     // Revolver isn't being used on a servo variant
-    if(index != REVOLVER)
+    if (index != REVOLVER)
       steppers[index].home();
   }
-  else {
+  else
+  {
     //__debugS(PSTR("Stepper home non SERVO variant"));
     // not a servo variant, home stepper which ever it is
     steppers[index].home();
   }
 
   //__debugS(PSTR("DONE Stepper home"));
-  if (index == SELECTOR) {
+  if (index == SELECTOR)
+  {
     setFastLEDToolIndex(toolSelected, 0);
     toolSelected = -1;
   }
   long pos = steppers[index].getStepPosition();
-  if (index == SELECTOR || index == REVOLVER) {
+  if (index == SELECTOR || index == REVOLVER)
+  {
     dataStore.tool = toolSelected;
   }
   dataStore.stepperPos[index] = pos;
@@ -593,12 +704,14 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
   return true;
 }
 
-bool showFeederBlockedMessage() {
+bool showFeederBlockedMessage()
+{
   bool state = false;
   lastEncoderButtonTime = millis();
   beep(1);
   uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_RemoveMaterial, P_CancelRetryButtons);
-  if (button == 1) {
+  if (button == 1)
+  {
     drawStatus();
     unloadFilament();
     state = true;
@@ -607,12 +720,14 @@ bool showFeederBlockedMessage() {
   return state;
 }
 
-bool showFeederLoadedMessage() {
+bool showFeederLoadedMessage()
+{
   bool state = false;
   lastEncoderButtonTime = millis();
   beep(1);
   uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_AskUnload, P_YesNoButtons);
-  if (button == 1) {
+  if (button == 1)
+  {
     drawStatus();
     unloadFilament();
     state = true;
@@ -621,14 +736,16 @@ bool showFeederLoadedMessage() {
   return state;
 }
 
-bool showFeederLoadMessage() {
+bool showFeederLoadMessage()
+{
   bool state = false;
   lastEncoderButtonTime = millis();
   beep(1);
   uint8_t button = showDialog(P_TitleSelected, P_SelectedTool, P_AskLoad, P_YesNoButtons);
-  if (button == 1) {
+  if (button == 1)
+  {
     drawStatus();
-    if(smuffConfig.prusaMMU2)
+    if (smuffConfig.prusaMMU2)
       loadFilamentPMMU2();
     else
       loadFilament();
@@ -638,25 +755,30 @@ bool showFeederLoadMessage() {
   return state;
 }
 
-bool showFeederFailedMessage(int8_t state) {
+bool showFeederFailedMessage(int8_t state)
+{
   lastEncoderButtonTime = millis();
   beep(3);
   uint8_t button = 99;
   isWarning = true;
-  do {
+  do
+  {
     button = showDialog(P_TitleWarning, state == 1 ? P_CantLoad : P_CantUnload, P_CheckUnit, P_CancelRetryButtons);
-  } while(button != 1 && button != 2);
+  } while (button != 1 && button != 2);
   isWarning = false;
   display.clearDisplay();
   debounceButton();
   return button == 1 ? false : true;
 }
 
-uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
+uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons)
+{
   //__debugS(PSTR("showDialog: %S"), title);
-  if(isPwrSave) {
+  if (isPwrSave)
+  {
     setPwrSave(0);
   }
+  setFastLEDStatus(FASTLED_STAT_WARNING);
   char _title[80];
   char msg1[256];
   char msg2[80];
@@ -665,10 +787,13 @@ uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) 
   sprintf_P(msg1, message);
   sprintf_P(msg2, addMessage);
   sprintf_P(btn, buttons);
-  return display.userInterfaceMessage(_title, msg1, msg2, btn);
+  uint8_t stat = display.userInterfaceMessage(_title, msg1, msg2, btn);
+  setFastLEDStatus(FASTLED_STAT_NONE);
+  return stat;
 }
 
-void signalNoTool() {
+void signalNoTool()
+{
   char _msg1[256];
   userBeep();
   sprintf_P(_msg1, P_NoTool);
@@ -676,14 +801,18 @@ void signalNoTool() {
   drawUserMessage(_msg1);
 }
 
-void switchFeederStepper(uint8_t stepper) {
-  if(RELAY_PIN != -1) {
-    if(stepper == EXTERNAL) {
+void switchFeederStepper(uint8_t stepper)
+{
+  if (RELAY_PIN != -1)
+  {
+    if (stepper == EXTERNAL)
+    {
       steppers[FEEDER].setEnabled(false);
       digitalWrite(RELAY_PIN, 0);
       smuffConfig.externalStepper = true;
     }
-    else if(stepper == INTERNAL) {
+    else if (stepper == INTERNAL)
+    {
       steppers[FEEDER].setEnabled(false);
       digitalWrite(RELAY_PIN, 1);
       smuffConfig.externalStepper = false;
@@ -693,7 +822,8 @@ void switchFeederStepper(uint8_t stepper) {
   }
 }
 
-void moveFeeder(float distanceMM) {
+void moveFeeder(float distanceMM)
+{
   steppers[FEEDER].setEnabled(true);
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
   changeFeederInsertSpeed(smuffConfig.insertSpeed);
@@ -702,40 +832,46 @@ void moveFeeder(float distanceMM) {
   steppers[FEEDER].setMaxSpeed(curSpeed);
 }
 
-void positionRevolver() {
+void positionRevolver()
+{
 
   // disable Feeder temporarily
   steppers[FEEDER].setEnabled(false);
-  if(smuffConfig.resetBeforeFeed && !ignoreHoming) {
-    if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.resetBeforeFeed && !ignoreHoming)
+  {
+    if (smuffConfig.revolverIsServo)
+    {
       setServoLid(SERVO_OPEN);
     }
     else
       moveHome(REVOLVER, false, false);
   }
-  if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.revolverIsServo)
+  {
     setServoLid(SERVO_CLOSED);
     steppers[FEEDER].setEnabled(true);
     return;
   }
 
   long pos = steppers[REVOLVER].getStepPosition();
-  long newPos = smuffConfig.firstRevolverOffset + (toolSelected *smuffConfig.revolverSpacing);
+  long newPos = smuffConfig.firstRevolverOffset + (toolSelected * smuffConfig.revolverSpacing);
   // calculate the new position and decide whether to move forward or backard
   // i.e. which ever has the shorter distance
-  long delta1 = newPos - (smuffConfig.stepsPerRevolution + pos);  // number of steps if moved backward
-  long delta2 = newPos - pos;                                       // number of steps if moved forward
-  if(abs(delta1) < abs(delta2))
+  long delta1 = newPos - (smuffConfig.stepsPerRevolution + pos); // number of steps if moved backward
+  long delta2 = newPos - pos;                                    // number of steps if moved forward
+  if (abs(delta1) < abs(delta2))
     newPos = delta1;
   else
     newPos = delta2;
 
   // if the position hasn't changed, do nothing
-  if(newPos != 0) {
+  if (newPos != 0)
+  {
     prepSteppingRel(REVOLVER, newPos, true); // go to position, don't mind the endstop
     remainingSteppersFlag |= _BV(REVOLVER);
     runAndWait(-1);
-    if(smuffConfig.wiggleRevolver) {
+    if (smuffConfig.wiggleRevolver)
+    {
       // wiggle the Revolver one position back and forth
       // just to adjust the gears a bit better
       delay(50);
@@ -753,40 +889,45 @@ void positionRevolver() {
   //__debugS(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
 
-void changeFeederInsertSpeed(uint16_t speed) {
+void changeFeederInsertSpeed(uint16_t speed)
+{
   unsigned long maxSpeed = translateSpeed(speed, FEEDER);
   //__debugS(PSTR("Changing Feeder speed to %3d (%6ld ticks)"), speed, maxSpeed);
   steppers[FEEDER].setMaxSpeed(maxSpeed);
 }
 
-void repositionSelector(bool retractFilament) {
+void repositionSelector(bool retractFilament)
+{
   int8_t tool = getToolSelected();
-  if(retractFilament && !smuffConfig.revolverIsServo) {
+  if (retractFilament && !smuffConfig.revolverIsServo)
+  {
     char tmp[15];
     uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
     changeFeederInsertSpeed(smuffConfig.insertSpeed);
     ignoreHoming = true;
     // go through all tools available and retract some filament
-    for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
-      if(i==tool)
+    for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
+    {
+      if (i == tool)
         continue;
       sprintf(tmp, "Y%d", i);
-      G0("G0", tmp, 0);                  // position Revolver on tool
+      G0("G0", tmp, 0);                                                   // position Revolver on tool
       prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true); // retract
       runAndWait(FEEDER);
     }
     ignoreHoming = false;
     sprintf(tmp, "Y%d", tool);
-    G0("G0", tmp, 0);                  // position Revolver on tool selected
+    G0("G0", tmp, 0); // position Revolver on tool selected
     steppers[FEEDER].setMaxSpeed(curSpeed);
   }
-  moveHome(SELECTOR, false, false);   // home Revolver
-  selectTool(tool, false);            // reposition Selector
+  moveHome(SELECTOR, false, false); // home Revolver
+  selectTool(tool, false);          // reposition Selector
 }
 
-bool feedToEndstop(bool showMessage) {
+bool feedToEndstop(bool showMessage)
+{
   // enable steppers if they were turned off
-  if(!steppers[FEEDER].getEnabled())
+  if (!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
 
   // don't allow "feed to endstop" being interrupted
@@ -798,70 +939,79 @@ bool feedToEndstop(bool showMessage) {
   //__debugS(PSTR("InsertSpeed: %d"), smuffConfig.insertSpeed);
   uint16_t speed = smuffConfig.insertSpeed;
   changeFeederInsertSpeed(speed);
-  if(smuffConfig.accelSpeed[FEEDER] > smuffConfig.insertSpeed)
+  if (smuffConfig.accelSpeed[FEEDER] > smuffConfig.insertSpeed)
     steppers[FEEDER].setAllowAccel(false);
 
-  uint16_t max = (uint16_t)(smuffConfig.selectorDistance*2);  // calculate a maximum distance to avoid feeding endlesly
+  uint16_t max = (uint16_t)(smuffConfig.selectorDistance * 2); // calculate a maximum distance to avoid feeding endlesly
   uint8_t n = 0;
-  int8_t retries = FEED_ERROR_RETRIES;  // max. retries for this operation
+  int8_t retries = FEED_ERROR_RETRIES; // max. retries for this operation
 
   feederJammed = false;
 
   // is the feeder endstop already being triggered?
-  if(feederEndstop()) {
+  if (feederEndstop())
+  {
     // yes, filament is still fed, unload completelly and
     // abort this operation if that fails
-    if(!unloadFromNozzle(showMessage))
+    if (!unloadFromNozzle(showMessage))
       return false;
   }
 
   steppers[FEEDER].setStepPositionMM(0);
   // as long as Selector endstop doesn't trigger
   // feed the configured insertLength
-  while (!feederEndstop()) {
+  while (!feederEndstop())
+  {
     prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength, false);
     runAndWait(FEEDER);
     // has the endstop already triggered?
-    if(feederEndstop()) {
+    if (feederEndstop())
+    {
       //__debugS(PSTR("Position now: %s"), String(steppers[FEEDER].getStepPositionMM()).c_str());
       break;
     }
-    n += smuffConfig.insertLength;  // increment the position of the filament
+    n += smuffConfig.insertLength; // increment the position of the filament
     // did the Feeder stall (TMC2209 only)?
     bool stallStat = handleFeederStall(&speed, &retries);
     // if endstop hasn't triggered yet, feed was not successful
-    if (n >= max && !feederEndstop()) {
+    if (n >= max && !feederEndstop())
+    {
       delay(250);
       // retract half a insertLength and reset the Revolver
-      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength/2), true);
+      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength / 2), true);
       runAndWait(FEEDER);
       resetRevolver();
-      feederErrors++;   // global counter used for testing only
-      if(stallStat)     // did not stall means no retries decrement, though, the endstop hasn't triggered yet
+      feederErrors++; // global counter used for testing only
+      if (stallStat)  // did not stall means no retries decrement, though, the endstop hasn't triggered yet
         retries--;
       // if only two retries are left, try repositioning the Selector
-      if(retries == 1) {
+      if (retries == 1)
+      {
         repositionSelector(false);
       }
       // if only one retry is left, rectract filaments a bit and try repositioning the Selector
-      if(retries == 0) {
+      if (retries == 0)
+      {
         repositionSelector(true);
       }
       // close lid servo in case it got openend by the reposition operation
-      if(smuffConfig.revolverIsServo)
+      if (smuffConfig.revolverIsServo)
         setServoLid(SERVO_CLOSED);
       n = 0;
     }
     //__debugS(PSTR("Max: %s  N: %s  Retries: %d  Endstop: %d"), String(max).c_str(), String(n).c_str(), retries, feederEndstop());
-    if (!feederEndstop() && retries < 0) {
+    if (!feederEndstop() && retries < 0)
+    {
       // still got no endstop trigger, abort action
-      if (showMessage) {
-        moveHome(REVOLVER, false, false);   // home Revolver
-        M18("M18", "", 0);                  // turn all motors off
-        if(smuffConfig.revolverIsServo)     // release servo, if used
+      if (showMessage)
+      {
+        moveHome(REVOLVER, false, false); // home Revolver
+        M18("M18", "", 0);                // turn all motors off
+        if (smuffConfig.revolverIsServo)  // release servo, if used
           setServoLid(SERVO_OPEN);
         // if user wants to retry...
-        if(showFeederFailedMessage(1) == true) {
+        if (showFeederFailedMessage(1) == true)
+        {
           // reset and start over again
           steppers[FEEDER].setEnabled(true);
           positionRevolver();
@@ -882,133 +1032,155 @@ bool feedToEndstop(bool showMessage) {
   return feederJammed ? false : true;
 }
 
-bool handleFeederStall(uint16_t* speed, int8_t* retries) {
+bool handleFeederStall(uint16_t *speed, int8_t *retries)
+{
   bool stat = true;
   // did the Feeder stall?
-  if(smuffConfig.stepperStopOnStall[FEEDER] && steppers[FEEDER].getStallDetected()) {
+  if (smuffConfig.stepperStopOnStall[FEEDER] && steppers[FEEDER].getStallDetected())
+  {
     stat = false;
     int16_t newSpeed;
     // yes, turn the speed down by 25%
-    if(smuffConfig.speedsInMMS) {
+    if (smuffConfig.speedsInMMS)
+    {
       // speeds in mm/s need to go down
       newSpeed = (int16_t)(*speed * 0.75);
-      if(newSpeed > 0)
+      if (newSpeed > 0)
         *speed = newSpeed;
       else
-        *speed = 1;     // set speed to absolute minimum
+        *speed = 1; // set speed to absolute minimum
     }
-    else {
+    else
+    {
       // whereas speeds in timer ticks need to go up
       newSpeed = (int16_t)(*speed * 1.25);
-      if(newSpeed < 65500)
+      if (newSpeed < 65500)
         *speed = newSpeed;
       else
-        *speed = 65500;     // set speed to absolute minimum
+        *speed = 65500; // set speed to absolute minimum
     }
     *retries -= 1;
     changeFeederInsertSpeed(*speed);
     __debugS(PSTR("Feeder has stalled, slowing down speed to %d"), *speed);
     // counter used in testRun
-    stallDetectedCountFeeder++;   // for testrun only
+    stallDetectedCountFeeder++; // for testrun only
   }
   return stat;
 }
 
-bool feedToNozzle(bool showMessage) {
+bool feedToNozzle(bool showMessage)
+{
 
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
   int8_t retries = FEED_ERROR_RETRIES;
 
-  if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
+  if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks)
+  {
     // prepare to feed full speed in chunks
     float bLen = smuffConfig.bowdenLength;
-    float len = bLen/smuffConfig.feedChunks;
-    for(uint8_t i=0; i<smuffConfig.feedChunks; i++) {
+    float len = bLen / smuffConfig.feedChunks;
+    for (uint8_t i = 0; i < smuffConfig.feedChunks; i++)
+    {
       prepSteppingRelMillimeter(FEEDER, len, true);
       runAndWait(FEEDER);
     }
   }
-  else {
+  else
+  {
     float len = smuffConfig.bowdenLength * .95;
     float remains = 0;
     steppers[FEEDER].setStepPositionMM(0);
     // prepare 95% to feed full speed
-    do {
-      prepSteppingRelMillimeter(FEEDER, len-remains, true);
+    do
+    {
+      prepSteppingRelMillimeter(FEEDER, len - remains, true);
       runAndWait(FEEDER);
       // did the Feeder stall?
       stat = handleFeederStall(&speed, &retries);
-      if(!stat) {
+      if (!stat)
+      {
         remains = steppers[FEEDER].getStepPositionMM();
-        __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+        __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
       }
       // check whether the 2nd endstop has triggered as well if configured to do so
-      if(Z_END2_PIN != -1 && smuffConfig.useEndstop2 && stat) {
-        if(!steppers[FEEDER].getEndstopHit(2))
+      if (Z_END2_PIN != -1 && smuffConfig.useEndstop2 && stat)
+      {
+        if (!steppers[FEEDER].getEndstopHit(2))
           stat = false;
-        if(!stat) {
+        if (!stat)
+        {
           remains = steppers[FEEDER].getStepPositionMM();
-          __debugS(PSTR("E-Stop2 failed. Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+          __debugS(PSTR("E-Stop2 failed. Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
         }
       }
-    } while(!stat && retries > 0);
-    if(stat) {
+    } while (!stat && retries > 0);
+    if (stat)
+    {
       retries = FEED_ERROR_RETRIES;
       speed = smuffConfig.insertSpeed;
       float len = smuffConfig.bowdenLength * .05;
       float remains = 0;
       steppers[FEEDER].setStepPositionMM(0);
       // rest of it feed slowly
-      do {
+      do
+      {
         changeFeederInsertSpeed(speed);
-        prepSteppingRelMillimeter(FEEDER, len-remains, true);
+        prepSteppingRelMillimeter(FEEDER, len - remains, true);
         runAndWait(FEEDER);
         // did the Feeder stall again?
         stat = handleFeederStall(&speed, &retries);
-        if(!stat) {
+        if (!stat)
+        {
           remains = steppers[FEEDER].getStepPositionMM();
-          __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len-remains).c_str());
+          __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
         }
-      }while(!stat && retries > 0);
+      } while (!stat && retries > 0);
     }
   }
   return stat;
 }
 
-bool loadFilament(bool showMessage) {
-  if (toolSelected == -1) {
+bool loadFilament(bool showMessage)
+{
+  if (toolSelected == -1)
+  {
     signalNoTool();
     return false;
   }
-  if(smuffConfig.extControlFeeder) {
-    if(!smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder)
+  {
+    if (!smuffConfig.isSharedStepper)
+    {
       positionRevolver();
       signalLoadFilament();
       return true;
     }
-    else {
+    else
+    {
       switchFeederStepper(INTERNAL);
     }
   }
 
-  if(smuffConfig.useCutter) {
+  if (smuffConfig.useCutter)
+  {
     // release the cutter just in case
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
 
   parserBusy = true;
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
-    // move filament until it hits the feeder endstop
-  if(!feedToEndstop(showMessage))
+  // move filament until it hits the feeder endstop
+  if (!feedToEndstop(showMessage))
     return false;
 
   steppers[FEEDER].setStepsTaken(0);
   // move filament until it gets to the nozzle
-  if(!feedToNozzle(showMessage))
+  if (!feedToNozzle(showMessage))
     return false;
 
-  if(smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort()) {
+  if (smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort())
+  {
     resetRevolver();
     changeFeederInsertSpeed(smuffConfig.insertSpeed);
     delay(150);
@@ -1016,11 +1188,13 @@ bool loadFilament(bool showMessage) {
     runAndWait(FEEDER);
   }
 
-  if(smuffConfig.usePurge && smuffConfig.purgeLength > 0 && !steppers[FEEDER].getAbort()) {
+  if (smuffConfig.usePurge && smuffConfig.purgeLength > 0 && !steppers[FEEDER].getAbort())
+  {
     changeFeederInsertSpeed(smuffConfig.purgeSpeed);
     uint16_t len = smuffConfig.purgeLength;
-    if(smuffConfig.purges[toolSelected] > 100) {
-      len *= ((float)smuffConfig.purges[toolSelected]/100);
+    if (smuffConfig.purges[toolSelected] > 100)
+    {
+      len *= ((float)smuffConfig.purges[toolSelected] / 100);
     }
     drawPurgingMessage(len, toolSelected);
     prepSteppingRelMillimeter(FEEDER, len, true);
@@ -1032,17 +1206,20 @@ bool loadFilament(bool showMessage) {
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
 
-  if(smuffConfig.homeAfterFeed) {
-    if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.homeAfterFeed)
+  {
+    if (smuffConfig.revolverIsServo)
+    {
       setServoLid(SERVO_OPEN);
     }
     else
       steppers[REVOLVER].home();
   }
-  /*bool wasAborted =*/ steppers[FEEDER].getAbort();
+  /*bool wasAborted =*/steppers[FEEDER].getAbort();
   steppers[FEEDER].setAbort(false);
 
-  if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(EXTERNAL);
   }
 
@@ -1056,21 +1233,26 @@ bool loadFilament(bool showMessage) {
   If first feeds the filament until the endstop is hit, then
   it pulls it back again.
 */
-bool loadFilamentPMMU2(bool showMessage) {
-  if (toolSelected == -1) {
+bool loadFilamentPMMU2(bool showMessage)
+{
+  if (toolSelected == -1)
+  {
     signalNoTool();
     return false;
   }
-  if(smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper)
+  {
     positionRevolver();
     signalLoadFilament();
     return true;
   }
-  if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(INTERNAL);
   }
 
-  if(smuffConfig.useCutter) {
+  if (smuffConfig.useCutter)
+  {
     // release the cutter just in case
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
@@ -1078,7 +1260,7 @@ bool loadFilamentPMMU2(bool showMessage) {
   parserBusy = true;
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
   // move filament until it hits the feeder endstop
-  if(!feedToEndstop(showMessage))
+  if (!feedToEndstop(showMessage))
     return false;
 
   steppers[FEEDER].setStepsTaken(0);
@@ -1089,7 +1271,8 @@ bool loadFilamentPMMU2(bool showMessage) {
   prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
   runAndWait(FEEDER);
 
-  if(smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort()) {
+  if (smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort())
+  {
     resetRevolver();
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
@@ -1100,8 +1283,10 @@ bool loadFilamentPMMU2(bool showMessage) {
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
 
-  if(smuffConfig.homeAfterFeed) {
-    if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.homeAfterFeed)
+  {
+    if (smuffConfig.revolverIsServo)
+    {
       setServoLid(SERVO_OPEN);
     }
     else
@@ -1109,7 +1294,8 @@ bool loadFilamentPMMU2(bool showMessage) {
   }
   steppers[FEEDER].setAbort(false);
 
-  if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(EXTERNAL);
   }
 
@@ -1118,49 +1304,58 @@ bool loadFilamentPMMU2(bool showMessage) {
   return true;
 }
 
-bool unloadFromNozzle(bool showMessage) {
+bool unloadFromNozzle(bool showMessage)
+{
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
   int8_t retries = FEED_ERROR_RETRIES;
   float posNow = steppers[FEEDER].getStepPositionMM();
 
-  if(smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
+  if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks)
+  {
     __debugS(PSTR("Unloading in %d chunks "), smuffConfig.feedChunks);
     // prepare to unfeed 3 times the bowden length full speed in chunks
-    float bLen = -smuffConfig.bowdenLength*3;
-    float len = bLen/smuffConfig.feedChunks;
-    for(uint8_t i=0; i<smuffConfig.feedChunks; i++) {
+    float bLen = -smuffConfig.bowdenLength * 3;
+    float len = bLen / smuffConfig.feedChunks;
+    for (uint8_t i = 0; i < smuffConfig.feedChunks; i++)
+    {
       prepSteppingRelMillimeter(FEEDER, len);
       runAndWait(FEEDER);
     }
   }
-  else {
-    do {
+  else
+  {
+    do
+    {
       // prepare 110% to retract with full speed
-      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength*1.1));
+      prepSteppingRelMillimeter(FEEDER, -(smuffConfig.bowdenLength * 1.1));
       runAndWait(FEEDER);
       // did the Feeder stall?
       stat = handleFeederStall(&speed, &retries);
       // check whether the 2nd endstop has triggered as well if configured to do so
-      if(Z_END2_PIN != -1 && smuffConfig.useEndstop2 && stat) {
+      if (Z_END2_PIN != -1 && smuffConfig.useEndstop2 && stat)
+      {
         // endstop still triggered?
-        if(steppers[FEEDER].getEndstopHit(2)) {
+        if (steppers[FEEDER].getEndstopHit(2))
+        {
           retries--;
           stat = false;
           __debugS(PSTR("E-Stop2 failed. Retrying"));
           // if only one retry is left, try cutting the filament again (if the cutter is configured)
-          if(retries == 1) {
+          if (retries == 1)
+          {
             cutFilament();
           }
         }
       }
-    } while(!stat && retries > 0);
+    } while (!stat && retries > 0);
   }
   // do some calculations in order to give some hints
   float posEnd = posNow - steppers[FEEDER].getStepPositionMM();
   // calculate supposed length;
   float dist = smuffConfig.bowdenLength + smuffConfig.cutterLength - smuffConfig.unloadRetract;
-  if(posEnd < dist-5 || posEnd > dist+5) {
+  if (posEnd < dist - 5 || posEnd > dist + 5)
+  {
     __debugS(PSTR("HINT: Feeder endstop triggered after %s mm where it's supposed to be %s mm"), String(posEnd).c_str(), String(dist).c_str());
     __debugS(PSTR("Params: Bowden length: %s mm; Unload retract: -%s mm"), String(smuffConfig.bowdenLength).c_str(), String(smuffConfig.unloadRetract).c_str());
     __debugS(PSTR("Suggestion: Try adjusting BowdenLength to %s mm"), String(smuffConfig.bowdenLength + (posEnd - dist)).c_str());
@@ -1171,27 +1366,32 @@ bool unloadFromNozzle(bool showMessage) {
   return stat;
 }
 
-bool unloadFromSelector() {
+bool unloadFromSelector()
+{
   bool stat = true;
   // only if the unload hasn't been aborted yet, unload from Selector
-  if(steppers[FEEDER].getAbort() == false) {
-      int8_t retries = FEED_ERROR_RETRIES;
-      uint16_t speed = smuffConfig.insertSpeed;
-      do {
-        // retract the selector distance
-        changeFeederInsertSpeed(speed);
-        prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
-        runAndWait(FEEDER);
-        // did the Feeder stall?
-        stat = handleFeederStall(&speed, &retries);
-      } while(!stat && retries > 0);
+  if (steppers[FEEDER].getAbort() == false)
+  {
+    int8_t retries = FEED_ERROR_RETRIES;
+    uint16_t speed = smuffConfig.insertSpeed;
+    do
+    {
+      // retract the selector distance
+      changeFeederInsertSpeed(speed);
+      prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
+      runAndWait(FEEDER);
+      // did the Feeder stall?
+      stat = handleFeederStall(&speed, &retries);
+    } while (!stat && retries > 0);
   }
   return stat;
 }
 
-void cutFilament(bool keepClosed /* = true */) {
-    // use the filament cutter?
-  if(smuffConfig.useCutter) {
+void cutFilament(bool keepClosed /* = true */)
+{
+  // use the filament cutter?
+  if (smuffConfig.useCutter)
+  {
     // run the cutter 3 times to be on the save side
     setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
     delay(500);
@@ -1202,50 +1402,58 @@ void cutFilament(bool keepClosed /* = true */) {
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
     delay(200);
     setServoPos(SERVO_CUTTER, smuffConfig.cutterClose);
-    if(!keepClosed) {
+    if (!keepClosed)
+    {
       delay(200);
       setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
     }
   }
 }
 
-bool unloadFilament() {
-  if (toolSelected == -1) {
+bool unloadFilament()
+{
+  if (toolSelected == -1)
+  {
     signalNoTool();
     return false;
   }
-  if(smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper)
+  {
     positionRevolver();
     signalUnloadFilament();
     return true;
   }
-  else if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  else if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(INTERNAL);
   }
   steppers[FEEDER].setStepsTaken(0);
   parserBusy = true;
-  if(!steppers[FEEDER].getEnabled())
+  if (!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
 
   positionRevolver();
 
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
 
-  if(smuffConfig.unloadRetract != 0) {
+  if (smuffConfig.unloadRetract != 0)
+  {
     __debugS(PSTR("Unload retract: %s mm"), String(smuffConfig.unloadRetract).c_str());
     prepSteppingRelMillimeter(FEEDER, -smuffConfig.unloadRetract, true);
     runAndWait(FEEDER);
-    if(smuffConfig.unloadPushback != 0) {
+    if (smuffConfig.unloadPushback != 0)
+    {
       __debugS(PSTR("Unload pushback: %s mm"), String(smuffConfig.unloadPushback).c_str());
       changeFeederInsertSpeed(smuffConfig.insertSpeed);
       prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadPushback, true);
       runAndWait(FEEDER);
-      delay(smuffConfig.pushbackDelay*1000);
+      delay(smuffConfig.pushbackDelay * 1000);
       steppers[FEEDER].setMaxSpeed(curSpeed);
     }
   }
   // wipe nozzle if configured
-  if(smuffConfig.wipeBeforeUnload) {
+  if (smuffConfig.wipeBeforeUnload)
+  {
     G12("G12", "", 255);
   }
   // cut the filament if configured likewise
@@ -1256,13 +1464,14 @@ bool unloadFilament() {
   steppers[FEEDER].setEndstopState(!endstopState);
   // unload until Selector endstop gets released
   int8_t retries = FEED_ERROR_RETRIES;
-  do {
+  do
+  {
     unloadFromNozzle(false);
-    if(steppers[FEEDER].getEndstopHit())
+    if (steppers[FEEDER].getEndstopHit())
       break;
     else
       retries--;
-  }while(retries > 0);
+  } while (retries > 0);
   // reset endstop state
   steppers[FEEDER].setEndstopState(endstopState);
 
@@ -1280,7 +1489,8 @@ bool unloadFilament() {
 
   unloadFromSelector();
 
-  if(smuffConfig.useCutter) {
+  if (smuffConfig.useCutter)
+  {
     // release the cutter
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
@@ -1295,14 +1505,17 @@ bool unloadFilament() {
   saveStore();
 
   steppers[FEEDER].setAbort(false);
-  if(smuffConfig.homeAfterFeed) {
-    if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.homeAfterFeed)
+  {
+    if (smuffConfig.revolverIsServo)
+    {
       setServoLid(SERVO_OPEN);
     }
     else
       steppers[REVOLVER].home();
   }
-  if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(EXTERNAL);
   }
   parserBusy = false;
@@ -1310,20 +1523,24 @@ bool unloadFilament() {
   return true;
 }
 
-bool nudgeBackFilament() {
-  if (toolSelected == -1) {
+bool nudgeBackFilament()
+{
+  if (toolSelected == -1)
+  {
     return false;
   }
-  if(smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper)
+  {
     positionRevolver();
     signalUnloadFilament();
     return true;
   }
-  else if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  else if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(INTERNAL);
   }
   steppers[FEEDER].setStepsTaken(0);
-  if(!steppers[FEEDER].getEnabled())
+  if (!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
 
   positionRevolver();
@@ -1338,31 +1555,36 @@ bool nudgeBackFilament() {
   saveStore();
 
   steppers[FEEDER].setAbort(false);
-  if(smuffConfig.homeAfterFeed) {
-    if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.homeAfterFeed)
+  {
+    if (smuffConfig.revolverIsServo)
+    {
       setServoLid(SERVO_OPEN);
     }
     else
       steppers[REVOLVER].home();
   }
-  if(smuffConfig.extControlFeeder && smuffConfig.isSharedStepper) {
+  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
+  {
     switchFeederStepper(EXTERNAL);
   }
   return true;
 }
 
-void handleStall(int8_t axis) {
-  const char P_StallHandler[] PROGMEM = { "Stall handler: %s" };
-  __debugS(P_StallHandler,"Triggered on %c-axis", 'X'+axis);
+void handleStall(int8_t axis)
+{
+  const char P_StallHandler[] PROGMEM = {"Stall handler: %s"};
+  __debugS(P_StallHandler, "Triggered on %c-axis", 'X' + axis);
   // check if stall must be handled
-  if(steppers[axis].getStopOnStallDetected()) {
+  if (steppers[axis].getStopOnStallDetected())
+  {
     __debugS(P_StallHandler, "Stopped on stall");
     // save speed/acceleration settings
     uint16_t maxSpeed = steppers[axis].getMaxSpeed();
     uint16_t accel = steppers[axis].getAcceleration();
     // slow down speed/acceleration for next moves
-    steppers[axis].setMaxSpeed(accel*2);
-    steppers[axis].setAcceleration(accel*2);
+    steppers[axis].setMaxSpeed(accel * 2);
+    steppers[axis].setAcceleration(accel * 2);
     steppers[axis].setEnabled(false);
 
     // in order to determine where the stall happens...
@@ -1384,18 +1606,23 @@ void handleStall(int8_t axis) {
     bool stallRight = steppers[axis].getStallCount() > (uint32_t)steppers[axis].getStallThreshold();
     __debugS(PSTR("Right: %d"), steppers[axis].getStallCount());
 
-    if(stallLeft && stallRight)   __debugS(P_StallHandler, "Stalled center");
-    if(stallLeft && !stallRight)  __debugS(P_StallHandler, "Stalled left");
-    if(!stallLeft && stallRight)  __debugS(P_StallHandler, "Stalled right");
+    if (stallLeft && stallRight)
+      __debugS(P_StallHandler, "Stalled center");
+    if (stallLeft && !stallRight)
+      __debugS(P_StallHandler, "Stalled left");
+    if (!stallLeft && stallRight)
+      __debugS(P_StallHandler, "Stalled right");
 
     nudgeBackFilament();
-    __debugS(P_StallHandler,"Feeder nudged back");
+    __debugS(P_StallHandler, "Feeder nudged back");
     delay(1000);
-    if(axis != FEEDER) {    // Feeder can't be homed
+    if (axis != FEEDER)
+    { // Feeder can't be homed
       moveHome(axis, false, false);
-      __debugS(P_StallHandler, "%c-Axis Homed", 'X'+axis);
+      __debugS(P_StallHandler, "%c-Axis Homed", 'X' + axis);
     }
-    else {
+    else
+    {
       // TODO: add stall handling for Feeder
     }
     // reset speed/acceleration
@@ -1405,13 +1632,16 @@ void handleStall(int8_t axis) {
   }
 }
 
-bool selectTool(int8_t ndx, bool showMessage) {
+bool selectTool(int8_t ndx, bool showMessage)
+{
 
   char _msg1[256];
   char _tmp[40];
 
-  if(ndx < 0 || ndx >= MAX_TOOLS) {
-    if(showMessage) {
+  if (ndx < 0 || ndx >= MAX_TOOLS)
+  {
+    if (showMessage)
+    {
       userBeep();
       sprintf_P(_msg1, P_WrongTool, ndx);
       drawUserMessage(_msg1);
@@ -1420,7 +1650,8 @@ bool selectTool(int8_t ndx, bool showMessage) {
   }
 
   ndx = swapTools[ndx];
-  if(feederJammed) {
+  if (feederJammed)
+  {
     beep(4);
     sprintf_P(_msg1, P_FeederJammed);
     strcat_P(_msg1, P_Aborting);
@@ -1430,33 +1661,42 @@ bool selectTool(int8_t ndx, bool showMessage) {
   }
   signalSelectorBusy();
 
-  if(toolSelected == ndx) { // tool is the one we already have selected, do nothing
-    if(!smuffConfig.extControlFeeder) {
+  if (toolSelected == ndx)
+  { // tool is the one we already have selected, do nothing
+    if (!smuffConfig.extControlFeeder)
+    {
       userBeep();
       sprintf_P(_msg1, P_ToolAlreadySet);
       drawUserMessage(_msg1);
     }
-    if(smuffConfig.extControlFeeder) {
+    if (smuffConfig.extControlFeeder)
+    {
       signalSelectorReady();
     }
     return true;
   }
-  if(!steppers[SELECTOR].getEnabled())
+  if (!steppers[SELECTOR].getEnabled())
     steppers[SELECTOR].setEnabled(true);
 
-  if (showMessage) {
-    while(feederEndstop()) {
+  if (showMessage)
+  {
+    while (feederEndstop())
+    {
       if (!showFeederLoadedMessage())
         return false;
     }
   }
-  else {
-    if (!smuffConfig.extControlFeeder && feederEndstop()) {
+  else
+  {
+    if (!smuffConfig.extControlFeeder && feederEndstop())
+    {
       unloadFilament();
     }
-    else if (smuffConfig.extControlFeeder && feederEndstop()) {
+    else if (smuffConfig.extControlFeeder && feederEndstop())
+    {
       beep(4);
-      if(smuffConfig.sendActionCmds) {
+      if (smuffConfig.sendActionCmds)
+      {
         // send action command to indicate a jam has happend and
         // the controller shall wait
         sprintf_P(_tmp, P_Action, P_ActionWait);
@@ -1464,21 +1704,25 @@ bool selectTool(int8_t ndx, bool showMessage) {
         printResponse(_tmp, 1);
         printResponse(_tmp, 2);
       }
-      while(feederEndstop()) {
-        moveHome(REVOLVER, false, false);   // home Revolver
-        M18("M18", "", 0);   // motors off
+      while (feederEndstop())
+      {
+        moveHome(REVOLVER, false, false); // home Revolver
+        M18("M18", "", 0);                // motors off
         bool stat = showFeederFailedMessage(0);
-        if(!stat)
+        if (!stat)
           return false;
-        if(smuffConfig.unloadCommand != nullptr && strlen(smuffConfig.unloadCommand) > 0) {
-          if(CAN_USE_SERIAL2) {
+        if (smuffConfig.unloadCommand != nullptr && strlen(smuffConfig.unloadCommand) > 0)
+        {
+          if (CAN_USE_SERIAL2)
+          {
             Serial2.print(smuffConfig.unloadCommand);
             Serial2.print("\n");
             //__debugS(PSTR("Feeder jammed, sent unload command '%s'\n"), smuffConfig.unloadCommand);
           }
         }
       }
-      if(smuffConfig.sendActionCmds) {
+      if (smuffConfig.sendActionCmds)
+      {
         // send action command to indicate jam cleared, continue printing
         sprintf_P(_tmp, P_Action, P_ActionCont);
         printResponse(_tmp, 0);
@@ -1487,7 +1731,8 @@ bool selectTool(int8_t ndx, bool showMessage) {
       }
     }
   }
-  if(smuffConfig.revolverIsServo) {
+  if (smuffConfig.revolverIsServo)
+  {
     // release servo prior moving the selector
     setServoLid(SERVO_OPEN);
   }
@@ -1499,36 +1744,41 @@ bool selectTool(int8_t ndx, bool showMessage) {
 
   uint8_t retry = 3;
   bool posOk = false;
-  do {
+  do
+  {
     steppers[SELECTOR].resetStallDetected();
     prepSteppingAbsMillimeter(SELECTOR, smuffConfig.firstToolOffset + (ndx * smuffConfig.toolSpacing));
     remainingSteppersFlag |= _BV(SELECTOR);
-    #if !defined(SMUFF_V5)
-    if(!smuffConfig.resetBeforeFeed) {
-      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (ndx *smuffConfig.revolverSpacing), true);
+#if !defined(SMUFF_V5)
+    if (!smuffConfig.resetBeforeFeed)
+    {
+      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (ndx * smuffConfig.revolverSpacing), true);
       remainingSteppersFlag |= _BV(REVOLVER);
     }
     runAndWait(-1);
-    #else
+#else
     runAndWait(SELECTOR);
-    #endif
+#endif
     //__debugS(PSTR("Selector in position: %d"), ndx);
-    if(smuffConfig.stepperStall[SELECTOR] > 0) {
+    if (smuffConfig.stepperStall[SELECTOR] > 0)
+    {
       //__debugS(PSTR("Selector stall count: %d"), steppers[SELECTOR].getStallCount());
     }
-    if(steppers[SELECTOR].getStallDetected()) {
-        posOk = false;
-        handleStall(SELECTOR);
-        stallDetectedCountSelector++;
+    if (steppers[SELECTOR].getStallDetected())
+    {
+      posOk = false;
+      handleStall(SELECTOR);
+      stallDetectedCountSelector++;
     }
     else
       posOk = true;
     retry--;
-    if(!retry)
+    if (!retry)
       break;
-  } while(!posOk);
+  } while (!posOk);
   steppers[SELECTOR].setMaxSpeed(speed);
-  if(posOk) {
+  if (posOk)
+  {
     toolSelected = ndx;
     dataStore.tool = toolSelected;
     dataStore.stepperPos[SELECTOR] = steppers[SELECTOR].getStepPosition();
@@ -1539,10 +1789,12 @@ bool selectTool(int8_t ndx, bool showMessage) {
 
     //__debugS(PSTR("Data stored"));
 
-    if (showMessage && (!smuffConfig.extControlFeeder || (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper))) {
+    if (showMessage && (!smuffConfig.extControlFeeder || (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)))
+    {
       showFeederLoadMessage();
     }
-    if(smuffConfig.extControlFeeder) {
+    if (smuffConfig.extControlFeeder)
+    {
       //__debugS(PSTR("Resetting Revolver"));
       resetRevolver();
       signalSelectorReady();
@@ -1554,25 +1806,31 @@ bool selectTool(int8_t ndx, bool showMessage) {
   return posOk;
 }
 
-void resetRevolver() {
+void resetRevolver()
+{
   moveHome(REVOLVER, false, false);
-  if (toolSelected >=0 && toolSelected <= smuffConfig.toolCount-1) {
-    if(!smuffConfig.revolverIsServo) {
-      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected*smuffConfig.revolverSpacing), true);
+  if (toolSelected >= 0 && toolSelected <= smuffConfig.toolCount - 1)
+  {
+    if (!smuffConfig.revolverIsServo)
+    {
+      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected * smuffConfig.revolverSpacing), true);
       runAndWait(REVOLVER);
     }
-    else {
-      //__debugS(PSTR("Positioning servo to: %d (CLOSED)"), smuffConfig.revolverOnPos);
+    else
+    {
       setServoLid(SERVO_CLOSED);
     }
   }
 }
 
-void setStepperSteps(int8_t index, long steps, bool ignoreEndstop) {
+void setStepperSteps(int8_t index, long steps, bool ignoreEndstop)
+{
   // make sure the servo is in off position before the Selector gets moved
   // ... just in case... you never know...
-  if(smuffConfig.revolverIsServo && index == SELECTOR) {
-    if(lidOpen) {
+  if (smuffConfig.revolverIsServo && index == SELECTOR)
+  {
+    if (lidOpen)
+    {
       //__debugS(PSTR("Positioning servo to: %d (OPEN)"), smuffConfig.revolverOffPos);
       setServoLid(SERVO_OPEN);
     }
@@ -1581,218 +1839,243 @@ void setStepperSteps(int8_t index, long steps, bool ignoreEndstop) {
     steppers[index].prepareMovement(steps, ignoreEndstop);
 }
 
-void prepSteppingAbs(int8_t index, long steps, bool ignoreEndstop) {
+void prepSteppingAbs(int8_t index, long steps, bool ignoreEndstop)
+{
   long pos = steppers[index].getStepPosition();
   long _steps = steps - pos;
   //__debugS(PSTR("Pos: %ld  New: %ld"), pos, _steps);
   setStepperSteps(index, _steps, ignoreEndstop);
 }
 
-void prepSteppingAbsMillimeter(int8_t index, float millimeter, bool ignoreEndstop) {
+void prepSteppingAbsMillimeter(int8_t index, float millimeter, bool ignoreEndstop)
+{
   uint16_t stepsPerMM = steppers[index].getStepsPerMM();
   long steps = (long)((float)millimeter * stepsPerMM);
   long pos = steppers[index].getStepPosition();
   setStepperSteps(index, steps - pos, ignoreEndstop);
 }
 
-void prepSteppingRel(int8_t index, long steps, bool ignoreEndstop) {
+void prepSteppingRel(int8_t index, long steps, bool ignoreEndstop)
+{
   setStepperSteps(index, steps, ignoreEndstop);
 }
 
-void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndstop) {
+void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndstop)
+{
   uint16_t stepsPerMM = steppers[index].getStepsPerMM();
   long steps = (long)((float)millimeter * stepsPerMM);
   setStepperSteps(index, steps, ignoreEndstop);
 }
 
-void printPeriodicalState(int8_t serial) {
+void printPeriodicalState(int8_t serial)
+{
   char tmp[80];
 
-  const char* _triggered = "on";
-  const char* _open      = "off";
+  const char *_triggered = "on";
+  const char *_open = "off";
   int8_t tool = getToolSelected();
 
   sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\n"),
-          tool,
-          selectorEndstop()  ? _triggered : _open,
-          revolverEndstop()  ? _triggered : _open,
-          feederEndstop(1)   ? _triggered : _open,
-          feederEndstop(2)   ? _triggered : _open);
+            tool,
+            selectorEndstop() ? _triggered : _open,
+            revolverEndstop() ? _triggered : _open,
+            feederEndstop(1) ? _triggered : _open,
+            feederEndstop(2) ? _triggered : _open);
   printResponse(tmp, serial);
 }
 
-int8_t getToolSelected() {
+int8_t getToolSelected()
+{
   int8_t tool;
   // rather return the swapped tool than the currently selected
-  if(toolSelected >= 0 && toolSelected <= MAX_TOOLS)
+  if (toolSelected >= 0 && toolSelected <= MAX_TOOLS)
     tool = swapTools[toolSelected];
   else
     tool = toolSelected;
   return tool;
 }
 
-void printDriverMode(int8_t serial) {
+void printDriverMode(int8_t serial)
+{
   char tmp[128];
 
   sprintf_P(tmp, P_TMC_StatusAll,
-          drivers[SELECTOR] == nullptr ? P_Unknown : drivers[SELECTOR]->stealth() ? P_Stealth : P_Spread,
-          drivers[REVOLVER] == nullptr ? P_Unknown : drivers[REVOLVER]->stealth() ? P_Stealth : P_Spread,
-          drivers[FEEDER] == nullptr ? P_Unknown : drivers[FEEDER]->stealth() ? P_Stealth : P_Spread);
+            drivers[SELECTOR] == nullptr ? P_Unknown : drivers[SELECTOR]->stealth() ? P_Stealth
+                                                                                    : P_Spread,
+            drivers[REVOLVER] == nullptr ? P_Unknown : drivers[REVOLVER]->stealth() ? P_Stealth
+                                                                                    : P_Spread,
+            drivers[FEEDER] == nullptr ? P_Unknown : drivers[FEEDER]->stealth() ? P_Stealth
+                                                                                : P_Spread);
   printResponse(tmp, serial);
 }
 
-void printDriverRms(int8_t serial) {
+void printDriverRms(int8_t serial)
+{
   char tmp[128];
 
   sprintf_P(tmp, P_TMC_StatusAll,
-          drivers[SELECTOR] == nullptr ? P_Unknown : (String(drivers[SELECTOR]->rms_current()) + String(P_MilliAmp)).c_str(),
-          drivers[REVOLVER] == nullptr ? P_Unknown : (String(drivers[REVOLVER]->rms_current()) + String(P_MilliAmp)).c_str(),
-          drivers[FEEDER] == nullptr ? P_Unknown : (String(drivers[FEEDER]->rms_current()) + String(P_MilliAmp)).c_str());
+            drivers[SELECTOR] == nullptr ? P_Unknown : (String(drivers[SELECTOR]->rms_current()) + String(P_MilliAmp)).c_str(),
+            drivers[REVOLVER] == nullptr ? P_Unknown : (String(drivers[REVOLVER]->rms_current()) + String(P_MilliAmp)).c_str(),
+            drivers[FEEDER] == nullptr ? P_Unknown : (String(drivers[FEEDER]->rms_current()) + String(P_MilliAmp)).c_str());
   printResponse(tmp, serial);
 }
 
-void printDriverStallThrs(int8_t serial) {
+void printDriverStallThrs(int8_t serial)
+{
   char tmp[128];
   sprintf_P(tmp, P_TMC_StatusAll,
-          drivers[SELECTOR] == nullptr ? P_Unknown : String(drivers[SELECTOR]->SGTHRS()).c_str(),
-          drivers[REVOLVER] == nullptr ? P_Unknown : String(drivers[REVOLVER]->SGTHRS()).c_str(),
-          drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->SGTHRS()).c_str());
+            drivers[SELECTOR] == nullptr ? P_Unknown : String(drivers[SELECTOR]->SGTHRS()).c_str(),
+            drivers[REVOLVER] == nullptr ? P_Unknown : String(drivers[REVOLVER]->SGTHRS()).c_str(),
+            drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->SGTHRS()).c_str());
   printResponse(tmp, serial);
 }
 
-void printEndstopState(int8_t serial) {
+void printEndstopState(int8_t serial)
+{
   char tmp[128];
-  const char* _triggered = "triggered";
-  const char* _open      = "open";
+  const char *_triggered = "triggered";
+  const char *_open = "open";
   sprintf_P(tmp, P_TMC_StatusAll,
-          selectorEndstop()  ? _triggered : _open,
-          revolverEndstop()  ? _triggered : _open,
-          feederEndstop()    ? _triggered : _open);
+            selectorEndstop() ? _triggered : _open,
+            revolverEndstop() ? _triggered : _open,
+            feederEndstop() ? _triggered : _open);
   printResponse(tmp, serial);
-  if(Z_END2_PIN != -1) {
+  if (Z_END2_PIN != -1)
+  {
     sprintf_P(tmp, PSTR("Z2 (Feeder2): %s\n"), feederEndstop(2) ? _triggered : _open);
     printResponse(tmp, serial);
   }
 }
 
-void printSpeeds(int8_t serial) {
+void printSpeeds(int8_t serial)
+{
   char tmp[150];
 
   sprintf_P(tmp, !smuffConfig.speedsInMMS ? P_AccelSpeedTicks : P_AccelSpeedMms,
-          smuffConfig.maxSpeed[SELECTOR],
-          smuffConfig.stepDelay[SELECTOR],
-          smuffConfig.maxSpeed[REVOLVER],
-          smuffConfig.stepDelay[REVOLVER],
-          smuffConfig.maxSpeed[FEEDER],
-          smuffConfig.extControlFeeder ? " (Ext.)" : " (Int.)",
-          smuffConfig.stepDelay[FEEDER],
-          smuffConfig.insertSpeed);
+            smuffConfig.maxSpeed[SELECTOR],
+            smuffConfig.stepDelay[SELECTOR],
+            smuffConfig.maxSpeed[REVOLVER],
+            smuffConfig.stepDelay[REVOLVER],
+            smuffConfig.maxSpeed[FEEDER],
+            smuffConfig.extControlFeeder ? " (Ext.)" : " (Int.)",
+            smuffConfig.stepDelay[FEEDER],
+            smuffConfig.insertSpeed);
   printResponse(tmp, serial);
 }
 
-void printAcceleration(int8_t serial) {
+void printAcceleration(int8_t serial)
+{
   char tmp[150];
 
   sprintf_P(tmp, !smuffConfig.speedsInMMS ? P_AccelSpeedTicks : P_AccelSpeedMms,
-          smuffConfig.accelSpeed[SELECTOR],
-          smuffConfig.stepDelay[SELECTOR],
-          smuffConfig.accelSpeed[REVOLVER],
-          smuffConfig.stepDelay[REVOLVER],
-          smuffConfig.accelSpeed[FEEDER],
-          smuffConfig.extControlFeeder ? " (Ext.)" : " (Int.)",
-          smuffConfig.stepDelay[FEEDER],
-          smuffConfig.insertSpeed);
+            smuffConfig.accelSpeed[SELECTOR],
+            smuffConfig.stepDelay[SELECTOR],
+            smuffConfig.accelSpeed[REVOLVER],
+            smuffConfig.stepDelay[REVOLVER],
+            smuffConfig.accelSpeed[FEEDER],
+            smuffConfig.extControlFeeder ? " (Ext.)" : " (Int.)",
+            smuffConfig.stepDelay[FEEDER],
+            smuffConfig.insertSpeed);
   printResponse(tmp, serial);
 }
 
-void printSpeedAdjust(int8_t serial) {
+void printSpeedAdjust(int8_t serial)
+{
   char tmp[150];
 
   sprintf_P(tmp, P_SpeedAdjust,
-          String(smuffConfig.speedAdjust[SELECTOR]).c_str(),
-          String(smuffConfig.speedAdjust[SELECTOR]).c_str(),
-          String(smuffConfig.speedAdjust[REVOLVER]).c_str()
-  );
+            String(smuffConfig.speedAdjust[SELECTOR]).c_str(),
+            String(smuffConfig.speedAdjust[SELECTOR]).c_str(),
+            String(smuffConfig.speedAdjust[REVOLVER]).c_str());
   printResponse(tmp, serial);
 }
 
-void printOffsets(int8_t serial) {
+void printOffsets(int8_t serial)
+{
   char tmp[128];
   sprintf_P(tmp, P_TMC_StatusAll,
-          String((int)(smuffConfig.firstToolOffset*10)).c_str(),
-          String(smuffConfig.firstRevolverOffset).c_str(),
-          "--");
+            String((int)(smuffConfig.firstToolOffset * 10)).c_str(),
+            String(smuffConfig.firstRevolverOffset).c_str(),
+            "--");
   printResponse(tmp, serial);
 }
 
-void printPos(int8_t index, int8_t serial) {
+void printPos(int8_t index, int8_t serial)
+{
   char buf[128];
   sprintf_P(buf, PSTR("Pos. '%s': %ld\n"), steppers[index].getDescriptor(), steppers[index].getStepPosition());
   printResponseP(buf, serial);
 }
 
-
 #ifdef __STM32F1__
 /*
   Simple wrapper for tone()
 */
-void playTone(int8_t pin, int16_t freq, int16_t duration) {
+void playTone(int8_t pin, int16_t freq, int16_t duration)
+{
 #if defined(USE_LEONERD_DISPLAY)
   encoder.playFrequency(freq, duration);
 #else
-  if(pin != -1)
+  if (pin != -1)
     tone(pin, freq, duration);
 #endif
 }
 
-void muteTone(int8_t pin) {
+void muteTone(int8_t pin)
+{
 #if defined(USE_LEONERD_DISPLAY)
   encoder.muteTone();
 #else
-  if(pin != -1)
+  if (pin != -1)
     pinMode(pin, INPUT);
 #endif
 }
 #endif
 
-void beep(uint8_t count) {
+void beep(uint8_t count)
+{
   //showLed(1, count);
   prepareSequence(tuneBeep, false);
-  for (uint8_t i = 0; i < count; i++) {
+  for (uint8_t i = 0; i < count; i++)
+  {
     playSequence(true);
   }
 }
 
-void longBeep(uint8_t count) {
-  #if defined(USE_LEONERD_DISPLAY)
+void longBeep(uint8_t count)
+{
+#if defined(USE_LEONERD_DISPLAY)
   encoder.setLED(LED_RED, true);
-  #endif
+#endif
   prepareSequence(tuneLongBeep, false);
-  for (uint8_t i = 0; i < count; i++) {
+  for (uint8_t i = 0; i < count; i++)
+  {
     playSequence(true);
   }
 }
 
-void userBeep() {
-  #if defined(USE_LEONERD_DISPLAY)
+void userBeep()
+{
+#if defined(USE_LEONERD_DISPLAY)
   encoder.setLED(LED_RED, true);
-  #endif
+#endif
   prepareSequence(tuneUser, false);
   playSequence(true);
 }
 
-void encoderBeep(uint8_t count) {
+void encoderBeep(uint8_t count)
+{
   prepareSequence(tuneEncoder, false);
   playSequence(true);
 }
 
-void startupBeep() {
-  #if defined(USE_LEONERD_DISPLAY)
+void startupBeep()
+{
+#if defined(USE_LEONERD_DISPLAY)
   showLed(4, 1);
-  #endif
+#endif
   prepareSequence(tuneStartup, true);
 }
-
 
 /*
   Prepares a tune sequence from string to an array of notes to be played in background.
@@ -1801,39 +2084,47 @@ void startupBeep() {
            after the tone has played.
            The '.' at the end of a tone is needed to play that tone and must not be omitted.
 */
-void prepareSequence(const char* seq, bool autoPlay) {
+void prepareSequence(const char *seq, bool autoPlay)
+{
 #if !defined(USE_LEONERD_DISPLAY)
-  if(BEEPER_PIN == -1)
+  if (BEEPER_PIN == -1)
     return;
 #endif
-  uint16_t f=0, d=0, p=0;
-  uint8_t n=0;
+  uint16_t f = 0, d = 0, p = 0;
+  uint8_t n = 0;
   startSequence = false;
-  if(seq == nullptr || *seq == 0)
+  if (seq == nullptr || *seq == 0)
     return;
-  while(*seq) {
-    if(*seq=='"' || *seq==' ')
+  while (*seq)
+  {
+    if (*seq == '"' || *seq == ' ')
       seq++;
-    if(toupper(*seq)=='F') {
+    if (toupper(*seq) == 'F')
+    {
       f = atoi(++seq);
     }
-    if(toupper(*seq)=='D') {
+    if (toupper(*seq) == 'D')
+    {
       d = atoi(++seq);
     }
-    if(toupper(*seq)=='P') {
+    if (toupper(*seq) == 'P')
+    {
       p = atoi(++seq);
     }
-    if(*seq=='.') {
-      if(f && d) {
+    if (*seq == '.')
+    {
+      if (f && d)
+      {
         sequence[n][_F_] = (uint16_t)f;
         sequence[n][_D_] = (uint16_t)d;
         sequence[n][_P_] = (uint16_t)0;
       }
-      if(p) {
+      if (p)
+      {
         sequence[n][_P_] = (uint16_t)p;
       }
       f = d = p = 0;
-      if(n < MAX_SEQUENCE-1)
+      if (n < MAX_SEQUENCE - 1)
         n++;
       else
         break;
@@ -1844,27 +2135,30 @@ void prepareSequence(const char* seq, bool autoPlay) {
   sequence[n][_F_] = 0;
   sequence[n][_D_] = 0;
   sequence[n][_P_] = 0;
-  if(autoPlay)
+  if (autoPlay)
     playSequence(true);
 }
 
 /*
   Start playing in background via timer interrupt
 */
-void playSequence(bool inForeground) {
-  if(!timerRunning || inForeground) {
+void playSequence(bool inForeground)
+{
+  if (!timerRunning || inForeground)
+  {
     // timers not initialized by now, play in foreground
-    for(uint8_t i=0; i < MAX_SEQUENCE; i++) {
-      if(sequence[i][_F_] == 0)
+    for (uint8_t i = 0; i < MAX_SEQUENCE; i++)
+    {
+      if (sequence[i][_F_] == 0)
         return;
       _tone(sequence[i][_F_], sequence[i][_D_]);
       delay(sequence[i][_D_]);
-      if(sequence[i][_P_] > 0)
+      if (sequence[i][_P_] > 0)
         delay(sequence[i][_P_]);
     }
     return;
   }
-  while(isPlaying)
+  while (isPlaying)
     delay(10);
   startSequence = true;
 }
@@ -1873,15 +2167,18 @@ void playSequence(bool inForeground) {
   Gets called every 1ms from within the general timer to play the
   next tone in sequence if startSequence is set
 */
-void playSequenceBackgnd() {
-  if(!startSequence) {
+void playSequenceBackgnd()
+{
+  if (!startSequence)
+  {
     isPlaying = false;
     sequenceCnt = 0;
     return;
   }
 
   // stop condition: Frequency and Duration == 0
-  if(sequence[sequenceCnt][_F_] == 0 && sequence[sequenceCnt][_D_] == 0) {
+  if (sequence[sequenceCnt][_F_] == 0 && sequence[sequenceCnt][_D_] == 0)
+  {
     startSequence = false;
     isPlaying = false;
     sequenceCnt = 0;
@@ -1889,147 +2186,190 @@ void playSequenceBackgnd() {
     return;
   }
 
-  if(isPlaying && sequence[sequenceCnt][_D_] > 0) {
-    sequence[sequenceCnt][_D_]  -= 1;
+  if (isPlaying && sequence[sequenceCnt][_D_] > 0)
+  {
+    sequence[sequenceCnt][_D_] -= 1;
   }
-  else {
-    if(isPlaying && sequence[sequenceCnt][_P_] > 0) {
+  else
+  {
+    if (isPlaying && sequence[sequenceCnt][_P_] > 0)
+    {
       sequence[sequenceCnt][_P_] -= 1;
     }
-    else if(isPlaying) {
+    else if (isPlaying)
+    {
       _noTone();
       isPlaying = false;
       sequenceCnt++;
     }
-    else {
+    else
+    {
       _tone(sequence[sequenceCnt][_F_], 0);
       isPlaying = true;
     }
   }
 }
 
-void setServoMinPwm(int8_t servoNum, uint16_t pwm) {
-  if(servoNum == SERVO_WIPER) {
+void setServoMinPwm(int8_t servoNum, uint16_t pwm)
+{
+  if (servoNum == SERVO_WIPER)
+  {
     servo.setPulseWidthMin(pwm);
   }
-  else if(servoNum == SERVO_LID) {
+  else if (servoNum == SERVO_LID)
+  {
     servoLid.setPulseWidthMin(pwm);
   }
-  else if(servoNum == SERVO_CUTTER) {
+  else if (servoNum == SERVO_CUTTER)
+  {
     servoCutter.setPulseWidthMin(pwm);
   }
 }
 
-void setServoMaxPwm(int8_t servoNum, uint16_t pwm) {
-  if(servoNum == SERVO_WIPER) {
+void setServoMaxPwm(int8_t servoNum, uint16_t pwm)
+{
+  if (servoNum == SERVO_WIPER)
+  {
     servo.setPulseWidthMax(pwm);
   }
-  else if(servoNum == SERVO_LID) {
+  else if (servoNum == SERVO_LID)
+  {
     servoLid.setPulseWidthMax(pwm);
   }
-  else if(servoNum == SERVO_CUTTER) {
+  else if (servoNum == SERVO_CUTTER)
+  {
     servoCutter.setPulseWidthMax(pwm);
   }
 }
 
-void disableServo(int8_t servoNum) {
-  switch(servoNum) {
-    case SERVO_WIPER:   servo.disable(); break;
-    case SERVO_LID:     servoLid.disable(); break;
-    case SERVO_CUTTER:  servoCutter.disable(); break;
+void disableServo(int8_t servoNum)
+{
+  switch (servoNum)
+  {
+  case SERVO_WIPER:
+    servo.disable();
+    break;
+  case SERVO_LID:
+    servoLid.disable();
+    break;
+  case SERVO_CUTTER:
+    servoCutter.disable();
+    break;
   }
 }
 
-void enableServo(int8_t servoNum) {
-  switch(servoNum) {
-    case SERVO_WIPER:   servo.enable(); break;
-    case SERVO_LID:     servoLid.enable(); break;
-    case SERVO_CUTTER:  servoCutter.enable(); break;
+void enableServo(int8_t servoNum)
+{
+  switch (servoNum)
+  {
+  case SERVO_WIPER:
+    servo.enable();
+    break;
+  case SERVO_LID:
+    servoLid.enable();
+    break;
+  case SERVO_CUTTER:
+    servoCutter.enable();
+    break;
   }
 }
 
-bool setServoPos(int8_t servoNum, uint8_t degree) {
-  #if defined(MULTISERVO)
+bool setServoPos(int8_t servoNum, uint8_t degree)
+{
+#if defined(MULTISERVO)
   uint16_t pulseLen = map(degree, 0, 180, smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
-  #endif
+#endif
 
-  if(servoNum == SERVO_WIPER) {
-    #if defined(MULTISERVO)
-    if(servoMapping[16] != -1) {
+  if (servoNum == SERVO_WIPER)
+  {
+#if defined(MULTISERVO)
+    if (servoMapping[16] != -1)
+    {
       servoPwm.writeMicroseconds(servoMapping[16], pulseLen);
     }
-    #else
+#else
     servo.write(degree);
     delay(100);
-    #endif
+#endif
     return true;
   }
-  else if(servoNum == SERVO_LID) {
+  else if (servoNum == SERVO_LID)
+  {
     servoLid.write(degree);
     delay(100);
     return true;
   }
-  else if(servoNum == SERVO_CUTTER) {
-    #if defined(MULTISERVO)
-    if(servoMapping[17] != -1) {
+  else if (servoNum == SERVO_CUTTER)
+  {
+#if defined(MULTISERVO)
+    if (servoMapping[17] != -1)
+    {
       servoPwm.writeMicroseconds(servoMapping[17], pulseLen);
     }
-    #else
+#else
     servoCutter.write(degree);
     delay(100);
-    #endif
+#endif
     return true;
   }
-  else if(servoNum >= 10 && servoNum <= 26) {
-    #if defined(MULTISERVO)
-    uint8_t servo = servoMapping[servoNum-10];
+  else if (servoNum >= 10 && servoNum <= 26)
+  {
+#if defined(MULTISERVO)
+    uint8_t servo = servoMapping[servoNum - 10];
     //__debugS(PSTR("Servo mapping: %d -> %d (pulse len: %d ms: %d)"), servoNum-10, servo, pulseLen, ms);
-    if(servo != -1)
+    if (servo != -1)
       servoPwm.writeMicroseconds(servo, pulseLen);
     return true;
-    #endif
+#endif
   }
   return false;
 }
 
-bool setServoMS(int8_t servoNum, uint16_t microseconds) {
-  if(servoNum == SERVO_WIPER) {
-    #if defined(MULTISERVO)
-    if(servoMapping[16] != -1) {
+bool setServoMS(int8_t servoNum, uint16_t microseconds)
+{
+  if (servoNum == SERVO_WIPER)
+  {
+#if defined(MULTISERVO)
+    if (servoMapping[16] != -1)
+    {
       servoPwm.writeMicroseconds(servoMapping[16], microseconds);
     }
-    #else
+#else
     servo.writeMicroseconds(microseconds);
     delay(100);
-    #endif
+#endif
     return true;
   }
-  else if(servoNum == SERVO_LID) {
-    #if defined(MULTISERVO)
-    uint8_t servo = servoMapping[servoNum-10];
-    if(servo != -1)
+  else if (servoNum == SERVO_LID)
+  {
+#if defined(MULTISERVO)
+    uint8_t servo = servoMapping[servoNum - 10];
+    if (servo != -1)
       servoPwm.writeMicroseconds(servo, microseconds);
-    #else
+#else
     servoLid.writeMicroseconds(microseconds);
     delay(100);
-    #endif
+#endif
     return true;
   }
-  else if(servoNum == SERVO_CUTTER) {
-    #if defined(MULTISERVO)
-    if(servoMapping[17] != -1) {
+  else if (servoNum == SERVO_CUTTER)
+  {
+#if defined(MULTISERVO)
+    if (servoMapping[17] != -1)
+    {
       servoPwm.writeMicroseconds(servoMapping[17], microseconds);
     }
-    #else
+#else
     servoCutter.writeMicroseconds(microseconds);
     delay(100);
-    #endif
+#endif
     return true;
   }
   return false;
 }
 
-void getStoredData() {
+void getStoredData()
+{
   recoverStore();
   steppers[SELECTOR].setStepPosition(dataStore.stepperPos[SELECTOR]);
   steppers[REVOLVER].setStepPosition(dataStore.stepperPos[REVOLVER]);
@@ -2039,39 +2379,46 @@ void getStoredData() {
   //__debugS(PSTR("Recovered tool: %d"), toolSelected);
 }
 
-void setSignalPort(uint8_t port, bool state) {
+void setSignalPort(uint8_t port, bool state)
+{
   char tmp[40];
 
-  if(!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats) {
-    sprintf(tmp,"%c%c%s", 0x1b, port, state ? "1" : "0");
-    if(CAN_USE_SERIAL1)
+  if (!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats)
+  {
+    sprintf(tmp, "%c%c%s", 0x1b, port, state ? "1" : "0");
+    if (CAN_USE_SERIAL1)
       Serial1.write(tmp);
-    if(CAN_USE_SERIAL2)
+    if (CAN_USE_SERIAL2)
       Serial2.write(tmp);
   }
 }
 
-void signalSelectorReady() {
+void signalSelectorReady()
+{
   setSignalPort(SELECTOR_SIGNAL, false);
   //__debugS(PSTR("Signalling Selector ready"));
 }
 
-void signalSelectorBusy() {
+void signalSelectorBusy()
+{
   setSignalPort(SELECTOR_SIGNAL, true);
   //__debugS(PSTR("Signalling Selector busy"));
 }
 
-void signalLoadFilament() {
+void signalLoadFilament()
+{
   setSignalPort(FEEDER_SIGNAL, true);
   //__debugS(PSTR("Signalling load filament"));
 }
 
-void signalUnloadFilament() {
+void signalUnloadFilament()
+{
   setSignalPort(FEEDER_SIGNAL, false);
   //__debugS(PSTR("Signalling unload filament"));
 }
 
-bool getFiles(const char* rootFolder PROGMEM, const char* pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char* files) {
+bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char *files)
+{
   char fname[40];
   char tmp[25];
   uint8_t cnt = 0;
@@ -2079,19 +2426,23 @@ bool getFiles(const char* rootFolder PROGMEM, const char* pattern PROGMEM, uint8
   SdFile root;
   SdFat SD;
 
-  if (initSD(false)) {
+  if (initSD(false))
+  {
     root.open(rootFolder, O_READ);
-    while (file.openNext(&root, O_READ)) {
-      if (!file.isHidden()) {
+    while (file.openNext(&root, O_READ))
+    {
+      if (!file.isHidden())
+      {
         file.getName(fname, ArraySize(fname));
         //__debugS(PSTR("File: %s"), fname);
         String lfn = String(fname);
-        if(pattern != nullptr && !lfn.endsWith(pattern)) {
+        if (pattern != nullptr && !lfn.endsWith(pattern))
+        {
           file.close();
           continue;
         }
-        if(pattern != nullptr && cutExtension)
-          lfn.replace(pattern,"");
+        if (pattern != nullptr && cutExtension)
+          lfn.replace(pattern, "");
         sprintf_P(tmp, PSTR("%-20s\n"), lfn.c_str());
         strcat(files, tmp);
       }
@@ -2102,11 +2453,11 @@ bool getFiles(const char* rootFolder PROGMEM, const char* pattern PROGMEM, uint8
       }
       */
       file.close();
-      if(++cnt >= maxFiles)
+      if (++cnt >= maxFiles)
         break;
     }
     root.close();
-    files[strlen(files)-1] = '\0';
+    files[strlen(files) - 1] = '\0';
     return true;
   }
   return false;
@@ -2116,8 +2467,10 @@ bool getFiles(const char* rootFolder PROGMEM, const char* pattern PROGMEM, uint8
   Removes file firmware.bin from root directory in order
   to prevent re-flashing on each reset!
 */
-void removeFirmwareBin() {
-  if(initSD(false)) {
+void removeFirmwareBin()
+{
+  if (initSD(false))
+  {
     SD.remove("firmware.bin");
   }
 }
@@ -2126,25 +2479,29 @@ void removeFirmwareBin() {
   Reads the next line from the test script and filters unwanted
   characters.
 */
-uint8_t getTestLine(SdFile* file, char* line, int maxLen) {
+uint8_t getTestLine(SdFile *file, char *line, int maxLen)
+{
   uint8_t n = 0;
   bool isQuote = false;
-  while(1) {
+  while (1)
+  {
     int c = file->read();
-    if(c == -1)
+    if (c == -1)
       break;
-    if(c == ' ' || c == '\r')
+    if (c == ' ' || c == '\r')
       continue;
-    if(c == '\n') {
-      *(line+n) = 0;
+    if (c == '\n')
+    {
+      *(line + n) = 0;
       break;
     }
-    if(c == '"') {
+    if (c == '"')
+    {
       isQuote = !isQuote;
     }
-    *(line+n) = isQuote ? c : toupper(c);
+    *(line + n) = isQuote ? c : toupper(c);
     n++;
-    if(n >= maxLen)
+    if (n >= maxLen)
       break;
   }
   return n;
@@ -2152,46 +2509,49 @@ uint8_t getTestLine(SdFile* file, char* line, int maxLen) {
 
 extern SdFat SD;
 
-void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, long toolChanges, unsigned long secs, unsigned long endstop2Hit[], unsigned long endstop2Miss[]) {
+void printReport(const char *line, unsigned long loopCnt, unsigned long cmdCnt, long toolChanges, unsigned long secs, unsigned long endstop2Hit[], unsigned long endstop2Miss[])
+{
   char report[700];
   char runtm[20], gco[60], err[10], lop[10], cmdc[10], tc[20], stallS[10], stallF[10];
-  char etmp[15], ehit[smuffConfig.toolCount*10], emiss[smuffConfig.toolCount*10];
+  char etmp[15], ehit[smuffConfig.toolCount * 10], emiss[smuffConfig.toolCount * 10];
 
-  sprintf_P(gco,    PSTR("%-25s"), line);
-  sprintf_P(err,    PSTR("%4lu"), feederErrors);
-  sprintf_P(lop,    PSTR("%4lu"), loopCnt);
-  sprintf_P(cmdc,   PSTR("%5lu"), cmdCnt);
-  sprintf_P(tc,     PSTR("%5ld"), toolChanges);
+  sprintf_P(gco, PSTR("%-25s"), line);
+  sprintf_P(err, PSTR("%4lu"), feederErrors);
+  sprintf_P(lop, PSTR("%4lu"), loopCnt);
+  sprintf_P(cmdc, PSTR("%5lu"), cmdCnt);
+  sprintf_P(tc, PSTR("%5ld"), toolChanges);
   sprintf_P(stallS, PSTR("%4lu"), stallDetectedCountSelector);
   sprintf_P(stallF, PSTR("%4lu"), stallDetectedCountFeeder);
-  sprintf_P(runtm,  PSTR("%4d:%02d:%02d"), (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
+  sprintf_P(runtm, PSTR("%4d:%02d:%02d"), (int)(secs / 3600), (int)(secs / 60) % 60, (int)(secs % 60));
   memset(ehit, 0, ArraySize(ehit));
   memset(emiss, 0, ArraySize(emiss));
-  for(uint8_t tcnt=0; tcnt< smuffConfig.toolCount; tcnt++) {
-    sprintf_P(etmp,   PSTR("%5lu | "), endstop2Hit[tcnt]);
+  for (uint8_t tcnt = 0; tcnt < smuffConfig.toolCount; tcnt++)
+  {
+    sprintf_P(etmp, PSTR("%5lu | "), endstop2Hit[tcnt]);
     strcat(ehit, etmp);
-    sprintf_P(etmp,   PSTR("%5lu | "), endstop2Miss[tcnt]);
+    sprintf_P(etmp, PSTR("%5lu | "), endstop2Miss[tcnt]);
     strcat(emiss, etmp);
   }
-  char* lines[10];
+  char *lines[10];
   // load report from SD-Card; Can contain 10 lines at max.
   loadReport(PSTR("report"), report, ArraySize(report));
   // format report to be sent to terminal
   uint8_t cnt = splitStringLines(lines, ArraySize(lines), report);
-  for(uint8_t n=0; n < cnt; n++) {
+  for (uint8_t n = 0; n < cnt; n++)
+  {
     //__debugS(PSTR("LN: %s"), lines[n]);
     String s = String(lines[n]);
     s.replace("{TIME}", runtm);
-    s.replace("{GCO}",  gco);
-    s.replace("{ERR}",  err);
+    s.replace("{GCO}", gco);
+    s.replace("{ERR}", err);
     s.replace("{LOOP}", lop);
     s.replace("{CMDS}", cmdc);
-    s.replace("{TC}",   tc);
-    s.replace("{STALL}",stallS);
-    s.replace("{STALLF}",stallF);
+    s.replace("{TC}", tc);
+    s.replace("{STALL}", stallS);
+    s.replace("{STALLF}", stallF);
     s.replace("{HIT}", ehit);
     s.replace("{MISS}", emiss);
-    s.replace("{ESC:",  "\033[");
+    s.replace("{ESC:", "\033[");
     s.replace("f}", "f");
     s.replace("m}", "m");
     s.replace("J}", "J");
@@ -2200,14 +2560,15 @@ void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, 
   }
 }
 
-void testRun(const char* fname) {
+void testRun(const char *fname)
+{
   char line[80];
   char msg[80];
   char filename[80];
   SdFile file;
   String gCode;
   unsigned long loopCnt = 1L, cmdCnt = 1L;
-  uint8_t tool = 0, lastTool = 0;
+  int8_t tool = 0, lastTool = 0;
   uint8_t mode = 1;
   long toolChanges = 0;
   unsigned long startTime = millis();
@@ -2218,89 +2579,110 @@ void testRun(const char* fname) {
 
   debounceButton();
 
-  if(initSD(false)) {
+  if (initSD(false))
+  {
     steppers[REVOLVER].setEnabled(true);
     steppers[SELECTOR].setEnabled(true);
     steppers[FEEDER].setEnabled(true);
-    randomSeed(millis());
     sprintf_P(msg, P_RunningTest, fname);
     drawUserMessage(msg);
     delay(1750);
+    randomSeed(millis());
     sprintf(filename, "test/%s.gcode", fname);
     feederErrors = 0;
-    __log(PSTR("\033[2J"));   // clear screen on VT100
-    for(uint8_t i=0; i<smuffConfig.toolCount; i++) {
+    __log(PSTR("\033[2J")); // clear screen on VT100
+    for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
+    {
       endstop2Hit[i] = 0L;
       endstop2Miss[i] = 0L;
     }
 
-    if(file.open(filename, O_READ)) {
+    if (file.open(filename, O_READ))
+    {
       file.rewind();
 
       stallDetectedCountFeeder = stallDetectedCountSelector = 0;
 
-      #if defined(USE_LEONERD_DISPLAY)
-        encoder.setLED(LED_GREEN, true);
-      #endif
+#if defined(USE_LEONERD_DISPLAY)
+      encoder.setLED(LED_GREEN, true);
+#endif
 
-      while(1) {
+      while (1)
+      {
         getInput(&turn, &btn, &isHeld, &isClicked, false);
-        if(isHeld || isClicked) {
+        if (isHeld || isClicked)
+        {
           break;
         }
-        if(turn < 0) {
-          if(--mode < 0)
+        if (turn < 0)
+        {
+          if (--mode < 0)
             mode = 3;
         }
-        else if(turn > 0) {
-          if(++mode > 3)
+        else if (turn > 0)
+        {
+          if (++mode > 3)
             mode = 0;
         }
-        unsigned long secs = (millis()-startTime)/1000;
-        if(getTestLine(&file, line, ArraySize(line)) > 0) {
-          if(*line == ';')
+        unsigned long secs = (millis() - startTime) / 1000;
+        uint8_t n = getTestLine(&file, line, ArraySize(line));
+        if (n > 0)
+        {
+          if (*line == ';')
             continue;
           gCode = String(line);
-          if(gCode.indexOf("{RNDT}") >-1) {
-            lastTool = tool;
-            uint8_t retry = 5;
-            do {
-              tool = random(0, smuffConfig.toolCount);
-              if(--retry == 0)
+          if (gCode.indexOf("{RNDT}") > -1)
+          {
+            // randomize the next tool number in a loop to avoid
+            // selecting the same tool that's currently set
+            int8_t retry = smuffConfig.toolCount;
+            do
+            {
+              tool = (int8_t)random(0, smuffConfig.toolCount);
+              //__debugS(PSTR("retry: %d  tool: %d  last: %d"), retry, tool, lastTool);
+              if (--retry < 0)
                 break;
             } while(tool == lastTool);
             gCode.replace("{RNDT}", String(tool));
           }
-          if(gCode.indexOf("{RNDTL}") >-1) {
+          if (gCode.indexOf("{RNDTL}") > -1)
+          {
             gCode.replace("{RNDTL}", String(tool));
           }
           parseGcode(gCode, -1);
           //__debugS(PSTR("GCode: %s"), gCode.c_str());
-          if(*line=='T') {
-            tool = strtol(line+1, nullptr, 10);
+          if (*line == 'T')
+          {
+            tool = (int8_t)strtol(line + 1, nullptr, 10);
+            lastTool = toolSelected;
             toolChanges++;
           }
-          if(*line=='C') {
-            if(!feederEndstop(2))
+          if (*line == 'C')
+          {
+            if (!feederEndstop(2))
               endstop2Hit[tool]++;
             else
               endstop2Miss[tool]++;
           }
           cmdCnt++;
-          if(cmdCnt % 10 == 0) {
+          if (cmdCnt % 10 == 0)
+          {
             mode++;
-            if(mode > 3)
+            if (mode > 3)
               mode = 0;
           }
           printReport(line, loopCnt, cmdCnt, toolChanges, secs, endstop2Hit, endstop2Miss);
         }
-        else {
+        else
+        {
+          randomSeed(analogRead(0));
           // restart from begin and increment loop count
           file.rewind();
           //__debugS(PSTR("Rewinding"));
           loopCnt++;
         }
-        switch(mode) {
+        switch (mode)
+        {
           case 3:
             sprintf_P(msg, P_FeederErrors, feederErrors);
             break;
@@ -2311,17 +2693,18 @@ void testRun(const char* fname) {
             sprintf_P(msg, P_CmdLoop, cmdCnt, tool);
             break;
           case 0:
-            sprintf_P(msg, P_TestTime, (int)(secs/3600), (int)(secs/60)%60, (int)(secs%60));
+            sprintf_P(msg, P_TestTime, (int)(secs / 3600), (int)(secs / 60) % 60, (int)(secs % 60));
             break;
         }
         drawTestrunMessage(loopCnt, msg);
       }
       file.close();
-      #if defined(USE_LEONERD_DISPLAY)
-        encoder.setLED(LED_GREEN, false);
-      #endif
+#if defined(USE_LEONERD_DISPLAY)
+      encoder.setLED(LED_GREEN, false);
+#endif
     }
-    else {
+    else
+    {
       sprintf_P(msg, P_TestFailed, fname);
       drawUserMessage(msg);
       delay(3000);
@@ -2329,35 +2712,53 @@ void testRun(const char* fname) {
   }
 }
 
-void waitFor(uint32_t ms) {
-  uint32_t start = millis();
-  do {
-    uint32_t now = millis()-start;
-    if(now >= ms)
-      break;
-  } while(1);
+void yield() {
+  // not used yet, maybe at a later point
 }
 
-void listTextFile(const char* filename PROGMEM, int8_t serial) {
-  SdFile file;
-  char line[80];
+volatile bool fastLedRefresh = false;
+
+void refreshFastLED() {
+#if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
+  if(!fastLedRefresh) {
+    fastLedRefresh = true;
+    FastLED.show();
+    fastLedRefresh = false;
+  }
+#endif
+}
+
+void listHelpFile(const char *filename PROGMEM, int8_t serial)
+{
   char fname[80];
-  char delimiter[] = { "\n" };
 
   sprintf_P(fname, PSTR("help/%s.txt"), filename);
-  if(file.open(fname, O_READ)) {
-    printResponseP(P_Usage, serial);
-    while(file.fgets(line, sizeof(line)-1, delimiter) > 0) {
+  printResponseP(P_Usage, serial);
+  listTextFile(fname, serial);
+}
+
+void listTextFile(const char *filename PROGMEM, int8_t serial)
+{
+  SdFile file;
+  char line[80];
+  char delimiter[] = {"\n"};
+
+  if (file.open(filename, O_READ))
+  {
+    while (file.fgets(line, sizeof(line) - 1, delimiter) > 0)
+    {
       printResponse(line, serial);
     }
     file.close();
   }
-  else {
+  else
+  {
     sprintf_P(line, P_FileNotFound, filename);
     printResponse(line, serial);
   }
   printResponse(delimiter, serial);
 }
+
 
 /*
 void dumpString(String &s) {
@@ -2374,32 +2775,38 @@ void dumpString(String &s) {
  * @param ordinals  the menu entry ordinals
  * @returns the contents of that file
  */
-const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]) {
+const char *loadMenu(const char *filename PROGMEM, uint8_t ordinals[])
+{
   SdFile file;
   static char menu[700];
   char fname[80];
   char ordinal[10];
 
   memset(menu, 0, ArraySize(menu));
-  memset(ordinals, -1, MAX_MENU_ORDINALS*sizeof(int));
+  memset(ordinals, -1, MAX_MENU_ORDINALS * sizeof(int));
   sprintf_P(fname, PSTR("menus/%s.mnu"), filename);
-  if(file.open(fname, O_READ)) {
+  if (file.open(fname, O_READ))
+  {
     uint16_t n = 0;
     uint8_t ln = 1;
     int c;
-    while ((c=file.read()) != -1) {
-      if(c == '\r')
+    while ((c = file.read()) != -1)
+    {
+      if (c == '\r')
         continue;
       // check for an separator indicating an ordinal number is following
-      if(c == '|') {
+      if (c == '|')
+      {
         uint8_t on = 0;
         memset(ordinal, 0, ArraySize(ordinal));
-        do {
+        do
+        {
           c = file.read();
-          if(isdigit(c)) {
+          if (isdigit(c))
+          {
             ordinal[on++] = c;
           }
-          if(on >= (int)ArraySize(ordinal))
+          if (on >= (int)ArraySize(ordinal))
             break;
         } while (isdigit(c));
         ordinals[ln] = atoi(ordinal);
@@ -2407,114 +2814,135 @@ const char* loadMenu(const char* filename PROGMEM, uint8_t ordinals[]) {
         continue;
       }
       menu[n] = c;
-      if(c == '\n')
+      if (c == '\n')
         ln++;
       // convert \n-\n to separator char (GS = Group Separator = \035)
-      if(n > 2 && menu[n] == '\n' && menu[n-1]=='-' && menu[n-2]=='\n') {
-        menu[n-1] = '\035';
+      if (n > 2 && menu[n] == '\n' && menu[n - 1] == '-' && menu[n - 2] == '\n')
+      {
+        menu[n - 1] = '\035';
       }
       n++;
     }
     file.close();
 
-    if(n == 0) {
+    if (n == 0)
+    {
       __debugS(PSTR("Failed to load menu '%s'"), filename);
     }
     //__debugS(PSTR("Menu: '%s' %d lines  %d bytes\n%s"), filename, ln, n, menu);
     return menu;
   }
-  else {
+  else
+  {
     __debugS(P_FileNotFound, filename);
   }
   return nullptr;
 }
 
-const char* loadOptions(const char* filename PROGMEM) {
+const char *loadOptions(const char *filename PROGMEM)
+{
   SdFile file;
   static char opts[300];
   char fname[80];
 
   memset(opts, 0, ArraySize(opts));
   sprintf_P(fname, PSTR("options/%s.opt"), filename);
-  if(file.open(fname, O_READ)) {
+  if (file.open(fname, O_READ))
+  {
     int16_t n = 0;
     int c;
-    while ((c=file.read()) != -1) {
-      if(c == '\r')
+    while ((c = file.read()) != -1)
+    {
+      if (c == '\r')
         continue;
       opts[n] = c;
       n++;
     }
     file.close();
-    if(n == 0) {
+    if (n == 0)
+    {
       __debugS(PSTR("Failed to load options '%s'"), filename);
     }
     //__debugS(PSTR("Opts: '%s' %d bytes"), filename, n);
     return opts;
   }
-  else {
+  else
+  {
     __debugS(P_FileNotFound, filename);
   }
   return nullptr;
 }
 
-bool loadReport(const char* filename PROGMEM, char* buffer, uint16_t maxLen) {
+bool loadReport(const char *filename PROGMEM, char *buffer, uint16_t maxLen)
+{
   SdFile file;
   char fname[80];
 
   memset(buffer, 0, maxLen);
   sprintf_P(fname, PSTR("test/%s.txt"), filename);
-  if(file.open(fname, O_READ)) {
-    int n = file.read(buffer, maxLen-1);
+  if (file.open(fname, O_READ))
+  {
+    int n = file.read(buffer, maxLen - 1);
     file.close();
-    if(n == 0) {
+    if (n == 0)
+    {
       __debugS(PSTR("Failed to load report '%s'"), filename);
     }
     return true;
   }
-  else {
+  else
+  {
     __debugS(P_FileNotFound, filename);
   }
   return false;
 }
 
-bool    maintainingMode = false;
-int8_t  maintainingTool = -1;
+bool maintainingMode = false;
+int8_t maintainingTool = -1;
 
-void maintainTool() {
+void maintainTool()
+{
   int8_t newTool;
 
-  while(feederEndstop()) {
+  while (feederEndstop())
+  {
     if (!showFeederBlockedMessage())
       return;
   }
 
-  if(maintainingMode) {
+  if (maintainingMode)
+  {
     maintainingMode = false;
-    if(maintainingTool != -1) {
+    if (maintainingTool != -1)
+    {
       selectTool(maintainingTool, false);
     }
     maintainingTool = -1;
   }
-  else {
+  else
+  {
     maintainingMode = true;
     maintainingTool = getToolSelected();
 
-    if(toolSelected <= (smuffConfig.toolCount/2)) {
-      newTool = toolSelected+2;
+    if (toolSelected <= (smuffConfig.toolCount / 2))
+    {
+      newTool = toolSelected + 2;
     }
-    else {
-      newTool = toolSelected-2;
+    else
+    {
+      newTool = toolSelected - 2;
     }
-    if(newTool >=0 && newTool < smuffConfig.toolCount) {
+    if (newTool >= 0 && newTool < smuffConfig.toolCount)
+    {
       selectTool(newTool, false);
     }
   }
 }
 
-void blinkLED() {
+void blinkLED()
+{
 #if defined(LED_PIN)
-  if(LED_PIN != -1)
+  if (LED_PIN != -1)
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
 }
@@ -2524,39 +2952,45 @@ void blinkLED() {
   Please notice: This method runs the stepper far slower since it's got to ensure that the
   distance/second has to match.
 */
-unsigned long translateSpeed(uint16_t speed, uint8_t axis) {
-  if(!smuffConfig.speedsInMMS) {
+unsigned long translateSpeed(uint16_t speed, uint8_t axis)
+{
+  if (!smuffConfig.speedsInMMS)
+  {
     return speed;
   }
-  uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution/360 : smuffConfig.stepsPerMM[axis];
+  uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution / 360 : smuffConfig.stepsPerMM[axis];
   uint8_t delay = smuffConfig.stepDelay[axis];
   float correction = smuffConfig.speedAdjust[axis];
-  unsigned long freq = F_CPU/STEPPER_PSC;
+  unsigned long freq = F_CPU / STEPPER_PSC;
   unsigned long pulses = speed * stepsPerMM;
   double delayTot = pulses * (delay * 0.000001);
-  double timeTot = ((double) pulses / freq) + delayTot;
+  double timeTot = ((double)pulses / freq) + delayTot;
   // if delay total is more than 1 sec. its impossible to meet speed/s, so set a save value of 40mm/s.
-  unsigned long ticks = (unsigned long)((timeTot <= 1) ? (1/(timeTot*correction)) : 500);   // 500 equals round about 40 mm/s
+  unsigned long ticks = (unsigned long)((timeTot <= 1) ? (1 / (timeTot * correction)) : 500); // 500 equals round about 40 mm/s
   /*
   char ttl[30], dtl[30];
   dtostrf(timeTot, 12, 6, ttl);
   dtostrf(delayTot, 12, 6, dtl);
   __debugS(PSTR("FREQ: %lu  SPEED: %4d  StepsMM: %4d  TICKS: %12lu  TOTAL: %s  PULSES: %6lu   DLY: %s"), freq, speed, stepsPerMM, ticks, ttl, pulses, dtl);
   */
-  if(timeTot > 1) {
+  if (timeTot > 1)
+  {
     __debugS(PSTR("Too fast! Slow down speed in mm/s."));
   }
   return ticks;
 }
 
-void setMotor(uint8_t pos) {
-  #if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
-  if(pos == SERVO_OPEN) {
+void setMotor(uint8_t pos)
+{
+#if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
+  if (pos == SERVO_OPEN)
+  {
     // move forward
     digitalWrite(MOTOR_IN1_PIN, HIGH);
     digitalWrite(MOTOR_IN2_PIN, LOW);
   }
-  else {
+  else
+  {
     // move backward
     digitalWrite(MOTOR_IN1_PIN, LOW);
     digitalWrite(MOTOR_IN2_PIN, HIGH);
@@ -2565,42 +2999,46 @@ void setMotor(uint8_t pos) {
   // stop moving
   digitalWrite(MOTOR_IN1_PIN, LOW);
   digitalWrite(MOTOR_IN2_PIN, LOW);
-  #endif
+#endif
 }
 
-void setServoLid(uint8_t pos) {
-  #if !defined(MULTISERVO)
+void setServoLid(uint8_t pos)
+{
+#if !defined(MULTISERVO)
   uint8_t posForTool = servoPosClosed[toolSelected];
   uint8_t p;
-  if(posForTool == 0)
+  if (posForTool == 0)
     p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : smuffConfig.revolverOnPos;
   else
     p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : posForTool;
+  //__debugS(PSTR("setServoLid called with %d (posForTool: %d)"), pos, posForTool);
   setServoPos(SERVO_LID, p);
-  #else
-  uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected]-SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
+#else
+  uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected] - SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
   //__debugS(PSTR("Tool%d = %d"), toolSelected, p);
-  setServoPos(toolSelected+10, p);
-  #endif
+  setServoPos(toolSelected + 10, p);
+#endif
   lidOpen = pos == SERVO_OPEN;
 
-  // experimental
-  #if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
-    setMotor(pos);
-  #endif
+// experimental
+#if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
+  setMotor(pos);
+#endif
 }
 
-uint8_t scanI2CDevices(uint8_t *devices) {
+uint8_t scanI2CDevices(uint8_t *devices)
+{
   uint8_t cnt = 0;
   Wire.begin();
   memset(devices, 0, ArraySize(devices));
-  for(uint8 address = 1; address < 127; address++)
+  for (uint8 address = 1; address < 127; address++)
   {
     Wire.beginTransmission(address);
     uint8_t stat = Wire.endTransmission();
     //__debugS(PSTR("Scanning at address 0x%02x returned 0x%x"), address, stat);
-    if (stat == I2C_SUCCESS) {
-      *(devices+cnt) = address;
+    if (stat == I2C_SUCCESS)
+    {
+      *(devices + cnt) = address;
       cnt++;
       __debugS(PSTR("I2C device found at address 0x%02x"), address);
     }
@@ -2609,32 +3047,35 @@ uint8_t scanI2CDevices(uint8_t *devices) {
   return cnt;
 }
 
-extern Stream* debugSerial;
-extern Stream* logSerial;
+extern Stream *debugSerial;
+extern Stream *logSerial;
 
-void __debugS(const char* fmt, ...) {
-  if(debugSerial == nullptr)
+void __debugS(const char *fmt, ...)
+{
+  if (debugSerial == nullptr)
     return;
 #ifdef DEBUG
-  if(testMode) {
+  if (testMode)
+  {
     char _dbg[512];
     va_list arguments;
     va_start(arguments, fmt);
-    vsnprintf_P(_dbg, ArraySize(_dbg)-1, fmt, arguments);
-    va_end (arguments);
+    vsnprintf_P(_dbg, ArraySize(_dbg) - 1, fmt, arguments);
+    va_end(arguments);
     debugSerial->print(F("echo: dbg: "));
     debugSerial->println(_dbg);
   }
 #endif
 }
 
-void __log(const char* fmt, ...) {
-  if(logSerial == nullptr)
+void __log(const char *fmt, ...)
+{
+  if (logSerial == nullptr)
     return;
   char _log[512];
   va_list arguments;
   va_start(arguments, fmt);
-  vsnprintf_P(_log, ArraySize(_log)-1, fmt, arguments);
-  va_end (arguments);
+  vsnprintf_P(_log, ArraySize(_log) - 1, fmt, arguments);
+  va_end(arguments);
   logSerial->print(_log);
 }

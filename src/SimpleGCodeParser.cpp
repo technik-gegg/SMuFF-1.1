@@ -274,7 +274,7 @@ bool parse_G(const String& buf, int8_t serial) {
     // list help file if the first char is a question mark (?)
     if(buf.substring(ofs).charAt(0)=='?') {
       sprintf(tmp, "g%d", code);
-      listTextFile(tmp, serial);
+      listHelpFile(tmp, serial);
       return true;
     }
     if(gCodeFuncsG[i].code == code) {
@@ -306,7 +306,7 @@ bool parse_M(const String& buf, int8_t serial) {
       // list help file if the first char is a question mark (?)
       if(buf.substring(ofs).charAt(0)=='?') {
         sprintf(tmp, "m%d", code);
-        listTextFile(tmp, serial);
+        listHelpFile(tmp, serial);
         return true;
       }
       //__debugS(PSTR("Calling: M"), gCodeFuncsM[i].code);
@@ -527,15 +527,15 @@ void prepStepping(int8_t index, long param, bool Millimeter /* = true */, bool i
 }
 
 void sendGList(int8_t serial) {
-  listTextFile(PSTR("gcmds"), serial);
+  listHelpFile(PSTR("gcmds"), serial);
 }
 
 void sendMList(int8_t serial) {
-  listTextFile(PSTR("mcmds"), serial);
+  listHelpFile(PSTR("mcmds"), serial);
 }
 
 void sendM205List(int8_t serial) {
-  listTextFile(PSTR("m205"), serial);
+  listHelpFile(PSTR("m205"), serial);
 }
 
 void sendToolResponse(int8_t serial) {

@@ -43,15 +43,19 @@ void ZFan::setIndex(int8_t fanIndex) {
 void ZFan::setFanSpeed(uint8_t speed) {
   _speed = speed;
   _pulseLen = map(speed, 0, 100, _minSpeed, _maxSpeed);
+  _blipTime = 0;
 }
 
 void ZFan::setFan() {
-  _tickCnt += 50;
+  _tickCnt += _tickRes;
+  _blipTime += _tickRes;
   if(_tickCnt <= _pulseLen)
     setFanPin(HIGH);
-  else
-    setFanPin(LOW);
-  if(_tickCnt >= FAN_DUTY_CYCLE) {
+  else {
+    if(_blipTimeout > 0 && _blipTime > _blipTimeout)
+      setFanPin(LOW);
+  }
+  if(_tickCnt >= _maxSpeed) {
     _tickCnt = 0;
   }
 }
