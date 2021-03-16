@@ -20,7 +20,7 @@ Available M Commands
   M205	-	Set advanced options
   M206	-	Set offsets
   M250	-	LCD contrast
-  M280  - Set Servo position
+  M280	- Set Servo position
   M300	-	Play a tone or a tune
   M350	-	Set motor microstepping
   M412	-	JAM detection on/off

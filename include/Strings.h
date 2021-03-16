@@ -103,8 +103,8 @@ const char P_ToolMaterial [] PROGMEM        = { "Tool %d: %s, %d%%\n" };
 
 const char P_Selecting [] PROGMEM           = { "Selecting" };
 const char P_Wait [] PROGMEM                = { "please wait..." };
-const char P_Busy[] PROGMEM                 = { "busy..." };
-const char P_Ready[] PROGMEM                = { "ready." };
+const char P_Busy[] PROGMEM                 = { "BUSY " };
+const char P_Ready[] PROGMEM                = { "READY" };
 const char P_Pemu[] PROGMEM                 = { "PMMU2" };
 const char P_Purging [] PROGMEM             = { "Purging" };
 const char P_PurgeLen [] PROGMEM            = { "%d%% = %smm" };
@@ -137,6 +137,7 @@ const char P_InMMS[] PROGMEM                = { "in mm/s:" };
 const char P_InSteps[] PROGMEM              = { "in steps:" };
 const char P_InMilliAmpere[] PROGMEM        = { "in mA:" };
 const char P_InOhm[] PROGMEM                = { "in ohm:" };
+const char P_InBPM[] PROGMEM                = { "in BPM:" };
 
 const char P_InValue[] PROGMEM              = { "as value:" };
 const char P_YesNo[] PROGMEM                = { "yes / no:" };

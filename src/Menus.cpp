@@ -41,7 +41,7 @@ void checkMenuSize(const char* PROGMEM name, char* menu, size_t size) {
   if(strlen(menu) > size) {
     char tmp[80];
     sprintf_P(tmp, name);
-    __debugS(PSTR("Overrun in %s Menu: size=%d len=%d\n"), tmp, size, strlen(menu));
+    __debugS(PSTR("Overrun in %s Menu: size=%d len=%d\n\a\a"), tmp, size, strlen(menu));
   }
   #endif
 }
@@ -182,7 +182,7 @@ void setupOptionsMenu(char* menu) {
     smuffConfig.useCutter ? P_Yes : P_No,
     smuffConfig.cutterOpen,
     smuffConfig.cutterClose,
-    smuffConfig.useIdleAnimation ? P_Yes : P_No
+    smuffConfig.invertRelay ? P_Yes : P_No
   );
 }
 
@@ -319,7 +319,10 @@ void setupDisplayMenu(char* menu) {
     smuffConfig.lcdContrast,
     smuffConfig.encoderTickSound ? P_Yes : P_No,
     translateColor(smuffConfig.backlightColor, 0),
-    translateColor(smuffConfig.toolColor, 1)
+    translateColor(smuffConfig.toolColor, 1),
+    smuffConfig.useIdleAnimation ? P_Yes : P_No,
+    smuffConfig.animationBPM,
+    smuffConfig.statusBPM
   );
 }
 
@@ -610,6 +613,17 @@ void positionServoCallback(int val) {
   setServoPos(toolSelected+10, val);
   #else
   setServoPos(SERVO_LID, val);
+  #endif
+}
+
+void animationBpmCallback(int val) {
+  #if defined(USE_FASTLED_TOOLS)
+    for(int i=0; i< smuffConfig.toolCount*2; i++) {
+      fadeToBlackBy(ledsTool, smuffConfig.toolCount, 100);
+      int8_t pos = beatsin8(val, 0, smuffConfig.toolCount-1);
+      ledsTool[pos] += CHSV(fastLedHue, 255, 200);
+      FastLED.delay(25);
+    }
   #endif
 }
 
@@ -1341,7 +1355,7 @@ void showDisplayMenu(char* menuTitle) {
   uint32_t startTime = millis();
   uint8_t current_selection = 0;
   char* title;
-  char _menu[128];
+  char _menu[180];
   int iVal;
   bool bVal;
 
@@ -1389,6 +1403,24 @@ void showDisplayMenu(char* menuTitle) {
 
         case 6: // Tool Color
             selectToolColor(smuffConfig.toolColor, title);
+            break;
+
+        case 7: // Idle Animation
+            bVal = smuffConfig.useIdleAnimation;
+            if(showInputDialog(title, P_YesNo, &bVal))
+              smuffConfig.useIdleAnimation = bVal;
+            break;
+
+        case 8: // Animation BPM
+            iVal = smuffConfig.animationBPM;
+            if(showInputDialog(title, P_InBPM, &iVal, 1, 255))
+              smuffConfig.animationBPM = (uint8_t)iVal;
+            break;
+
+        case 9: // Status BPM
+            iVal = smuffConfig.statusBPM;
+            if(showInputDialog(title, P_InBPM, &iVal, 1, 255))
+              smuffConfig.statusBPM = (uint8_t)iVal;
             break;
       }
       startTime = millis();
@@ -1646,10 +1678,12 @@ void showOptionsMenu(char* menuTitle) {
             }
             break;
 
-        case 14: // Idle Animation
-            bVal = smuffConfig.useIdleAnimation;
-            if(showInputDialog(title, P_YesNo, &bVal))
-              smuffConfig.useIdleAnimation = bVal;
+        case 14: // Invert Relay
+            bVal = smuffConfig.invertRelay;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.invertRelay = bVal;
+              switchFeederStepper(smuffConfig.externalStepper);
+            }
             break;
 
 

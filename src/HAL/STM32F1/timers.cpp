@@ -101,6 +101,7 @@ void Timer::setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t presca
   if (_timer == TIMER6 || _timer == TIMER7) {
     // since these timers don't have a compare mode, we're using
     // the compare value as a period (in uS)
+    hwTimer->setPrescaleFactor(prescaler);
     hwTimer->setPeriod(compare);
   }
   else {

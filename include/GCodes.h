@@ -77,4 +77,4 @@ extern bool G90(const char* msg, String buf, int8_t serial);
 extern bool G91(const char* msg, String buf, int8_t serial);
 
 extern uint16_t handleFeedSpeed(String buf, uint8_t axis);
-extern void changeFeederInsertSpeed(uint16_t speed);
+extern void changeFeederSpeed(uint16_t speed);

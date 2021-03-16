@@ -34,7 +34,11 @@ U8G2_SSD1306_128X64_NONAME_F_SW_I2C display(U8G2_R0, /* clock */ DSP_SCL, /* dat
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 #endif
 #elif defined(USE_LEONERD_DISPLAY)
+#if defined(USE_SW_TWI)
+#error "The LeoNerd's OLED Module doesn't work with software I2C! Please use either another board or another display!"
+#else
 U8G2_SH1106_128X64_NONAME_F_HW_I2C display(U8G2_R2, /* reset=*/U8X8_PIN_NONE);
+#endif
 #elif defined(USE_ANET_DISPLAY)
 //
 //  Attn.: Instructions to modify the ANET display can be found here: https://www.thingiverse.com/thing:4009810
@@ -95,7 +99,8 @@ Stream *logSerial = &Serial;
 ZStepper steppers[NUM_STEPPERS];
 Timer stepperTimer;
 Timer gpTimer;
-//Timer fastTimer;
+Timer fastLEDTimer;
+Timer servoTimer;
 ZServo servo;
 ZServo servoLid;
 ZServo servoCutter;
@@ -140,6 +145,7 @@ bool testMode = true;
 bool testMode = false;
 #endif
 bool timerRunning = false;
+bool fastLEDTimerRunning = false;
 int8_t toolSelections[MAX_TOOLS];
 uint32_t pwrSaveTime;
 volatile bool isPwrSave = false;
@@ -147,13 +153,10 @@ volatile bool showMenu = false;
 volatile bool lastZEndstopState = false;
 static volatile unsigned generalCounter = 0;
 static volatile unsigned tickCounter = 0;
+static volatile unsigned fastLEDTickCounter = 0;
 volatile uint16_t bracketCnt = 0;
 volatile uint16_t jsonPtr = 0;
 volatile bool initDone = false;  // enables sending periodical status information to serial ports
-volatile bool processingSerial0; // set when GCode is incoming on a serial port
-volatile bool processingSerial1;
-volatile bool processingSerial2;
-volatile bool processingSerial3;
 String serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3;
 uint8_t remoteKey = REMOTE_NONE;
 volatile bool sdRemoved = false;
@@ -161,10 +164,11 @@ uint16_t mmsMin = 1;         // minimum moving speed for stepper in mm/s
 uint16_t mmsMax = 800;       // maximum moving speed for stepper in mm/s
 uint16_t speedIncrement = 5; // increment for speeds in menus
 uint8_t volatile fastLedHue = 0;
-uint8_t volatile fastLedBrightness = 0;
 bool brightnessDir = true;
 uint32_t lastEvent = 0;
 volatile bool isIdle = false;
+bool tmcWarning = false;
+bool isUsingTmc = false;
 
 static volatile uint16_t intervalMask; // bit-mask for interval reached
 IntervalHandler intervalHandlers[] = {
@@ -275,11 +279,36 @@ bool checkDuetEndstop()
   return false;
 }
 
-void isrFastTimerHandler()
+void isrFastLEDTimerHandler()
 {
-  //noInterrupts();
+  #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
+  if(!initDone)
+    return;
+  fastLEDTickCounter++;
+  if(fastLEDTickCounter % 3 == 0) {   // every 60ms
+    fastLedHue++;                     // used for some color changing/fading effects
+  }
+  if(fastLEDTickCounter % 5 == 0) {  // about every 100ms
+    if(fastLedStatus > FASTLED_STAT_NONE) {
+      setFastLEDStatus();
+    }
+    else {
+      setFastLEDTools();
+    }
+    if(servoLid.isPulseComplete())  // refresh FastLED only if the pulse cycle of the Lid servo is completed
+      refreshFastLED();             // otherwise it'll interrput the servo ISR and make it jitter
+  }
+  #endif
+}
 
-  //interrupts();
+void isrServoTimerHandler()
+{
+  #if !defined(MULTISERVO)
+  noInterrupts();
+  // call the servos interrupt routines frequently
+  isrServoHandler();
+  interrupts();
+  #endif
 }
 
 /*
@@ -321,29 +350,9 @@ void isrGPTimerHandler()
 #endif
   }
   isrFanTimerHandler();   // call the fan interrupt routines also every 50uS
-  #if !defined(MULTISERVO)
-  // call the servos interrupt routines frequently
-  isrServoTimerHandler();
-  #endif
 
-  #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-  if(initDone && (generalCounter % 50 == 0)) { // every 50ms
-    #if defined(USE_FASTLED_TOOLS)
-    fastLedHue++;       // used for some color changing/fading effects
-    if(brightnessDir)
-      fastLedBrightness += 5;
-    else
-      fastLedBrightness -= 5;
-    if(fastLedBrightness == 255)
-      brightnessDir = false;
-    if(fastLedBrightness == 0)
-      brightnessDir = true;
-    #endif
-  }
-#endif
+  timerRunning = false;
 
-  if (tickCounter == 10000) // reset counter to avoid overrun
-    tickCounter = 0;
   interrupts();
 }
 
@@ -389,22 +398,10 @@ void enumI2cDevices()
 
 void setup()
 {
-
   serialBuffer0.reserve(40); // initialize serial comm. buffers
   serialBuffer1.reserve(40);
   serialBuffer2.reserve(40);
   serialBuffer3.reserve(40);
-
-#if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3)
-  // Disable JTAG for these boards!
-  // On the FYSETC AIOII it's because of the display DSP_DC_PIN/DOG_A0 signal (PA15 / JTDI).
-  // On the SKR MINI E3-DIP it's because of the buzzer signal (PA15 / JTDI).
-  // On the SKR MINI E3 V2.0 it's because of the SCL signal (PA15 / JTDI).
-  disableDebugPorts();
-#if defined(__BRD_FYSETC_AIOII) && !defined(USE_TWI_DISPLAY) && defined(STM32_REMAP_SPI)
-  afio_remap(AFIO_REMAP_SPI1); // remap SPI3 to SPI1 if a "normal" display is being used
-#endif
-#endif
 
 // Setup a fixed baudrate until the config file was read.
 // This baudrate is the default setting on the ESP32 while
@@ -418,16 +415,27 @@ void setup()
     Serial2.begin(115200);
   if (CAN_USE_SERIAL3)
     Serial3.begin(115200);
+  __debugS(PSTR("[ setup start ]"));
+
+#if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3)
+  // Disable JTAG for these boards!
+  // On the FYSETC AIOII it's because of the display DSP_DC_PIN/DOG_A0 signal (PA15 / JTDI).
+  // On the SKR MINI E3-DIP it's because of the buzzer signal (PA15 / JTDI).
+  // On the SKR MINI E3 V2.0 it's because of the SCL signal (PA15 / JTDI).
+  disableDebugPorts();
+  __debugS(PSTR("[ debug ports disabled ]"));
+  #if defined(__BRD_FYSETC_AIOII) && !defined(USE_TWI_DISPLAY) && defined(STM32_REMAP_SPI)
+    afio_remap(AFIO_REMAP_SPI1); // remap SPI3 to SPI1 if a "normal" display is being used
+  #endif
+#endif
 
   initUSB(); // init the USB serial so it's being recognized by the Windows-PC
 #if defined(USE_COMPOSITE_SERIAL)
   CompositeSerial.begin(115200);
 #endif
   initFastLED(); // init FastLED if configured
-  testFastLED(false); // run a test sequence on FastLEDs
   initHwDebug(); // init hardware debugging
 
-  __debugS(PSTR("[ setup start ]"));
 #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
 #if !defined(USE_SW_TWI)
   enumI2cDevices();
@@ -450,6 +458,7 @@ void setup()
     readMaterials();    // read MATERIALS.CFG from SD-Card
   }
   __debugS(PSTR("[ after readConfig ]"));
+  testFastLED(false); // run a test sequence on FastLEDs
   testFastLED(true); // run a test sequence on tools FastLEDs
   setupSerial(); // setup all components according to the values in SMUFF.CFG
   __debugS(PSTR("[ after setupSerial ]"));
@@ -480,14 +489,10 @@ void setup()
   //__debugS(PSTR("readSequences took %d ms"), millis()-now);
 
   if (smuffConfig.homeAfterFeed)
-  {
     moveHome(REVOLVER, false, false);
-  }
   else
-  {
     resetRevolver();
-  }
-  __debugS(PSTR("DONE reset Revolver"));
+  //__debugS(PSTR("DONE reset Revolver"));
 
   sendStartResponse(0); // send "start<CR><LF>" to USB serial interface
   if (CAN_USE_SERIAL1)
@@ -497,11 +502,18 @@ void setup()
   if (CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)
     sendStartResponse(3);
 
-  removeFirmwareBin(); // deletes the firmware.bin file to prevent re-flashing on each boot
-  initDone = true;     // mark init done; enable periodically sending status, if configured
-  startupBeep();       // signal startup has finished
+  removeFirmwareBin();        // deletes the firmware.bin file to prevent re-flashing on each boot
   refreshStatus(true, false);
-  pwrSaveTime = millis(); // init value for LCD screen timeout
+  startupBeep();              // signal startup has finished
+  pwrSaveTime = millis();     // init value for LCD screen timeout
+  initDone = true;            // mark init done; enable periodically sending status, if configured
+  #if defined(__BRD_SKR_MINI_E3)
+    if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
+      __debugS(PSTR("Warning: Your controller is equipped with TMC stepper drivers but at least one"));
+      __debugS(PSTR("of them is not being initialized for UART mode. Thus, your stepper motor may overheat!"));
+      __debugS(PSTR("Please check and change your configuration accordingly!"));
+    }
+  #endif
 }
 
 void startStepperInterval()
@@ -568,49 +580,45 @@ void runNoWait(int8_t index)
   //__debugS(PSTR("Started stepper %d"), index);
 }
 
+
 void runAndWait(int8_t index)
 {
+  static uint32_t lastFeedUpdate = 0;
   runNoWait(index);
   while (remainingSteppersFlag)
   {
     checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
-
 #if defined(__STM32F1__) // || defined(__ESP32__)
-    if ((remainingSteppersFlag & _BV(FEEDER)) && !showMenu)
+    if ((remainingSteppersFlag & _BV(FEEDER)) && !showMenu && (millis()-lastFeedUpdate >200))
     {
-      //refreshStatus(false, true);
+      refreshStatus(false, true);
+      lastFeedUpdate = millis();
     }
 #endif
   }
-  //__debugS(PSTR("RunAndWait done"));
-  //if(index==FEEDER) __debugS(PSTR("Fed: %smm"), String(steppers[index].getStepsTakenMM()).c_str());
 }
 
 void refreshStatus(bool withLogo, bool feedOnly)
 {
-
-  if (feedOnly)
-  {
-    drawFeed();
-  }
-  else
-  {
-    display.firstPage();
-    do
-    {
-      if (withLogo)
-        drawLogo();
+  if (initDone && !isPwrSave && !showMenu && !displayingUserMessage && !isTestrun) {
+    if (feedOnly) {
+      drawFeed();
+    }
+    else {
+      display.clearBuffer();
       drawStatus();
-      drawSDRemoved(sdRemoved);
-    } while (display.nextPage());
+      display.updateDisplay();
+      // note to myself: if it's hanging here, there's something wrong with Timer 4 CH1 (STM32)
+      //__debugS(PSTR("refreshStatus done"));
+    }
   }
 }
 
 #ifdef HAS_TMC_SUPPORT
 void reportTMC(uint8_t axis, const char *PROGMEM msg)
 {
-  // for now, only debug message, subject to change in the future
-  __debugS(PSTR("Driver %c: reports '%s'"), 'X' + axis, msg);
+  // for now, only debug message (main screen will show "!" next to "TMC")
+  __debugS(PSTR("Driver %c: reports '%s'"), axis==FEEDER2 ? 'E' : 'X' + axis, msg);
 }
 
 void monitorTMC(uint8_t axis)
@@ -621,6 +629,7 @@ void monitorTMC(uint8_t axis)
     // has any error occured?
     if (drivers[axis]->drv_err())
     {
+      tmcWarning = true;
       // check overtemp. warning
       if (drivers[axis]->otpw())
       {
@@ -771,15 +780,14 @@ void loop()
     {
       userBeep();
       leoNerdBlinkRed = true;
+      setFastLEDStatus(FASTLED_STAT_ERROR);
     }
+    isIdle = false;
     sdRemoved = true;
     if((generalCounter % 500) == 0) {
       char tmp[50];
       sprintf_P(tmp, P_SDCardRemoved);
       drawUserMessage(tmp);
-    }
-    if(generalCounter % 50 == 0) {
-      setFastLEDStatus(FASTLED_STAT_ERROR);
     }
     return;
   }
@@ -792,6 +800,7 @@ void loop()
         sdRemoved = false;
         leoNerdBlinkRed = false;
         setFastLEDStatus(FASTLED_STAT_NONE);
+        lastEvent = millis();
         refreshStatus(true, false);
       }
     }
@@ -803,22 +812,19 @@ void loop()
   bool state = feederEndstop();
   if (state != lastZEndstopState)
   {
-    lastZEndstopState = state;
     refreshStatus(true, false);
+    lastZEndstopState = state;
     // for Duet3D only
     setSignalPort(FEEDER_SIGNAL, state);
-    delay(200);
+    delay(20);
     setSignalPort(FEEDER_SIGNAL, !state);
-    delay(200);
+    delay(20);
     setSignalPort(FEEDER_SIGNAL, state);
   }
-  checkUserMessage();
-
-
-  if (!isPwrSave && !showMenu && !displayingUserMessage && ((generalCounter % 500) == 0))
-  {
-    refreshStatus(true, false); // refresh display every 500ms
+  if(checkUserMessage()) {
+    pwrSaveTime = millis();
   }
+
   isIdle = ((millis() - lastEvent) / 1000 >= (unsigned long)smuffConfig.powerSaveTimeout);
 
   int16_t turn;
@@ -856,18 +862,25 @@ void loop()
       if (isPwrSave)
       {
         setPwrSave(0);
-        refreshStatus(true, false);
+        return;
       }
       lastEvent = millis();
       isIdle = false;
     }
     if(!isIdle) {
-      if(lastFastLedStatus != FASTLED_STAT_NONE)
+      if(lastFastLedStatus != FASTLED_STAT_NONE) {
         setFastLEDStatus(FASTLED_STAT_NONE);
+        #if defined(USE_FASTLED_BACKLIGHT)
+        setBacklightIndex(smuffConfig.backlightColor);       // turn back on the backlight
+        #endif
+      }
     }
     else {
-      if(smuffConfig.useIdleAnimation && generalCounter % 20 == 0) {
+      if(smuffConfig.useIdleAnimation && lastFastLedStatus != FASTLED_STAT_MARQUEE) {
         setFastLEDStatus(FASTLED_STAT_MARQUEE);
+        #if defined(USE_FASTLED_BACKLIGHT)
+        setBacklightIndex(0);       // turn off the backlight
+        #endif
       }
     }
 
@@ -924,24 +937,13 @@ void loop()
   if ((millis() - pwrSaveTime) / 1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave)
   {
     //__debugS(PSTR("Power save mode after %d seconds (%d)"), (millis() - pwrSaveTime)/1000, smuffConfig.powerSaveTimeout);
-    refreshStatus(true, false);
     setPwrSave(1);
   }
 
-
 #ifdef HAS_TMC_SUPPORT
-  if (smuffConfig.stepperStall[SELECTOR])
-  {
-    monitorTMC(SELECTOR);
-  }
-  if (smuffConfig.stepperStall[REVOLVER])
-  {
-    monitorTMC(REVOLVER);
-  }
-  if (smuffConfig.stepperStall[FEEDER])
-  {
-    monitorTMC(FEEDER);
-  }
+  monitorTMC(SELECTOR);
+  monitorTMC(REVOLVER);
+  monitorTMC(FEEDER);
 #endif
 
   // For testing only
@@ -954,21 +956,16 @@ void setPwrSave(int8_t state)
   isPwrSave = state == 1;
   if (!isPwrSave)
   {
-    delay(1200);
     pwrSaveTime = millis();
   }
 }
 
 bool checkUserMessage()
 {
-  bool button = getEncoderButton(false);
-  if (button && displayingUserMessage)
-  {
-    displayingUserMessage = false;
-  }
-  //__debugS(PSTR("%ld"), (millis()-userMessageTime)/1000);
-  if (millis() - userMessageTime > USER_MESSAGE_RESET * 1000)
-  {
+  bool isClicked;
+
+  isClicked = getEncoderButton(true);
+  if (displayingUserMessage && (isClicked || (millis() - userMessageTime > USER_MESSAGE_RESET * 1000))) {
     displayingUserMessage = false;
   }
   return displayingUserMessage;
@@ -1201,7 +1198,6 @@ void serialEvent()
   uint16_t avail = 0;
   while ((avail = Serial.available()))
   {
-    processingSerial0 = true;
     char in = (char)Serial.read();
     // check for JSON data first
     if (isJsonData(in))
@@ -1219,7 +1215,6 @@ void serialEvent()
       filterSerialInput(serialBuffer0, in);
     }
   }
-  processingSerial0 = false;
 }
 
 void serialEvent2()
@@ -1227,7 +1222,6 @@ void serialEvent2()
   uint16_t avail = 0;
   while ((avail = Serial2.available()))
   {
-    processingSerial2 = true;
     char in = (char)Serial2.read();
     //__log(PSTR("Avail %d 0x%02x\n"), avail, in);
     // in case of PanelDue connected, route everthing to Duet3D - do not process it any further
@@ -1252,7 +1246,6 @@ void serialEvent2()
       }
     }
   }
-  processingSerial2 = false;
 }
 
 void serialEvent1()
@@ -1260,7 +1253,6 @@ void serialEvent1()
   uint16_t avail = 0;
   while ((avail = Serial1.available()))
   {
-    processingSerial1 = true;
     char in = (char)Serial1.read();
     // check for JSON data first
     if (isJsonData(in))
@@ -1278,7 +1270,6 @@ void serialEvent1()
       filterSerialInput(serialBuffer1, in);
     }
   }
-  processingSerial1 = false;
 }
 
 void serialEvent3()
@@ -1286,7 +1277,6 @@ void serialEvent3()
   uint16_t avail = 0;
   while ((avail = Serial3.available()))
   {
-    processingSerial3 = true;
     char in = (char)Serial3.read();
     if (smuffConfig.hasPanelDue == 2)
     {
@@ -1297,7 +1287,6 @@ void serialEvent3()
     {
       if (in == '\n' || (isCtlKey && in == 'n'))
       {
-        //__debugS(PSTR("Received-3: %s"), serialBuffe3.c_str());
         parseGcode(serialBuffer3, 3);
         isQuote = false;
         actionOk = false;
@@ -1309,5 +1298,4 @@ void serialEvent3()
       }
     }
   }
-  processingSerial3 = false;
 }

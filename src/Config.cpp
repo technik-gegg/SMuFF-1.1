@@ -190,6 +190,9 @@ bool readConfig()
       smuffConfig.usePurge =                    jsonDoc[usePurge];
       smuffConfig.cutterLength =                jsonDoc[cutterLength];
       smuffConfig.useIdleAnimation =            jsonDoc[idleAnim];
+      smuffConfig.animationBPM =                jsonDoc[animBpm];
+      smuffConfig.statusBPM =                   jsonDoc[statusBpm];
+      smuffConfig.invertRelay =                 jsonDoc[invertRelay];
 
       /*
       SELECTOR
@@ -476,6 +479,15 @@ bool readMaterials() {
         else {
           smuffConfig.purges[i] = 100;
         }
+        const char* cval = jsonDoc[item][colorVal];
+        if(cval != nullptr) {
+          long color;
+          if(sscanf(cval,"%lx", &color) > 0) {
+            smuffConfig.materialColors[i] = (uint32_t)color;
+            //__debugS(PSTR("Material color: #%lX"), color);
+          }
+        }
+
         const char* pFItem = jsonDoc[item][material];
         if(pFItem != nullptr) {
           __debugS(PSTR("%s: %s"), item, pFItem);
@@ -541,7 +553,9 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[usePurge]             = smuffConfig.usePurge;
   jsonDoc[cutterLength]         = smuffConfig.cutterLength;
   jsonDoc[idleAnim]             = smuffConfig.useIdleAnimation;
-
+  jsonDoc[animBpm]              = smuffConfig.animationBPM;
+  jsonDoc[statusBpm]            = smuffConfig.statusBPM;
+  jsonDoc[invertRelay]          = smuffConfig.invertRelay;
 
   JsonObject node = jsonObj.createNestedObject(selector);
   node[offset]                = smuffConfig.firstToolOffset;
@@ -751,11 +765,14 @@ bool writeMaterials(Print* dumpTo) {
   // create materials
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   char item[15];
+  char tmp[10];
   for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
     sprintf_P(item, P_Tool, i);
     JsonObject node = jsonObj.createNestedObject(item);
     node[color] = smuffConfig.materials[i];
     node[pfactor] = smuffConfig.purges[i];
+    sprintf(tmp,"%06lX", smuffConfig.materialColors[i]);
+    node[colorVal] = tmp;
   }
   if(dumpTo == nullptr) {
     dumpTo = openCfgFileWrite(MATERIALS_FILE);

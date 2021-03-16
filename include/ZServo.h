@@ -26,7 +26,10 @@
 #define MAX_SERVOS              5
 #define US_PER_PULSE_0DEG       800       // microseconds for 0 degrees
 #define US_PER_PULSE_180DEG     2200      // microseconds for 180 degrees
-#define DUTY_CYCLE              20000     // servo cycle in us (>= 20ms)
+#define DUTY_CYCLE              20000     // servo cycle in us (>= 20ms, which gives a frequency of about 50Hz)
+#define MOVING_SPEED            200       // moving speed of the servo for 60° in milliseconds (typical)
+                                          // take into account: Servos move faster the higher the voltage
+                                          // the real value is in the datasheet; this is some conservative value
 #ifdef __ESP32__
 #define SERVO_CHANNEL           8
 #define SERVO_FREQ              50
@@ -34,7 +37,7 @@
 
 extern void __debugS(const char* fmt, ...);
 
-void isrServoTimerHandler();
+void isrServoHandler();
 static volatile bool timerSet = false;
 
 class ZServo {
@@ -65,14 +68,22 @@ public:
   uint8_t getMaxCycles() { return _maxCycles; }
   void    disable();
   void    enable();
+  bool    isDisabled() { return _disabled; }
+  bool    isPulseComplete() { return _pulseComplete; }
+  void    setDelay();
 
   uint8_t getDegree() { return _degree; }
+  uint8_t getLastDegree() { return _lastDegree; }
   void    getDegreeMinMax(uint8_t* min, uint8_t* max) { *min = _minDegree; *max = _maxDegree; }
   void    getPulseWidthMinMax(uint16_t* min, uint16_t* max) { *min = _minPw; *max = _maxPw; }
 
 private:
   void    setServoPin(int8_t state);
   int8_t            _pin;
+#ifdef __STM32F1__
+  volatile uint32_t* _pinReg;
+  uint32_t          _pinMask;
+#endif
   int8_t            _pinState;
   bool              _useTimer = false;
   bool              _timerStopped = false;
@@ -90,4 +101,5 @@ private:
   uint8_t           _minDegree = 0;
   uint8_t           _maxDegree = 180;
   uint8_t           _tickRes = 50;
+  bool              _pulseComplete = true;
 };

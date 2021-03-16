@@ -1,0 +1,7 @@
+{
+   "T0": { "Material": "PLA", "Color": "Green",  "PFactor": 100, "CValue": "000000" },
+   "T1": { "Material": "PLA", "Color": "White",  "PFactor": 100, "CValue": "000000" },
+   "T2": { "Material": "PLA", "Color": "Red",    "PFactor": 100, "CValue": "000000" },
+   "T3": { "Material": "PLA", "Color": "Pink",   "PFactor": 100, "CValue": "000000" },
+   "T4": { "Material": "PLA", "Color": "Blue", 	 "PFactor": 100, "CValue": "000000" }
+}

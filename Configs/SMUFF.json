@@ -9,7 +9,7 @@
   "LCDCont": 190,
   "I2CAddr": 136,
   "MenuClose": 20,
-  "FanSpeed": 0,
+  "FanSpeed": 50,
   "PwrSavTime": 300,
   "SendAction": false,
   "EmulPrusa": false,
@@ -33,6 +33,9 @@
   "CutClose": 50,
   "CutterLen": 50,
 	"IdleAnim": false,
+	"AnimBPM": 6,
+	"StatusBPM": 20,
+	"InvRelay": false,
   "Selector": {
    "Offset": 0.5,
    "Spacing": 21.0,

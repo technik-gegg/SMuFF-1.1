@@ -116,14 +116,16 @@ void initFastLED()
 {
 
 #if NEOPIXEL_PIN != -1 && defined(USE_FASTLED_BACKLIGHT)
-  FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  pinMode(NEOPIXEL_PIN, OUTPUT);
+  cBackLight = &FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
   __debugS(PSTR("FastLED for backlight initialized"));
 #else
   __debugS(PSTR("FastLED for backlight not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
 #endif
 #if NEOPIXEL_TOOL_PIN != -1 && defined(USE_FASTLED_TOOLS)
-  FastLED.addLeds<LED_TYPE, NEOPIXEL_TOOL_PIN, COLOR_ORDER>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
+  pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
+  cTools = &FastLED.addLeds<LED_TYPE, NEOPIXEL_TOOL_PIN, COLOR_ORDER>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
   __debugS(PSTR("FastLED for tools initialized"));
 #else
@@ -359,7 +361,6 @@ void setupHeaterBed()
 
 void setupFan()
 {
-
   if (FAN_PIN != -1)
   {
 #ifdef __STM32F1__
@@ -414,11 +415,6 @@ void setupI2C()
 void setupBacklight()
 {
 #if defined(USE_RGB_BACKLIGHT) || defined(USE_FASTLED_BACKLIGHT)
-  for (uint8_t i = 0; i < 8; i++)
-  {
-    setBacklightIndex(i); // flip through all colors
-    delay(250);
-  }
   setBacklightIndex(smuffConfig.backlightColor); // turn on the LCD backlight according to the configured setting
 #endif
 }
@@ -426,6 +422,7 @@ void setupBacklight()
 void setupEncoder()
 {
 #if defined(USE_LEONERD_DISPLAY)
+  #if !defined(USE_SW_TWI)
   encoder.begin();
   uint8_t ver = encoder.queryVersion();
   if (ver < 2)
@@ -454,6 +451,9 @@ void setupEncoder()
     */
   }
   encoder.setDoubleClickEnabled(true);
+  #else
+    __debugS(PSTR("ERROR: The LeoNerd's OLED Module doesn't work with software I2C!"));
+  #endif
 #else
   encoder.setDoubleClickEnabled(true); // enable doubleclick on the rotary encoder
 #endif
@@ -613,7 +613,6 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   driver->beginSerial(TMC_SW_BAUDRATE);
   #endif
   driver->Rsense = rsense;
-  delay(50);
   // Although the TMC datasheet says to set Rsense to internal, the following code will lead to the
   // stepper drivers not stepping anymore! This might be because it conflicts somehow with the OTP
   // on the stepper chips soldered to the E3 1.2 and E3 2.0. It might be a different picture for external
@@ -650,6 +649,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   {
     setDriverSpreadCycle(driver, true, stall, csmin, csmax, csdown, toff); // set SpreadCycle (disable StallGuard)
   }
+  isUsingTmc = true;
   return driver;
 }
 
@@ -682,7 +682,7 @@ void setDriverSpreadCycle(TMC2209Stepper *driver, bool spread, uint8_t stallThrs
 
 void setupTMCDrivers()
 {
-
+  isUsingTmc = false;
 #if defined(TMC_HW_SERIAL)
   // make sure init of the HW-Serial is done only once
   if (!hwSerialInit)
@@ -729,13 +729,14 @@ void setupTimers()
 #if defined(__STM32F1__)
   // *****
   // Attn:
-  //    PA8 (Fan) uses:     TIMER1 CH1 (predefined by libmaple for PWM)
   //    Steppers use:       TIMER2 CH1 (may corrupt TH0 readings)
   //    SW-Serial uses:     TIMER3 CH4 (see SoftwareSerialM library)
+  //    I2C uses:           TIMER4 CH1 (using this timer/channel will kill I2C for some reason)
   //    Beeper uses:        TIMER4 CH3
-  //    GP timer uses:      TIMER8 CH1 (general, encoder)
-  //    PC8 (Heater0) uses: TIMER8 CH3 (predefined by libmaple for PWM)
-  //    PC9 (Heatbed) uses: TIMER8 CH4 (predefined by libmaple for PWM)
+  //    Servo uses:         TIMER5 CH1
+  //    GP timer uses:      TIMER8 CH1 (general, encoder, servos)
+  //    Heater0 uses:       TIMER8 CH3 (predefined by libmaple for PWM)
+  //    Heatbed uses:       TIMER8 CH4 (predefined by libmaple for PWM)
   //
   // Warning: If you need to modify this assignment, be sure you know what you do!
   //          Swapping timers and/or channels may lead to a non functioning device or
@@ -743,13 +744,15 @@ void setupTimers()
   //          the libmaple library settings before you do so.
   // *****
   stepperTimer.setupTimer(Timer::TIMER2, Timer::CH1, STEPPER_PSC, 1); // prescaler set to STEPPER_PSC, timer will be calculated as needed
-  gpTimer.setupTimer(Timer::TIMER8, Timer::CH1, 8, 0);                // prescaler set to 9MHz, timer will be set to 50uS
+  gpTimer.setupTimer(Timer::TIMER8, Timer::CH1, 8, 0);                // prescaler set to 9 MHz, timer will be set to 50uS
+  servoTimer.setupTimer(Timer::TIMER5, Timer::CH1, 8, 0);             // prescaler set to 9 MHz
 #if !defined(USE_LEONERD_DISPLAY)
   setToneTimerChannel(Timer::TIMER4, Timer::CH3); // force TIMER4 / CH3 on STM32F1x for tone library
 #endif
-  nvic_irq_set_priority(NVIC_TIMER8_CC, 0);
+  nvic_irq_set_priority(NVIC_TIMER8_CC, 1);
   nvic_irq_set_priority(NVIC_TIMER2, 1);
   nvic_irq_set_priority(NVIC_TIMER3, 10);
+  nvic_irq_set_priority(NVIC_TIMER5, 0);
 
 #elif defined(__ESP32__)
   // *****
@@ -763,11 +766,13 @@ void setupTimers()
   gpTimer.setupTimer(Timer::TIMER2, 80);               // 1us on 80MHz timer clock
 #endif
 
-  stepperTimer.setupHook(isrStepperHandler);  // setup the ISR for the steppers
-  gpTimer.setupHook(isrGPTimerHandler);       // setup the ISR for rotary encoder, servo and general timers
+  stepperTimer.setupHook(isrStepperHandler);      // setup the ISR for the steppers
+  gpTimer.setupHook(isrGPTimerHandler);           // setup the ISR for rotary encoder, fan and general timers
+  servoTimer.setupHook(isrServoTimerHandler);     // setup the ISR for servos
 
 #if defined(__STM32F1__)
   gpTimer.setNextInterruptInterval(450);        // run general purpose (gp)timer on 50uS (STM32)
+  servoTimer.setNextInterruptInterval(378);     // run servo timer on 42uS (STM32)
 #elif defined(__ESP32__)
   gpTimer.setNextInterruptInterval(50);         // run general purpose (gp)timer on 50uS (ESP32)
 #endif

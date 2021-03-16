@@ -91,5 +91,9 @@ extern char* pfactor;
 extern char* autoWipe;
 extern char* toolColor;
 extern char* idleAnim;
+extern char* colorVal;
+extern char* animBpm;
+extern char* statusBpm;
+extern char* invertRelay;
 
 

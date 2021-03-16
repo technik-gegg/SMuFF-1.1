@@ -1,6 +1,7 @@
 M205 P"..." Sn [ X | Y | Z ]
 Parameter Name In P 	Option:
 -------------------------------
+AnimBPM           		S n
 BackColor           	S n
 BowdenLen           	S n.n
 CSDown              	S n      X | Y | Z
@@ -13,6 +14,7 @@ EncTicks            	S 0|1
 EStopTrg            	S 0|1    X | Y | Z
 HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
+IdleAnim           		S 0|1
 InvDir              	S 0|1    X | Y | Z
 InsLen              	S n.n
 MaxStall            	S n      X | Y | Z
@@ -28,6 +30,7 @@ SendStats           	S 0|1
 ServoOpen           	S 0..180
 ServoClose          	S 0..180
 SharedStepper       	S 0|1
+StatusBPM           	S n
 StepsMM             	S n      X | Z
 StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z

@@ -18,19 +18,21 @@
  */
 #include "SMuFF.h"
 
-#define FADE_SPEED          50
-#define FADE_SPEED_MARQUEE  25
-#define MARQUEE_BPM         6
+#define FADE_SPEED          100
+#define FADE_SPEED_MARQUEE  80
 
 uint8_t lastFastLedIndex = 255, lastFastLedColor = 0;
+volatile bool fastLedFadeFlag = false;
 volatile uint8_t lastFastLedStatus = 0;
 volatile bool fastLedStatus = false;
 uint8_t colorMap[8] PROGMEM = {0, 1, 2, 4, 6, 5, 3, 7};
 
 #if defined(USE_FASTLED_BACKLIGHT)
+CLEDController* cBackLight;
 CRGB leds[NUM_LEDS];
 #endif
 #if defined(USE_FASTLED_TOOLS)
+CLEDController* cTools;
 CRGB ledsTool[MAX_TOOLS];
 #endif
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
@@ -102,7 +104,9 @@ void setBacklightRGB(byte R, byte G, byte B) {
 
 void setBacklightCRGB(CRGB color) {
 #if defined(USE_FASTLED_BACKLIGHT)
-  FastLED.showColor(color);
+  fill_solid(leds, NUM_LEDS, color);
+  cBackLight->showLeds();
+  __debugS(PSTR("Backlight set"));
 #endif
 }
 
@@ -158,7 +162,6 @@ void setFastLEDStatus(uint8_t status) {
   }
   lastFastLedStatus = status;
   settingFastLedStatus = false;
-  refreshFastLED();
 }
 
 void setFastLEDToolsRainbow() {
@@ -170,19 +173,22 @@ void setFastLEDToolsRainbow() {
 
 void setFastLEDToolsError() {
 #if defined(USE_FASTLED_TOOLS)
-  fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_RED, 255, fastLedBrightness));
+  uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
+  fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_RED, 255, brightness));
 #endif
 }
 
 void setFastLEDToolsWarning() {
 #if defined(USE_FASTLED_TOOLS)
-  fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_ORANGE, 255, fastLedBrightness));
+  uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
+  fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_ORANGE, 255, brightness));
 #endif
 }
 
 void setFastLEDToolsOk() {
 #if defined(USE_FASTLED_TOOLS)
-  fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_GREEN, 255, fastLedBrightness));
+  uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
+  fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_GREEN, 255, brightness));
 #endif
 }
 
@@ -190,33 +196,35 @@ void setFastLEDToolsMarquee()
 {
 #if defined(USE_FASTLED_TOOLS)
   // taken from: https://github.com/FastLED/FastLED/blob/master/examples/DemoReel100/DemoReel100.ino
-  //fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
-  FastLED.clear(false);
-  int8_t pos = beatsin8(MARQUEE_BPM, 0, smuffConfig.toolCount-1);
-  ledsTool[pos] += CHSV(fastLedHue, 255, 200);
+  fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
+  int8_t pos = beatsin8(smuffConfig.animationBPM, 0, smuffConfig.toolCount-1);
+  uint32_t color = smuffConfig.materialColors[smuffConfig.toolCount - pos - 1];
+  // if the material color value is 0, set a random color
+  if(color == 0)
+    ledsTool[pos] += CHSV(fastLedHue, 255, 200);
+  else
+    ledsTool[pos] = CRGB(color);
 #endif
 }
 
 void setFastLEDTools(){
-  setFastLEDToolIndex(lastFastLedIndex, lastFastLedColor);
+  setFastLEDToolIndex(lastFastLedIndex, lastFastLedColor, false);
 }
 
-void setFastLEDToolIndex(uint8_t index, uint8_t color) {
+void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag) {
 #if defined(USE_FASTLED_TOOLS)
-  if (fastLedStatus) {
+  if (fastLedStatus && fastLedStatus != FASTLED_STAT_MARQUEE) {
     lastFastLedIndex = index;
     lastFastLedColor = color;
     return;
   }
-  FastLED.clear(true);
-  //fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED);
+  uint8_t ndx = lastFastLedIndex;
+  fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED);
   if (index >= 0 && index < smuffConfig.toolCount) {
     ledsTool[smuffConfig.toolCount - index - 1] = ColorsFastLED[color];
     lastFastLedIndex = index;
     lastFastLedColor = color;
   }
-  refreshFastLED();   // refresh Neopixels
-
 #endif
 }
 
@@ -239,9 +247,8 @@ void setBacklightIndex(int color)
 void setToolColorIndex(int color)
 {
 #if defined(USE_FASTLED_TOOLS)
-  smuffConfig.toolColor = color;
-  setFastLEDToolIndex(lastFastLedIndex, color);
-  fill_solid(ledsTool, smuffConfig.toolCount, ColorsFastLED[color]);
+  setFastLEDToolIndex(lastFastLedIndex, color, false);
+  cTools->showLeds();
 #endif
 }
 
@@ -252,11 +259,12 @@ void testFastLED(bool tools)
     __debugS(PSTR("Testing backlight FastLED"));
     for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
-      leds[i] = ColorsFastLED[1];
-      FastLED.show();
+      leds[i] = ColorsFastLED[(uint8_t)random(1,7)];
+      cBackLight->showLeds();
       delay(250);
-      leds[i] = ColorsFastLED[0];
+      leds[i] = CRGB::Black;
     }
+    setBacklightCRGB(ColorsFastLED[smuffConfig.backlightColor]);
   }
 #endif
 #if defined(NEOPIXEL_TOOL_PIN) && defined(USE_FASTLED_TOOLS)
@@ -265,11 +273,12 @@ void testFastLED(bool tools)
     // set black as active tool color
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {
-      ledsTool[i] = ColorsFastLED[3];
-      FastLED.show();
+      ledsTool[i] = ColorsFastLED[(uint8_t)random(1,7)];
+      cTools->showLeds();
       delay(250);
-      ledsTool[i] = ColorsFastLED[0];
+      ledsTool[i] = CRGB::Black;
     }
+    cTools->showLeds();
   }
 #endif
 }

@@ -4,3 +4,6 @@ LCD Contrast	%d|3
 Encoder Ticks	%s|4
 Backlight	%s|5
 Tool Color	%s|6
+Idle Animation	%s|7
+Anim. BPM	%d|8
+Status BPM	%d|9

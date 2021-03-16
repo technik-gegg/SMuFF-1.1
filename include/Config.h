@@ -18,15 +18,15 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.21"
+#define VERSION_STRING    "V2.22"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-02-28"
-#define CONFIG_FILE       "/SMUFF.CFG"
-#define MATERIALS_FILE    "/MATERIALS.CFG"
-#define TMC_CONFIG_FILE   "/TMCDRVR.CFG"
-#define SERVOMAP_FILE     "/SERVOMAP.CFG"
-#define DATASTORE_FILE    "/EEPROM.DAT"
+#define VERSION_DATE      "2021-03-16"
+#define CONFIG_FILE       "/SMUFF.json"
+#define MATERIALS_FILE    "/MATERIALS.json"
+#define TMC_CONFIG_FILE   "/TMCDRVR.json"
+#define SERVOMAP_FILE     "/SERVOMAP.json"
+#define DATASTORE_FILE    "/EEPROM.json"
 #define TUNE_FILE         "TUNE.DAT"
 #define BEEP_FILE         "BEEP.DAT"
 #define LONGBEEP_FILE     "LBEEP.DAT"
@@ -59,10 +59,10 @@
 #define SERVO_CUTTER        2
 
 #define SERVO_CLOSED_OFS    35          // for Multiservo
-#define SERVO_RESOLUTION    50          // servo ISR service routine called every SERVO_RESOLUTION uS
+#define SERVO_RESOLUTION    42          // servo ISR service routine called every SERVO_RESOLUTION uS
 
 #define FAN_RESOLUTION      50          // fan ISR service routine called every FAN_RESOLUTION uS
-                                        // basically same as SERVO_RESOLUTION since both being handled in the same ISR
+                                        // basically same as SERVO_RESOLUTION
 #define FAN_FREQUENCY       100         // fan frequency in Hz
 #define FAN_BLIP_TIMEOUT    1000        // fan blip timeout in millis (0 to turn bliping off)
 
@@ -129,9 +129,8 @@
 #define STATUS_FONT             BASE_FONT_BIG
 #define LOGO_FONT               BASE_FONT
 #define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
-#define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x
-#define ICONIC_FONT_S           u8g2_font_open_iconic_check_1x_t
-//#define SYMBOL_FONT             u8g2_font_unifont_t_symbols
+#define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x_t
+#define TOOL_FONT               u8g2_font_logisoso22_tr
 
 #define FASTLED_STAT_NONE       0
 #define FASTLED_STAT_MARQUEE     1

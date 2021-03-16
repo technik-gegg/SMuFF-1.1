@@ -51,6 +51,10 @@ void ZServo::attach(int8_t pin, bool useTimer, int8_t servoIndex) {
 
 void ZServo::attach(int8_t pin) {
   _pin = pin;
+#ifdef __STM32F1__
+  _pinReg = &((PIN_MAP[_pin].gpio_device)->regs->BSRR);
+  _pinMask = BIT(PIN_MAP[_pin].gpio_bit);
+#endif
   enable();
   digitalWrite(_pin, 0);
 }
@@ -137,6 +141,8 @@ bool ZServo::setServoPos(uint8_t degree) {
   if(_disabled)
     enable();
 
+  _lastDegree = _degree;
+
   #if defined(__ESP32__)
   if(!_useTimer) {
     _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
@@ -162,6 +168,7 @@ void ZServo::setServoMS(uint16_t microseconds) {
   if(_disabled)
     enable();
   _pulseLen = microseconds;
+  _lastDegree = _degree;
   _degree = (uint8_t)map((int32_t)_pulseLen, (int32_t)_minPw, (int32_t)_maxPw, (int32_t)_minDegree, (int32_t)_maxDegree);
   _tickCnt = 0;
   _dutyCnt = 0;
@@ -174,8 +181,6 @@ void ZServo::setServoMS(uint16_t microseconds) {
   more often.
 */
 void ZServo::setServo() {
-  if(_disabled)
-    return;
 
   if(!_useTimer) {
     if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call
@@ -186,7 +191,6 @@ void ZServo::setServo() {
       delayMicroseconds(_pulseLen);
       digitalWrite(_pin, LOW);
   #endif
-      _lastDegree = _degree;
     }
   }
   else {
@@ -194,11 +198,13 @@ void ZServo::setServo() {
     // sets the output to low.
     // This way, blocking the whole CPU while the delay is being active as it's in the method above
     // isn't happening.
-    if(_tickCnt != 0) {
-      if(_tickCnt <= _pulseLen)
-        setServoPin(HIGH);
-      else
-        setServoPin(LOW);
+    if(_tickCnt <= _pulseLen) {
+      setServoPin(HIGH);
+      _pulseComplete = false;
+    }
+    else {
+      setServoPin(LOW);
+      _pulseComplete = true;
     }
     _tickCnt += _tickRes;
     // reset tick counter after the duty cycle for the next cycle
@@ -209,26 +215,31 @@ void ZServo::setServo() {
   }
 }
 
+
 void ZServo::setServoPin(int8_t state) {
-  /*
-  if(_pinState == state)
+  if(state == _pinState)
     return;
-  */
+#ifdef __STM32F1__
+  *_pinReg = ((state) ? _pinMask : _pinMask << 16); // using the faster digital I/O on STM32
+#else
   digitalWrite(_pin, state);
+#endif
   _pinState = state;
 }
 
-void isrServoTimerHandler() {
-  #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
-  // used for internal hardware debugging only
-  //if(DEBUG_PIN != -1) digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
-  #endif
+void ZServo::setDelay() {
+    // calculate the delay needed to allow the servo to reach the new position
+    // based on a moving speed of MOVING_SPEED per 60° (default 200ms)
+    uint8_t dist = abs(_lastDegree - _degree);
+    float dly = ((float)dist/60)*MOVING_SPEED;
+    delay((uint32_t)dly);
+}
 
+void isrServoHandler() {
   // call all handlers for all servos periodically if the
   // internal timer is being used.
   for(int8_t i=0;  i< MAX_SERVOS; i++) {
-    if(servoInstances[i] == nullptr || servoInstances[i]->isTimerStopped())
-      continue;
-    servoInstances[i]->setServo();
+    if(servoInstances[i] != nullptr && !servoInstances[i]->isTimerStopped() && !servoInstances[i]->isDisabled())
+      servoInstances[i]->setServo();
   }
 }

@@ -30,6 +30,9 @@ extern SdFat SD;
 extern uint8_t  swapTools[];
 
 void saveStore() {
+
+  if(isTestrun)   // don't save if in testrun mode
+    return;
   StaticJsonDocument<512> jsonDoc;
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
 

@@ -5,6 +5,6 @@
 {ESC:04;01f}Tool Changes:      {ESC:36m}{TC}{ESC:37m}
 {ESC:04;28f}Feeder Errors: {ESC:31m}{ERR}{ESC:37m}
 {ESC:04;50f}Stalls (S/F) :{ESC:31m}{STALL}{ESC:37m}/{ESC:31m}{STALLF}{ESC:37m}
-{ESC:05;01f}Feeds ok     : {ESC:35m}{HIT}{ESC:37m}
-{ESC:06;01f}Feeds missed : {ESC:31m}{MISS}{ESC:37m}
-{ESC:07;01f}                 T0  |   T1  |   T2  |   T3  |   T4  |   T5  |   T6  |   T7  |   T8  |   T9  |  T10  |  T11
+{ESC:06;01f}                 T0  |   T1  |   T2  |   T3  |   T4  |   T5  |   T6  |   T7  |   T8  |   T9  |  T10  |  T11
+{ESC:07;01f}Feeds ok     : {ESC:35m}{HIT}{ESC:37m}
+{ESC:08;01f}Feeds missed : {ESC:31m}{MISS}{ESC:37m}

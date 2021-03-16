@@ -120,14 +120,14 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
     }
   }
 
-  parserBusy = true;
+  setParserBusy();
 
   if(line.startsWith("G")) {
     if(parse_G(line.substring(1), serial))
       sendOkResponse(serial);
     else
       sendErrorResponseP(serial);
-    parserBusy = false;
+    setParserReady();
     return;
   }
   else if(line.startsWith("M")) {
@@ -135,7 +135,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
       sendOkResponse(serial);
     else
       sendErrorResponseP(serial);
-    parserBusy = false;
+    setParserReady();
     return;
   }
   else if(line.startsWith("T")) {
@@ -143,7 +143,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
       sendOkResponse(serial);
     else
       sendErrorResponseP(serial);
-    parserBusy = false;
+    setParserReady();
     return;
   }
   else if(line.startsWith("S") || // GCodes for Prusa MMU2 emulation
@@ -160,7 +160,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
           line.startsWith("A")) {
     //if(!line.startsWith("P")) __debugS(PSTR("From Prusa: '%s'"), line.c_str());
     parse_PMMU2(line.charAt(0), line.substring(1), serial);
-    parserBusy = false;
+    setParserReady();
     return;
   }
   else {
@@ -171,7 +171,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
       sendErrorResponseP(serial, tmp);
     }
   }
-  parserBusy = false;
+  setParserReady();
 }
 
 bool parse_T(const String& buf, int8_t serial) {

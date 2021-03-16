@@ -70,12 +70,10 @@
 #define SW_SERIAL_TX_PIN    -1      //
 #define SW_SERIAL_RX_PIN    -1      //
 
-#include "FastLED.h"
-_DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specified" while compiling
-
-#define NEOPIXEL_PIN        -1      // NEOPIXEL
-#define NEOPIXEL_TOOL_PIN   PA8     // for tools
-#define NUM_LEDS            5       // number of Neopixel LEDS
+#define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
+//#define NEOPIXEL_TOOL_PIN PA8       // for tools (NEOPIXEL)
+#define NEOPIXEL_TOOL_PIN   PB15    // 1st alternative for tools (EXT1.3)
+#define NUM_LEDS            3       // number of Neopixel LEDS
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
@@ -107,9 +105,9 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
     #endif
 
-#define DEBUG_PIN           -1
+#define DEBUG_PIN           -1      // SWDIO or -1
 
-#elif defined(USE_TWI_DISPLAY)
+#elif defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY)
 #define USE_SW_TWI          1       //  only SW I2C/TWI is available due to pins PB6/PB7 are not routed to EXP1
 #define DSP_SCL             PA15    // EXP1.9
 #define DSP_SDA             PB15    // EXP1.3
@@ -118,11 +116,15 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define DSP_DC_PIN          -1
 #define DSP_RESET_PIN       -1
 
+#if !defined(USE_LEONERD_DISPLAY)
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
 
 #define DEBUG_PIN           PB9     // EXP1.5
+#else
+#define DEBUG_PIN           -1
+#endif
 #else
     // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
 #define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER

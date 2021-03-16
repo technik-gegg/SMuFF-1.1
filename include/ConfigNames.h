@@ -118,4 +118,8 @@ const char* pfactor PROGMEM            = "PFactor";
 const char* autoWipe PROGMEM           = "AutoWipe";
 const char* toolColor PROGMEM          = "ToolColor";
 const char* idleAnim PROGMEM           = "IdleAnim";
+const char* colorVal PROGMEM           = "CValue";
+const char* animBpm PROGMEM            = "AnimBPM";
+const char* statusBpm PROGMEM          = "StatusBPM";
+const char* invertRelay PROGMEM        = "InvRelay";
 

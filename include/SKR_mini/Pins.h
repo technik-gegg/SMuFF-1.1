@@ -82,10 +82,10 @@ _DEFPIN_ARM(PB9, 9, B);
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #elif defined(USE_TWI_DISPLAY)
 #define NEOPIXEL_PIN        PB9     // EXP2.4 (alternatively PC12/EXP1.7 if used on DIY TWI display)
-#define NUM_LEDS            5       // number of Neopixel LEDS
+#define NUM_LEDS            3       // number of Neopixel LEDS
 #else
 #define NEOPIXEL_PIN        PB9
-#define NUM_LEDS            5       // number of Neopixel LEDS
+#define NUM_LEDS            3       // number of Neopixel LEDS
 #endif
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B

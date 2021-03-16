@@ -32,6 +32,7 @@ extern ZPortExpander portEx;
 #endif
 
 extern SdFat SD;
+extern uint32_t lastEvent;
 
 const char *S_Param = (char *)"S";
 const char *P_Param = (char *)"P";
@@ -988,6 +989,14 @@ bool M145(const char *msg, String buf, int8_t serial)
           smuffConfig.purges[tool] = param;
         return true;
       }
+      else if (getParamString(buf, C_Param, color, ArraySize(color)))
+      {
+        long colorVal;
+        if(sscanf(color, "%lx", &colorVal)) {
+          smuffConfig.materialColors[tool] = (uint32_t)colorVal;
+        }
+        return true;
+      }
       else
       {
         sprintf_P(tmp, P_ToolMaterial, tool, smuffConfig.materials[tool], smuffConfig.purges[tool]);
@@ -1041,7 +1050,7 @@ bool M150(const char *msg, String buf, int8_t serial)
   {
     index = (int8_t)param;
     setFastLEDIntensity(intensity);
-    setFastLEDToolIndex(index, colorNdx);
+    setFastLEDToolIndex(index, colorNdx, true);
     return true;
   }
   setFastLEDIntensity(intensity);
@@ -1620,6 +1629,23 @@ bool M205(const char *msg, String buf, int8_t serial)
         else
           rangeError(serial, 0, MAX_STALL_COUNT);
       }
+      else if (strcmp(cmd, idleAnim) == 0)
+      {
+        smuffConfig.useIdleAnimation = (param > 0);
+      }
+      else if (strcmp(cmd, animBpm) == 0)
+      {
+        if(param > 0 && param <= 255) {
+          smuffConfig.animationBPM = (uint8_t)param;
+          lastEvent = millis() - smuffConfig.powerSaveTimeout*1500;
+          isIdle = true;
+        }
+      }
+      else if (strcmp(cmd, statusBpm) == 0)
+      {
+        if(param > 0 && param <= 255)
+          smuffConfig.statusBPM = (uint8_t)param;
+      }
       else
       {
         sprintf_P(tmp, P_UnknownParam, cmd);
@@ -1728,12 +1754,15 @@ bool M280(const char *msg, String buf, int8_t serial)
   }
   if ((param = getParam(buf, T_Param)) != -1)
   {
-    for (uint8_t i = 0; i <= 180; i += 5)
+    if(param == 0)
+      param = 5;
+    for (uint8_t i = 0; i <= 180; i += param)
     {
       sprintf_P(tmp, PSTR("Servo pos.: %d deg\n"), i);
       printResponse(tmp, serial);
       setServoPos(servoIndex, i);
-      delay(750);
+      if(param >= 5)
+        delay(750);
       stat = true;
     }
   }

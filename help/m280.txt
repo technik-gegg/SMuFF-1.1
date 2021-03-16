@@ -1,4 +1,4 @@
-M280 Pn Sn | Rn | T [ In Jn Fn ]
+M280 Pn Sn | Rn | Tn [ In Jn Fn ]
 --------------------------------
 Pn	the servo index (n: 0 = Wiper servo, 1 = Lid servo, 10..26 servo 1-16 if Multiservo is being used)
 Sn	the desired servo position (n: 0..180 deg.)
@@ -6,4 +6,4 @@ In	the minimum PWM frequency (default: n = 800 depicts 0 deg.)
 Jn	the maximum PWM frequency (default: n = 2400 depicts 180 deg.)
 Fn	the desired servo position in microseconds (800-2400 uS)
 Rn	used as shortcut to open / close the Lid servo (n:  0 = open,  1 = close)
-T 	spins the servo addressed in P from 0 to 180 in 10 deg. steps
+Tn 	spins the servo addressed in P from 0 to 180 degrees in n degree steps (5 if n not applied)

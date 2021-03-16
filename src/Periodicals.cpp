@@ -23,19 +23,11 @@ void every10ms() {
 }
 
 void every20ms() {
+  isrFastLEDTimerHandler();
   // Add your periodical code here
 }
 
 void every50ms() {
-  if(!isIdle && fastLedStatus != FASTLED_STAT_NONE)
-    setFastLEDStatus();
-  // the following lines would allow for smooth transitions on the FastLEDs (such as 'fading to black')
-  // but unfortunatelly they distort the servos functions and make them become jittery.
-  /*
-  else
-    setFastLEDTools();
-  refreshFastLED();
-  */
   // Add your periodical code here
 }
 
@@ -44,6 +36,7 @@ void every100ms() {
 }
 
 void every250ms() {
+  refreshStatus(true, false);     // refresh main screen
   // Add your periodical code here
 }
 

@@ -38,6 +38,8 @@
 #include "MemoryFree.h"
 #include "DataStore.h"
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
+#define FASTLED_ALLOW_INTERRUPTS 0
+//#define FASTLED_INTERRUPT_RETRY_COUNT 1
 #include "FastLED.h"
 #endif
 #include "HAL/HAL.h"
@@ -200,10 +202,14 @@ typedef struct
 
   uint16_t motorOnDelay = 30;
   char materials[MAX_TOOLS][MAX_MATERIAL_LEN];
+  uint32_t materialColors[MAX_TOOLS];
   uint16_t purges[MAX_TOOLS];
   bool wipeBeforeUnload = false;
   uint8_t toolColor = 5;
   bool useIdleAnimation = false;
+  uint8_t animationBPM = 6;
+  uint8_t statusBPM = 20;
+  bool invertRelay = false;
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -234,9 +240,17 @@ extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
 #endif
 #elif defined(__BRD_ESP32)
 #if defined(USE_TWI_DISPLAY)
-extern U8G2_SH1306_128X64_NONAME_F_HW_I2C display;
+  #if defined(USE_SW_TWI)
+  extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
+  #else
+  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
+  #endif
 #elif defined(USE_LEONERD_DISPLAY)
-extern U8G2_SSD1106_128X64_NONAME_F_HW_I2C display;
+  #if defined(USE_SW_TWI)
+  extern U8G2_SSD1106_128X64_NONAME_F_SW_I2C display;
+  #else
+  extern U8G2_SSD1106_128X64_NONAME_F_HW_I2C display;
+  #endif
 #else
 extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
 #endif
@@ -262,7 +276,8 @@ extern void muteTone(int8_t pin);
 extern ZStepper steppers[];
 extern Timer stepperTimer;
 extern Timer gpTimer;
-extern Timer fastTimer;
+extern Timer fastLEDTimer;
+extern Timer servoTimer;
 extern ZServo servo;
 extern ZServo servoLid;
 extern ZServo servoCutter;
@@ -273,9 +288,11 @@ extern LeoNerdEncoder encoder;
 extern ClickEncoder encoder;
 #endif
 #if defined(USE_FASTLED_BACKLIGHT)
+extern CLEDController* cBackLight;
 extern CRGB leds[];
 #endif
 #if defined(USE_FASTLED_TOOLS)
+extern CLEDController* cTools;
 extern CRGB ledsTool[];
 #else
 #endif
@@ -338,11 +355,14 @@ extern bool lidOpen;
 extern uint16_t mmsMin, mmsMax;
 extern uint16_t speedIncrement;
 extern volatile uint8_t fastLedHue;
-extern volatile uint8_t fastLedBrightness;
 extern volatile bool fastLedStatus;
 extern volatile bool fastLedRefresh;
 extern volatile uint8_t lastFastLedStatus;
+extern volatile bool fastLedFadeFlag;
 extern volatile bool isIdle;
+extern bool tmcWarning;
+extern bool isTestrun;
+extern bool isUsingTmc;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper *drivers[];
@@ -376,7 +396,7 @@ extern void drawSelectingMessage(uint8_t tool);
 extern void drawPurgingMessage(uint16_t len, uint8_t tool);
 extern void drawUserMessage(String message, bool smallFont = false, bool center = true, void (*drawCallbackFunc)() = nullptr);
 extern void drawSDStatus(int8_t stat);
-extern void drawFeed();
+extern void drawFeed(bool updateBuffer = true);
 extern void drawSDRemoved(bool removed);
 extern void resetDisplay();
 extern bool selectorEndstop();
@@ -391,6 +411,7 @@ extern bool loadFilament(bool showMessage = true);
 extern bool loadFilamentPMMU2(bool showMessage = true);
 extern bool unloadFilament();
 extern bool unloadFromSelector();
+extern void wipeNozzle();
 extern void cutFilament(bool keepClosed = true);
 extern bool handleFeederStall(uint16_t *speed, int8_t *retries);
 extern bool nudgeBackFilament();
@@ -472,7 +493,8 @@ extern bool checkDuetEndstop();
 extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);
 extern void isrStepperHandler();
 extern void isrGPTimerHandler();
-extern void isrFastTimerHandler();
+extern void isrFastLEDTimerHandler();
+extern void isrServoTimerHandler();
 extern void isrStallDetectedX();
 extern void isrStallDetectedY();
 extern void isrStallDetectedZ();
@@ -529,13 +551,17 @@ extern void printPeriodicalState(int8_t serial);
 extern void prepareSequence(const char *sequence, bool autoPlay = true);
 extern void playSequence(bool inForeground = false);
 extern void playSequenceBackgnd();
+extern void setParserBusy();
+extern void setParserReady();
+extern void runHomeAfterFeed();
+
 
 extern void showLed(uint8_t mode, uint8_t count);
 extern void setBacklightIndex(int color);
 extern void setToolColorIndex(int color);
 extern void setFastLED(uint8_t index, CRGB color);
 extern void setFastLEDIndex(uint8_t index, uint8_t color);
-extern void setFastLEDToolIndex(uint8_t index, uint8_t color);
+extern void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag = true);
 extern void setFastLEDTools();
 extern void setFastLEDIntensity(uint8_t intensity);
 extern void testFastLED(bool tools);

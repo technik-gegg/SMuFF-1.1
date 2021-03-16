@@ -82,7 +82,12 @@ void setupDisplay()
   __debugS(PSTR("I2C display address set to 0x%02X"), I2C_DISPLAY_ADDRESS);
 #endif
 #if defined(USE_LEONERD_DISPLAY)
+  #if !defined(USE_SW_TWI)
   display.begin();
+  #else
+  __debugS(PSTR("ERROR: The LeoNerd's OLED Module doesn't work with software I2C!"));
+  return;
+  #endif
 #else
   display.begin(/*Select=*/ENCODER_BUTTON_PIN, /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
 #endif
@@ -91,113 +96,139 @@ void setupDisplay()
   display.setContrast(smuffConfig.lcdContrast);
 }
 
-void drawLogo()
-{
-  //__debugS(PSTR("drawLogo start..."));
+void drawVersion() {
   char brand[8] = VERSION_STRING;
 #if defined(DEBUG)
   strcat(brand, "D");
 #endif
-
-  display.setBitmapMode(1);
-  display.drawXBMP(0, 0, logo_width, logo_height, logo_bits);
   display.setFont(LOGO_FONT);
   display.setFontMode(0);
   display.setFontDirection(0);
   display.setDrawColor(1);
   display.setCursor(display.getDisplayWidth() - display.getStrWidth(brand) - 1, display.getDisplayHeight() - display.getMaxCharHeight());
   display.print(brand);
-  //__debugS(PSTR("drawLogo end..."));
 }
+
+void drawLogo()
+{
+  display.setBitmapMode(1);
+  display.drawXBMP(0, 0, logo_width, logo_height, logo_bits);
+}
+
 
 void drawStatus()
 {
-  char _wait[128];
+  char brand[8] = VERSION_STRING;
+  #if defined(DEBUG)
+  strcat(brand, "D");
+  #endif
   char tmp[80];
-  char pos[20];
 
-  //__debugS(PSTR("drawStatus start..."));
-  display.setFont(STATUS_FONT);
+  display.setFont(TOOL_FONT);
   display.setFontMode(0);
   display.setDrawColor(1);
-  sprintf_P(tmp, P_CurrentTool);
-  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 14, tmp);
   if ((toolSelected >= 0 && toolSelected < smuffConfig.toolCount))
-    sprintf_P(tmp, PSTR("%2d"), toolSelected);
+    sprintf_P(tmp, PSTR("T%-2d"), toolSelected);
   else
-    sprintf_P(tmp, PSTR("--"));
-  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 14, tmp);
-  sprintf_P(tmp, P_Feed);
-  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 34, tmp);
-  display.setFontMode(1);
-  display.setFont(SMALL_FONT);
-  display.setDrawColor(2);
-  display.drawBox(0, display.getDisplayHeight() - display.getMaxCharHeight() + 2, display.getDisplayWidth(), display.getMaxCharHeight());
-  sprintf_P(_wait, parserBusy ? P_Busy : (smuffConfig.prusaMMU2) ? P_Pemu
-                                                                 : P_Ready);
+    sprintf_P(tmp, PSTR("T--"));
+  display.drawStr(12, 28, tmp);
 
-  sprintf_P(pos, PSTR("%4.2f"), steppers[FEEDER].getStepsTakenMM());
-  sprintf_P(tmp, PSTR("%-7s| %-4s | %-4s "), pos, smuffConfig.externalStepper ? P_External : P_Internal, _wait);
-  display.drawStr(1, display.getDisplayHeight(), tmp);
+  display.setFont(STATUS_FONT);
+  sprintf_P(tmp, PSTR("F1"));
+  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 26, 15, tmp);
+  sprintf_P(tmp, PSTR("F2"));
+  display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 26, 32, tmp);
+
+  display.setFontMode(1);
+  uint16_t y = display.getDisplayHeight()-display.getMaxCharHeight() + 1;
+  uint8_t yBox = y-15;
+  uint8_t yText = y-2;
+  uint8_t boxHeight = display.getMaxCharHeight()+2;
+
+  display.drawFrame(0, yBox, 10, boxHeight);
+  sprintf_P(tmp, PSTR("%1s"), smuffConfig.externalStepper ? PSTR("E") : PSTR("I"));
+  display.drawStr(2, yText, tmp);
+
+  display.drawFrame(14, yBox, 38, boxHeight);
+  sprintf_P(tmp, PSTR("%5s"), (smuffConfig.prusaMMU2) ? P_Pemu : PSTR("SMuFF"));
+  display.drawStr(16, yText, tmp);
+
+#if HAS_TMC_SUPPORT
+  display.drawFrame(56, yBox, 27, boxHeight);
+  display.drawBox(83, yBox, 9, boxHeight);
+
+  display.drawStr(59, yText, PSTR("TMC"));
+  if(!isUsingTmc) {
+    // draw an X near "TMC" if no driver was configured at all
+    display.setDrawColor(2);
+    display.drawStr(84, yText-1, PSTR("x"));
+    display.setDrawColor(1);
+  }
+  else {
+    //tmcWarning = true; // for testing only
+    if(tmcWarning) {
+      display.setDrawColor(2);
+      display.drawStr(84, yText, PSTR("!"));
+      display.setDrawColor(1);
+    }
+  }
+#else
+  display.drawFrame(56, yBox, 36, boxHeight);
+  display.setFont(SMALL_FONT);
+  display.drawStr(60, yText-1, PSTR("A4988"));
+  display.setFont(STATUS_FONT);
+#endif
+
+  display.drawFrame(96, yBox, 11, boxHeight);
+  if(smuffConfig.usePurge) {
+    display.drawStr(99, yText, PSTR("P"));
+  }
+  else {
+    display.setFont(SMALL_FONT);
+    display.drawStr(99, yText-2, PSTR("x"));
+    display.setFont(STATUS_FONT);
+  }
+
+  display.setFont(ICONIC_FONT2);
+  display.drawGlyph(111, y+1, 0x4F);
+  if(!smuffConfig.sendPeriodicalStats) {
+    display.setFont(SMALL_FONT);
+    display.drawStr(117, yText-2, PSTR("x"));
+  }
+
+  display.setFont(SMALL_FONT);
+  sprintf_P(tmp, PSTR("        %5s  %6s"), parserBusy ? P_Busy : P_Ready, brand);
+  display.drawStr(1, display.getDisplayHeight()-1, tmp);
 
   display.setFontMode(0);
   display.setDrawColor(1);
   if (steppers[FEEDER].getMovementDone())
   {
-    if (!smuffConfig.useEndstop2)
-    {
-      display.setFont(ICONIC_FONT);
-      display.drawGlyph(110, 38, feederEndstop() ? 0x41 : 0x42);
-    }
-    else
-    {
-      display.setFont(ICONIC_FONT);
-      display.drawGlyph(94, 38, feederEndstop() ? 0x41 : 0x42);
-      display.drawGlyph(112, 38, feederEndstop(2) ? 0x41 : 0x42);
-    }
-    display.setFont(BASE_FONT);
+    display.setFont(ICONIC_FONT);
+    display.drawGlyph(display.getDisplayWidth() - 18, 18, feederEndstop() ? 0x41 : 0x42);
+    if (smuffConfig.useEndstop2)
+      display.drawGlyph(display.getDisplayWidth() - 18, 35, feederEndstop(2) ? 0x41 : 0x42);
   }
-  else
-  {
-    drawFeed();
-  }
-  //__debugS(PSTR("drawStatus end..."));
+  drawFeed(false);
+  //__debugS(PSTR("[drawStatus] end..."));
+
 }
 
-void drawSDRemoved(bool removed)
+void drawFeed(bool updateBuffer)
 {
-  if (!removed)
-    return;
-
-  display.setFont(ICONIC_FONT);
-  display.drawGlyph(2, 10, 0x47);
-}
-
-void drawFeed()
-{
-  char tmp[80];
-  sprintf_P(tmp, PSTR("%-7s"), String(steppers[FEEDER].getStepsTakenMM()).c_str());
-#if defined(__STM32F1__) || defined(__ESP32__)
+  char tmp[20];
+  sprintf_P(tmp, PSTR("%-4.1f "), steppers[FEEDER].getStepsTakenMM());
   display.setFont(SMALL_FONT);
   display.setFontMode(0);
-  display.setDrawColor(0);
+  display.setDrawColor(1);
   uint16_t x = 0;
-  uint16_t y = display.getDisplayHeight() - display.getMaxCharHeight() + 2;
+  uint16_t y = display.getDisplayHeight() - display.getMaxCharHeight() + 1;
   uint16_t w = 40;
   uint16_t h = display.getMaxCharHeight();
-  display.drawBox(x, y, w, h);
-  display.drawStr(x + 1, display.getDisplayHeight(), tmp);
-  display.sendBuffer();
-  //display.updateDisplayArea(x, y, w, h);
-
-#else
-  display.setFont(STATUS_FONT);
-  display.setFontMode(0);
-  display.setDrawColor(0);
-  display.drawBox(62, 24, display.getDisplayWidth(), display.getMaxCharHeight() - 2);
-  display.setDrawColor(1);
-  display.drawStr(62, 34, tmp);
-#endif
+  //display.drawBox(x,y,w,h);
+  display.drawStr(x + 1, display.getDisplayHeight()-1, tmp);
+  if(updateBuffer)
+    display.sendBuffer();
 }
 
 uint8_t duetTurn = 0;
@@ -414,6 +445,7 @@ void showTMCStatus(uint8_t axis)
       //__debugS(PSTR("Stall has been reset!"));
     }
   }
+  tmcWarning = false;
   displayingUserMessage = false;
 #endif
 }
@@ -428,75 +460,62 @@ void resetDisplay()
 
 void drawSelectingMessage(uint8_t tool)
 {
-  char _sel[128];
-  char _wait[128];
-  char tmp[80];
+  char _sel[20];
+  char _wait[30];
+  char tmp[40];
 
   if (displayingUserMessage) // don't show if something else is being displayed
     return;
   display.clearBuffer();
-  display.firstPage();
-  do
-  {
-    sprintf_P(_sel, P_Selecting);
-    sprintf_P(_wait, P_Wait);
-    if (*smuffConfig.materials[tool] != 0)
-    {
-      sprintf_P(tmp, PSTR("%s"), smuffConfig.materials[tool]);
-    }
-    else
-    {
-      sprintf_P(tmp, P_ToolMenu, tool);
-    }
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
-    display.setFont(BASE_FONT_BIG);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 9, tmp);
-    display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 10, _wait);
-  } while (display.nextPage());
+  sprintf_P(_sel, P_Selecting);
+  sprintf_P(_wait, P_Wait);
+  if (*smuffConfig.materials[tool] != 0)
+    sprintf_P(tmp, PSTR("%s"), smuffConfig.materials[tool]);
+  else
+    sprintf_P(tmp, P_ToolMenu, tool);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
+  display.setFont(BASE_FONT_BIG);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 9, tmp);
+  display.setFont(BASE_FONT);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 10, _wait);
+  display.updateDisplay();
 }
 
 void drawPurgingMessage(uint16_t len, uint8_t tool)
 {
-  char _sel[128];
-  char _wait[128];
-  char tmp[80];
+  char _sel[20];
+  char _wait[30];
+  char tmp[50];
 
   if (displayingUserMessage) // don't show if something else is being displayed
     return;
   display.clearBuffer();
-  display.firstPage();
-  do
-  {
-    sprintf_P(_sel, P_Purging);
-    sprintf_P(_wait, P_Wait);
-    sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((float)len * 2.4).c_str());
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
-    display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 4, tmp);
-    sprintf_P(tmp, P_PurgeCubic, String((float)len * 2.4).c_str());
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 15, tmp);
-    display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
-  } while (display.nextPage());
+  sprintf_P(_sel, P_Purging);
+  sprintf_P(_wait, P_Wait);
+  sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((float)len * 2.4).c_str());
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
+  display.setFont(BASE_FONT);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 4, tmp);
+  sprintf_P(tmp, P_PurgeCubic, String((float)len * 2.4).c_str());
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 15, tmp);
+  display.setFont(BASE_FONT);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
+  display.updateDisplay();
 }
 
 void drawTestrunMessage(unsigned long loop, char *msg)
 {
-  char _sel[128];
-  char _wait[128];
+  char _sel[30];
+  char _wait[30];
   display.clearBuffer();
-  display.firstPage();
-  do
-  {
-    sprintf_P(_sel, P_RunningCmd, loop);
-    sprintf_P(_wait, P_ButtonToStop);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
-    display.setFont(BASE_FONT_BIG);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(msg)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 12, msg);
-    display.setFont(BASE_FONT);
-    display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
-  } while (display.nextPage());
+  sprintf_P(_sel, P_RunningCmd, loop);
+  sprintf_P(_wait, P_ButtonToStop);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
+  display.setFont(BASE_FONT_BIG);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(msg)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 12, msg);
+  display.setFont(BASE_FONT);
+  display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
+  display.updateDisplay();
 }
 
 /**
@@ -536,86 +555,73 @@ uint8_t splitStringLines(char *lines[], uint8_t maxLines, const char *message, c
 
 void drawUserMessage(String message, bool smallFont /* = false */, bool center /* = true */, void (*drawCallbackFunc)() /* = nullptr */)
 {
-
   char *lines[8];
   uint8_t lineCnt = splitStringLines(lines, (int)ArraySize(lines), message.c_str());
 
-  if (isPwrSave)
-  {
+  if (isPwrSave) {
     setPwrSave(0);
   }
-  display.setDrawColor(0);
-  display.drawBox(1, 1, display.getDisplayWidth() - 2, display.getDisplayHeight() - 2);
+  display.clearBuffer();
   display.setDrawColor(1);
-  display.drawFrame(0, 0, display.getDisplayWidth(), display.getDisplayHeight());
-  display.firstPage();
-  do
+  display.setFont(smallFont ? BASE_FONT : BASE_FONT_BIG);
+  uint16_t y = (display.getDisplayHeight() - ((lineCnt-1) * display.getMaxCharHeight())) / 2;
+  for (uint8_t i = 0; i < lineCnt; i++)
   {
-    display.setFont(smallFont ? BASE_FONT : BASE_FONT_BIG);
-    uint16_t y = (display.getDisplayHeight() - (lineCnt - 1) * display.getMaxCharHeight()) / 2;
-    display.firstPage();
-    do
+    uint16_t x = center ? (display.getDisplayWidth() - display.getStrWidth(lines[i])) / 2 : 0;
+    display.drawStr(x, y, lines[i]);
+    if (i == 0)
     {
-      for (uint8_t i = 0; i < lineCnt; i++)
+      if (lineCnt > 1 && strcmp(lines[1], " ") == 0)
       {
-        uint16_t x = center ? (display.getDisplayWidth() - display.getStrWidth(lines[i])) / 2 : 0;
-        display.drawStr(x, y, lines[i]);
-        if (i == 0)
-        {
-          if (lineCnt > 1 && strcmp(lines[1], " ") == 0)
-          {
-            display.drawHLine(0, y + 3, display.getDisplayWidth());
-          }
-        }
-        y += display.getMaxCharHeight();
+        display.drawHLine(0, y + 3, display.getDisplayWidth());
       }
-    } while (display.nextPage());
-    if (drawCallbackFunc != nullptr)
-      drawCallbackFunc();
-    display.setFont(BASE_FONT);
-  } while (display.nextPage());
+    }
+    y += display.getMaxCharHeight();
+  }
+  if (drawCallbackFunc != nullptr)
+    drawCallbackFunc();
+  display.updateDisplay();
+  display.setFont(BASE_FONT);
   displayingUserMessage = true;
   userMessageTime = millis();
 }
 
 void drawSDStatus(int8_t stat)
 {
-  char tmp[80];
+  char tmp[40];
 
   switch (stat)
   {
-  case SD_ERR_INIT:
-    sprintf_P(tmp, P_SD_InitError);
-    longBeep(2);
-    break;
-  case SD_ERR_NOCONFIG:
-    sprintf_P(tmp, P_SD_NoConfig);
-    longBeep(1);
-    break;
-  case SD_READING_CONFIG:
-    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingConfig);
-    break;
-  case SD_READING_TMC:
-    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingTmc);
-    break;
-  case SD_READING_SERVOS:
-    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingServos);
-    break;
-  case SD_READING_MATERIALS:
-    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
-    break;
-  case SD_READING_PURGES:
-    sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
-    break;
+    case SD_ERR_INIT:
+      sprintf_P(tmp, P_SD_InitError);
+      longBeep(2);
+      break;
+    case SD_ERR_NOCONFIG:
+      sprintf_P(tmp, P_SD_NoConfig);
+      longBeep(1);
+      break;
+    case SD_READING_CONFIG:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingConfig);
+      break;
+    case SD_READING_TMC:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingTmc);
+      break;
+    case SD_READING_SERVOS:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingServos);
+      break;
+    case SD_READING_MATERIALS:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
+      break;
+    case SD_READING_PURGES:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
+      break;
   }
   display.clearBuffer();
-  display.firstPage();
-  do
-  {
-    drawLogo();
-    display.setCursor((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, display.getDisplayHeight());
-    display.print(tmp);
-  } while (display.nextPage());
+  drawLogo();
+  drawVersion();
+  display.setCursor((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, display.getDisplayHeight()-1);
+  display.print(tmp);
+  display.updateDisplay();
 }
 
 bool selectorEndstop()
@@ -638,9 +644,19 @@ void setAbortRequested(bool state)
   steppers[FEEDER].setAbort(state); // stop any ongoing stepper movements
 }
 
+void setParserBusy()
+{
+  parserBusy = true;
+}
+
+void setParserReady()
+{
+  parserBusy = false;
+  drawStatus();
+}
+
 bool moveHome(int8_t index, bool showMessage, bool checkFeeder)
 {
-
   if (!steppers[index].getEnabled())
     steppers[index].setEnabled(true);
 
@@ -649,23 +665,21 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder)
     beep(4);
     return false;
   }
-  parserBusy = true;
+  setParserBusy();
   if (checkFeeder && feederEndstop())
   {
     if (showMessage)
     {
       if (!showFeederLoadedMessage())
       {
-        parserBusy = false;
+        setParserReady();
         return false;
       }
     }
     else
     {
       if (feederEndstop())
-      {
         unloadFilament();
-      }
     }
   }
   if (smuffConfig.revolverIsServo)
@@ -689,18 +703,16 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder)
   //__debugS(PSTR("DONE Stepper home"));
   if (index == SELECTOR)
   {
-    setFastLEDToolIndex(toolSelected, 0);
+    setFastLEDToolIndex(toolSelected, 0, true);
     toolSelected = -1;
   }
   long pos = steppers[index].getStepPosition();
   if (index == SELECTOR || index == REVOLVER)
-  {
     dataStore.tool = toolSelected;
-  }
   dataStore.stepperPos[index] = pos;
   saveStore();
   //__debugS(PSTR("DONE save store"));
-  parserBusy = false;
+  setParserReady();
   return true;
 }
 
@@ -794,7 +806,7 @@ uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons)
 
 void signalNoTool()
 {
-  char _msg1[256];
+  char _msg1[30];
   userBeep();
   sprintf_P(_msg1, P_NoTool);
   strcat_P(_msg1, P_Aborting);
@@ -803,30 +815,19 @@ void signalNoTool()
 
 void switchFeederStepper(uint8_t stepper)
 {
-  if (RELAY_PIN != -1)
-  {
-    if (stepper == EXTERNAL)
-    {
-      steppers[FEEDER].setEnabled(false);
-      digitalWrite(RELAY_PIN, 0);
-      smuffConfig.externalStepper = true;
-    }
-    else if (stepper == INTERNAL)
-    {
-      steppers[FEEDER].setEnabled(false);
-      digitalWrite(RELAY_PIN, 1);
-      smuffConfig.externalStepper = false;
-    }
-    // gain the relay some time to debounce
-    delay(250);
-  }
+  if (RELAY_PIN == -1)
+    return;
+  steppers[FEEDER].setEnabled(false);
+  digitalWrite(RELAY_PIN, stepper == EXTERNAL ? smuffConfig.invertRelay : !smuffConfig.invertRelay);
+  smuffConfig.externalStepper = stepper == EXTERNAL;
+  delay(250);   // gain the relay some time to debounce
 }
 
 void moveFeeder(float distanceMM)
 {
   steppers[FEEDER].setEnabled(true);
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
-  changeFeederInsertSpeed(smuffConfig.insertSpeed);
+  changeFeederSpeed(smuffConfig.insertSpeed);
   prepSteppingRelMillimeter(FEEDER, distanceMM, true);
   runAndWait(FEEDER);
   steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -834,15 +835,12 @@ void moveFeeder(float distanceMM)
 
 void positionRevolver()
 {
-
   // disable Feeder temporarily
   steppers[FEEDER].setEnabled(false);
   if (smuffConfig.resetBeforeFeed && !ignoreHoming)
   {
     if (smuffConfig.revolverIsServo)
-    {
       setServoLid(SERVO_OPEN);
-    }
     else
       moveHome(REVOLVER, false, false);
   }
@@ -889,7 +887,7 @@ void positionRevolver()
   //__debugS(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
 
-void changeFeederInsertSpeed(uint16_t speed)
+void changeFeederSpeed(uint16_t speed)
 {
   unsigned long maxSpeed = translateSpeed(speed, FEEDER);
   //__debugS(PSTR("Changing Feeder speed to %3d (%6ld ticks)"), speed, maxSpeed);
@@ -903,7 +901,7 @@ void repositionSelector(bool retractFilament)
   {
     char tmp[15];
     uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
-    changeFeederInsertSpeed(smuffConfig.insertSpeed);
+    changeFeederSpeed(smuffConfig.insertSpeed);
     ignoreHoming = true;
     // go through all tools available and retract some filament
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
@@ -911,13 +909,13 @@ void repositionSelector(bool retractFilament)
       if (i == tool)
         continue;
       sprintf(tmp, "Y%d", i);
-      G0("G0", tmp, 0);                                                   // position Revolver on tool
+      G0("G0", tmp, 255);                                                   // position Revolver on tool
       prepSteppingRelMillimeter(FEEDER, -smuffConfig.insertLength, true); // retract
       runAndWait(FEEDER);
     }
     ignoreHoming = false;
     sprintf(tmp, "Y%d", tool);
-    G0("G0", tmp, 0); // position Revolver on tool selected
+    G0("G0", tmp, 255); // position Revolver on tool selected
     steppers[FEEDER].setMaxSpeed(curSpeed);
   }
   moveHome(SELECTOR, false, false); // home Revolver
@@ -938,7 +936,7 @@ bool feedToEndstop(bool showMessage)
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
   //__debugS(PSTR("InsertSpeed: %d"), smuffConfig.insertSpeed);
   uint16_t speed = smuffConfig.insertSpeed;
-  changeFeederInsertSpeed(speed);
+  changeFeederSpeed(speed);
   if (smuffConfig.accelSpeed[FEEDER] > smuffConfig.insertSpeed)
     steppers[FEEDER].setAllowAccel(false);
 
@@ -1006,7 +1004,7 @@ bool feedToEndstop(bool showMessage)
       if (showMessage)
       {
         moveHome(REVOLVER, false, false); // home Revolver
-        M18("M18", "", 0);                // turn all motors off
+        M18("M18", "", 255);              // turn all motors off
         if (smuffConfig.revolverIsServo)  // release servo, if used
           setServoLid(SERVO_OPEN);
         // if user wants to retry...
@@ -1060,7 +1058,7 @@ bool handleFeederStall(uint16_t *speed, int8_t *retries)
         *speed = 65500; // set speed to absolute minimum
     }
     *retries -= 1;
-    changeFeederInsertSpeed(*speed);
+    changeFeederSpeed(*speed);
     __debugS(PSTR("Feeder has stalled, slowing down speed to %d"), *speed);
     // counter used in testRun
     stallDetectedCountFeeder++; // for testrun only
@@ -1070,7 +1068,6 @@ bool handleFeederStall(uint16_t *speed, int8_t *retries)
 
 bool feedToNozzle(bool showMessage)
 {
-
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
   int8_t retries = FEED_ERROR_RETRIES;
@@ -1125,7 +1122,7 @@ bool feedToNozzle(bool showMessage)
       // rest of it feed slowly
       do
       {
-        changeFeederInsertSpeed(speed);
+        changeFeederSpeed(speed);
         prepSteppingRelMillimeter(FEEDER, len - remains, true);
         runAndWait(FEEDER);
         // did the Feeder stall again?
@@ -1168,7 +1165,7 @@ bool loadFilament(bool showMessage)
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
 
-  parserBusy = true;
+  setParserBusy();
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
   // move filament until it hits the feeder endstop
   if (!feedToEndstop(showMessage))
@@ -1182,7 +1179,7 @@ bool loadFilament(bool showMessage)
   if (smuffConfig.reinforceLength > 0 && !steppers[FEEDER].getAbort())
   {
     resetRevolver();
-    changeFeederInsertSpeed(smuffConfig.insertSpeed);
+    changeFeederSpeed(smuffConfig.insertSpeed);
     delay(150);
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
@@ -1190,7 +1187,7 @@ bool loadFilament(bool showMessage)
 
   if (smuffConfig.usePurge && smuffConfig.purgeLength > 0 && !steppers[FEEDER].getAbort())
   {
-    changeFeederInsertSpeed(smuffConfig.purgeSpeed);
+    changeFeederSpeed(smuffConfig.purgeSpeed);
     uint16_t len = smuffConfig.purgeLength;
     if (smuffConfig.purges[toolSelected] > 100)
     {
@@ -1205,27 +1202,9 @@ bool loadFilament(bool showMessage)
   steppers[FEEDER].setMaxSpeed(curSpeed);
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
-
-  if (smuffConfig.homeAfterFeed)
-  {
-    if (smuffConfig.revolverIsServo)
-    {
-      setServoLid(SERVO_OPEN);
-    }
-    else
-      steppers[REVOLVER].home();
-  }
-  /*bool wasAborted =*/steppers[FEEDER].getAbort();
-  steppers[FEEDER].setAbort(false);
-
-  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
-  {
-    switchFeederStepper(EXTERNAL);
-  }
-
-  parserBusy = false;
-  drawStatus();
-  return true; //aborted ? false : true;
+  runHomeAfterFeed();
+  setParserReady();
+  return true;
 }
 
 /*
@@ -1257,7 +1236,7 @@ bool loadFilamentPMMU2(bool showMessage)
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   }
 
-  parserBusy = true;
+  setParserBusy();
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
   // move filament until it hits the feeder endstop
   if (!feedToEndstop(showMessage))
@@ -1267,7 +1246,7 @@ bool loadFilamentPMMU2(bool showMessage)
   // inhibit interrupts at this step
   steppers[FEEDER].setIgnoreAbort(true);
   // now pull it back again
-  changeFeederInsertSpeed(smuffConfig.insertSpeed);
+  changeFeederSpeed(smuffConfig.insertSpeed);
   prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
   runAndWait(FEEDER);
 
@@ -1282,25 +1261,8 @@ bool loadFilamentPMMU2(bool showMessage)
   steppers[FEEDER].setMaxSpeed(curSpeed);
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
-
-  if (smuffConfig.homeAfterFeed)
-  {
-    if (smuffConfig.revolverIsServo)
-    {
-      setServoLid(SERVO_OPEN);
-    }
-    else
-      steppers[REVOLVER].home();
-  }
-  steppers[FEEDER].setAbort(false);
-
-  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
-  {
-    switchFeederStepper(EXTERNAL);
-  }
-
-  parserBusy = false;
-  drawStatus();
+  runHomeAfterFeed();
+  setParserReady();
   return true;
 }
 
@@ -1361,7 +1323,7 @@ bool unloadFromNozzle(bool showMessage)
     __debugS(PSTR("Suggestion: Try adjusting BowdenLength to %s mm"), String(smuffConfig.bowdenLength + (posEnd - dist)).c_str());
   }
   // reset feeder to max. speed
-  changeFeederInsertSpeed(smuffConfig.maxSpeed[FEEDER]);
+  changeFeederSpeed(smuffConfig.maxSpeed[FEEDER]);
   delay(500);
   return stat;
 }
@@ -1377,7 +1339,7 @@ bool unloadFromSelector()
     do
     {
       // retract the selector distance
-      changeFeederInsertSpeed(speed);
+      changeFeederSpeed(speed);
       prepSteppingRelMillimeter(FEEDER, -smuffConfig.selectorDistance, true);
       runAndWait(FEEDER);
       // did the Feeder stall?
@@ -1385,6 +1347,12 @@ bool unloadFromSelector()
     } while (!stat && retries > 0);
   }
   return stat;
+}
+
+void wipeNozzle()
+{
+  if (smuffConfig.wipeBeforeUnload)
+    G12("G12", "", 255);
 }
 
 void cutFilament(bool keepClosed /* = true */)
@@ -1428,7 +1396,7 @@ bool unloadFilament()
     switchFeederStepper(INTERNAL);
   }
   steppers[FEEDER].setStepsTaken(0);
-  parserBusy = true;
+  setParserBusy();
   if (!steppers[FEEDER].getEnabled())
     steppers[FEEDER].setEnabled(true);
 
@@ -1444,7 +1412,7 @@ bool unloadFilament()
     if (smuffConfig.unloadPushback != 0)
     {
       __debugS(PSTR("Unload pushback: %s mm"), String(smuffConfig.unloadPushback).c_str());
-      changeFeederInsertSpeed(smuffConfig.insertSpeed);
+      changeFeederSpeed(smuffConfig.insertSpeed);
       prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadPushback, true);
       runAndWait(FEEDER);
       delay(smuffConfig.pushbackDelay * 1000);
@@ -1452,10 +1420,7 @@ bool unloadFilament()
     }
   }
   // wipe nozzle if configured
-  if (smuffConfig.wipeBeforeUnload)
-  {
-    G12("G12", "", 255);
-  }
+  wipeNozzle();
   // cut the filament if configured likewise
   cutFilament();
 
@@ -1475,25 +1440,10 @@ bool unloadFilament()
   // reset endstop state
   steppers[FEEDER].setEndstopState(endstopState);
 
-  /*
-  // just to make sure we've got the right position, feed until the endstop gets hit again
-  // then unload from Selector
-  float ofs = steppers[FEEDER].getStepPositionMM();
-  // __debugS(PSTR("Offset: %s"), String(ofs).c_str());
-  changeFeederInsertSpeed(smuffConfig.insertSpeed);
-  prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
-  runAndWait(FEEDER);
-  ofs = steppers[FEEDER].getStepPositionMM() - ofs;
-  __debugS(PSTR("Offset now: %s,  Endstop: %d"), String(ofs).c_str(), feederEndstop());
-  */
-
   unloadFromSelector();
 
   if (smuffConfig.useCutter)
-  {
-    // release the cutter
-    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
-  }
+    setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen); // release the cutter
 
   feederJammed = false;
   steppers[FEEDER].setIgnoreAbort(false);
@@ -1503,23 +1453,8 @@ bool unloadFilament()
 
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
-
-  steppers[FEEDER].setAbort(false);
-  if (smuffConfig.homeAfterFeed)
-  {
-    if (smuffConfig.revolverIsServo)
-    {
-      setServoLid(SERVO_OPEN);
-    }
-    else
-      steppers[REVOLVER].home();
-  }
-  if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
-  {
-    switchFeederStepper(EXTERNAL);
-  }
-  parserBusy = false;
-  drawStatus();
+  runHomeAfterFeed();
+  setParserReady();
   return true;
 }
 
@@ -1546,29 +1481,29 @@ bool nudgeBackFilament()
   positionRevolver();
 
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
-  changeFeederInsertSpeed(smuffConfig.insertSpeed);
+  changeFeederSpeed(smuffConfig.insertSpeed);
   prepSteppingRelMillimeter(FEEDER, smuffConfig.insertLength);
   runAndWait(FEEDER);
   steppers[FEEDER].setMaxSpeed(curSpeed);
 
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
+  runHomeAfterFeed();
+  return true;
+}
 
-  steppers[FEEDER].setAbort(false);
+void runHomeAfterFeed() {
+
   if (smuffConfig.homeAfterFeed)
   {
     if (smuffConfig.revolverIsServo)
-    {
       setServoLid(SERVO_OPEN);
-    }
     else
       steppers[REVOLVER].home();
   }
+  steppers[FEEDER].setAbort(false);
   if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
-  {
     switchFeederStepper(EXTERNAL);
-  }
-  return true;
 }
 
 void handleStall(int8_t axis)
@@ -1634,7 +1569,6 @@ void handleStall(int8_t axis)
 
 bool selectTool(int8_t ndx, bool showMessage)
 {
-
   char _msg1[256];
   char _tmp[40];
 
@@ -1662,7 +1596,8 @@ bool selectTool(int8_t ndx, bool showMessage)
   signalSelectorBusy();
 
   if (toolSelected == ndx)
-  { // tool is the one we already have selected, do nothing
+  {
+    // tool is the one we already have selected, do nothing
     if (!smuffConfig.extControlFeeder)
     {
       userBeep();
@@ -1707,7 +1642,7 @@ bool selectTool(int8_t ndx, bool showMessage)
       while (feederEndstop())
       {
         moveHome(REVOLVER, false, false); // home Revolver
-        M18("M18", "", 0);                // motors off
+        M18("M18", "", 255);              // motors off
         bool stat = showFeederFailedMessage(0);
         if (!stat)
           return false;
@@ -1737,7 +1672,7 @@ bool selectTool(int8_t ndx, bool showMessage)
     setServoLid(SERVO_OPEN);
   }
   //__debugS(PSTR("Selecting tool: %d"), ndx);
-  parserBusy = true;
+  setParserBusy();
   drawSelectingMessage(ndx);
   //__debugS(PSTR("Message shown"));
   uint16_t speed = steppers[SELECTOR].getMaxSpeed();
@@ -1785,9 +1720,7 @@ bool selectTool(int8_t ndx, bool showMessage)
     dataStore.stepperPos[REVOLVER] = steppers[REVOLVER].getStepPosition();
     dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
     saveStore();
-    setFastLEDToolIndex(toolSelected, smuffConfig.toolColor);
-
-    //__debugS(PSTR("Data stored"));
+    setFastLEDToolIndex(toolSelected, smuffConfig.toolColor, true);
 
     if (showMessage && (!smuffConfig.extControlFeeder || (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)))
     {
@@ -1801,7 +1734,7 @@ bool selectTool(int8_t ndx, bool showMessage)
       //__debugS(PSTR("Revolver reset done"));
     }
   }
-  parserBusy = false;
+  setParserReady();
   //__debugS(PSTR("Finished selecting tool"));
   return posOk;
 }
@@ -2212,159 +2145,105 @@ void playSequenceBackgnd()
 
 void setServoMinPwm(int8_t servoNum, uint16_t pwm)
 {
-  if (servoNum == SERVO_WIPER)
-  {
-    servo.setPulseWidthMin(pwm);
+  ZServo* instance = nullptr;
+  switch(servoNum) {
+    case SERVO_WIPER:   instance = &servo; break;
+    case SERVO_LID:     instance = &servoLid; break;
+    case SERVO_CUTTER:  instance = &servoCutter; break;
   }
-  else if (servoNum == SERVO_LID)
-  {
-    servoLid.setPulseWidthMin(pwm);
-  }
-  else if (servoNum == SERVO_CUTTER)
-  {
-    servoCutter.setPulseWidthMin(pwm);
-  }
+  if(instance != nullptr)
+      instance->setPulseWidthMin(pwm);
 }
 
 void setServoMaxPwm(int8_t servoNum, uint16_t pwm)
 {
-  if (servoNum == SERVO_WIPER)
-  {
-    servo.setPulseWidthMax(pwm);
+  ZServo* instance = nullptr;
+  switch(servoNum) {
+    case SERVO_WIPER:   instance = &servo; break;
+    case SERVO_LID:     instance = &servoLid; break;
+    case SERVO_CUTTER:  instance = &servoCutter; break;
   }
-  else if (servoNum == SERVO_LID)
-  {
-    servoLid.setPulseWidthMax(pwm);
-  }
-  else if (servoNum == SERVO_CUTTER)
-  {
-    servoCutter.setPulseWidthMax(pwm);
-  }
+  if(instance != nullptr)
+      instance->setPulseWidthMax(pwm);
 }
 
 void disableServo(int8_t servoNum)
 {
-  switch (servoNum)
-  {
-  case SERVO_WIPER:
-    servo.disable();
-    break;
-  case SERVO_LID:
-    servoLid.disable();
-    break;
-  case SERVO_CUTTER:
-    servoCutter.disable();
-    break;
+  ZServo* instance = nullptr;
+  switch(servoNum) {
+    case SERVO_WIPER:   instance = &servo; break;
+    case SERVO_LID:     instance = &servoLid; break;
+    case SERVO_CUTTER:  instance = &servoCutter; break;
   }
+  if(instance != nullptr)
+    instance->disable();
 }
 
 void enableServo(int8_t servoNum)
 {
-  switch (servoNum)
-  {
-  case SERVO_WIPER:
-    servo.enable();
-    break;
-  case SERVO_LID:
-    servoLid.enable();
-    break;
-  case SERVO_CUTTER:
-    servoCutter.enable();
-    break;
+  ZServo* instance = nullptr;
+  switch(servoNum) {
+    case SERVO_WIPER:   instance = &servo; break;
+    case SERVO_LID:     instance = &servoLid; break;
+    case SERVO_CUTTER:  instance = &servoCutter; break;
   }
+  if(instance != nullptr)
+    instance->enable();
 }
+
 
 bool setServoPos(int8_t servoNum, uint8_t degree)
 {
 #if defined(MULTISERVO)
   uint16_t pulseLen = map(degree, 0, 180, smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
-#endif
-
-  if (servoNum == SERVO_WIPER)
-  {
-#if defined(MULTISERVO)
-    if (servoMapping[16] != -1)
-    {
-      servoPwm.writeMicroseconds(servoMapping[16], pulseLen);
-    }
+  setServoMS(servoNum, pulseLen);
 #else
-    servo.write(degree);
-    delay(100);
+  ZServo* instance = nullptr;
+  switch(servoNum) {
+    case SERVO_WIPER:   instance = &servo; break;
+    case SERVO_LID:     instance = &servoLid; break;
+    case SERVO_CUTTER:  instance = &servoCutter; break;
+  }
+  if(instance != nullptr) {
+    instance->write(degree);
+    instance->setDelay();
+    return true;
+  }
 #endif
-    return true;
-  }
-  else if (servoNum == SERVO_LID)
-  {
-    servoLid.write(degree);
-    delay(100);
-    return true;
-  }
-  else if (servoNum == SERVO_CUTTER)
-  {
-#if defined(MULTISERVO)
-    if (servoMapping[17] != -1)
-    {
-      servoPwm.writeMicroseconds(servoMapping[17], pulseLen);
-    }
-#else
-    servoCutter.write(degree);
-    delay(100);
-#endif
-    return true;
-  }
-  else if (servoNum >= 10 && servoNum <= 26)
-  {
-#if defined(MULTISERVO)
-    uint8_t servo = servoMapping[servoNum - 10];
-    //__debugS(PSTR("Servo mapping: %d -> %d (pulse len: %d ms: %d)"), servoNum-10, servo, pulseLen, ms);
-    if (servo != -1)
-      servoPwm.writeMicroseconds(servo, pulseLen);
-    return true;
-#endif
-  }
   return false;
 }
 
 bool setServoMS(int8_t servoNum, uint16_t microseconds)
 {
-  if (servoNum == SERVO_WIPER)
-  {
 #if defined(MULTISERVO)
-    if (servoMapping[16] != -1)
-    {
-      servoPwm.writeMicroseconds(servoMapping[16], microseconds);
-    }
-#else
-    servo.writeMicroseconds(microseconds);
-    delay(100);
-#endif
+  int8_t index = -1;
+  switch(servoNum) {
+    case SERVO_WIPER:   index = 16; break;
+    case SERVO_CUTTER:  index = 17; break;
+    default:
+      if(servoNum >= 10 && servoNum <= 26)
+        index = servoNum - 10;
+      break;
+  }
+  if(index != -1) {
+    //__debugS(PSTR("Servo mapping: %d -> %d (pulse len: %d ms)"), servoNum-10, index, microseconds);
+    if(servoMapping[index] != -1)
+      servoPwm.writeMicroseconds(servoMapping[index], microseconds);
     return true;
   }
-  else if (servoNum == SERVO_LID)
-  {
-#if defined(MULTISERVO)
-    uint8_t servo = servoMapping[servoNum - 10];
-    if (servo != -1)
-      servoPwm.writeMicroseconds(servo, microseconds);
 #else
-    servoLid.writeMicroseconds(microseconds);
-    delay(100);
-#endif
+  ZServo* instance = nullptr;
+  switch(servoNum) {
+    case SERVO_WIPER:   instance = &servo; break;
+    case SERVO_LID:     instance = &servoLid; break;
+    case SERVO_CUTTER:  instance = &servoCutter; break;
+  }
+  if(instance != nullptr) {
+    instance->writeMicroseconds(microseconds);
+    instance->setDelay();
     return true;
   }
-  else if (servoNum == SERVO_CUTTER)
-  {
-#if defined(MULTISERVO)
-    if (servoMapping[17] != -1)
-    {
-      servoPwm.writeMicroseconds(servoMapping[17], microseconds);
-    }
-#else
-    servoCutter.writeMicroseconds(microseconds);
-    delay(100);
 #endif
-    return true;
-  }
   return false;
 }
 
@@ -2375,7 +2254,7 @@ void getStoredData()
   steppers[REVOLVER].setStepPosition(dataStore.stepperPos[REVOLVER]);
   steppers[FEEDER].setStepPosition(dataStore.stepperPos[FEEDER]);
   toolSelected = dataStore.tool;
-  setFastLEDToolIndex(toolSelected, smuffConfig.toolColor);
+  setFastLEDToolIndex(toolSelected, smuffConfig.toolColor, true);
   //__debugS(PSTR("Recovered tool: %d"), toolSelected);
 }
 
@@ -2385,7 +2264,7 @@ void setSignalPort(uint8_t port, bool state)
 
   if (!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats)
   {
-    sprintf(tmp, "%c%c%s", 0x1b, port, state ? "1" : "0");
+    sprintf_P(tmp, PSTR("%c%c%s"), 0x1b, port, state ? "1" : "0");
     if (CAN_USE_SERIAL1)
       Serial1.write(tmp);
     if (CAN_USE_SERIAL2)
@@ -2470,9 +2349,7 @@ bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8
 void removeFirmwareBin()
 {
   if (initSD(false))
-  {
     SD.remove("firmware.bin");
-  }
 }
 
 /*
@@ -2509,11 +2386,15 @@ uint8_t getTestLine(SdFile *file, char *line, int maxLen)
 
 extern SdFat SD;
 
-void printReport(const char *line, unsigned long loopCnt, unsigned long cmdCnt, long toolChanges, unsigned long secs, unsigned long endstop2Hit[], unsigned long endstop2Miss[])
+void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, long toolChanges, unsigned long secs, unsigned long endstop2Hit[], unsigned long endstop2Miss[])
 {
   char report[700];
-  char runtm[20], gco[60], err[10], lop[10], cmdc[10], tc[20], stallS[10], stallF[10];
+  char runtm[20], gco[40], err[10], lop[10], cmdc[10], tc[20], stallS[10], stallF[10];
   char etmp[15], ehit[smuffConfig.toolCount * 10], emiss[smuffConfig.toolCount * 10];
+
+  // load report from SD-Card; Can contain 10 lines at max.
+  if(!loadReport(PSTR("report"), report, ArraySize(report)))
+    return;
 
   sprintf_P(gco, PSTR("%-25s"), line);
   sprintf_P(err, PSTR("%4lu"), feederErrors);
@@ -2533,14 +2414,12 @@ void printReport(const char *line, unsigned long loopCnt, unsigned long cmdCnt, 
     strcat(emiss, etmp);
   }
   char *lines[10];
-  // load report from SD-Card; Can contain 10 lines at max.
-  loadReport(PSTR("report"), report, ArraySize(report));
   // format report to be sent to terminal
   uint8_t cnt = splitStringLines(lines, ArraySize(lines), report);
+  String s;
   for (uint8_t n = 0; n < cnt; n++)
   {
-    //__debugS(PSTR("LN: %s"), lines[n]);
-    String s = String(lines[n]);
+    s = String(lines[n]);
     s.replace("{TIME}", runtm);
     s.replace("{GCO}", gco);
     s.replace("{ERR}", err);
@@ -2560,11 +2439,13 @@ void printReport(const char *line, unsigned long loopCnt, unsigned long cmdCnt, 
   }
 }
 
+bool isTestrun = false;
+
 void testRun(const char *fname)
 {
-  char line[80];
+  char line[50];
   char msg[80];
-  char filename[80];
+  char filename[50];
   SdFile file;
   String gCode;
   unsigned long loopCnt = 1L, cmdCnt = 1L;
@@ -2576,6 +2457,7 @@ void testRun(const char *fname)
   int16_t turn;
   uint8_t btn;
   bool isHeld, isClicked;
+  bool showReport;
 
   debounceButton();
 
@@ -2588,8 +2470,9 @@ void testRun(const char *fname)
     drawUserMessage(msg);
     delay(1750);
     randomSeed(millis());
-    sprintf(filename, "test/%s.gcode", fname);
+    sprintf_P(filename, PSTR("/test/%s.gcode"), fname);
     feederErrors = 0;
+
     __log(PSTR("\033[2J")); // clear screen on VT100
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {
@@ -2599,16 +2482,18 @@ void testRun(const char *fname)
 
     if (file.open(filename, O_READ))
     {
-      file.rewind();
+      fastLedStatus = FASTLED_STAT_NONE;
 
       stallDetectedCountFeeder = stallDetectedCountSelector = 0;
 
 #if defined(USE_LEONERD_DISPLAY)
       encoder.setLED(LED_GREEN, true);
 #endif
-
+      isTestrun = true;
       while (1)
       {
+        setPwrSave(0);
+        showReport = false;
         getInput(&turn, &btn, &isHeld, &isClicked, false);
         if (isHeld || isClicked)
         {
@@ -2656,6 +2541,7 @@ void testRun(const char *fname)
             tool = (int8_t)strtol(line + 1, nullptr, 10);
             lastTool = toolSelected;
             toolChanges++;
+            showReport = true;
           }
           if (*line == 'C')
           {
@@ -2663,6 +2549,7 @@ void testRun(const char *fname)
               endstop2Hit[tool]++;
             else
               endstop2Miss[tool]++;
+            showReport = true;
           }
           cmdCnt++;
           if (cmdCnt % 10 == 0)
@@ -2671,12 +2558,13 @@ void testRun(const char *fname)
             if (mode > 3)
               mode = 0;
           }
-          printReport(line, loopCnt, cmdCnt, toolChanges, secs, endstop2Hit, endstop2Miss);
+          if (showReport)
+            printReport(line, loopCnt, cmdCnt, toolChanges, secs, endstop2Hit, endstop2Miss);
         }
         else
         {
           randomSeed(analogRead(0));
-          // restart from begin and increment loop count
+          // restart from beginning and increment loop count
           file.rewind();
           //__debugS(PSTR("Rewinding"));
           loopCnt++;
@@ -2697,6 +2585,7 @@ void testRun(const char *fname)
             break;
         }
         drawTestrunMessage(loopCnt, msg);
+        delay(150);
       }
       file.close();
 #if defined(USE_LEONERD_DISPLAY)
@@ -2710,19 +2599,25 @@ void testRun(const char *fname)
       delay(3000);
     }
   }
+  isTestrun = false;
 }
 
+volatile uint32_t lastYield = 0;
+
 void yield() {
-  // not used yet, maybe at a later point
+  if(millis()-lastYield > 20 && isTestrun) {
+    isrFastLEDTimerHandler();
+    lastYield = millis();
+  }
 }
 
 volatile bool fastLedRefresh = false;
 
 void refreshFastLED() {
-#if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
+#if defined(USE_FASTLED_TOOLS)
   if(!fastLedRefresh) {
     fastLedRefresh = true;
-    FastLED.show();
+    cTools->showLeds();
     fastLedRefresh = false;
   }
 #endif
@@ -2876,10 +2771,10 @@ const char *loadOptions(const char *filename PROGMEM)
 bool loadReport(const char *filename PROGMEM, char *buffer, uint16_t maxLen)
 {
   SdFile file;
-  char fname[80];
+  char fname[40];
 
   memset(buffer, 0, maxLen);
-  sprintf_P(fname, PSTR("test/%s.txt"), filename);
+  sprintf_P(fname, PSTR("/test/%s.txt"), filename);
   if (file.open(fname, O_READ))
   {
     int n = file.read(buffer, maxLen - 1);
@@ -2950,14 +2845,12 @@ void blinkLED()
 /*
   Translates speeds from mm/s into MCU timer ticks.
   Please notice: This method runs the stepper far slower since it's got to ensure that the
-  distance/second has to match.
+  distance per second has to match.
 */
 unsigned long translateSpeed(uint16_t speed, uint8_t axis)
 {
   if (!smuffConfig.speedsInMMS)
-  {
     return speed;
-  }
   uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution / 360 : smuffConfig.stepsPerMM[axis];
   uint8_t delay = smuffConfig.stepDelay[axis];
   float correction = smuffConfig.speedAdjust[axis];
@@ -2974,56 +2867,26 @@ unsigned long translateSpeed(uint16_t speed, uint8_t axis)
   __debugS(PSTR("FREQ: %lu  SPEED: %4d  StepsMM: %4d  TICKS: %12lu  TOTAL: %s  PULSES: %6lu   DLY: %s"), freq, speed, stepsPerMM, ticks, ttl, pulses, dtl);
   */
   if (timeTot > 1)
-  {
     __debugS(PSTR("Too fast! Slow down speed in mm/s."));
-  }
   return ticks;
 }
 
-void setMotor(uint8_t pos)
-{
-#if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
-  if (pos == SERVO_OPEN)
-  {
-    // move forward
-    digitalWrite(MOTOR_IN1_PIN, HIGH);
-    digitalWrite(MOTOR_IN2_PIN, LOW);
-  }
-  else
-  {
-    // move backward
-    digitalWrite(MOTOR_IN1_PIN, LOW);
-    digitalWrite(MOTOR_IN2_PIN, HIGH);
-  }
-  delay(smuffConfig.motorOnDelay);
-  // stop moving
-  digitalWrite(MOTOR_IN1_PIN, LOW);
-  digitalWrite(MOTOR_IN2_PIN, LOW);
-#endif
-}
 
 void setServoLid(uint8_t pos)
 {
 #if !defined(MULTISERVO)
-  uint8_t posForTool = servoPosClosed[toolSelected];
-  uint8_t p;
-  if (posForTool == 0)
-    p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : smuffConfig.revolverOnPos;
-  else
-    p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : posForTool;
-  //__debugS(PSTR("setServoLid called with %d (posForTool: %d)"), pos, posForTool);
-  setServoPos(SERVO_LID, p);
+  uint8_t posForTool = (toolSelected < 0 || toolSelected > smuffConfig.toolCount-1) ? 0 : servoPosClosed[toolSelected];
+  uint8_t p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : (posForTool == 0) ? smuffConfig.revolverOnPos : posForTool;
+  if(servoLid.getDegree() != p) {
+    //__debugS(PSTR("setServoLid called with %d (posForTool: %d)"), pos, posForTool);
+    setServoPos(SERVO_LID, p);
+  }
 #else
   uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected] - SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
   //__debugS(PSTR("Tool%d = %d"), toolSelected, p);
   setServoPos(toolSelected + 10, p);
 #endif
   lidOpen = pos == SERVO_OPEN;
-
-// experimental
-#if defined(MOTOR_IN1_PIN) && defined(MOTOR_IN2_PIN)
-  setMotor(pos);
-#endif
 }
 
 uint8_t scanI2CDevices(uint8_t *devices)
@@ -3072,7 +2935,7 @@ void __log(const char *fmt, ...)
 {
   if (logSerial == nullptr)
     return;
-  char _log[512];
+  char _log[256];
   va_list arguments;
   va_start(arguments, fmt);
   vsnprintf_P(_log, ArraySize(_log) - 1, fmt, arguments);
