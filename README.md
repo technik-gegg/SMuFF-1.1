@@ -15,6 +15,8 @@ To use this firmware, you have to [compile it](https://sites.google.com/view/the
 + the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)
 + the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)
 + the [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r).
++ the [TwoTrees SKR mini E3-DIP V1.3](https://www.aliexpress.com/item/1005001639215401.html) which is a clone of the SKR E3-DIP.
++ the [TwoTrees SKR mini E3 V2.1](https://www.aliexpress.com/item/1005001820623768.html) which is a clone of the SKR E3 V2.0.
 
 The SKR mini series boards are very small and yet more powerful because of the 32-Bit STM micro controller unit.
 
@@ -30,26 +32,42 @@ Make sure your board of choice has least **256K** of Flash memory, **48K** of (S
 
 Simply create a new build environment in your **platformio.ini** and adopt the settings according to your controllers hardware in your custom **pins.h** file.
 
-The configuration file **SMuFF.cfg** has to be copied to the SD-Card of the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the menus, save them and reboot.
+The configuration files **\*.cfg** have to be copied onto the SD-Card of the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the menus, save them and reboot.
 
 From version 1.6 on, I've added the option to run GCode scripts for automated testing of your hardware.
 In the **test** folder you'll find some sample scripts. Copy those over to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly until you hit the encoder button.
 Each test result will be displayed on the LCD and also sent to the log serial port (USB).
 
-For more information about building the SMuFF and some more detailed stuff, head over to the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
+For more information about building the SMuFF and some more detailed stuff, head over to the official [SMuFF homepage](https://sites.google.com/view/the-smuff/) or to the [Discord server](https://discord.com/invite/BzZ3rBf).
 
 ---
 
 ## Recent changes
 
+**2.22** - Changed configuration file names; Minor changes for FastLEDs
+
++ **IMPORTANT:** Configuration files must now have the **.json** extension, **not .CFG**! This was necessary because most people forgot to rename them and thus the SMuFF fialed at startup.
+*From now on, just copy the configuration files to the root of your SD-Card; no need to rename the files.*
++ updated Neopixel (FastLED) functions / animations.
++ added **Anim. BPM** and **Status BPM** settings in **Display** menu.
++ added parameter **AnimBPM** and **StatusBPM** to  M205 GCode command to allow the remote setting of the animation / status Neopixel speeds (it's **B**eats **P**er **M**inute - which you sure have guessed already).
++ added *CValue* entry to **MATERIALS.json** which defines the color to be set on the Neopixel strip for tools (has to be a 6 byte hex string i.e. "0F1C03A").
++ added parameter **C** to **M145** GCode command which accepts the same color string as mentioned above.
++ updated files in **menus** and **help** folders (make sure you copy those onto your SD-Card).
++ added **EEPROM.json** to the configuration files. Copy this along with the other **.json** files to the root of your SD-Card.
++ redesign of the main screen in order to show more information at a glance. Beside the existing informations, you'll now see the shared stepper status (**E** or **I**), the mode (**SMuFF** or **PMMU2**), whether pruging is active (**P**), whether TMC drivers are supported (**TMC**) and a warning sign (**!**) if they have reported issues and whether or not periodic status information is being turned on (**&#x27F3;** Symbol).
++ made servo movements faster due to a more realistic calculation of position setting times (based on Max. speed of 200ms per 60° - typically 70-180 ms)
++ added **InvRelay** to SMUFF.CFG and **Options** menu, in order to invert the relay switching signal if needed. Turned out that Adafruit and Velleman relay boards behave different on this topic.
++ induced error message (and compiler stop) if you try to run the LeoNerd's OLED Module via software I2C. This is the case with **E3 2.0** controller board only.
+
 **2.21** - Minor changes / bug fixes
 
 + moved config files into Configs directory, since there are no specific configs for different controller boards anymore.
 + changed default speed of all serial ports to **115200** in SMUFF.CFG (which makes more sense nowadays).
-+ fixed the bug that was causing stepper motors not moving when TMC2209s are being used in UART mode (which primarily affected E3 V1.2 and V2.0 boards).
++ fixed the bug that was causing stepper motors not moving when TMC2209s are being used in UART mode (which primarily affected the SKR E3 V1.2 and V2.0 boards).
 + splitted FastLED definition for BACKLIGHT and TOOLS.
 + added some FastLED code.
-+ added menu entry in **Display** to define tool (LED) color when having set USE_FASTLED_TOOLS.
++ added menu entry in **Display** to define tool (LED) color when having set **USE_FASTLED_TOOLS**.
 + fixed bug that caused EEPROM.DAT not being created.
 + fixed bug that caused the main screen not to refresh after selecting a tool.
 + renamed build environments **\_E3\_SD** to **\_E3\_1.2\_SD** and **\_E3\_SD\_20** to **\_E3\_2.0\_SD** in order to make it more obvious.
