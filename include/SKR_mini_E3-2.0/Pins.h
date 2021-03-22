@@ -54,7 +54,11 @@
 #define E_ENABLE_PIN        PD2
 #define E_END_PIN           PC15    // E0-STOP
 
+#if defined(USE_LEONERD_DISPLAY)
+#define BEEPER_PIN          -1
+#else
 #define BEEPER_PIN          PB5     // EXP1.10
+#endif
 
 #define RELAY_PIN           PC13    // PS-ON (Relay for stepper motor switching)
 
@@ -116,14 +120,14 @@
 #define DSP_DC_PIN          -1
 #define DSP_RESET_PIN       -1
 
-#if !defined(USE_LEONERD_DISPLAY)
+#if defined(USE_LEONERD_DISPLAY)
+#define DEBUG_PIN           -1
+#else
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
 
 #define DEBUG_PIN           PB9     // EXP1.5
-#else
-#define DEBUG_PIN           -1
 #endif
 #else
     // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!

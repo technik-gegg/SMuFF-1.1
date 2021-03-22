@@ -83,4 +83,3 @@ void every2s() {
 void every5s() {
   // Add your periodical code here
 }
-
