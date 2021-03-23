@@ -54,11 +54,7 @@
 #define E_ENABLE_PIN        PD2
 #define E_END_PIN           PC15    // E0-STOP
 
-#if defined(USE_LEONERD_DISPLAY)
-#define BEEPER_PIN          -1
-#else
 #define BEEPER_PIN          PB5     // EXP1.10
-#endif
 
 #define RELAY_PIN           PC13    // PS-ON (Relay for stepper motor switching)
 
