@@ -94,9 +94,11 @@ extern USBCompositeSerial CompositeSerial;
 
 #define LAST_INTERVAL 9
 
-#if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN != -1
+#if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
 // used for internal hardware debugging only - will produce a 500Hz signal on the output pin
-#define FLIPDBG   digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
+#define FLIPDBG        \
+  if (DEBUG_PIN != -1) \
+    digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
 #endif
 
 #define ArraySize(arr) (sizeof(arr) / sizeof(arr[0]))
