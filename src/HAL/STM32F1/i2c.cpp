@@ -1,4 +1,4 @@
-#include "SMuFF"
+#include "SMuFF.h"
 
 #if !defined(USE_SW_TWI)
   Wire I2CBus;
