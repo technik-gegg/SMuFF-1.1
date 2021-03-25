@@ -3,9 +3,8 @@
 #define I2C_SUCCESS     SUCCESS
 
 #if !defined(USE_SW_TWI)
-  #include <Wire.h>
-
-  extern Wire I2CBus;
+#include <Wire.h>
+  extern TwoWire I2CBus;
 #else
   #include <U8g2lib.h>
   #include <SoftWire.h>

@@ -1,7 +1,7 @@
 #include "SMuFF.h"
 
 #if !defined(USE_SW_TWI)
-  Wire I2CBus;
+  TwoWire I2CBus(1);
 #else
   SoftWire I2CBus(DSP_SCL, DSP_SDA);
 
