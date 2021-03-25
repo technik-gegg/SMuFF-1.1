@@ -2472,13 +2472,14 @@ bool G1(const char *msg, String buf, int8_t serial)
   float paramF;
   long paramL;
   uint16_t speed;
+  const char P_DIinfo[] PROGMEM = { "[G1] Moving %c: %2.f %s with speed %ld %s" };
 
   if (hasParam(buf, X_Param))
   {
     paramF = getParamF(buf, X_Param);
     paramL = isMill ? round(paramF * steppers[SELECTOR].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, SELECTOR);
-    __debugS(PSTR("G1 moving X: %2.f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[SELECTOR].getStepsPerMM(), smuffConfig.stepDelay[SELECTOR]);
+    __debugS(P_DIinfo, 'X', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
     steppers[SELECTOR].setEnabled(true);
     prepStepping(SELECTOR, paramL, false, true);
   }
@@ -2487,7 +2488,7 @@ bool G1(const char *msg, String buf, int8_t serial)
     paramF = getParamF(buf, Y_Param);
     paramL = isMill ? round(paramF * steppers[REVOLVER].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, REVOLVER);
-    __debugS(PSTR("G1 moving Y: %.2f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[REVOLVER].getStepsPerDegree(), smuffConfig.stepDelay[REVOLVER]);
+    //__debugS(P_DIinfo, 'Y', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
     steppers[REVOLVER].setEnabled(true);
     prepStepping(REVOLVER, paramL, false, true);
   }
@@ -2496,16 +2497,16 @@ bool G1(const char *msg, String buf, int8_t serial)
     paramF = getParamF(buf, Z_Param);
     paramL = isMill ? round(paramF * steppers[FEEDER].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, FEEDER);
-    //__debugS(PSTR("G1 moving Z: %.2f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[FEEDER].getStepsPerMM(), smuffConfig.stepDelay[FEEDER]);
+    __debugS(P_DIinfo, 'Z', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
     steppers[FEEDER].setEnabled(true);
     prepStepping(FEEDER, paramL, false, true);
   }
   uint32_t start = millis();
   runAndWait(-1);
   // for testing only: check if stall was detected
-  __debugS(PSTR("Move took: %d ms"), millis() - start);
+  __debugS(PSTR("[G1] Move took: %d ms"), millis() - start);
 #ifdef HAS_TMC_SUPPORT
-  const char P_StallRes[] PROGMEM = {"G1 StallResult %c: %d  Stalled: %s"};
+  const char P_StallRes[] PROGMEM = {"[G1] StallResult %c: %d  Stalled: %s"};
   if (hasParam(buf, X_Param) && drivers[SELECTOR] != nullptr && !drivers[SELECTOR]->spread_en())
   {
     uint16_t sr = drivers[SELECTOR]->SG_RESULT();

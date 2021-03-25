@@ -222,10 +222,11 @@ extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg
   extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
   #endif
 #elif defined(USE_LEONERD_DISPLAY)
-#if defined(USE_SW_TWI)
-extern SMUFF_SH1106_128X64_NONAME_F_SW_I2C display;
-#else
-extern U8G2_SH1106_128X64_NONAME_F_HW_I2C display;
+  #if defined(USE_SW_TWI)
+  extern SMUFF_SH1106_128X64_NONAME_F_SW_I2C display;
+  #else
+  extern U8G2_SH1106_128X64_NONAME_F_HW_I2C display;
+  #endif
 #elif defined(USE_ANET_DISPLAY)
 extern U8G2_ST7920_128X64_F_2ND_HW_SPI display;
 // extern U8G2_ST7920_128X64_F_SW_SPI display;

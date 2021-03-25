@@ -2827,6 +2827,7 @@ unsigned long translateSpeed(uint16_t speed, uint8_t axis)
     return speed;
   uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution / 360 : smuffConfig.stepsPerMM[axis];
   uint8_t delay = smuffConfig.stepDelay[axis];
+  // correction can be set via M202 GCode command if needed; Default is 1.0 (i.e. no correction)
   float correction = smuffConfig.speedAdjust[axis];
   unsigned long freq = F_CPU / STEPPER_PSC;
   double oneTick = (double)1 / freq;

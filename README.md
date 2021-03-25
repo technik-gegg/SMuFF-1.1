@@ -54,7 +54,7 @@ For more information about building the SMuFF and some more detailed stuff, head
 + fixed a bug in the calculation of speeds in mm/s. **However, I still recommend using speed settings in ticks rather than mm/s** (that's: SpeedsInMMs set to false). If you do use mm/s, please be aware that accelleration/decelleration are not being taken into account and therefore it's just a close estimation of the speed (which doesn't really matter for the function of the SMuFF anyway).
 + fixed bug for not initializing the software serial when not running on a SKR E3 2.0 board (which operates on a hardware serial).
 + added back setting the internal RSense on a TMC stepper driver when not on a SKR E3 1.2/2.0 board.
-+ added software I2C support for LeoNerds OLED module (by GMagician)
++ added software I2C support for LeoNerds OLED module (by GMagician). **Please notice**: If you get an compile time error stating *LeoNerdEncoder::begin(SoftWire\*)* has not been found, you have to delete the LeoNerd-OLED-Module-Library folder from the **.pio/libdeps** folder manually.
 
 **2.22** - Changed configuration file names; Minor changes for FastLEDs
 

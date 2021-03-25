@@ -1,0 +1,5 @@
+M202 [ Xn | Yn | Zn ]
+---------------------
+Xn.n 		the speed adjustment factor for the X axis (Selector) (n: 0.001..3.0)
+Yn.n 		the speed adjustment factor for the Y axis (Revolver) (n: 0.001..3.0)
+Zn.n 		the speed adjustment factor for the Z axis (Feeder) (n: 0.001..3.0)
