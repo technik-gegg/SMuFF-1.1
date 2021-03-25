@@ -623,6 +623,12 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
     // So for now, this code is disabled when compiling for E3 1.2 / 2.0 boards.
     #if !defined(__BRD_SKR_MINI_E3)
     __debugS(PSTR("[initDriver] Setting RSense to internal"));
+    // Although the TMC datasheet says to set Rsense to internal, the following code will lead to the
+    // stepper drivers not stepping anymore on SKR E3 boards!
+    // This might be because it conflicts somehow with the OTP on the stepper chips soldered onto the E3 1.2 and E3 2.0.
+    // It's a different picture for external (Pololu style) stepper drivers.
+    // So for now, this code is disabled when compiling for E3 1.2 / 2.0 boards.
+    #if !defined(__BRD_SKR_MINI_E3)
     steppers[axis].setEnabled(false);
     driver->internal_Rsense(true);
     #endif
