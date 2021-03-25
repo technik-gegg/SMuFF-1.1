@@ -82,12 +82,7 @@ void setupDisplay()
   __debugS(PSTR("I2C display address set to 0x%02X"), I2C_DISPLAY_ADDRESS);
 #endif
 #if defined(USE_LEONERD_DISPLAY)
-  #if !defined(USE_SW_TWI)
   display.begin();
-  #else
-  __debugS(PSTR("ERROR: The LeoNerd's OLED Module doesn't work with software I2C!"));
-  return;
-  #endif
 #else
   display.begin(/*Select=*/ENCODER_BUTTON_PIN, /* menu_next_pin= */ U8X8_PIN_NONE, /* menu_prev_pin= */ U8X8_PIN_NONE, /* menu_home_pin= */ U8X8_PIN_NONE);
 #endif
@@ -2889,15 +2884,15 @@ void setServoLid(uint8_t pos)
   lidOpen = pos == SERVO_OPEN;
 }
 
-uint8_t scanI2CDevices(uint8_t *devices)
+uint8_t scanI2CDevices(uint8_t *devices, uint8_t maxDevices)
 {
   uint8_t cnt = 0;
-  Wire.begin();
-  memset(devices, 0, ArraySize(devices));
-  for (uint8 address = 1; address < 127; address++)
+  I2CBus.begin();
+  memset(devices, 0, maxDevices);
+  for (uint8 address = 1; address < 127 && cnt <= maxDevices; address++)
   {
-    Wire.beginTransmission(address);
-    uint8_t stat = Wire.endTransmission();
+    I2CBus.beginTransmission(address);
+    uint8_t stat = I2CBus.endTransmission();
     //__debugS(PSTR("Scanning at address 0x%02x returned 0x%x"), address, stat);
     if (stat == I2C_SUCCESS)
     {

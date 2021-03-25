@@ -35,7 +35,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 #endif
 #elif defined(USE_LEONERD_DISPLAY)
 #if defined(USE_SW_TWI)
-#error "The LeoNerd's OLED Module doesn't work with software I2C! Please use either another board or another display!"
+SMUFF_SH1106_128X64_NONAME_F_SW_I2C display(U8G2_R2, /* clock */ DSP_SCL, /* data */ DSP_SDA, /* reset=*/U8X8_PIN_NONE);
 #else
 U8G2_SH1106_128X64_NONAME_F_HW_I2C display(U8G2_R2, /* reset=*/U8X8_PIN_NONE);
 #endif
@@ -361,7 +361,7 @@ void enumI2cDevices()
   uint8_t devs[40]; // unlikey that there are more devices than that on the bus
   const char *name;
   bool encoder = false;
-  uint8_t deviceCnt = scanI2CDevices(devs);
+  uint8_t deviceCnt = scanI2CDevices(devs, ArraySize(devs));
   if (deviceCnt > 0)
   {
     for (uint8_t i = 0; i < ArraySize(devs); i++)
@@ -437,10 +437,8 @@ void setup()
   initHwDebug(); // init hardware debugging
 
 #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
-#if !defined(USE_SW_TWI)
   enumI2cDevices();
   __debugS(PSTR("[ after enumI2CDevices ]"));
-#endif
 #endif
   setupBuzzer(); // setup buzzer before reading config
   __debugS(PSTR("[ after setupBuzzer ]"));

@@ -139,7 +139,7 @@ void initFastLED()
 */
 void initHwDebug()
 {
-#if defined(__HW_DEBUG__)
+#if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN != -1
   pinMode(DEBUG_PIN, OUTPUT);
   digitalWrite(DEBUG_PIN, HIGH);
 #endif
@@ -422,8 +422,11 @@ void setupBacklight()
 void setupEncoder()
 {
 #if defined(USE_LEONERD_DISPLAY)
-  #if !defined(USE_SW_TWI)
+#if defined(USE_SW_TWI)
+  encoder.begin(&I2CBus);
+#else
   encoder.begin();
+#endif
   uint8_t ver = encoder.queryVersion();
   if (ver < 2)
   {
@@ -451,9 +454,6 @@ void setupEncoder()
     */
   }
   encoder.setDoubleClickEnabled(true);
-  #else
-    __debugS(PSTR("ERROR: The LeoNerd's OLED Module doesn't work with software I2C!"));
-  #endif
 #else
   encoder.setDoubleClickEnabled(true); // enable doubleclick on the rotary encoder
 #endif
@@ -519,7 +519,7 @@ void setupSteppers()
   }
 
 #else
-  // we don't use the Revolver stepper but an servo instead, although
+  // we don't use the Revolver stepper but a servo instead, although
   // create a dummy instance
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", -1, -1, Y_ENABLE_PIN, 0, 0);
 #endif

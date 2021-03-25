@@ -33,7 +33,6 @@
 #endif
 #include <SPI.h>
 #include "SdFat.h"
-#include <Wire.h>
 #include "U8g2lib.h"
 #include "MemoryFree.h"
 #include "DataStore.h"
@@ -223,6 +222,9 @@ extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
 extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
 #endif
 #elif defined(USE_LEONERD_DISPLAY)
+#if defined(USE_SW_TWI)
+extern SMUFF_SH1106_128X64_NONAME_F_SW_I2C display;
+#else
 extern U8G2_SH1106_128X64_NONAME_F_HW_I2C display;
 #elif defined(USE_ANET_DISPLAY)
 extern U8G2_ST7920_128X64_F_2ND_HW_SPI display;
@@ -578,7 +580,7 @@ extern void showDuetLS();
 extern void switchFeederStepper(uint8_t stepper);
 extern void removeFirmwareBin();
 extern void showMemInfo(int8_t serial);
-extern uint8_t scanI2CDevices(uint8_t *devices);
+extern uint8_t scanI2CDevices(uint8_t *devices, uint8_t);
 extern bool initSD(bool showStatus = true);
 
 extern unsigned long translateSpeed(uint16_t speed, uint8_t axis);
