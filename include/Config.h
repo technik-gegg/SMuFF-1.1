@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.22"
+#define VERSION_STRING    "V2.23"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-03-16"
+#define VERSION_DATE      "2021-03-25"
 #define CONFIG_FILE       "/SMUFF.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
 #define TMC_CONFIG_FILE   "/TMCDRVR.json"
@@ -48,11 +48,12 @@
 #define MIN_CONTRAST        60
 #define MAX_CONTRAST        250
 
-#define I2C_SLAVE_ADDRESS    0x88
-#define I2C_DISPLAY_ADDRESS  0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
-#define I2C_ENCODER_ADDRESS  0x3D        // default address for the LeoNerd Encoder
-#define I2C_SERVOCTL_ADDRESS 0x40        // default address for multi servo controller
-#define I2C_SERVOBCAST_ADDRESS 0x70      // default address for multi servo controller (Broadcast Address)
+#define I2C_SLAVE_ADDRESS       0x88
+#define I2C_DISPLAY_ADDRESS     0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
+#define I2C_ENCODER_ADDRESS     0x3D        // default address for the LeoNerd Encoder
+#define I2C_SERVOCTL_ADDRESS    0x40        // default address for multi servo controller
+#define I2C_EEPROM_ADDRESS      0x50        // default address for EEPROM on E3 2.0
+#define I2C_SERVOBCAST_ADDRESS  0x70        // default address for multi servo controller (Broadcast Address)
 
 #define SERVO_WIPER         0
 #define SERVO_LID           1

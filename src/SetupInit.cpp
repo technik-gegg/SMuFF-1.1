@@ -125,8 +125,8 @@ void initFastLED()
 #endif
 #if NEOPIXEL_TOOL_PIN != -1 && defined(USE_FASTLED_TOOLS)
   pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
-  cTools = &FastLED.addLeds<LED_TYPE, NEOPIXEL_TOOL_PIN, COLOR_ORDER>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
+  cTools = &FastLED.addLeds<LED_TYPE_TOOL, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
+  FastLED.setBrightness(BRIGHTNESS_TOOL);
   __debugS(PSTR("FastLED for tools initialized"));
 #else
   __debugS(PSTR("FastLED for tools not enabled. Neopixel Pin: %d"), NEOPIXEL_TOOL_PIN);
@@ -250,16 +250,16 @@ void setupServos()
   // setup the Wiper servo
   if (SERVO1_PIN != -1)
   {
-    servo.setMaxCycles(smuffConfig.servoCycles1);
-    servo.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
-    servo.setTickRes(SERVO_RESOLUTION);
+    servoWiper.setMaxCycles(smuffConfig.servoCycles1);
+    servoWiper.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
+    servoWiper.setTickRes(SERVO_RESOLUTION);
 #if defined(__ESP32__)
     // we'll be using the internal ledcWrite for servo control on ESP32
-    servo.attach(SERVO1_PIN, false, SERVO_WIPER);
+    servoWiper.attach(SERVO1_PIN, false, SERVO_WIPER);
 #elif defined(__STM32F1__)
-    servo.attach(SERVO1_PIN, true, SERVO_WIPER);
+    servoWiper.attach(SERVO1_PIN, true, SERVO_WIPER);
 #else
-    servo.attach(SERVO1_PIN, true, SERVO_WIPER);
+    servoWiper.attach(SERVO1_PIN, true, SERVO_WIPER);
 #endif
     uint8_t resetPos = 90, param;
     // try to find out the default reset position of the wiper servo from
@@ -597,7 +597,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
 
   if (mode == 0)
   {
-    //__debugS(PSTR("Driver for %c-axis skipped"), 'X'+axis);
+    __debugS(PSTR("Driver for %c-axis skipped"), 'X'+axis);
     return nullptr;
   }
 
@@ -607,26 +607,30 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   #else
   TMC2209Stepper *driver = new TMC2209Stepper(rx_pin, tx_pin, rsense, drvrAdr);
   #endif
-  //__debugS(PSTR("Driver for %c-axis initialized"), 'X'+axis);
+  __debugS(PSTR("Driver for %c-axis initialized"), 'X'+axis);
 
-  #if defined(TMC_SERIAL) && !defined(TMC_HW_SERIAL)
+  #if defined(HAS_TMC_SUPPORT) && !defined(TMC_HW_SERIAL)
   driver->beginSerial(TMC_SW_BAUDRATE);
   #endif
   driver->Rsense = rsense;
-  // Although the TMC datasheet says to set Rsense to internal, the following code will lead to the
-  // stepper drivers not stepping anymore! This might be because it conflicts somehow with the OTP
-  // on the stepper chips soldered to the E3 1.2 and E3 2.0. It might be a different picture for external
-  // (Pololu style) stepper drivers.
-  // So for now, this code got disabled.
-  /*
+
   bool intRsense = driver->internal_Rsense();
   if(!intRsense) {
     __debugS(PSTR("[initDriver] Setting RSense to internal"));
+    // Although the TMC datasheet says to set Rsense to internal, the following code will lead to the
+    // stepper drivers not stepping anymore on SKR E3 boards!
+    // This might be because it conflicts somehow with the OTP on the stepper chips soldered onto the E3 1.2 and E3 2.0.
+    // It's a different picture for external (Pololu style) stepper drivers.
+    // So for now, this code is disabled when compiling for E3 1.2 / 2.0 boards.
+    #if !defined(__BRD_SKR_MINI_E3)
     steppers[axis].setEnabled(false);
     driver->internal_Rsense(true);
+    #endif
   }
-  */
   steppers[axis].setEnabled(true);
+  intRsense = driver->internal_Rsense();
+  __debugS(PSTR("[initDriver] RSense internal %d"), intRsense);
+
   driver->toff(toff);
   driver->blank_time(36);
   driver->I_scale_analog(false);    // use internal Vref; set to true for external Vref
@@ -720,7 +724,7 @@ void setupTMCDrivers()
   if (STALL_Z_PIN != -1)
     pinMode(STALL_Z_PIN, INPUT_PULLUP);
 #endif
-  //__debugS(PSTR("DONE initializing TMC Steppers"));
+  //__debugS(PSTR("[setupTMCDrivers] DONE"));
 }
 #endif
 

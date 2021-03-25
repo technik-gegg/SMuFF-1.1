@@ -2138,50 +2138,39 @@ void playSequenceBackgnd()
   }
 }
 
+ZServo* getServoInstance(int8_t servoNum) {
+  switch(servoNum) {
+    case SERVO_WIPER:   return &servoWiper;
+    case SERVO_LID:     return &servoLid;
+    case SERVO_CUTTER:  return &servoCutter;
+  }
+  return nullptr;
+}
+
 void setServoMinPwm(int8_t servoNum, uint16_t pwm)
 {
-  ZServo* instance = nullptr;
-  switch(servoNum) {
-    case SERVO_WIPER:   instance = &servo; break;
-    case SERVO_LID:     instance = &servoLid; break;
-    case SERVO_CUTTER:  instance = &servoCutter; break;
-  }
+  ZServo* instance = getServoInstance(servoNum);
   if(instance != nullptr)
       instance->setPulseWidthMin(pwm);
 }
 
 void setServoMaxPwm(int8_t servoNum, uint16_t pwm)
 {
-  ZServo* instance = nullptr;
-  switch(servoNum) {
-    case SERVO_WIPER:   instance = &servo; break;
-    case SERVO_LID:     instance = &servoLid; break;
-    case SERVO_CUTTER:  instance = &servoCutter; break;
-  }
+  ZServo* instance = getServoInstance(servoNum);
   if(instance != nullptr)
       instance->setPulseWidthMax(pwm);
 }
 
 void disableServo(int8_t servoNum)
 {
-  ZServo* instance = nullptr;
-  switch(servoNum) {
-    case SERVO_WIPER:   instance = &servo; break;
-    case SERVO_LID:     instance = &servoLid; break;
-    case SERVO_CUTTER:  instance = &servoCutter; break;
-  }
+  ZServo* instance = getServoInstance(servoNum);
   if(instance != nullptr)
     instance->disable();
 }
 
 void enableServo(int8_t servoNum)
 {
-  ZServo* instance = nullptr;
-  switch(servoNum) {
-    case SERVO_WIPER:   instance = &servo; break;
-    case SERVO_LID:     instance = &servoLid; break;
-    case SERVO_CUTTER:  instance = &servoCutter; break;
-  }
+  ZServo* instance = getServoInstance(servoNum);
   if(instance != nullptr)
     instance->enable();
 }
@@ -2193,12 +2182,7 @@ bool setServoPos(int8_t servoNum, uint8_t degree)
   uint16_t pulseLen = map(degree, 0, 180, smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
   setServoMS(servoNum, pulseLen);
 #else
-  ZServo* instance = nullptr;
-  switch(servoNum) {
-    case SERVO_WIPER:   instance = &servo; break;
-    case SERVO_LID:     instance = &servoLid; break;
-    case SERVO_CUTTER:  instance = &servoCutter; break;
-  }
+  ZServo* instance = getServoInstance(servoNum);
   if(instance != nullptr) {
     instance->write(degree);
     instance->setDelay();
@@ -2227,12 +2211,7 @@ bool setServoMS(int8_t servoNum, uint16_t microseconds)
     return true;
   }
 #else
-  ZServo* instance = nullptr;
-  switch(servoNum) {
-    case SERVO_WIPER:   instance = &servo; break;
-    case SERVO_LID:     instance = &servoLid; break;
-    case SERVO_CUTTER:  instance = &servoCutter; break;
-  }
+  ZServo* instance = getServoInstance(servoNum);
   if(instance != nullptr) {
     instance->writeMicroseconds(microseconds);
     instance->setDelay();
@@ -2850,19 +2829,27 @@ unsigned long translateSpeed(uint16_t speed, uint8_t axis)
   uint8_t delay = smuffConfig.stepDelay[axis];
   float correction = smuffConfig.speedAdjust[axis];
   unsigned long freq = F_CPU / STEPPER_PSC;
+  double oneTick = (double)1 / freq;
+  // check for lowest speed possible and correct it if it's below
+  uint16_t minSpeed = (uint16_t)ceil(((double)((unsigned long)freq/stepsPerMM)/0xFFFF));
+  if(minSpeed > speed) {
+    __debugS(PSTR("Speed requested: %3d mm/s  - Min. Speed: %3d mm/s"), speed, minSpeed);
+    speed = minSpeed;
+  }
   unsigned long pulses = speed * stepsPerMM;
   double delayTot = pulses * (delay * 0.000001);
-  double timeTot = ((double)pulses / freq) + delayTot;
-  // if delay total is more than 1 sec. its impossible to meet speed/s, so set a save value of 40mm/s.
-  unsigned long ticks = (unsigned long)((timeTot <= 1) ? (1 / (timeTot * correction)) : 500); // 500 equals round about 40 mm/s
+  double timeTot = ((double) oneTick * pulses) + delayTot;
+  // if time total is more than 1 sec. its impossible to meet speed/s, so set a save value of 40mm/s.
+  unsigned long ticks = (unsigned long)((timeTot <= 1.0f) ? (1 / (timeTot * correction)) : 500); // 500 equals round about 40 mm/s
   /*
-  char ttl[30], dtl[30];
+  char ttl[30], dtl[30], ot[30];
   dtostrf(timeTot, 12, 6, ttl);
   dtostrf(delayTot, 12, 6, dtl);
-  __debugS(PSTR("FREQ: %lu  SPEED: %4d  StepsMM: %4d  TICKS: %12lu  TOTAL: %s  PULSES: %6lu   DLY: %s"), freq, speed, stepsPerMM, ticks, ttl, pulses, dtl);
+  dtostrf(oneTick, 12, 10, ot);
+  __debugS(PSTR("\nONE T:\t%s\nSPEED:\t\t%4d\nStepsMM:\t%4d\nPULSES:\t%12lu\nTICKS:\t%12lu\nTIME:\t%s\nDELAY:\t%s"), ot, speed, stepsPerMM, pulses, ticks, ttl, dtl);
   */
   if (timeTot > 1)
-    __debugS(PSTR("Too fast! Slow down speed in mm/s."));
+    __debugS(PSTR("Speed too fast, has been reset to 40mm/s! Slow down speed in mm/s."));
   return ticks;
 }
 
@@ -2898,7 +2885,7 @@ uint8_t scanI2CDevices(uint8_t *devices, uint8_t maxDevices)
     {
       *(devices + cnt) = address;
       cnt++;
-      __debugS(PSTR("I2C device found at address 0x%02x"), address);
+      //__debugS(PSTR("I2C device found at address 0x%02x"), address);
     }
     delay(3);
   }

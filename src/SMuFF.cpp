@@ -48,6 +48,10 @@ U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/DSP_CS_PIN, /* reset=*/
 // if the hardware SPI doesn't work, you may try software SPI instead
 //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE);
 #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
+#undef LED_TYPE
+#undef COLOR_ORDER
+#define LED_TYPE            WS2811
+#define COLOR_ORDER         RGB
 U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/DSP_CS_PIN, /* dc=*/DSP_DC_PIN, /* reset=*/DSP_RESET_PIN);
 #elif defined(USE_CREALITY_DISPLAY)
 #if defined(CREALITY_HW_SPI)
@@ -101,7 +105,7 @@ Timer stepperTimer;
 Timer gpTimer;
 Timer fastLEDTimer;
 Timer servoTimer;
-ZServo servo;
+ZServo servoWiper;
 ZServo servoLid;
 ZServo servoCutter;
 ZFan fan;
@@ -381,6 +385,9 @@ void enumI2cDevices()
       case I2C_SERVOBCAST_ADDRESS:
         name = PSTR("MultiServo");
         break;
+      case I2C_EEPROM_ADDRESS:
+        name = PSTR("EEPROM");
+        break;
       default:
         name = PSTR("n.a.");
         break;
@@ -436,10 +443,12 @@ void setup()
   initFastLED(); // init FastLED if configured
   initHwDebug(); // init hardware debugging
 
-#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
+//#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
+#if !defined(USE_SW_TWI)
   enumI2cDevices();
   __debugS(PSTR("[ after enumI2CDevices ]"));
 #endif
+//#endif
   setupBuzzer(); // setup buzzer before reading config
   __debugS(PSTR("[ after setupBuzzer ]"));
   setupDeviceName(); // used for SerialBT on ESP32 only
@@ -480,7 +489,7 @@ void setup()
   setupPortExpander();
   setupI2C();
   setupHBridge();
-  getStoredData(); // read EEPROM.DAT from SD-Card; this call must happen after setupSteppers()
+  getStoredData(); // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
   //__debugS(PSTR("readSequences start"));
   //uint32_t now = millis();
   //readSequences();
@@ -505,7 +514,7 @@ void setup()
   startupBeep();              // signal startup has finished
   pwrSaveTime = millis();     // init value for LCD screen timeout
   initDone = true;            // mark init done; enable periodically sending status, if configured
-  #if defined(__BRD_SKR_MINI_E3)
+  #if defined(__BRD_SKR_MINI_E3)  // applies only to E3 V1.2 and 2.0 with integrated stepper drivers
     if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
       __debugS(PSTR("Warning: Your controller is equipped with TMC stepper drivers but at least one"));
       __debugS(PSTR("of them is not being initialized for UART mode. Thus, your stepper motor may overheat!"));
@@ -587,11 +596,14 @@ void runAndWait(int8_t index)
   {
     checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
 #if defined(__STM32F1__) // || defined(__ESP32__)
+  #if !defined(USE_TWI_DISPLAY) && !defined(USE_LEONERD_DISPLAY)
+    // can't display feed on I2C display because they'll hang
     if ((remainingSteppersFlag & _BV(FEEDER)) && !showMenu && (millis()-lastFeedUpdate >200))
     {
       refreshStatus(false, true);
       lastFeedUpdate = millis();
     }
+  #endif
 #endif
   }
 }

@@ -32,7 +32,7 @@ Make sure your board of choice has least **256K** of Flash memory, **48K** of (S
 
 Simply create a new build environment in your **platformio.ini** and adopt the settings according to your controllers hardware in your custom **pins.h** file.
 
-The configuration files **\*.cfg** have to be copied onto the SD-Card of the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the menus, save them and reboot.
+The configuration files **\*.json** have to be copied onto the SD-Card of the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the menus, save them and reboot.
 
 From version 1.6 on, I've added the option to run GCode scripts for automated testing of your hardware.
 In the **test** folder you'll find some sample scripts. Copy those over to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly until you hit the encoder button.
@@ -44,9 +44,21 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.23** - Minor changes / bug fixes
+
++ added separate definitions for LED_TYPE and COLOR_ORDER for backlight and tool Neopixels.
++ changed name *servo* to *servoWiper* to avoid ambiguity.
++ changed **LED_TYPE** and **COLOR_ORDER** on **MINI12864 PANEL V2.1** because it turned out to be WS2811 not WS2812B.
++ changed **M206** to use floating point values for the Selector distance.
++ added checking for min. speed when using mm/s. Min. speed for Selector is about 5 mm/s because of the lower steps/mm. Feeder can go down as far as 1 mm/s.
++ fixed a bug in the calculation of speeds in mm/s. **However, I still recommend using speed settings in ticks rather than mm/s** (that's: SpeedsInMMs set to false). If you do use mm/s, please be aware that accelleration/decelleration are not being taken into account and therefore it's just a close estimation of the speed (which doesn't really matter for the function of the SMuFF anyway).
++ fixed bug for not initializing the software serial when not running on a SKR E3 2.0 board (which operates on a hardware serial).
++ added back setting the internal RSense on a TMC stepper driver when not on a SKR E3 1.2/2.0 board.
++ added software I2C support for LeoNerds OLED module (by GMagician)
+
 **2.22** - Changed configuration file names; Minor changes for FastLEDs
 
-+ **IMPORTANT:** Configuration files must now have the **.json** extension, **not .CFG**! This was necessary because most people forgot to rename them and thus the SMuFF fialed at startup.
++ **IMPORTANT:** Configuration files must now have the **.json** extension, **not .CFG**! This was necessary because most people forgot to rename them and thus the SMuFF failed at startup.
 *From now on, just copy the configuration files to the root of your SD-Card; no need to rename the files.*
 + updated Neopixel (FastLED) functions / animations.
 + added **Anim. BPM** and **Status BPM** settings in **Display** menu.

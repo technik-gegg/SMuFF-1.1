@@ -868,7 +868,7 @@ void showServoMenu(char* menuTitle) {
             iVal = smuffConfig.servoCycles1;
             if(showInputDialog(title, P_ServoCycles, &iVal, 0, 50)) {
               smuffConfig.servoCycles1 = (uint8_t)iVal;
-              servo.setMaxCycles(smuffConfig.servoCycles1);
+              servoWiper.setMaxCycles(smuffConfig.servoCycles1);
             }
             break;
 
@@ -1644,7 +1644,7 @@ void showOptionsMenu(char* menuTitle) {
             iVal = smuffConfig.servoMinPwm;
             if(showInputDialog(title, P_InMilliseconds, &iVal, 400, 1000, nullptr, 20)) {
               smuffConfig.servoMinPwm = iVal;
-              servo.setPulseWidthMin(iVal);
+              servoWiper.setPulseWidthMin(iVal);
               servoLid.setPulseWidthMin(iVal);
             }
             break;
@@ -1653,7 +1653,7 @@ void showOptionsMenu(char* menuTitle) {
             iVal = smuffConfig.servoMaxPwm;
             if(showInputDialog(title, P_InMilliseconds, &iVal, 1000, 3000, nullptr, 20)) {
               smuffConfig.servoMaxPwm = iVal;
-              servo.setPulseWidthMax(iVal);
+              servoWiper.setPulseWidthMax(iVal);
               servoLid.setPulseWidthMax(iVal);
             }
             break;

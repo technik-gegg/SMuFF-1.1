@@ -54,9 +54,9 @@
 #define BEEPER_CHANNEL      1
 #define BEEPER_PIN          2       // IO2
 
-#define SERVO1_PIN          4       // IO4
-#define SERVO2_PIN          15      // IO15
-#define SERVO3_PIN          -1      // no cutter pin available
+#define SERVO1_PIN          4       // IO4 (Wiper Servo)
+#define SERVO2_PIN          15      // IO15 (Lid Servo)
+#define SERVO3_PIN          -1      // (Cutter Servo) no cutter pin available
 
 #define FAN_CHANNEL         1
 #define FAN_FREQ            5000
@@ -100,3 +100,6 @@
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
+#define BRIGHTNESS_TOOL     127
+#define LED_TYPE_TOOL       WS2812B
+#define COLOR_ORDER_TOOL    GRB

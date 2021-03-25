@@ -63,14 +63,14 @@
 
 #if !defined(SMUFF_V5)
 #define SERVO_OPEN_DRAIN 0
-#define SERVO1_PIN PC2 // E0-STOP
-#define SERVO2_PIN PA1 // SERVO
-#define SERVO3_PIN -1  // SERVO -- can use only one servo; pick either WIPER or CUTTER
+#define SERVO1_PIN PC2 // E0-STOP (Wiper Servo)
+#define SERVO2_PIN PA1 // SERVO (Lid Servo)
+#define SERVO3_PIN -1  // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
 #else
 #define SERVO_OPEN_DRAIN 0
-#define SERVO1_PIN PB13 // Y STEP pin used because of 5V tolerance
-#define SERVO2_PIN PB12 // Y DIR pin
-#define SERVO3_PIN PB14 // Y EN pin
+#define SERVO1_PIN PB13 // Y STEP pin (Wiper Servo) used because of 5V tolerance
+#define SERVO2_PIN PB12 // Y DIR pin (Lid Servo)
+#define SERVO3_PIN PB14 // Y EN pin (Cutter Servo)
 #endif
 
 #define FAN_PIN PA8     // FAN0
@@ -83,12 +83,15 @@
 // while compiling if NEOXPIXEL_PIN is in use
 #endif
 
-#define NEOPIXEL_PIN -1
-#define NEOPIXEL_TOOL_PIN -1 // for tools
-#define NUM_LEDS 3           // number of Neopixel LEDS
-#define BRIGHTNESS 127
-#define LED_TYPE WS2812B
-#define COLOR_ORDER GRB
+#define NEOPIXEL_PIN        -1
+#define NEOPIXEL_TOOL_PIN   -1          // for tools
+#define NUM_LEDS            3           // number of Neopixel LEDS
+#define BRIGHTNESS          127
+#define LED_TYPE            WS2812B
+#define COLOR_ORDER         GRB
+#define BRIGHTNESS_TOOL     127
+#define LED_TYPE_TOOL       WS2812B
+#define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN -1 // use default
 

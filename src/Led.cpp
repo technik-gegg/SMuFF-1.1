@@ -106,7 +106,7 @@ void setBacklightCRGB(CRGB color) {
 #if defined(USE_FASTLED_BACKLIGHT)
   fill_solid(leds, NUM_LEDS, color);
   cBackLight->showLeds();
-  __debugS(PSTR("Backlight set"));
+  //__debugS(PSTR("Backlight set"));
 #endif
 }
 

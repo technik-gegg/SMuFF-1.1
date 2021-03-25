@@ -16,11 +16,12 @@ Available M Commands
   M145	-	Set Material color/purge factor
   M150	-	Set FastLED color
   M201	-	Set max. acceleration
+  M202	-	Set speed adjustment factor (for speeds in mm/s)
   M203	-	Set max. feedrate
   M205	-	Set advanced options
   M206	-	Set offsets
   M250	-	LCD contrast
-  M280	- Set Servo position
+  M280	-	Set Servo position
   M300	-	Play a tone or a tune
   M350	-	Set motor microstepping
   M412	-	JAM detection on/off

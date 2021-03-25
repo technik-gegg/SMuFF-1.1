@@ -216,11 +216,11 @@ extern U8G2_ST7565_64128N_F_4W_HW_SPI display;
 #elif defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
 extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
 #if defined(USE_TWI_DISPLAY)
-#if defined(USE_SW_TWI)
-extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
-#else
-extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
-#endif
+  #if defined(USE_SW_TWI)
+  extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
+  #else
+  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
+  #endif
 #elif defined(USE_LEONERD_DISPLAY)
 #if defined(USE_SW_TWI)
 extern SMUFF_SH1106_128X64_NONAME_F_SW_I2C display;
@@ -280,7 +280,7 @@ extern Timer stepperTimer;
 extern Timer gpTimer;
 extern Timer fastLEDTimer;
 extern Timer servoTimer;
-extern ZServo servo;
+extern ZServo servoWiper;
 extern ZServo servoLid;
 extern ZServo servoCutter;
 extern ZFan fan;
@@ -442,6 +442,7 @@ extern void signalLoadFilament();
 extern void signalUnloadFilament();
 extern void signalSelectorBusy();
 extern void signalSelectorReady();
+extern ZServo* getServoInstance(int8_t servoNum);
 extern bool setServoPos(int8_t servoNum, uint8_t degree);
 extern bool setServoMS(int8_t servoNum, uint16_t microseconds);
 extern void setServoLid(uint8_t pos);

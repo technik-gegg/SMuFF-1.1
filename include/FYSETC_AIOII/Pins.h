@@ -49,9 +49,9 @@
 
 #define BEEPER_PIN          PC9
 
-#define SERVO1_PIN          -1
-#define SERVO2_PIN          PB15     // FIL-DET
-#define SERVO3_PIN          -1       // no cutter pin available
+#define SERVO1_PIN          -1       // (Wiper Servo)
+#define SERVO2_PIN          PB15     // FIL-DET (Lid Servo)
+#define SERVO3_PIN          -1       // no cutter pin available (Cutter Servo)
 #define FAN_PIN             PC8      // FAN1
 #define HEATER0_PIN         PC7      // BED
 #define HEATBED_PIN         PC6      // END
@@ -60,6 +60,9 @@
 #define NEOPIXEL_TOOL_PIN   -1      // for tools
 #define DEBUG_PIN           -1
 #define RELAY_PIN           -1      // Relais for stepper motor switching
+#define BRIGHTNESS_TOOL     127
+#define LED_TYPE_TOOL       WS2812B
+#define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            PA4
 

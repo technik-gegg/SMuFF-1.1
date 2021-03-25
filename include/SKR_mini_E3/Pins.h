@@ -59,9 +59,9 @@
 #define RELAY_PIN           PC14    // PROBE (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
-#define SERVO1_PIN          PC12    // PT-DET
-#define SERVO2_PIN          PA1     // SERVO
-#define SERVO3_PIN          -1      // SERVO -- can use only one servo; pick either WIPER or CUTTER
+#define SERVO1_PIN          PC12    // PT-DET (Wiper Servo)
+#define SERVO2_PIN          PA1     // SERVO (LID Servo)
+#define SERVO3_PIN          -1      // SERVO (Cutter Servo) -- can use only one servo; pick either WIPER or CUTTER
 
 #define FAN_PIN             PA8     // FAN0
 #define HEATER0_PIN         PC8     // HE0
@@ -80,6 +80,9 @@ _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specifi
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
+#define BRIGHTNESS_TOOL     127
+#define LED_TYPE_TOOL       WS2812B
+#define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            -1      // use default
 

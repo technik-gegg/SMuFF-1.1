@@ -70,7 +70,7 @@
    "StepsMM": 410,
    "AccelSpeed": 6000,
    "AccelDist": 5,
-   "MaxSpeed": 500,
+   "MaxSpeed": 1000,
    "InsSpeed": 5000,
    "PurgeSpeed": 40000,
    "PurgeLen": 100,

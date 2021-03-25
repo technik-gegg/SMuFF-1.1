@@ -1128,21 +1128,27 @@ bool M202(const char *msg, String buf, int8_t serial)
   float paramF;
   if ((paramF = getParamF(buf, X_Param)) != -1)
   {
-    smuffConfig.speedAdjust[SELECTOR] = paramF;
-    steppers[SELECTOR].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR));
-    steppers[SELECTOR].setAcceleration(translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR));
+    if(paramF > 0.0 && paramF <= 3.0) {
+      smuffConfig.speedAdjust[SELECTOR] = paramF;
+      steppers[SELECTOR].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR));
+      steppers[SELECTOR].setAcceleration(translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR));
+    }
   }
   if ((paramF = getParamF(buf, Y_Param)) != -1)
   {
-    smuffConfig.speedAdjust[REVOLVER] = paramF;
-    steppers[REVOLVER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER));
-    steppers[REVOLVER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER));
+    if(paramF > 0.0 && paramF <= 3.0) {
+      smuffConfig.speedAdjust[REVOLVER] = paramF;
+      steppers[REVOLVER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER));
+      steppers[REVOLVER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER));
+    }
   }
   if ((paramF = getParamF(buf, Z_Param)) != -1)
   {
-    smuffConfig.speedAdjust[FEEDER] = paramF;
-    steppers[FEEDER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER));
-    steppers[FEEDER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER));
+    if(paramF > 0.0 && paramF <= 3.0) {
+      smuffConfig.speedAdjust[FEEDER] = paramF;
+      steppers[FEEDER].setMaxSpeed(translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER));
+      steppers[FEEDER].setAcceleration(translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER));
+    }
   }
   return stat;
 }
@@ -1672,10 +1678,11 @@ bool M206(const char *msg, String buf, int8_t serial)
     printOffsets(serial);
     return stat;
   }
-  if ((param = getParam(buf, X_Param)) != -1)
+  float paramF;
+  if ((paramF = getParamF(buf, X_Param)) != -1)
   {
-    if (param > 0 && param <= 10000)
-      smuffConfig.firstToolOffset = (float)param / 10;
+    if (paramF >= 0.0 && paramF <= 21.0)
+      smuffConfig.firstToolOffset = paramF;
     else
       stat = false;
   }
@@ -2423,6 +2430,7 @@ uint16_t handleFeedSpeed(String buf, uint8_t axis)
 {
   if (!hasParam(buf, F_Param))
   {
+    // if no F param was applied, return the default speed
     return smuffConfig.maxSpeed[axis];
   }
   else
@@ -2432,15 +2440,16 @@ uint16_t handleFeedSpeed(String buf, uint8_t axis)
       fspeed = mmsMin;
     if (fspeed > mmsMax)
       fspeed = mmsMax;
-    fspeed = translateSpeed(fspeed, axis);
-    //__debugS(PSTR("fspeed ticks = %ld"), fspeed);
-    steppers[axis].setMaxSpeed(fspeed);
-    if (fspeed > steppers[axis].getAcceleration())
+    uint16_t ticks = (uint16_t)translateSpeed(fspeed, axis);
+    steppers[axis].setMaxSpeed(ticks);
+    if (ticks > steppers[axis].getAcceleration())
     {
-      uint16_t faccel = fspeed * 3;
-      if (faccel >= 65500)
-        faccel = 65500;
-      steppers[axis].setAcceleration(faccel);
+      // lower the acceleration if it's above the feed speed by factor 3
+      uint32_t faccel = (uint32_t)(ticks * 3);
+      if (faccel >= 65535)
+        faccel = 65535;
+      steppers[axis].setAcceleration((uint16_t)faccel);
+      //__debugS(PSTR("faccel ticks now = %u"), steppers[axis].getAcceleration());
     }
     return fspeed;
   }
@@ -2469,7 +2478,7 @@ bool G1(const char *msg, String buf, int8_t serial)
     paramF = getParamF(buf, X_Param);
     paramL = isMill ? round(paramF * steppers[SELECTOR].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, SELECTOR);
-    //__debugS(PSTR("G1 moving X: %2.f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[SELECTOR].getStepsPerMM(), smuffConfig.stepDelay[SELECTOR]);
+    __debugS(PSTR("G1 moving X: %2.f %s with speed %ld mm/s"), paramF, isMill ? "mm" : "steps", speed, steppers[SELECTOR].getStepsPerMM(), smuffConfig.stepDelay[SELECTOR]);
     steppers[SELECTOR].setEnabled(true);
     prepStepping(SELECTOR, paramL, false, true);
   }

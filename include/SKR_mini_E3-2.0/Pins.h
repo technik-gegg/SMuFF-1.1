@@ -71,12 +71,15 @@
 #define SW_SERIAL_RX_PIN    -1      //
 
 #define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
-//#define NEOPIXEL_TOOL_PIN PA8       // for tools (NEOPIXEL)
-#define NEOPIXEL_TOOL_PIN   PB15    // 1st alternative for tools (EXT1.3)
+#define NEOPIXEL_TOOL_PIN   PA8       // for tools (NEOPIXEL)
+//#define NEOPIXEL_TOOL_PIN   PB15    // alternative for tools (EXT1.3); Important: not usable with TWI / LEONERD display
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
+#define BRIGHTNESS_TOOL     127
+#define LED_TYPE_TOOL       WS2812B
+#define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            -1      // use default
 

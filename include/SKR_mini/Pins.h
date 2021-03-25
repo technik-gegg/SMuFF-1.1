@@ -55,14 +55,14 @@
 
 #if !defined(SMUFF_V5)
 #define SERVO_OPEN_DRAIN    0
-#define SERVO1_PIN          PA1     // Endstop Y+
-#define SERVO2_PIN          PC3     // Endstop Z+
-#define SERVO3_PIN          -1      // Endstop Z+ -- can use only one servo; pick either WIPER or CUTTER
+#define SERVO1_PIN          PA1     // Endstop Y+ (Wiper Servo)
+#define SERVO2_PIN          PC3     // Endstop Z+ (Lid Servo)
+#define SERVO3_PIN          -1      // Endstop Z+ (Cutter Servo) -- can use only one servo; pick either WIPER or CUTTER
 #else
 #define SERVO_OPEN_DRAIN    1
-#define SERVO1_PIN          PB13    // Y STEP pin used because of 5V tolerance
-#define SERVO2_PIN          PB14    // Y DIR pin
-#define SERVO3_PIN          PB12    // Y EN pin
+#define SERVO1_PIN          PB13    // Y STEP pin (Wiper Servo) used because of 5V tolerance
+#define SERVO2_PIN          PB14    // Y DIR pin (Lid Servo)
+#define SERVO3_PIN          PB12    // Y EN pin (Cutter Servo)
 #endif
 #define FAN_PIN             PC8
 #define HEATER0_PIN         PA8
@@ -90,6 +90,9 @@ _DEFPIN_ARM(PB9, 9, B);
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
+#define BRIGHTNESS_TOOL     127
+#define LED_TYPE_TOOL       WS2812B
+#define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            -1      // use default
 

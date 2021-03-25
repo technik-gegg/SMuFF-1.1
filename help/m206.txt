@@ -1,4 +1,4 @@
-M206 Xn | Yn
+M206 Xn.n | Yn
 ------------
-Xn 		the first tool offset for the Selector
-Yn 		the first tool offset for the Revolver
+Xn.n	the first tool offset for the Selector (in mm)
+Yn	the first tool offset for the Revolver (in steps)
