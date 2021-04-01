@@ -52,7 +52,7 @@ U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/DSP_CS_PIN, /* reset=*/
 #undef COLOR_ORDER
 #define LED_TYPE            WS2811
 #define COLOR_ORDER         RGB
-U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R0, /* cs=*/DSP_CS_PIN, /* dc=*/DSP_DC_PIN, /* reset=*/DSP_RESET_PIN);
+U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R2, /* cs=*/DSP_CS_PIN, /* dc=*/DSP_DC_PIN, /* reset=*/DSP_RESET_PIN);
 #elif defined(USE_CREALITY_DISPLAY)
 #if defined(CREALITY_HW_SPI)
 // use this only if you have a special connection cable
@@ -99,6 +99,7 @@ HardwareSerial Serial3(1);       // dummy declaration to keep the compiler happy
                                  // won't be used though because of the CAN_USE_SERIAL3 definition
 #endif
 Stream *logSerial = &Serial;
+Stream *terminalSerial = &Serial2;
 
 ZStepper steppers[NUM_STEPPERS];
 Timer stepperTimer;
@@ -348,7 +349,6 @@ void isrGPTimerHandler()
     {
       duetLS.service(); // service the Duet3D laser Sensor reader
     }
-    playSequenceBackgnd(); // handle background playing of a sequence
 #ifdef FLIPDBG
     FLIPDBG               // flips the debug pin polarity which is supposed to generate a 500Hz signal for debug purposes
 #endif
@@ -374,23 +374,23 @@ void enumI2cDevices()
         break;
       switch (devs[i])
       {
-      case I2C_ENCODER_ADDRESS:
-        name = PSTR("Encoder");
-        encoder = true;
-        break;
-      case I2C_DISPLAY_ADDRESS:
-        name = PSTR("Display");
-        break;
-      case I2C_SERVOCTL_ADDRESS:
-      case I2C_SERVOBCAST_ADDRESS:
-        name = PSTR("MultiServo");
-        break;
-      case I2C_EEPROM_ADDRESS:
-        name = PSTR("EEPROM");
-        break;
-      default:
-        name = PSTR("n.a.");
-        break;
+        case I2C_ENCODER_ADDRESS:
+          name = PSTR("Encoder");
+          encoder = true;
+          break;
+        case I2C_DISPLAY_ADDRESS:
+          name = PSTR("Display");
+          break;
+        case I2C_SERVOCTL_ADDRESS:
+        case I2C_SERVOBCAST_ADDRESS:
+          name = PSTR("MultiServo");
+          break;
+        case I2C_EEPROM_ADDRESS:
+          name = PSTR("EEPROM");
+          break;
+        default:
+          name = PSTR("n.a.");
+          break;
       }
       __debugS(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
     }
@@ -422,6 +422,7 @@ void setup()
     Serial2.begin(115200);
   if (CAN_USE_SERIAL3)
     Serial3.begin(115200);
+
   __debugS(PSTR("[ setup start ]"));
 
 #if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3)
@@ -443,8 +444,8 @@ void setup()
   initFastLED(); // init FastLED if configured
   initHwDebug(); // init hardware debugging
 
-//#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
-#if !defined(USE_SW_TWI)
+#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
+  // don't scan I2C if no I2C devices are being used; Scan will take ages
   enumI2cDevices();
   __debugS(PSTR("[ after enumI2CDevices ]"));
 #endif
@@ -490,16 +491,21 @@ void setup()
   setupI2C();
   setupHBridge();
   getStoredData(); // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
-  //__debugS(PSTR("readSequences start"));
-  //uint32_t now = millis();
-  //readSequences();
-  //__debugS(PSTR("readSequences took %d ms"), millis()-now);
+  uint32_t now = millis();
+  readSequences();  // read sound files from SD-Card sounds folder
+  __debugS(PSTR("[ after readSequences ] (loading took %ld ms)"), millis()-now);
 
   if (smuffConfig.homeAfterFeed)
     moveHome(REVOLVER, false, false);
   else
     resetRevolver();
   //__debugS(PSTR("DONE reset Revolver"));
+
+  #if defined(USE_TERMINAL_MENUS)
+  if(smuffConfig.menuOnTerminal)
+    __terminal(P_SendTermScroll);
+  #endif
+
 
   sendStartResponse(0); // send "start<CR><LF>" to USB serial interface
   if (CAN_USE_SERIAL1)
@@ -511,9 +517,6 @@ void setup()
 
   removeFirmwareBin();        // deletes the firmware.bin file to prevent re-flashing on each boot
   refreshStatus(true, false);
-  startupBeep();              // signal startup has finished
-  pwrSaveTime = millis();     // init value for LCD screen timeout
-  initDone = true;            // mark init done; enable periodically sending status, if configured
   #if defined(__BRD_SKR_MINI_E3)  // applies only to E3 V1.2 and 2.0 with integrated stepper drivers
     if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
       __debugS(PSTR("Warning: Your controller is equipped with TMC stepper drivers but at least one"));
@@ -521,6 +524,9 @@ void setup()
       __debugS(PSTR("Please check and change your configuration accordingly!"));
     }
   #endif
+  startupBeep();              // signal startup has finished
+  pwrSaveTime = millis();     // init value for LCD screen timeout
+  initDone = true;            // mark init done; enable periodically sending status, if configured
 }
 
 void startStepperInterval()
@@ -575,7 +581,6 @@ void isrStepperHandler()
       remainingSteppersFlag &= ~_BV(i);
     }
   }
-  //__debugS(PSTR("ISR(): %d"), remainingSteppersFlag);
   startStepperInterval();
 }
 
@@ -898,8 +903,10 @@ void loop()
     {
       showMenu = true;
       char title[] = {"Settings"};
+      terminalClear(true);
       showSettingsMenu(title);
       showMenu = false;
+      terminalClear();
       debounceButton();
     }
     else if (button == LeftButton)
@@ -930,6 +937,7 @@ void loop()
       resetAutoClose();
       displayingUserMessage = false;
       showMenu = true;
+      terminalClear(true);
       if (turn == -1)
       {
         showMainMenu();
@@ -941,6 +949,7 @@ void loop()
       pwrSaveTime = millis();
       showMenu = false;
       refreshStatus(true, false);
+      terminalClear();
     }
   }
 
@@ -1118,26 +1127,26 @@ void filterSerialInput(String &buffer, char in)
   }
   switch (in)
   {
-  case '\b':
-  {
-    buffer = buffer.substring(0, buffer.length() - 1);
-  }
-  break;
-  case '\r':
-    break;
-  case '"':
-    isQuote = !isQuote;
-    buffer += in;
-    break;
-  case ' ':
-    if (isQuote)
+    case '\b':
+      {
+        buffer = buffer.substring(0, buffer.length() - 1);
+      }
+      break;
+    case '\r':
+      break;
+    case '"':
+      isQuote = !isQuote;
       buffer += in;
-    break;
-  default:
-    if (buffer.length() < 4096)
-      if (in >= 0x21 && in <= 0x7e) // read over non-ascii characters, just in case
+      break;
+    case ' ':
+      if (isQuote)
         buffer += in;
-    break;
+      break;
+    default:
+      if (buffer.length() < 4096)
+        if (in >= 0x21 && in <= 0x7e) // read over non-ascii characters, just in case
+          buffer += in;
+      break;
   }
 }
 
@@ -1202,9 +1211,22 @@ bool isJsonData(char in)
   return false;
 }
 
+void handleSerial(char in, String& buffer, uint8_t port) {
+  if (in == '\n' || (isCtlKey && in == 'n'))
+  {
+    parseGcode(buffer, port);
+    isQuote = false;
+    actionOk = false;
+    isCtlKey = false;
+  }
+  else
+  {
+    filterSerialInput(buffer, in);
+  }
+}
+
 void serialEvent()
 {
-
   uint16_t avail = 0;
   while ((avail = Serial.available()))
   {
@@ -1212,18 +1234,7 @@ void serialEvent()
     // check for JSON data first
     if (isJsonData(in))
       continue;
-    if (in == '\n' || (isCtlKey && in == 'n'))
-    {
-      //__debugS(PSTR("Received-0: %s"), serialBuffer0.c_str());
-      parseGcode(serialBuffer0, 0);
-      isQuote = false;
-      actionOk = false;
-      isCtlKey = false;
-    }
-    else
-    {
-      filterSerialInput(serialBuffer0, in);
-    }
+    handleSerial(in, serialBuffer0, 0);
   }
 }
 
@@ -1233,7 +1244,6 @@ void serialEvent2()
   while ((avail = Serial2.available()))
   {
     char in = (char)Serial2.read();
-    //__log(PSTR("Avail %d 0x%02x\n"), avail, in);
     // in case of PanelDue connected, route everthing to Duet3D - do not process it any further
     if (smuffConfig.hasPanelDue == 1)
     {
@@ -1241,20 +1251,7 @@ void serialEvent2()
         Serial1.write(in);
     }
     else
-    {
-      if (in == '\n' || (isCtlKey && in == 'n'))
-      {
-        //__debugS(PSTR("Received-2: %s"), serialBuffer2.c_str());
-        parseGcode(serialBuffer2, 2);
-        isQuote = false;
-        actionOk = false;
-        isCtlKey = false;
-      }
-      else
-      {
-        filterSerialInput(serialBuffer2, in);
-      }
-    }
+      handleSerial(in, serialBuffer2, 2);
   }
 }
 
@@ -1267,18 +1264,7 @@ void serialEvent1()
     // check for JSON data first
     if (isJsonData(in))
       continue;
-    if (in == '\n' || (isCtlKey && in == 'n'))
-    {
-      //__debugS(PSTR("Received-1: %s"), serialBuffer1.c_str());
-      parseGcode(serialBuffer1, 1);
-      isQuote = false;
-      actionOk = false;
-      isCtlKey = false;
-    }
-    else
-    {
-      filterSerialInput(serialBuffer1, in);
-    }
+    handleSerial(in, serialBuffer1, 1);
   }
 }
 
@@ -1288,24 +1274,13 @@ void serialEvent3()
   while ((avail = Serial3.available()))
   {
     char in = (char)Serial3.read();
+    // in case of PanelDue connected, route everthing to Duet3D - do not process it any further
     if (smuffConfig.hasPanelDue == 2)
     {
       if (CAN_USE_SERIAL2)
         Serial2.write(in);
     }
     else
-    {
-      if (in == '\n' || (isCtlKey && in == 'n'))
-      {
-        parseGcode(serialBuffer3, 3);
-        isQuote = false;
-        actionOk = false;
-        isCtlKey = false;
-      }
-      else
-      {
-        filterSerialInput(serialBuffer3, in);
-      }
-    }
+      handleSerial(in, serialBuffer3, 3);
   }
 }

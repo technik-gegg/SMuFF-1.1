@@ -50,21 +50,18 @@ unsigned long feederErrors = 0;
 bool ignoreHoming = false;
 unsigned long stallDetectedCountSelector = 0;
 unsigned long stallDetectedCountFeeder = 0;
-//char PROGMEM          tuneStartup[]  = { "F440D120P150.F523D120P80.F196D220P80.F196D120P80.F587D400P120.F349D80P240.F349D80P160." }; // the new tune
-char PROGMEM tuneStartup[100] = {"F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50."}; // the "old" tune
-char PROGMEM tuneUser[40] = {"F1760D90P90.F440D90P90.F440D90P90."};
-char PROGMEM tuneBeep[20] = {"F1760D90P200."};
-char PROGMEM tuneLongBeep[20] = {"F1760D450P500."};
+char PROGMEM tuneStartup[MAX_TUNE1] = {"F1760D90.F1975D90.F2093D90.F1975D90.F1760D200P50."}; // the "traditional" tune
+char PROGMEM tuneUser[MAX_TUNE2] = {"F1760D90P90.F440D90P90.F440D90P90."};
+char PROGMEM tuneBeep[MAX_TUNE3] = {"F1760D90P200."};
+char PROGMEM tuneLongBeep[MAX_TUNE3] = {"F1760D450P500."};
 #if defined(USE_LEONERD_DISPLAY)
-char PROGMEM tuneEncoder[20] = {"F330D10P10."};
+char PROGMEM tuneEncoder[MAX_TUNE3] = {"F330D10P10."};
 #else
-char PROGMEM tuneEncoder[20] = {"F1440D3."};
+char PROGMEM tuneEncoder[MAX_TUNE3] = {"F1440D3."};
 #endif
 
 uint16_t sequence[MAX_SEQUENCE][3]; // store for tune sequence for background playing
 uint8_t sequenceCnt = 0;
-bool startSequence = false; // trigger for background playing of tune sequence
-bool isPlaying = false;
 
 #define _F_ 0
 #define _D_ 1
@@ -110,6 +107,7 @@ void drawLogo()
   display.drawXBMP(0, 0, logo_width, logo_height, logo_bits);
 }
 
+static unsigned termRefresh = 0;
 
 void drawStatus()
 {
@@ -118,15 +116,19 @@ void drawStatus()
   strcat(brand, "D");
   #endif
   char tmp[80];
+  char tool [5];
+  char mode[6];
+  char relay[4];
+  char driver[10];
 
   display.setFont(TOOL_FONT);
   display.setFontMode(0);
   display.setDrawColor(1);
   if ((toolSelected >= 0 && toolSelected < smuffConfig.toolCount))
-    sprintf_P(tmp, PSTR("T%-2d"), toolSelected);
+    sprintf_P(tool, PSTR("T%-2d"), toolSelected);
   else
-    sprintf_P(tmp, PSTR("T--"));
-  display.drawStr(12, 28, tmp);
+    sprintf_P(tool, PSTR("T--"));
+  display.drawStr(12, 28, tool);
 
   display.setFont(STATUS_FONT);
   sprintf_P(tmp, PSTR("F1"));
@@ -141,12 +143,12 @@ void drawStatus()
   uint8_t boxHeight = display.getMaxCharHeight()+2;
 
   display.drawFrame(0, yBox, 10, boxHeight);
-  sprintf_P(tmp, PSTR("%1s"), smuffConfig.externalStepper ? PSTR("E") : PSTR("I"));
-  display.drawStr(2, yText, tmp);
+  sprintf_P(relay, PSTR("%1s"), smuffConfig.externalStepper ? PSTR("E") : PSTR("I"));
+  display.drawStr(2, yText, relay);
 
   display.drawFrame(14, yBox, 38, boxHeight);
-  sprintf_P(tmp, PSTR("%5s"), (smuffConfig.prusaMMU2) ? P_Pemu : PSTR("SMuFF"));
-  display.drawStr(16, yText, tmp);
+  sprintf_P(mode, PSTR("%5s"), (smuffConfig.prusaMMU2) ? P_Pemu : PSTR("SMuFF"));
+  display.drawStr(16, yText, mode);
 
 #if HAS_TMC_SUPPORT
   display.drawFrame(56, yBox, 27, boxHeight);
@@ -205,6 +207,35 @@ void drawStatus()
       display.drawGlyph(display.getDisplayWidth() - 18, 35, feederEndstop(2) ? 0x41 : 0x42);
   }
   drawFeed(false);
+  if(smuffConfig.menuOnTerminal) {
+    termRefresh++;
+    if(termRefresh % 5 == 0) {
+      char tmcStat;
+      char purge = (uint8_t)(smuffConfig.usePurge ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
+      char pstat = (uint8_t)(smuffConfig.sendPeriodicalStats ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
+      char f1 = (uint8_t)(feederEndstop() ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
+      char f2 = (uint8_t)(feederEndstop(2) ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
+      if (!smuffConfig.useEndstop2)
+        f2 = '-';
+      #if HAS_TMC_SUPPORT
+        sprintf_P(driver, PSTR(" TMC %c"), (isUsingTmc ? (tmcWarning ? '!' : ' ') : '-'));
+      #else
+        sprintf_P(driver, PSTR(" A4988 "));
+      #endif
+      #if defined(USE_TERMINAL_MENUS)
+      __terminal(P_SendTermStatus,
+            tool, TERM_VERTLINE_CHR,
+            f1, TERM_VERTLINE_CHR,
+            f2, TERM_VERTLINE_CHR,
+            mode, TERM_VERTLINE_CHR,
+            relay, TERM_VERTLINE_CHR,
+            driver, TERM_VERTLINE_CHR,
+            purge, TERM_VERTLINE_CHR,
+            pstat, TERM_VERTLINE_CHR,
+            brand);
+      #endif
+    }
+  }
   //__debugS(PSTR("[drawStatus] end..."));
 
 }
@@ -379,15 +410,11 @@ void showTMCStatus(uint8_t axis)
   {
     getInput(&turn, &btn, &isHeld, &isClicked);
     if (isHeld || isClicked)
-    {
       break;
-    }
-    if(turn < 0) {
+    if(turn < 0)
       pg--;
-    }
-    else if(turn > 0) {
+    else if(turn > 0)
       pg++;
-    }
     if(pg > 1)
       pg = 0;
     if(pg < 0)
@@ -474,6 +501,14 @@ void drawSelectingMessage(uint8_t tool)
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 10, _wait);
   display.updateDisplay();
+#if defined(USE_TERMINAL_MENUS)
+  if(smuffConfig.menuOnTerminal) {
+    terminalClear(true);
+    terminalSend(1, 1, _sel, true, 0);
+    terminalSend(3, 1, tmp, true, 2);
+    terminalSend(5, 1, _wait, true, 0);
+  }
+#endif
 }
 
 void drawPurgingMessage(uint16_t len, uint8_t tool)
@@ -496,6 +531,14 @@ void drawPurgingMessage(uint16_t len, uint8_t tool)
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
   display.updateDisplay();
+#if defined(USE_TERMINAL_MENUS)
+  if(smuffConfig.menuOnTerminal) {
+    terminalClear(true);
+    terminalSend(1, 1, _sel, true, 0);
+    terminalSend(3, 1, tmp, true, 2);
+    terminalSend(5, 1, _wait, true, 0);
+  }
+#endif
 }
 
 void drawTestrunMessage(unsigned long loop, char *msg)
@@ -511,6 +554,13 @@ void drawTestrunMessage(unsigned long loop, char *msg)
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
   display.updateDisplay();
+#if defined(USE_TERMINAL_MENUS)
+  if(smuffConfig.menuOnTerminal) {
+    terminalSend(1, 1, _sel, true, 0);
+    terminalSend(3, 1, msg, true, 2);
+    terminalSend(5, 1, _wait, true, 0);
+  }
+#endif
 }
 
 /**
@@ -556,10 +606,13 @@ void drawUserMessage(String message, bool smallFont /* = false */, bool center /
   if (isPwrSave) {
     setPwrSave(0);
   }
+  terminalClear(true);
   display.clearBuffer();
   display.setDrawColor(1);
   display.setFont(smallFont ? BASE_FONT : BASE_FONT_BIG);
   uint16_t y = (display.getDisplayHeight() - ((lineCnt-1) * display.getMaxCharHeight())) / 2;
+  uint8_t tp = 1+((TERM_LINES-lineCnt)/2);
+  bool isSeparator = false;
   for (uint8_t i = 0; i < lineCnt; i++)
   {
     uint16_t x = center ? (display.getDisplayWidth() - display.getStrWidth(lines[i])) / 2 : 0;
@@ -569,9 +622,16 @@ void drawUserMessage(String message, bool smallFont /* = false */, bool center /
       if (lineCnt > 1 && strcmp(lines[1], " ") == 0)
       {
         display.drawHLine(0, y + 3, display.getDisplayWidth());
+        isSeparator = true;
       }
     }
     y += display.getMaxCharHeight();
+    if(smuffConfig.menuOnTerminal) {
+      if (i==1 && isSeparator)
+        terminalDrawSeparator(tp + i, 1, 36);
+      else
+        terminalSend(tp + i, 1, lines[i], center, 0, true);
+    }
   }
   if (drawCallbackFunc != nullptr)
     drawCallbackFunc();
@@ -617,6 +677,7 @@ void drawSDStatus(int8_t stat)
   display.setCursor((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, display.getDisplayHeight()-1);
   display.print(tmp);
   display.updateDisplay();
+  //__debugS(PSTR("[drawSDStatus] %d -> %s"), stat, tmp);
 }
 
 bool selectorEndstop()
@@ -789,11 +850,12 @@ uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons)
   char _title[80];
   char msg1[256];
   char msg2[80];
-  char btn[60];
+  char btn[40];
   sprintf_P(_title, title);
   sprintf_P(msg1, message);
   sprintf_P(msg2, addMessage);
   sprintf_P(btn, buttons);
+  terminalClear(true);
   uint8_t stat = display.userInterfaceMessage(_title, msg1, msg2, btn);
   setFastLEDStatus(FASTLED_STAT_NONE);
   return stat;
@@ -1771,7 +1833,6 @@ void prepSteppingAbs(int8_t index, long steps, bool ignoreEndstop)
 {
   long pos = steppers[index].getStepPosition();
   long _steps = steps - pos;
-  //__debugS(PSTR("Pos: %ld  New: %ld"), pos, _steps);
   setStepperSteps(index, _steps, ignoreEndstop);
 }
 
@@ -1845,6 +1906,17 @@ void printDriverRms(int8_t serial)
             drivers[SELECTOR] == nullptr ? P_Unknown : (String(drivers[SELECTOR]->rms_current()) + String(P_MilliAmp)).c_str(),
             drivers[REVOLVER] == nullptr ? P_Unknown : (String(drivers[REVOLVER]->rms_current()) + String(P_MilliAmp)).c_str(),
             drivers[FEEDER] == nullptr ? P_Unknown : (String(drivers[FEEDER]->rms_current()) + String(P_MilliAmp)).c_str());
+  printResponse(tmp, serial);
+}
+
+void printDriverMS(int8_t serial)
+{
+  char tmp[128];
+
+  sprintf_P(tmp, P_TMC_StatusAll,
+            drivers[SELECTOR] == nullptr ? P_Unknown : String(drivers[SELECTOR]->microsteps()).c_str(),
+            drivers[REVOLVER] == nullptr ? P_Unknown : String(drivers[REVOLVER]->microsteps()).c_str(),
+            drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->microsteps()).c_str());
   printResponse(tmp, serial);
 }
 
@@ -1922,17 +1994,10 @@ void printOffsets(int8_t serial)
 {
   char tmp[128];
   sprintf_P(tmp, P_TMC_StatusAll,
-            String((int)(smuffConfig.firstToolOffset * 10)).c_str(),
+            String(smuffConfig.firstToolOffset).c_str(),
             String(smuffConfig.firstRevolverOffset).c_str(),
             "--");
   printResponse(tmp, serial);
-}
-
-void printPos(int8_t index, int8_t serial)
-{
-  char buf[128];
-  sprintf_P(buf, PSTR("Pos. '%s': %ld\n"), steppers[index].getDescriptor(), steppers[index].getStepPosition());
-  printResponseP(buf, serial);
 }
 
 #ifdef __STM32F1__
@@ -1962,11 +2027,10 @@ void muteTone(int8_t pin)
 
 void beep(uint8_t count)
 {
-  //showLed(1, count);
   prepareSequence(tuneBeep, false);
   for (uint8_t i = 0; i < count; i++)
   {
-    playSequence(true);
+    playSequence();
   }
 }
 
@@ -1978,7 +2042,7 @@ void longBeep(uint8_t count)
   prepareSequence(tuneLongBeep, false);
   for (uint8_t i = 0; i < count; i++)
   {
-    playSequence(true);
+    playSequence();
   }
 }
 
@@ -1988,13 +2052,13 @@ void userBeep()
   encoder.setLED(LED_RED, true);
 #endif
   prepareSequence(tuneUser, false);
-  playSequence(true);
+  playSequence();
 }
 
 void encoderBeep(uint8_t count)
 {
   prepareSequence(tuneEncoder, false);
-  playSequence(true);
+  playSequence();
 }
 
 void startupBeep()
@@ -2018,26 +2082,20 @@ void prepareSequence(const char *seq, bool autoPlay)
   if (BEEPER_PIN == -1)
     return;
 #endif
-  uint16_t f = 0, d = 0, p = 0;
-  uint8_t n = 0;
-  startSequence = false;
   if (seq == nullptr || *seq == 0)
     return;
+
+  uint16_t f = 0, d = 0, p = 0;
+  uint8_t n = 0;
   while (*seq)
   {
-    if (*seq == '"' || *seq == ' ')
+    if (*seq == '"' || *seq == ' ' || *seq=='\r' || *seq=='\n' || *seq=='\t') // skip quotes, spaces and newlines
       seq++;
-    if (toupper(*seq) == 'F')
+    switch(toupper(*seq))
     {
-      f = atoi(++seq);
-    }
-    if (toupper(*seq) == 'D')
-    {
-      d = atoi(++seq);
-    }
-    if (toupper(*seq) == 'P')
-    {
-      p = atoi(++seq);
+      case 'F': f = atoi(++seq); break;
+      case 'D': d = atoi(++seq); break;
+      case 'P': p = atoi(++seq); break;
     }
     if (*seq == '.')
     {
@@ -2045,12 +2103,8 @@ void prepareSequence(const char *seq, bool autoPlay)
       {
         sequence[n][_F_] = (uint16_t)f;
         sequence[n][_D_] = (uint16_t)d;
-        sequence[n][_P_] = (uint16_t)0;
       }
-      if (p)
-      {
-        sequence[n][_P_] = (uint16_t)p;
-      }
+      sequence[n][_P_] = (uint16_t)p;
       f = d = p = 0;
       if (n < MAX_SEQUENCE - 1)
         n++;
@@ -2060,81 +2114,21 @@ void prepareSequence(const char *seq, bool autoPlay)
     seq++;
   }
   // mark end-of-sequence
-  sequence[n][_F_] = 0;
-  sequence[n][_D_] = 0;
-  sequence[n][_P_] = 0;
+  memset(&sequence[n], 0, 3*sizeof(uint16_t));
   if (autoPlay)
-    playSequence(true);
+    playSequence();
 }
 
-/*
-  Start playing in background via timer interrupt
-*/
-void playSequence(bool inForeground)
+void playSequence()
 {
-  if (!timerRunning || inForeground)
+  for (uint8_t i = 0; i < MAX_SEQUENCE; i++)
   {
-    // timers not initialized by now, play in foreground
-    for (uint8_t i = 0; i < MAX_SEQUENCE; i++)
-    {
-      if (sequence[i][_F_] == 0)
-        return;
-      _tone(sequence[i][_F_], sequence[i][_D_]);
-      delay(sequence[i][_D_]);
-      if (sequence[i][_P_] > 0)
-        delay(sequence[i][_P_]);
-    }
-    return;
-  }
-  while (isPlaying)
-    delay(10);
-  startSequence = true;
-}
-
-/*
-  Gets called every 1ms from within the general timer to play the
-  next tone in sequence if startSequence is set
-*/
-void playSequenceBackgnd()
-{
-  if (!startSequence)
-  {
-    isPlaying = false;
-    sequenceCnt = 0;
-    return;
-  }
-
-  // stop condition: Frequency and Duration == 0
-  if (sequence[sequenceCnt][_F_] == 0 && sequence[sequenceCnt][_D_] == 0)
-  {
-    startSequence = false;
-    isPlaying = false;
-    sequenceCnt = 0;
-    _noTone();
-    return;
-  }
-
-  if (isPlaying && sequence[sequenceCnt][_D_] > 0)
-  {
-    sequence[sequenceCnt][_D_] -= 1;
-  }
-  else
-  {
-    if (isPlaying && sequence[sequenceCnt][_P_] > 0)
-    {
-      sequence[sequenceCnt][_P_] -= 1;
-    }
-    else if (isPlaying)
-    {
-      _noTone();
-      isPlaying = false;
-      sequenceCnt++;
-    }
-    else
-    {
-      _tone(sequence[sequenceCnt][_F_], 0);
-      isPlaying = true;
-    }
+    if (sequence[i][_F_] == 0)
+      return;
+    _tone(sequence[i][_F_], sequence[i][_D_]);
+    delay(sequence[i][_D_]);
+    if (sequence[i][_P_] > 0)
+      delay(sequence[i][_P_]);
   }
 }
 
@@ -2174,7 +2168,6 @@ void enableServo(int8_t servoNum)
   if(instance != nullptr)
     instance->enable();
 }
-
 
 bool setServoPos(int8_t servoNum, uint8_t degree)
 {
@@ -2234,7 +2227,7 @@ void getStoredData()
 
 void setSignalPort(uint8_t port, bool state)
 {
-  char tmp[40];
+  char tmp[10];
 
   if (!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats)
   {
@@ -2324,6 +2317,137 @@ void removeFirmwareBin()
 {
   if (initSD(false))
     SD.remove("firmware.bin");
+}
+
+void terminalDrawFrame(bool clear) {
+  if(!smuffConfig.menuOnTerminal)
+    return;
+
+#if defined(USE_TERMINAL_MENUS)
+  char vert[TERM_LINE_WIDTH+5];
+  char horz[TERM_LINE_WIDTH+5];
+
+  memset(horz, clear ? 0x20 : TERM_HORZLINE_CHR, TERM_LINE_WIDTH+4);
+  memset(vert, 0x20, TERM_LINE_WIDTH+4);
+  horz[TERM_LINE_WIDTH+4] = 0;
+  vert[TERM_LINE_WIDTH+4] = 0;
+
+  if(!clear) {
+    horz[0] = (uint8_t)TERM_CORNERUL_CHR;  horz[TERM_LINE_WIDTH+3] = (uint8_t)TERM_CORNERUR_CHR;
+    vert[0] = (uint8_t)TERM_VERTLINE_CHR;  vert[TERM_LINE_WIDTH+3] = (uint8_t)TERM_VERTLINE_CHR;
+  }
+
+  __terminal(P_SendTermAt, TERM_OFFS_Y, TERM_OFFS_X-1, horz);
+  for(uint8_t i=1; i<= TERM_LINES; i++)
+    __terminal(P_SendTermAt, TERM_OFFS_Y+i, TERM_OFFS_X-1, vert);
+
+  if(!clear) {
+    horz[0] = (uint8_t)TERM_CORNERLL_CHR;  horz[TERM_LINE_WIDTH+3] = (uint8_t)TERM_CORNERLR_CHR;
+  }
+  __terminal(P_SendTermAt, TERM_OFFS_Y+TERM_LINES+1, TERM_OFFS_X-1, horz);
+#endif
+}
+
+void terminalDrawSeparator(uint8_t y, uint8_t x, uint8_t color) {
+#if defined(USE_TERMINAL_MENUS)
+  char ln[TERM_LINE_WIDTH+1];
+  memset(ln, TERM_SEPARATOR_CHR, TERM_LINE_WIDTH);
+  ln[TERM_LINE_WIDTH] = 0;
+  __terminal(P_SendTermAttr, color);
+  __terminal(P_SendTermAt, y+TERM_OFFS_Y, x+TERM_OFFS_X, ln);
+#endif
+}
+
+void terminalClear(bool drawFrame) {
+  if(!smuffConfig.menuOnTerminal)
+    return;
+#if defined(USE_TERMINAL_MENUS)
+  static bool cursorSaved = false;
+  if(drawFrame) {
+    if(!cursorSaved)
+      __terminal(P_SendTermCsrSave);  // save cursor position and attributes
+    cursorSaved = true;
+    __terminal(P_SendTermCsrHide);    // turn cursor off
+    terminalDrawFrame();
+  }
+  else {
+    terminalDrawFrame(true);
+    if(cursorSaved)
+      __terminal(P_SendTermCsrRestore);     // restore cursor position and switch it on again
+    __terminal(P_SendTermCsrShow);
+    cursorSaved = false;
+  }
+#endif
+}
+
+void terminalSend(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine) {
+  if(!smuffConfig.menuOnTerminal)
+    return;
+
+#if defined(USE_TERMINAL_MENUS)
+  char txt[TERM_LINE_WIDTH+1];
+  memset(txt, ' ', TERM_LINE_WIDTH);
+  uint8_t len = strlen(str);
+  if(len > ArraySize(txt))
+    len = ArraySize(txt);
+  if(isCenter) {
+    uint8_t pos = (TERM_LINE_WIDTH - len)/2;
+    strncpy(&txt[pos], str, len);
+  }
+  else {
+    strncpy(txt, str, len);
+    if(!clearLine)
+      txt[len] = 0;
+  }
+  txt[TERM_LINE_WIDTH] = 0;
+
+  uint8_t color = 0, color2 = TERM_FGC_NONE;
+  switch(isInvert) {
+    case 1: color = TERM_INVERTED; break;
+    case 2: color = TERM_FGC_CYAN; break;
+    case 3: color = TERM_BGC_CYAN; break;
+    case 4: color = TERM_FGC_MAGENTA; break;
+    case 5: color = TERM_BGC_MAGENTA; break;
+    case 6: color = TERM_UNDERLINE; color2 = TERM_FGC_CYAN; break;
+  }
+  if(clearLine) {
+    char clr[TERM_LINE_WIDTH+2];
+    memset(clr, 0x20, TERM_LINE_WIDTH+1);
+    clr[TERM_LINE_WIDTH+1] = 0;
+    __terminal(P_SendTermAt, y+TERM_OFFS_Y, TERM_OFFS_X, clr);
+  }
+  if(*txt == 0x1d) {
+    terminalDrawSeparator(y, x, color);
+  }
+  else {
+    __terminal(P_SendTermAttr,color);                               // set main attribute/color
+    if(color2 != TERM_FGC_NONE) __terminal(P_SendTermAttr, color2); // set 2nd attribute/color if applicable
+    __terminal(P_SendTermAt, y+TERM_OFFS_Y, x+TERM_OFFS_X, txt);    // print at position
+  }
+  __terminal(P_SendTermAttr, 0); // reset attributes
+#endif
+}
+
+uint8_t terminalSendLines(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine) {
+
+  if(!smuffConfig.menuOnTerminal)
+    return 0;
+#if defined(USE_TERMINAL_MENUS)
+  char* lines[TERM_LINES+1];
+  uint8_t ln = y;
+  uint8_t lineCnt = splitStringLines(lines, ArraySize(lines), str);
+  if(lineCnt==0)
+    return ln;
+
+  for(uint8_t i=0; i< lineCnt; i++) {
+    if(strlen(lines[i])>0)
+      terminalSend(ln, x, lines[i], isCenter, isInvert, clearLine);
+    ln++;
+  }
+  return ln;
+#else
+  return y;
+#endif
 }
 
 /*
@@ -2447,7 +2571,8 @@ void testRun(const char *fname)
     sprintf_P(filename, PSTR("/test/%s.gcode"), fname);
     feederErrors = 0;
 
-    __log(PSTR("\033[2J")); // clear screen on VT100
+    __log(P_SendTermCls); // clear screen on VT100
+    terminalClear(true);
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {
       endstop2Hit[i] = 0L;
@@ -2628,14 +2753,6 @@ void listTextFile(const char *filename PROGMEM, int8_t serial)
   printResponse(delimiter, serial);
 }
 
-
-/*
-void dumpString(String &s) {
-  for(uint16_t i=0; i < s.length(); i++) {
-    __log(PSTR("%02x "), s.charAt(i));
-  }
-}
-*/
 
 /**
  * Loads a menu from SD-Card.
@@ -2818,8 +2935,8 @@ void blinkLED()
 
 /*
   Translates speeds from mm/s into MCU timer ticks.
-  Please notice: This method runs the stepper far slower since it's got to ensure that the
-  distance per second has to match.
+  Please notice: This method runs the stepper far slower since it has to ensure that the
+  distance per second will match.
 */
 unsigned long translateSpeed(uint16_t speed, uint8_t axis)
 {
@@ -2893,9 +3010,6 @@ uint8_t scanI2CDevices(uint8_t *devices, uint8_t maxDevices)
   return cnt;
 }
 
-extern Stream *debugSerial;
-extern Stream *logSerial;
-
 void __debugS(const char *fmt, ...)
 {
   if (debugSerial == nullptr)
@@ -2912,6 +3026,18 @@ void __debugS(const char *fmt, ...)
     debugSerial->println(_dbg);
   }
 #endif
+}
+
+void __terminal(const char *fmt, ...)
+{
+  if (terminalSerial == nullptr)
+    return;
+  char _term[256];
+  va_list arguments;
+  va_start(arguments, fmt);
+  vsnprintf_P(_term, ArraySize(_term) - 1, fmt, arguments);
+  va_end(arguments);
+  terminalSerial->print(_term);
 }
 
 void __log(const char *fmt, ...)

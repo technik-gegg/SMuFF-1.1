@@ -94,8 +94,7 @@ void recoverStore() {
   }
 }
 
-const char* readTune(const char* filename) {
-  static char data[150];
+bool readTune(const char* filename, char* buffer, size_t bufLen) {
   char fname[80];
 
   sprintf_P(fname, PSTR("sounds/%s"), filename);
@@ -105,10 +104,11 @@ const char* readTune(const char* filename) {
       __debugS(PSTR("Tune file '%s' not found!\n"), fname);
     }
     else {
-      tune.read(data, ArraySize(data)-1);
+      memset(buffer, 0, bufLen);
+      tune.read(buffer, bufLen-1);
       tune.close();
-      return data;
+      return true;
     }
   }
-  return nullptr;
+  return false;
 }

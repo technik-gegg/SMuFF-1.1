@@ -87,7 +87,8 @@ extern USBCompositeSerial CompositeSerial;
 
 #define MAX_SEQUENCE 60
 #define MAX_TUNE1 100
-#define MAX_TUNE2 50
+#define MAX_TUNE2 40
+#define MAX_TUNE3 20
 
 #define SERVO_OPEN 0
 #define SERVO_CLOSED 1
@@ -209,6 +210,7 @@ typedef struct
   uint8_t animationBPM = 6;
   uint8_t statusBPM = 20;
   bool invertRelay = false;
+  bool menuOnTerminal = false;
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -324,11 +326,11 @@ extern volatile unsigned long lastEncoderButtonTime;
 extern int8_t toolSelected;
 extern PositionMode positionMode;
 extern String serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
-extern char tuneStartup[100];
-extern char tuneUser[40];
-extern char tuneBeep[20];
-extern char tuneLongBeep[20];
-extern char tuneEncoder[20];
+extern char tuneStartup[];
+extern char tuneUser[];
+extern char tuneBeep[];
+extern char tuneLongBeep[];
+extern char tuneEncoder[];
 extern bool displayingUserMessage;
 extern uint16_t userMessageTime;
 extern bool testMode;
@@ -346,13 +348,13 @@ extern volatile bool initDone;
 extern volatile bool leoNerdBlinkGreen;
 extern volatile bool leoNerdBlinkRed;
 extern bool forceStopMenu;
-extern bool startSequence;
 extern uint16_t sequence[][3];
 extern bool timerRunning;
 extern uint8_t remoteKey;
 extern bool settingsChanged;
 extern Stream *logSerial;
 extern Stream *debugSerial;
+extern Stream *terminalSerial;
 extern bool isWarning;
 extern bool lidOpen;
 extern uint16_t mmsMin, mmsMax;
@@ -452,7 +454,7 @@ extern void setServoMaxPwm(int8_t servoNum, uint16_t pwm);
 extern void disableServo(int8_t servoNum);
 extern void enableServo(int8_t servoNum);
 extern void getStoredData();
-extern const char *readTune(const char *filename);
+extern bool readTune(const char *filename, char* buffer, size_t length);
 extern void readSequences();
 extern bool readConfig();
 extern bool readTmcConfig();
@@ -470,6 +472,7 @@ extern bool checkUserMessage();
 extern void setPwrSave(int8_t state);
 extern void __debugS(const char *fmt, ...);
 extern void __log(const char *fmt, ...);
+extern void __terminal(const char *fmt, ...);
 extern void setAbortRequested(bool state);
 extern void resetSerialBuffer(int8_t serial);
 extern void checkSerialPending();
@@ -516,9 +519,14 @@ extern void blinkLED();
 #ifdef HAS_TMC_SUPPORT
 extern void setDriverSpreadCycle(TMC2209Stepper *driver, bool spread, uint8_t stallThrs, uint8_t csmin = 0, uint8_t csmax = 0, uint8_t csdown = 0, uint8_t toff = 3);
 #endif
+extern void terminalSend(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine = false);
+extern void terminalClear(bool drawFrame = false);
+extern void terminalDrawFrame(bool clear = false);
+extern void terminalDrawSeparator(uint8_t y, uint8_t x, uint8_t color);
+extern uint8_t terminalSendLines(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine);
+extern uint8_t terminalSendButtons(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine);
 
 extern void printEndstopState(int8_t serial);
-extern void printPos(int8_t index, int8_t serial);
 extern void printAcceleration(int8_t serial);
 extern void printSpeedAdjust(int8_t serial);
 extern void printSpeeds(int8_t serial);
@@ -549,12 +557,12 @@ extern void printResponseP(const char *response, int8_t serial);
 extern void printOffsets(int8_t serial);
 extern void printDriverMode(int8_t serial);
 extern void printDriverRms(int8_t serial);
+extern void printDriverMS(int8_t serial);
 extern void printDriverStallThrs(int8_t serial);
 extern void maintainTool();
 extern void printPeriodicalState(int8_t serial);
 extern void prepareSequence(const char *sequence, bool autoPlay = true);
-extern void playSequence(bool inForeground = false);
-extern void playSequenceBackgnd();
+extern void playSequence();
 extern void setParserBusy();
 extern void setParserReady();
 extern void runHomeAfterFeed();

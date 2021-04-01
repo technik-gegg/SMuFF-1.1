@@ -28,7 +28,7 @@
 SdFat SD;
 
 #if defined(__STM32F1__)
-const size_t capacity = 2400;
+const size_t capacity = 2500;
 const size_t scapacity = 1600;
 #elif defined(__ESP32__)
 const size_t capacity = 4500;     // since the ESP32 has more memory, we can do this
@@ -116,6 +116,7 @@ bool readConfig()
     if(!checkFileSize(&cfg, capacity, P_ConfigFail1))
       return false;
     DeserializationError error = deserializeJson(jsonDoc, cfg);
+    __debugS(PSTR("[readConfig] after deserialize..."));
     if (error)
       showDeserializeFailed(error, P_ConfigFail1);
     else {
@@ -193,6 +194,7 @@ bool readConfig()
       smuffConfig.animationBPM =                jsonDoc[animBpm];
       smuffConfig.statusBPM =                   jsonDoc[statusBpm];
       smuffConfig.invertRelay =                 jsonDoc[invertRelay];
+      smuffConfig.menuOnTerminal =              jsonDoc[menuOnTerm];
 
       /*
       SELECTOR
@@ -556,6 +558,7 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[animBpm]              = smuffConfig.animationBPM;
   jsonDoc[statusBpm]            = smuffConfig.statusBPM;
   jsonDoc[invertRelay]          = smuffConfig.invertRelay;
+  jsonDoc[menuOnTerm]           = smuffConfig.menuOnTerminal;
 
   JsonObject node = jsonObj.createNestedObject(selector);
   node[offset]                = smuffConfig.firstToolOffset;

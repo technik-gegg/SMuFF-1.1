@@ -75,19 +75,7 @@ void ZServo::disable() {
   if(_pin <= 0)
     return;
   _disabled = true;
-  #if defined(__STM32F1__)
-    #if SERVO_OPEN_DRAIN == 1
-      #if defined(__BRD_SKR_MINI)
-        pinMode(_pin, INPUT);               // weird... no open drain!?
-      #else
-        pinMode(_pin, INPUT_OPEN_DRAIN);    // set to Open Drain for the +5V pullup resistor
-      #endif
-    #else
-    pinMode(_pin, INPUT);
-    #endif
-  #else
-    pinMode(_pin, INPUT);
-  #endif
+  pinMode(_pin, INPUT);
 }
 
 /*

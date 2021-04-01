@@ -90,21 +90,23 @@ void setupBuzzer()
 
 void readSequences()
 {
-  const char *tmp = readTune(TUNE_FILE);
-  if (tmp != nullptr)
-    strncpy(tuneStartup, tmp, ArraySize(tuneStartup));
-  tmp = readTune(BEEP_FILE);
-  if (tmp != nullptr)
-    strncpy(tuneBeep, tmp, ArraySize(tuneBeep));
-  tmp = readTune(LONGBEEP_FILE);
-  if (tmp != nullptr)
-    strncpy(tuneLongBeep, tmp, ArraySize(tuneLongBeep));
-  tmp = readTune(USERBEEP_FILE);
-  if (tmp != nullptr)
-    strncpy(tuneUser, tmp, ArraySize(tuneUser));
-  tmp = readTune(ENCBEEP_FILE);
-  if (tmp != nullptr)
-    strncpy(tuneEncoder, tmp, ArraySize(tuneEncoder));
+  char tuneData[150];
+  size_t bufLen = ArraySize(tuneData);
+
+  if(readTune(STARTUP_FILE, tuneData, bufLen))
+    strncpy(tuneStartup, tuneData, MAX_TUNE1);
+
+  if(readTune(USERBEEP_FILE, tuneData, bufLen))
+    strncpy(tuneUser, tuneData, MAX_TUNE2);
+
+  if(readTune(BEEP_FILE, tuneData, bufLen))
+    strncpy(tuneBeep, tuneData, MAX_TUNE3);
+
+  if(readTune(LONGBEEP_FILE, tuneData, bufLen))
+    strncpy(tuneLongBeep, tuneData, MAX_TUNE3);
+
+  if(readTune(ENCBEEP_FILE, tuneData, bufLen))
+    strncpy(tuneEncoder, tuneData, MAX_TUNE3);
 }
 
 /*
@@ -423,11 +425,15 @@ void setupEncoder()
 {
 #if defined(USE_LEONERD_DISPLAY)
 #if defined(USE_SW_TWI)
+  //__debugS(PSTR("Before encoder.begin(&I2CBus)"));
   encoder.begin(&I2CBus);
 #else
+  //__debugS(PSTR("Before encoder.begin()"));
   encoder.begin();
 #endif
+  //__debugS(PSTR("After encoder.begin()"));
   uint8_t ver = encoder.queryVersion();
+  //__debugS(PSTR("After encoder.queryVersion() = %d"), ver);
   if (ver < 2)
   {
     __debugS(PSTR("Warning: Encoder version mismatch! Version is: %d"), ver);
@@ -737,7 +743,7 @@ void setupTimers()
   //    Steppers use:       TIMER2 CH1 (may corrupt TH0 readings)
   //    SW-Serial uses:     TIMER3 CH4 (see SoftwareSerialM library)
   //    I2C uses:           TIMER4 CH1 (using this timer/channel will kill I2C for some reason)
-  //    Beeper uses:        TIMER4 CH3
+  //    Beeper uses:        TIMER5 CH3
   //    Servo uses:         TIMER5 CH1
   //    GP timer uses:      TIMER8 CH1 (general, encoder, servos)
   //    Heater0 uses:       TIMER8 CH3 (predefined by libmaple for PWM)
@@ -752,11 +758,11 @@ void setupTimers()
   gpTimer.setupTimer(Timer::TIMER8, Timer::CH1, 8, 0);                // prescaler set to 9 MHz, timer will be set to 50uS
   servoTimer.setupTimer(Timer::TIMER5, Timer::CH1, 8, 0);             // prescaler set to 9 MHz
 #if !defined(USE_LEONERD_DISPLAY)
-  setToneTimerChannel(Timer::TIMER4, Timer::CH3); // force TIMER4 / CH3 on STM32F1x for tone library
+  setToneTimerChannel(Timer::TIMER5, Timer::CH3); // force TIMER5 / CH3 on STM32F1x for tone library
 #endif
   nvic_irq_set_priority(NVIC_TIMER8_CC, 1);
   nvic_irq_set_priority(NVIC_TIMER2, 1);
-  nvic_irq_set_priority(NVIC_TIMER3, 10);
+  nvic_irq_set_priority(NVIC_TIMER4, 10);
   nvic_irq_set_priority(NVIC_TIMER5, 0);
 
 #elif defined(__ESP32__)

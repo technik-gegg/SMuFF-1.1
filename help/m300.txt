@@ -1,6 +1,6 @@
 M300 Sn Pn | [ F"..." | T"..." ]
 --------------------------------
-Sn 		the frequency of the tone to play
-Pn 		the duration of the tone to play
+Sn 		the frequency of the tone to play (in Hz)
+Pn 		the duration of the tone to play (in ms)
 F"..."	the filename of the tune to play
 T"..."	the tune sequence to play (i.e. "F440D500P50.F880D500P50.")

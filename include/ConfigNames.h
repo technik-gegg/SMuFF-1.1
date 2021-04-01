@@ -122,4 +122,5 @@ const char* colorVal PROGMEM           = "CValue";
 const char* animBpm PROGMEM            = "AnimBPM";
 const char* statusBpm PROGMEM          = "StatusBPM";
 const char* invertRelay PROGMEM        = "InvRelay";
+const char* menuOnTerm PROGMEM         = "TermMenu";
 

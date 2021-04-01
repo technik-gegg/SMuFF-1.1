@@ -1,0 +1,1 @@
+M122	Show TMC driver settings (no params)

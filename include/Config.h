@@ -18,16 +18,16 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.23"
+#define VERSION_STRING    "V2.24"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-03-25"
+#define VERSION_DATE      "2021-04-01"
 #define CONFIG_FILE       "/SMUFF.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
 #define TMC_CONFIG_FILE   "/TMCDRVR.json"
 #define SERVOMAP_FILE     "/SERVOMAP.json"
 #define DATASTORE_FILE    "/EEPROM.json"
-#define TUNE_FILE         "TUNE.DAT"
+#define STARTUP_FILE      "STARTUP.DAT"
 #define BEEP_FILE         "BEEP.DAT"
 #define LONGBEEP_FILE     "LBEEP.DAT"
 #define USERBEEP_FILE     "UBEEP.DAT"
@@ -134,8 +134,47 @@
 #define TOOL_FONT               u8g2_font_logisoso22_tr
 
 #define FASTLED_STAT_NONE       0
-#define FASTLED_STAT_MARQUEE     1
-#define FASTLED_STAT_RAINBOW     2
-#define FASTLED_STAT_ERROR       3
-#define FASTLED_STAT_WARNING     4
-#define FASTLED_STAT_OK          5
+#define FASTLED_STAT_MARQUEE    1
+#define FASTLED_STAT_RAINBOW    2
+#define FASTLED_STAT_ERROR      3
+#define FASTLED_STAT_WARNING    4
+#define FASTLED_STAT_OK         5
+
+#define TERM_LINE_WIDTH         25
+#define TERM_LINES              6
+#define TERM_OFFS_X             40
+#define TERM_OFFS_Y             3
+
+const char terminalLineChrs[] PROGMEM = { 0xC4, 0xCD, 0xBA, 0xC9, 0xBB, 0xC8, 0xBC, 0x78, 0x6F };
+// Alternative line drawing chars; Only if no "Terminal" font is available
+// const char terminalLineChrs[] PROGMEM = { '-', '=', '|', '+', '+', '+', '+', 'x', 'o' };
+
+#define TERM_SEPARATOR_CHR      terminalLineChrs[0]
+#define TERM_HORZLINE_CHR       terminalLineChrs[1]
+#define TERM_VERTLINE_CHR       terminalLineChrs[2]
+#define TERM_CORNERUL_CHR       terminalLineChrs[3]
+#define TERM_CORNERUR_CHR       terminalLineChrs[4]
+#define TERM_CORNERLL_CHR       terminalLineChrs[5]
+#define TERM_CORNERLR_CHR       terminalLineChrs[6]
+#define TERM_NOTAVAIL_CHR       terminalLineChrs[7]
+#define TERM_PRESENT_CHR        terminalLineChrs[8]
+
+#define TERM_INVERTED           7
+#define TERM_UNDERLINE          4
+#define TERM_FGC_BLACK          30
+#define TERM_FGC_RED            31
+#define TERM_FGC_GREEN          32
+#define TERM_FGC_YELLOW         33
+#define TERM_FGC_BLUE           34
+#define TERM_FGC_MAGENTA        35
+#define TERM_FGC_CYAN           36
+#define TERM_FGC_WHITE          37
+#define TERM_BGC_BLACK          40
+#define TERM_BGC_RED            41
+#define TERM_BGC_GREEN          42
+#define TERM_BGC_YELLOW         43
+#define TERM_BGC_BLUE           44
+#define TERM_BGC_MAGENTA        45
+#define TERM_BGC_CYAN           46
+#define TERM_BGC_WHITE          47
+#define TERM_FGC_NONE           255

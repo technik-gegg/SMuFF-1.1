@@ -291,6 +291,7 @@ standard U8G2 library will do its work as expected.
             yy = y - (line_height / 2) + 1;
             u8g2_DrawHLine(u8g2, SEPERATOR_MARGIN, yy, u8g2_GetDisplayWidth(u8g2) - (SEPERATOR_MARGIN * 2));
             u8g2_DrawHLine(u8g2, SEPERATOR_MARGIN, yy + 1, u8g2_GetDisplayWidth(u8g2) - (SEPERATOR_MARGIN * 2));
+            terminalSend(idx+2-u8sl->first_pos, 1, s, false, is_invert);
             return line_height;
         }
 
@@ -318,10 +319,13 @@ standard U8G2 library will do its work as expected.
             int16_t l = x - 1;
             DrawUTF8Line(u8g2, x, y, w, tab, border_size, is_invert);
             DrawUTF8Line(u8g2, MY_BORDER_SIZE, y, l - MY_BORDER_SIZE, s2, border_size, is_invert);
+            terminalSend(idx+2-u8sl->first_pos, 1, s2, false, is_invert, true);
+            terminalSend(idx+2-u8sl->first_pos, 1+TERM_LINE_WIDTH-strlen(tab), tab, false, is_invert ? 5 : 4, false);
         }
         else
         {
             u8g2_DrawUTF8Line(u8g2, MY_BORDER_SIZE, y, u8g2_GetDisplayWidth(u8g2) - 2 * MY_BORDER_SIZE, s, border_size, is_invert);
+            terminalSend(idx+2-u8sl->first_pos, 1, s2, true, is_invert, true);
         }
         return line_height;
     }
@@ -350,6 +354,8 @@ standard U8G2 library will do its work as expected.
 
         uint8_t title_lines = u8x8_GetStringLineCnt(title);
         uint8_t display_lines;
+
+        terminalSend(1, 1, title, true, 6, true);
 
         //__debugS(PSTR("__wrap_u8g2_UserInterfaceSelectionList"));
 
@@ -423,5 +429,178 @@ standard U8G2 library will do its work as expected.
                 }
             }
         }
+    }
+
+    uint8_t draw_button_line(u8g2_t *u8g2, u8g2_uint_t y, u8g2_uint_t w, uint8_t cursor, const char *s, uint8_t ln)
+    {
+        u8g2_uint_t button_line_width;
+
+        uint8_t i;
+        uint8_t cnt;
+        uint8_t is_invert;
+
+        u8g2_uint_t d;
+        u8g2_uint_t x;
+
+        cnt = u8x8_GetStringLineCnt(s);
+
+
+        /* calculate the width of the button line */
+        button_line_width = 0;
+        uint8_t button_term_width = 0;
+        for( i = 0; i < cnt; i++ )
+        {
+            const char* p = u8x8_GetStringLineStart(i, s);
+            button_line_width += u8g2_GetUTF8Width(u8g2, p);
+            char* pp = strchr(p, '\n');
+            if(pp != nullptr)
+                button_term_width += strlen(p)-strlen(pp);
+            else
+                button_term_width += strlen(p);
+        }
+        button_line_width += (cnt-1)*SPACE_BETWEEN_BUTTONS_IN_PIXEL;	/* add some space between the buttons */
+
+        /* calculate the left offset */
+        d = 0;
+        if ( button_line_width < w )
+        {
+            d = w;
+            d -= button_line_width;
+            d /= 2;
+        }
+
+        /* draw the buttons */
+        x = d;
+        uint8_t tp = (TERM_LINE_WIDTH - button_term_width)/2;
+        char btn[TERM_LINE_WIDTH+1];
+        for( i = 0; i < cnt; i++ )
+        {
+            is_invert = i == cursor ? 1 : 0;
+            const char* p = u8x8_GetStringLineStart(i, s);
+
+            u8g2_DrawUTF8Line(u8g2, x, y, 0, p, 1, is_invert);
+            x += u8g2_GetUTF8Width(u8g2, p);
+            x += SPACE_BETWEEN_BUTTONS_IN_PIXEL;
+            char* pp = strchr(p, '\n');
+            if(pp != nullptr)
+                strncpy(btn, p, strlen(p)-strlen(pp));
+            else
+                strcpy(btn, p);
+            terminalSend(ln, tp, btn, false, is_invert, false);
+            if(pp != nullptr)
+                tp += strlen(p)-strlen(pp);
+            else
+                tp += strlen(p);
+        }
+
+        /* return the number of buttons */
+        return cnt;
+    }
+
+    uint8_t __wrap_u8g2_UserInterfaceMessage(u8g2_t *u8g2, const char *title1, const char *title2, const char *title3, const char *buttons)
+    {
+    uint8_t height;
+    uint8_t line_height;
+    u8g2_uint_t pixel_height;
+    u8g2_uint_t y, yy;
+
+    uint8_t cursor = 0;
+    uint8_t button_cnt;
+    uint8_t event;
+
+    /* only horizontal strings are supported, so force this here */
+    u8g2_SetFontDirection(u8g2, 0);
+
+    /* force baseline position */
+    u8g2_SetFontPosBaseline(u8g2);
+
+
+    /* calculate line height */
+    line_height = u8g2_GetAscent(u8g2);
+    line_height -= u8g2_GetDescent(u8g2);
+
+    /* calculate overall height of the message box in lines*/
+    height = 1;	/* button line */
+    height += u8x8_GetStringLineCnt(title1);
+    if ( title2 != NULL )
+        height++;
+    height += u8x8_GetStringLineCnt(title3);
+
+    /* calculate the height in pixel */
+    pixel_height = height;
+    pixel_height *= line_height;
+
+    /* ... and add the space between the text and the buttons */
+    pixel_height +=SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL;
+
+    /* calculate offset from top */
+    y = 0;
+    if ( pixel_height < u8g2_GetDisplayHeight(u8g2)   )
+    {
+        y = u8g2_GetDisplayHeight(u8g2);
+        y -= pixel_height;
+        y /= 2;
+    }
+    y += u8g2_GetAscent(u8g2);
+
+
+    char tmp[TERM_LINE_WIDTH+1];
+    for(;;)
+    {
+        uint8_t ln = 1;
+        u8g2_FirstPage(u8g2);
+        do
+        {
+        yy = y;
+        /* draw message box */
+
+        yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title1);
+        ln = terminalSendLines(ln, 1, title1, true, 4, true);
+
+        if ( title2 != nullptr )
+        {
+            u8g2_DrawUTF8Line(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), title2, 0, 0);
+            yy+=line_height;
+            strncpy(tmp, title2, ArraySize(tmp));
+            ln = terminalSendLines(ln, 1, tmp, true, 0, true);
+        }
+        yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title3);
+        yy += SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL;
+        strncpy(tmp, title3, ArraySize(tmp));
+        ln = terminalSendLines(ln, 1, tmp, true, 0, true);
+
+        button_cnt = draw_button_line(u8g2, yy, u8g2_GetDisplayWidth(u8g2), cursor, buttons, ++ln);
+
+    } while( u8g2_NextPage(u8g2) );
+
+    #ifdef U8G2_REF_MAN_PIC
+        return 0;
+    #endif
+
+        for(;;)
+        {
+            event = u8x8_GetMenuEvent(u8g2_GetU8x8(u8g2));
+            if ( event == U8X8_MSG_GPIO_MENU_SELECT )
+                return cursor+1;
+            else if ( event == U8X8_MSG_GPIO_MENU_HOME )
+                return 0;
+            else if ( event == U8X8_MSG_GPIO_MENU_NEXT || event == U8X8_MSG_GPIO_MENU_DOWN )
+            {
+                cursor++;
+                if ( cursor >= button_cnt )
+                cursor = 0;
+                break;
+            }
+            else if ( event == U8X8_MSG_GPIO_MENU_PREV || event == U8X8_MSG_GPIO_MENU_UP )
+            {
+            if ( cursor == 0 )
+                cursor = button_cnt;
+                cursor--;
+                break;
+            }
+        }
+    }
+    /* never reached */
+    //return 0;
     }
 }

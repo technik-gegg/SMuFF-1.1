@@ -97,6 +97,7 @@
 
 #define USB_CONNECT_PIN PC13
 #define SD_DETECT_PIN PC4
+#define USE_TERMINAL_MENUS 1
 
 #if defined(USE_CREALITY_DISPLAY)
 #if !defined(CREALITY_HW_SPI)

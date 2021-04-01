@@ -1,1 +1,1 @@
-M115
+M115	Show firmware info (no params)

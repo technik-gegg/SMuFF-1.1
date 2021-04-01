@@ -1,1 +1,1 @@
-M114
+M114	Show stepper positions (no params)

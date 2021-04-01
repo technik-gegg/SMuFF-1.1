@@ -1652,6 +1652,10 @@ bool M205(const char *msg, String buf, int8_t serial)
         if(param > 0 && param <= 255)
           smuffConfig.statusBPM = (uint8_t)param;
       }
+      else if (strcmp(cmd, menuOnTerm) == 0)
+      {
+        smuffConfig.menuOnTerminal = (param > 0);
+      }
       else
       {
         sprintf_P(tmp, P_UnknownParam, cmd);
@@ -1781,7 +1785,8 @@ bool M300(const char *msg, String buf, int8_t serial)
 {
   bool stat = true;
   printResponse(msg, serial);
-  char sequence[500];
+  char sequence[300];
+  char tuneData[150];
   char filename[80];
   if ((param = getParam(buf, S_Param)) != -1)
   {
@@ -1795,14 +1800,12 @@ bool M300(const char *msg, String buf, int8_t serial)
   }
   else if (getParamString(buf, F_Param, filename, ArraySize(filename)))
   {
-    String tune = readTune(filename);
-    prepareSequence(tune.c_str(), false);
-    playSequence(true); // play in foreground
+    if(readTune(filename, tuneData, ArraySize(tuneData)))
+      prepareSequence(tuneData, true);
   }
   else if (getParamString(buf, T_Param, sequence, ArraySize(sequence) - 1))
   {
-    prepareSequence(sequence, false);
-    playSequence(true); // play in foreground
+    prepareSequence(sequence, true);
   }
   else
     stat = false;
@@ -1813,9 +1816,16 @@ bool M350(const char *msg, String buf, int8_t serial)
 {
   bool stat = true;
   printResponse(msg, serial);
+
+  if (!hasParam(buf, X_Param) && !hasParam(buf, Y_Param) && !hasParam(buf, Z_Param))
+  {
+    printDriverMS(serial);
+    return true;
+  }
+
   if ((param = getParam(buf, X_Param)) != -1)
   {
-    if (param == 1 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128)
+    if (param == 0 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128 || param == 256)
     {
       smuffConfig.stepperMicrosteps[SELECTOR] = (uint16_t)param;
       steppers[SELECTOR].setEnabled(true);
@@ -1829,7 +1839,7 @@ bool M350(const char *msg, String buf, int8_t serial)
   }
   if ((param = getParam(buf, Y_Param)) != -1)
   {
-    if (param == 1 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128)
+    if (param == 0 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128 || param == 256)
     {
       smuffConfig.stepperMicrosteps[REVOLVER] = (uint16_t)param;
       steppers[REVOLVER].setEnabled(true);
@@ -1843,7 +1853,7 @@ bool M350(const char *msg, String buf, int8_t serial)
   }
   if ((param = getParam(buf, Z_Param)) != -1)
   {
-    if (param == 1 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128)
+    if (param == 0 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128 || param == 256)
     {
       smuffConfig.stepperMicrosteps[FEEDER] = (uint16_t)param;
       steppers[FEEDER].setEnabled(true);

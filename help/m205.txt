@@ -1,7 +1,7 @@
 M205 P"..." Sn [ X | Y | Z ]
 Parameter Name In P 	Option:
 -------------------------------
-AnimBPM           		S n
+AnimBPM             	S n
 BackColor           	S n
 BowdenLen           	S n.n
 CSDown              	S n      X | Y | Z
@@ -14,7 +14,7 @@ EncTicks            	S 0|1
 EStopTrg            	S 0|1    X | Y | Z
 HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
-IdleAnim           		S 0|1
+IdleAnim            	S 0|1
 InvDir              	S 0|1    X | Y | Z
 InsLen              	S n.n
 MaxStall            	S n      X | Y | Z
@@ -35,6 +35,7 @@ StepsMM             	S n      X | Z
 StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z
 Spacing             	S n.n
+TermMenu            	S 0|1
 Tools               	S n
 TOff                	S n      X | Y | Z
 UseServo            	S 0|1

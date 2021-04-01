@@ -1,4 +1,4 @@
-◀ BACK|1
+< BACK|1
 Home All|2
 Motors %s|3
 Tool Maint. %s|5
@@ -9,9 +9,9 @@ Load To Nozzle|9
 Wipe Nozzle|10
 Cut Filament|11
 -
-Swap Tools	▶|13
-Status Info	▶|14
+Swap Tools	>|13
+Status Info	>|14
 -
-Settings	▶|16
+Settings	>|16
 -
-Testrun	▶|18
+Testrun	>|18

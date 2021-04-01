@@ -1,12 +1,12 @@
-◀ BACK|1
+< BACK|1
 Tool Count	%d|2
 Bowden Length	%s|3
 Selector Dist.	%s|4
 -
-Options	▶|6
-Baudrates	▶|7
-Steppers/Servo	▶|8
-Display	▶|9
-Purge Control	▶|10
+Options	>|6
+Baudrates	>|7
+Steppers/Servo	>|8
+Display	>|9
+Purge Control	>|10
 -
-▷ SAVE TO SD-CARD ◁|12
+>>SAVE TO SD-CARD<<|12

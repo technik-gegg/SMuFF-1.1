@@ -36,6 +36,7 @@
 	"AnimBPM": 6,
 	"StatusBPM": 20,
 	"InvRelay": false,
+  "TermMenu": false,
   "Selector": {
    "Offset": 0.5,
    "Spacing": 21.0,

@@ -95,5 +95,6 @@ extern char* colorVal;
 extern char* animBpm;
 extern char* statusBpm;
 extern char* invertRelay;
+extern char* menuOnTerm;
 
 
