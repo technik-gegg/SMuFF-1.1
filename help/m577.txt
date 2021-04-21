@@ -1,0 +1,5 @@
+M577 [Sn]
+---------------------------
+Sn 		set the pin status (n: 0=both LOW, 1=Selector pin HIGH, 2=Feeder pin HIGH, 3=both pins HIGH)
+
+Without parameters this GCode shows the current status of the pins.

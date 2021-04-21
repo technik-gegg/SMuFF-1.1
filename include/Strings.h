@@ -285,7 +285,7 @@ const char P_TMC_Status10[] PROGMEM         = { "Overtemperature    "};
 
 const char P_TMC_Status0[] PROGMEM          = { "Mode: %-7s\nRMS Cur.       %4dmA\nMicrosteps        %3d\nMS1/MS2            %1d%1d\nUART mode         %3s"};
 const char P_TMC_Status1[] PROGMEM          = { "Mode: %-7s\nConfig. Cur.   %4dmA\nPh. A/B open  %3s/%3s\nPh. A/B short %3s/%3s\nOvertemp.     %7s"};
-const char P_TMC_StatusAll[] PROGMEM        = { "Selector (X): %s\tRevolver (Y): %s\tFeeder (Z): %s\n" };
+const char P_TMC_StatusAll[] PROGMEM        = { "Selector (X): %s\nRevolver (Y): %s\nFeeder (Z)  : %s\n" };
 const char P_OT_157[] PROGMEM               = { "> 157°C" };
 const char P_OT_150[] PROGMEM               = { "> 150°C" };
 const char P_OT_143[] PROGMEM               = { "> 143°C" };
@@ -296,6 +296,8 @@ const char P_Action[] PROGMEM               = { "//action: %s" };
 const char P_ActionWait[] PROGMEM           = { "WAIT" };
 const char P_ActionCont[] PROGMEM           = { "CONTINUE" };
 const char P_ActionPong[] PROGMEM           = { "PONG" };
+
+const char P_Duet_StatusAll[] PROGMEM        = { "Selector: %s\nFeeder:   %s\n" };
 
 // VT-100 Escape codes
 const char P_SendTermCls[] PROGMEM          = { "\033[2J" };
@@ -308,4 +310,4 @@ const char P_SendTermCsrHide[] PROGMEM      = { "\033[?25l" };
 const char P_SendTermCsrShow[] PROGMEM      = { "\033[?25h" };
 const char P_SendTermScroll[] PROGMEM       = { "\0337\033[2;50r\0338" };
 
-const char P_SendTermStatus[] PROGMEM       = { "\0337\033[?25l\033[7m\033[H  \033[45m%s\033[40m%c F1: \033[45m%c\033[40m %c F2: \033[45m%c\033[40m %c \033[45m%s\033[40m %c RLY: \033[45m%s\033[40m %c DRVR: \033[45m%s  \033[40m %c PG: \033[45m%c\033[40m %c PS: \033[45m%c\033[40m %c \033[45m%s \033[0m\033[?25h\0338" };
+const char P_SendTermStatus[] PROGMEM       = { "\0337\033[?25l\033[7m\033[H  \033[45m%s\033[40m%c F1: \033[45m%c\033[40m %c F2: \033[45m%c\033[40m %c \033[45m%s\033[40m %c RLY: \033[45m%s\033[40m %c DRVR: \033[45m%s  \033[40m %c PG: \033[45m%c\033[40m %c ST: \033[45m%c\033[40m %c \033[45m%s \033[0m\033[?25h\0338" };

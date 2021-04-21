@@ -395,6 +395,9 @@ void enumI2cDevices()
       __debugS(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
     }
   }
+  else {
+    __debugS(PSTR("I2C Scan has found no devices"));
+  }
   if (!encoder)
   {
 #if defined(USE_LEONERD_DISPLAY)
@@ -484,6 +487,7 @@ void setup()
 #endif
   setupSwSerial0(); // used only for testing purposes
   setupBacklight();
+  setupDuetSignals();   // setup Duet3D signal pins
   setupDuetLaserSensor(); // setup other peripherials
   setupHeaterBed();
   setupFan();
@@ -501,11 +505,12 @@ void setup()
     resetRevolver();
   //__debugS(PSTR("DONE reset Revolver"));
 
+  /*
   #if defined(USE_TERMINAL_MENUS)
   if(smuffConfig.menuOnTerminal)
-    __terminal(P_SendTermScroll);
+    __terminal(P_SendTermScroll); // define scrolling region
   #endif
-
+  */
 
   sendStartResponse(0); // send "start<CR><LF>" to USB serial interface
   if (CAN_USE_SERIAL1)
@@ -1106,13 +1111,15 @@ void filterSerialInput(String &buffer, char in)
   isFuncKey = false;
   // special function for Duet3D: if "\n" is transmitted (two characters)
   // then threat that as a line-feed eventually. Otherwise if it's a "\\"
-  // store that as a single "\" in the buffer.
+  // store that as a single "\" in the buffer or if it's a "\s" ignore that
+  // control string (used in earlier versions of the Duet3D in conjunction to SMuFF-Ifc).
   if (in == '\\')
   {
     if (isCtlKey)
     {
       isCtlKey = false;
-      buffer += in;
+      if(in != 's')       // ignore a '\s'
+        buffer += in;
     }
     else
     {
@@ -1280,7 +1287,9 @@ void serialEvent3()
       if (CAN_USE_SERIAL2)
         Serial2.write(in);
     }
-    else
+    else {
       handleSerial(in, serialBuffer3, 3);
+      //__debugS(PSTR("Serial3: %c\n"), in);
+    }
   }
 }

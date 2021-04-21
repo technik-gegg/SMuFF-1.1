@@ -147,6 +147,18 @@ void initHwDebug()
 #endif
 }
 
+void setupDuetSignals()
+{
+#if defined(DUET_SIG_FED_PIN) && DUET_SIG_FED_PIN != -1
+  pinMode(DUET_SIG_FED_PIN, OUTPUT);
+  digitalWrite(DUET_SIG_FED_PIN, LOW);
+#endif
+#if defined(DUET_SIG_SEL_PIN) && DUET_SIG_SEL_PIN != -1
+  pinMode(DUET_SIG_SEL_PIN, OUTPUT);
+  digitalWrite(DUET_SIG_SEL_PIN, LOW);
+#endif
+}
+
 void setupDuetLaserSensor()
 {
   // Duet Laser Sensor is being used as the Feeder endstop

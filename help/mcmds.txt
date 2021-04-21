@@ -1,6 +1,6 @@
 Available M Commands
   M17	-	Switch feeder stepper control (Relay)
-  M18,M84	-	Motors off
+  M18,M84 -	Motors off
   M20	-	List SD-Card
   M42	-	Set pin state
   M98	-	Execute test run
@@ -29,6 +29,7 @@ Available M Commands
   M503	-	Report settings
   M569	-	Set TMC SpreadCycle on/off
   M575	-	Set serial port baudrate
+  M577	-	Print or set Duet3D signal states
   M700	-	Load filament
   M701	-	Unload filament
   M906	-	Set TMC motor current

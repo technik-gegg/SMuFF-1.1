@@ -103,6 +103,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {503, M503},
     {569, M569},
     {575, M575},
+    {577, M577},
     {700, M700},
     {701, M701},
     {906, M906},
@@ -2102,6 +2103,23 @@ bool M575(const char *msg, String buf, int8_t serial)
   else
     stat = false;
   return stat;
+}
+
+bool M577(const char *msg, String buf, int8_t serial) {
+  if ((param = getParam(buf, S_Param)) != -1) {
+    if(param & 1)
+      setSignalPort(SELECTOR_SIGNAL, true);
+    else
+      setSignalPort(SELECTOR_SIGNAL, false);
+
+    if(param & 2)
+      setSignalPort(FEEDER_SIGNAL, true);
+    else
+      setSignalPort(FEEDER_SIGNAL, false);
+  }
+  else
+    printDuetSignalStates(serial);
+  return true;
 }
 
 bool M700(const char *msg, String buf, int8_t serial)

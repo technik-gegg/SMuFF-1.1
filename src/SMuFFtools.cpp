@@ -1197,9 +1197,11 @@ bool feedToNozzle(bool showMessage)
 
 bool loadFilament(bool showMessage)
 {
+  signalDuetBusy();
   if (toolSelected == -1)
   {
     signalNoTool();
+    signalDuetReady();
     return false;
   }
   if (smuffConfig.extControlFeeder)
@@ -1207,7 +1209,7 @@ bool loadFilament(bool showMessage)
     if (!smuffConfig.isSharedStepper)
     {
       positionRevolver();
-      signalLoadFilament();
+      signalDuetReady();
       return true;
     }
     else
@@ -1215,6 +1217,7 @@ bool loadFilament(bool showMessage)
       switchFeederStepper(INTERNAL);
     }
   }
+  positionRevolver();
 
   if (smuffConfig.useCutter)
   {
@@ -1260,6 +1263,7 @@ bool loadFilament(bool showMessage)
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
   runHomeAfterFeed();
+  signalDuetReady();
   setParserReady();
   return true;
 }
@@ -1271,21 +1275,24 @@ bool loadFilament(bool showMessage)
 */
 bool loadFilamentPMMU2(bool showMessage)
 {
+  signalDuetBusy();
   if (toolSelected == -1)
   {
     signalNoTool();
+    signalDuetReady();
     return false;
   }
   if (smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper)
   {
     positionRevolver();
-    signalLoadFilament();
+    signalDuetReady();
     return true;
   }
   if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
   {
     switchFeederStepper(INTERNAL);
   }
+  positionRevolver();
 
   if (smuffConfig.useCutter)
   {
@@ -1296,8 +1303,9 @@ bool loadFilamentPMMU2(bool showMessage)
   setParserBusy();
   uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
   // move filament until it hits the feeder endstop
-  if (!feedToEndstop(showMessage))
+  if (!feedToEndstop(showMessage)) {
     return false;
+  }
 
   steppers[FEEDER].setStepsTaken(0);
   // inhibit interrupts at this step
@@ -1319,6 +1327,7 @@ bool loadFilamentPMMU2(bool showMessage)
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
   runHomeAfterFeed();
+  signalDuetReady();
   setParserReady();
   return true;
 }
@@ -1437,15 +1446,17 @@ void cutFilament(bool keepClosed /* = true */)
 
 bool unloadFilament()
 {
+  signalDuetBusy();
   if (toolSelected == -1)
   {
     signalNoTool();
+    signalDuetReady();
     return false;
   }
   if (smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper)
   {
     positionRevolver();
-    signalUnloadFilament();
+    signalDuetReady();
     return true;
   }
   else if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
@@ -1511,6 +1522,7 @@ bool unloadFilament()
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
   runHomeAfterFeed();
+  signalDuetReady();
   setParserReady();
   return true;
 }
@@ -1524,7 +1536,7 @@ bool nudgeBackFilament()
   if (smuffConfig.extControlFeeder && !smuffConfig.isSharedStepper)
   {
     positionRevolver();
-    signalUnloadFilament();
+    signalDuetReady();
     return true;
   }
   else if (smuffConfig.extControlFeeder && smuffConfig.isSharedStepper)
@@ -1650,7 +1662,7 @@ bool selectTool(int8_t ndx, bool showMessage)
     feederJammed = false;
     return false;
   }
-  signalSelectorBusy();
+  //signalSelectorBusy();
 
   if (toolSelected == ndx)
   {
@@ -1661,10 +1673,12 @@ bool selectTool(int8_t ndx, bool showMessage)
       sprintf_P(_msg1, P_ToolAlreadySet);
       drawUserMessage(_msg1);
     }
+    /*
     if (smuffConfig.extControlFeeder)
     {
       signalSelectorReady();
     }
+    */
     return true;
   }
   if (!steppers[SELECTOR].getEnabled())
@@ -1787,7 +1801,7 @@ bool selectTool(int8_t ndx, bool showMessage)
     {
       //__debugS(PSTR("Resetting Revolver"));
       resetRevolver();
-      signalSelectorReady();
+      //signalSelectorReady();
       //__debugS(PSTR("Revolver reset done"));
     }
   }
@@ -1942,9 +1956,25 @@ void printEndstopState(int8_t serial)
   printResponse(tmp, serial);
   if (Z_END2_PIN != -1)
   {
-    sprintf_P(tmp, PSTR("Z2 (Feeder2): %s\n"), feederEndstop(2) ? _triggered : _open);
+    sprintf_P(tmp, PSTR("Feeder2 (Z2): %s\n"), feederEndstop(2) ? _triggered : _open);
     printResponse(tmp, serial);
   }
+}
+
+void printDuetSignalStates(int8_t serial) {
+  char tmp[80];
+  const char *_high = "HIGH";
+  const char *_low = "LOW";
+  #if defined(DUET_SIG_SEL_PIN) && DUET_SIG_SEL_PIN != -1 && defined(DUET_SIG_FED_PIN) && DUET_SIG_FED_PIN != -1
+  uint32_t selector = digitalRead(DUET_SIG_SEL_PIN);
+  uint32_t feeder = digitalRead(DUET_SIG_FED_PIN);
+  sprintf_P(tmp, P_Duet_StatusAll,
+            selector ? _high : _low,
+            feeder ? _high : _low);
+  printResponse(tmp, serial);
+  #else
+  printResponseP(PSTR("Signal pins not defined!"), serial);
+  #endif
 }
 
 void printSpeeds(int8_t serial)
@@ -2227,8 +2257,8 @@ void getStoredData()
 
 void setSignalPort(uint8_t port, bool state)
 {
+  /*
   char tmp[10];
-
   if (!smuffConfig.prusaMMU2 && !smuffConfig.sendPeriodicalStats)
   {
     sprintf_P(tmp, PSTR("%c%c%s"), 0x1b, port, state ? "1" : "0");
@@ -2236,32 +2266,39 @@ void setSignalPort(uint8_t port, bool state)
       Serial1.write(tmp);
     if (CAN_USE_SERIAL2)
       Serial2.write(tmp);
+    if (CAN_USE_SERIAL3)
+      Serial3.write(tmp);
+  }
+  */
+  // used for Duet3D Controller boards to signal progress of loading / unloading
+  if(port == FEEDER_SIGNAL) {
+    #if defined(DUET_SIG_FED_PIN)
+    if(DUET_SIG_FED_PIN != -1) {
+      digitalWrite(DUET_SIG_FED_PIN, state);
+      __debugS(PSTR("Duet Feeder Signal %s"), state ? "HIGH" : "LOW");
+    }
+    #endif
+  }
+  if(port == SELECTOR_SIGNAL) {
+    #if defined(DUET_SIG_SEL_PIN)
+    if(DUET_SIG_SEL_PIN != -1) {
+      digitalWrite(DUET_SIG_SEL_PIN, state);
+      __debugS(PSTR("Duet Selector Signal %s"), state ? "HIGH" : "LOW");
+    }
+    #endif
   }
 }
 
-void signalSelectorReady()
-{
-  setSignalPort(SELECTOR_SIGNAL, false);
-  //__debugS(PSTR("Signalling Selector ready"));
-}
-
-void signalSelectorBusy()
-{
-  setSignalPort(SELECTOR_SIGNAL, true);
-  //__debugS(PSTR("Signalling Selector busy"));
-}
-
-void signalLoadFilament()
+void signalDuetBusy()
 {
   setSignalPort(FEEDER_SIGNAL, true);
-  //__debugS(PSTR("Signalling load filament"));
 }
 
-void signalUnloadFilament()
+void signalDuetReady()
 {
   setSignalPort(FEEDER_SIGNAL, false);
-  //__debugS(PSTR("Signalling unload filament"));
 }
+
 
 bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char *files)
 {

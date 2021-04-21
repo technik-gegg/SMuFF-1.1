@@ -153,7 +153,9 @@
 
 #endif
 
-#define DEBUG_OFF_PIN -1 // not needed on TWI display
+#define DUET_SIG_FED_PIN     PB2    // Z-Axis DIR
+#define DUET_SIG_SEL_PIN     PC12   // Z-Axis MS3
+#define DEBUG_OFF_PIN       -1      // not needed on TWI display
 
 #define X_SERIAL_TX_PIN PC10 // XUART - UART4 TX
 #define Y_SERIAL_TX_PIN PC11 // YUART - UART4 RX

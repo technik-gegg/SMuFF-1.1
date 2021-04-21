@@ -44,9 +44,14 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.25** - Minor changes for Duet3D
+
++ modified the logic for interfacing with a Duet3D controller.
++ added **M577** GCode command to retrieve Duet3D signal pins status. Connection needs one additional wire from the SMuFF down to the Duet3D end stop input in order to do tool changes properly.
+
 **2.24** - Minor changes
 
-+ replaced all UTF characters from menus. Please copy all menu files onto your SD-Card and replace the old ones.
++ replaced all UTF characters in menus. Please copy all menu files onto your SD-Card and replace the old ones.
 + added a feature to mirror the display contents on a debug terminal (VT100 terminal emulation). This will only work on a controller board that has a *..RET..* MCU (because of the doubled memory) and if it's being enabled manually in the **SMuFF.json** config (**TermMenu** set to **true**).
 **Please notice**: This feature was made for conveniance purposes (i.e. when you're connected to the debug interface having the printer/SMuFF out of sight). It's not meant to replace the display.
 If this feature is turned on and when not in menus, the topmost line on teminal will replicate the information of the SMuFFs main screen.
@@ -167,7 +172,7 @@ Cutting filament can also be activated through the **G12 C** GCode command. Beca
 
 **2.13** - bug fixing
 
-+ removed  the "playing tunes in background" feature since it was causing hands and resets.
++ removed  the "playing tunes in background" feature since it was causing hangs and resets.
 + added parameter help on most of the GCodes when appending a question mark (?) to the command (i.e. M280?)
 
 **2.12** - mostly code refactoring and a couple of new features
