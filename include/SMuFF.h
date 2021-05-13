@@ -86,7 +86,7 @@ extern USBCompositeSerial CompositeSerial;
 #define EXTERNAL 0
 
 #define MAX_SEQUENCE 60
-#define MAX_TUNE1 100
+#define MAX_TUNE1 60
 #define MAX_TUNE2 40
 #define MAX_TUNE3 20
 
@@ -123,18 +123,18 @@ typedef struct
   uint16_t powerSaveTimeout = 300;
   bool sendActionCmds = false;
   bool prusaMMU2 = true;
-  char unloadCommand[50] = {0};
+  char unloadCommand[MAX_UNLOAD_COMMAND] = {0};
   uint16_t servoMinPwm = 800;
   uint16_t servoMaxPwm = 2400;
-  char wipeSequence[30] = {0};
+  char wipeSequence[MAX_WIPE_SEQUENCE] = {0};
   uint8_t backlightColor = 0x4; // Cyan by default
   uint8_t hasPanelDue = 0;      // Serial Port for PanelDue (0=None)
   bool encoderTickSound = false;
   bool sendPeriodicalStats = true;
-  char lButtonDown[20] = {0};
-  char lButtonHold[20] = {0};
-  char rButtonDown[20] = {0};
-  char rButtonHold[20] = {0};
+  char lButtonDown[MAX_BUTTON_LEN] = {0};
+  char lButtonHold[MAX_BUTTON_LEN] = {0};
+  char rButtonDown[MAX_BUTTON_LEN] = {0};
+  char rButtonHold[MAX_BUTTON_LEN] = {0};
   bool speedsInMMS = true;
   bool runoutDetection = false;
   bool useCutter = false;
@@ -144,16 +144,16 @@ typedef struct
   float cutterLength = 0;
 
   // ALL STEPPERS
-  uint16_t stepsPerMM[NUM_STEPPERS] = {80, 0, 410};
-  long maxSteps[NUM_STEPPERS] = {68000, 9600, 0};
-  uint16_t maxSpeed[NUM_STEPPERS] = {10, 10, 10};
-  uint16_t accelSpeed[NUM_STEPPERS] = {10, 10, 10};
-  bool invertDir[NUM_STEPPERS] = {false, false, false};
+  uint16_t stepsPerMM[NUM_STEPPERS+1] = {80, 0, 410};
+  long maxSteps[NUM_STEPPERS+1] = {68000, 9600, 0};
+  uint16_t maxSpeed[NUM_STEPPERS+1] = {10, 10, 10};
+  uint16_t accelSpeed[NUM_STEPPERS+1] = {10, 10, 10};
+  bool invertDir[NUM_STEPPERS+1] = {false, false, false};
   uint8_t endstopTrg[NUM_STEPPERS + 1] = {HIGH, HIGH, HIGH, LOW};
-  uint8_t stepDelay[NUM_STEPPERS] = {3, 3, 3};
-  uint8_t accelDist[NUM_STEPPERS] = {21, 5, 5};
-  int8_t ms3config[NUM_STEPPERS] = {-1, -1, -1};
-  float speedAdjust[NUM_STEPPERS] = {1, 1, 1};
+  uint8_t stepDelay[NUM_STEPPERS+1] = {3, 3, 3};
+  uint8_t accelDist[NUM_STEPPERS+1] = {21, 5, 5};
+  int8_t ms3config[NUM_STEPPERS+1] = {-1, -1, -1};
+  float speedAdjust[NUM_STEPPERS+1] = {1, 1, 1};
   // TMC drivers via UART or SPI
   uint16_t stepperPower[NUM_STEPPERS + 1] = {700, 700, 700, 700};
   uint8_t stepperMode[NUM_STEPPERS + 1] = {0, 0, 0, 0};                 // 0 = NONE, 1 = UART, 2 = SPI
@@ -211,6 +211,7 @@ typedef struct
   uint8_t statusBPM = 20;
   bool invertRelay = false;
   bool menuOnTerminal = false;
+  bool webInterface = false;
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -233,7 +234,11 @@ extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg
 extern U8G2_ST7920_128X64_F_2ND_HW_SPI display;
 // extern U8G2_ST7920_128X64_F_SW_SPI display;
 #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
+#if defined(__BRD_SKR_MINI)
 extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
+#else
+extern U8G2_ST7567_JLX12864_F_4W_HW_SPI display;
+#endif
 #elif defined(USE_CREALITY_DISPLAY)
 #if defined(CREALITY_HW_SPI)
 extern U8G2_ST7920_128X64_F_HW_SPI display;
@@ -368,6 +373,7 @@ extern volatile bool isIdle;
 extern bool tmcWarning;
 extern bool isTestrun;
 extern bool isUsingTmc;
+extern volatile bool sdRemoved;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper *drivers[];
@@ -459,10 +465,16 @@ extern bool readConfig();
 extern bool readTmcConfig();
 extern bool readMaterials();
 extern bool readServoMapping();
-extern bool writeConfig(Print *dumpTo = nullptr);
-extern bool writeTmcConfig(Print *dumpTo = nullptr);
-extern bool writeServoMapping(Print *dumpTo = nullptr);
-extern bool writeMaterials(Print *dumpTo = nullptr);
+extern bool writeConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeMainConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeSteppersConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeTmcConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeServoMapping(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeMaterials(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeSwapTools(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool deserializeSwapTools(const char* cfg);
+extern bool saveConfig(String& buffer);
+extern bool serializeTMCStats(Print* out, uint8_t axis, int8_t version, bool isStealth, uint16_t powerCfg, uint16_t powerRms, uint16_t microsteps, bool ms1, bool ms2, const char* uart, const char* diag, const char* ola, const char* olb, const char* s2ga, const char* s2gb, const char* ot_stat);
 extern Print* openCfgFileWrite(const char* filename);
 extern void closeCfgFile();
 extern bool checkAutoClose();
@@ -597,8 +609,11 @@ extern unsigned long translateSpeed(uint16_t speed, uint8_t axis);
 extern bool getEncoderButton(bool encoderOnly);
 extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool *isClicked);
 
-extern void listTextFile(const char *filename PROGMEM, int8_t serial);
-extern void listHelpFile(const char *filename PROGMEM, int8_t serial);
-extern const char *loadMenu(const char *filename PROGMEM, uint8_t ordinals[]);
-extern const char *loadOptions(const char *filename PROGMEM);
-extern bool loadReport(const char *filename PROGMEM, char *buffer, uint16_t maxLen);
+extern void listTextFile(const char* filename PROGMEM, int8_t serial);
+extern void listHelpFile(const char* filename PROGMEM, int8_t serial);
+extern const char *loadMenu(const char* filename PROGMEM, uint8_t ordinals[]);
+extern const char *loadOptions(const char* filename PROGMEM);
+extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* ext, uint16_t maxLen);
+
+extern void sendTMCStatus(uint8_t axis, int8_t port);
+extern Print* getSerialInstance(int8_t serial);

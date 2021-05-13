@@ -18,11 +18,12 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.25"
+#define VERSION_STRING    "V2.26"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-04-20"
+#define VERSION_DATE      "2021-05-12"
 #define CONFIG_FILE       "/SMUFF.json"
+#define STEPPERS_FILE     "/STEPPERS.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
 #define TMC_CONFIG_FILE   "/TMCDRVR.json"
 #define SERVOMAP_FILE     "/SERVOMAP.json"
@@ -32,8 +33,12 @@
 #define LONGBEEP_FILE     "LBEEP.DAT"
 #define USERBEEP_FILE     "UBEEP.DAT"
 #define ENCBEEP_FILE      "EBEEP.DAT"
+#define ENCBEEPLEO_FILE   "EBEEP_LEONERD.DAT"
 
-#define MAX_MATERIAL_LEN  12                // max. length of material names
+#define MAX_MATERIAL_LEN    10                // max. length of material names
+#define MAX_UNLOAD_COMMAND  20                // max. length of unload command
+#define MAX_WIPE_SEQUENCE   25                // max. length of wipe sequence
+#define MAX_BUTTON_LEN      15                // max. length of button commands
 
 #define NUM_STEPPERS      3
 #define SELECTOR          0

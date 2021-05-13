@@ -19,13 +19,37 @@
 #pragma once
 
 #include <stdlib.h>
+#include <Arduino.h>
 
-typedef struct {
-    long stepperPos[NUM_STEPPERS+1];
-    int8_t tool;
-} DataStore;
+class StrPrint : Print {
+private:
+    String data;
+public:
+    virtual size_t write(uint8 ch) {
+        data += (char)ch;
+        return 1;
+    };
+    virtual size_t write(const char *str) {
+        data += str;
+        return strlen(str);
+    };
+    virtual size_t write(const void *buf, uint32 len) {
+        char tmp[len];
+        memcpy(tmp, buf, len);
+        tmp[len] = 0;
+        data += String(tmp);
+        return len;
+    };
 
-extern DataStore      dataStore;
+    StrPrint() {
+        data.reserve(80);
+    }
 
-void saveStore();
-void recoverStore();
+    const char* toString() {
+        return data.c_str();
+    }
+
+    const String& get() {
+        return data;
+    }
+};

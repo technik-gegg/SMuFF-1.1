@@ -27,12 +27,9 @@
 
 SdFat SD;
 
-#if defined(__STM32F1__)
-const size_t capacity = 2500;
-const size_t scapacity = 1600;
-#elif defined(__ESP32__)
-const size_t capacity = 4500;     // since the ESP32 has more memory, we can do this
-const size_t scapacity = 1000;
+#if defined(__STM32F1__) || defined(__ESP32__)
+const size_t capacity = 2000;
+const size_t scapacity = 1300;
 #else
 const size_t capacity = 1300;
 const size_t scapacity = 1000;
@@ -94,63 +91,72 @@ void closeCfgFile() {
     cfgOut.close();
 }
 
-SdFile cfg;
+uint8_t toolsMinMax(uint8_t toolCnt) {
+  return (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
+}
+
+uint8_t contrastMinMax(uint8_t contrast) {
+  return (contrast >= MIN_CONTRAST && contrast <= MAX_CONTRAST) ? contrast : DSP_CONTRAST;
+}
+
+uint8_t i2cAdrMinMax(uint8_t i2cAdr) {
+  return (i2cAdr > 0 && i2cAdr < 128) ? i2cAdr : I2C_SLAVE_ADDRESS;
+}
+
+uint16_t speedMinMax(uint16_t speed) {
+  return (speed < mmsMin || speed > mmsMax) ? mmsMin : speed;
+}
 
 /*
   Reads main config from SD-Card
 */
-bool readConfig()
+bool readMainConfig()
 {
-  DynamicJsonDocument jsonDoc(capacity); // use memory from heap to deserialize
-  //StaticJsonDocument<capacity> jsonDoc; // use memory from stack to deserialize
-
   if(!initSD())
     return false;
   //__debugS(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
 
+  SdFile cfg;
   if(!cfg.open(CONFIG_FILE)) {
     showOpenFailed(&cfg, CONFIG_FILE);
     return false;
   }
   else {
-    if(!checkFileSize(&cfg, capacity, P_ConfigFail1))
+    if(!checkFileSize(&cfg, capacity, P_ConfigFail1)) {
+      cfg.close();
       return false;
+    }
+
+    DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    __debugS(PSTR("[readConfig] after deserialize..."));
+    __debugS(PSTR("[readMainConfig] after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+    cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail1);
     else {
       drawSDStatus(SD_READING_CONFIG);
-      uint8_t toolCnt =                         jsonDoc[toolCount];
-      smuffConfig.toolCount = (toolCnt > MIN_TOOLS && toolCnt <= MAX_TOOLS) ? toolCnt : 5;
-      uint8_t _contrast =                        jsonDoc[contrast];
-      smuffConfig.lcdContrast = (_contrast >= MIN_CONTRAST && _contrast <= MAX_CONTRAST) ? _contrast : DSP_CONTRAST;
-      uint8_t _backlightColor =                  jsonDoc[backlightColor];
-      smuffConfig.backlightColor = (_backlightColor == 0 ? 7 : _backlightColor);  // set backlight color to White if not set
-      uint8_t _toolColor =                       jsonDoc[toolColor];
-      smuffConfig.toolColor = (_toolColor == 0 ? 5 : _toolColor);                 // set tool color to Magenta if not set
+      smuffConfig.toolCount =                   toolsMinMax(jsonDoc[toolCount]);
+      smuffConfig.lcdContrast =                 contrastMinMax(jsonDoc[contrast]);
+      smuffConfig.backlightColor =              jsonDoc[backlightColor] | 7;   // set backlight color to White if not set
+      smuffConfig.toolColor =                   jsonDoc[toolColor] | 5;       // set tool color to Magenta if not set
       smuffConfig.encoderTickSound =            jsonDoc[encoderTicks];
       smuffConfig.bowdenLength =                jsonDoc[bowdenLength];
       smuffConfig.selectorDistance =            jsonDoc[selectorDist];
-      uint8_t _i2cAdr =                          jsonDoc[i2cAdr];
-      smuffConfig.i2cAddress = (_i2cAdr > 0 && _i2cAdr < 128) ? _i2cAdr : I2C_SLAVE_ADDRESS;
+      smuffConfig.i2cAddress =                  i2cAdrMinMax(jsonDoc[i2cAdr]);
       smuffConfig.menuAutoClose =               jsonDoc[autoClose];
-      smuffConfig.serialBaudrates[0] =          jsonDoc[serial0Baudrate];
-      smuffConfig.serialBaudrates[1] =          jsonDoc[serial1Baudrate];
-      smuffConfig.serialBaudrates[2] =          jsonDoc[serial2Baudrate];
-      smuffConfig.serialBaudrates[3] =          jsonDoc[serial3Baudrate];
+      smuffConfig.serialBaudrates[0] =          jsonDoc[serialBaudrate][0];
+      smuffConfig.serialBaudrates[1] =          jsonDoc[serialBaudrate][1];
+      smuffConfig.serialBaudrates[2] =          jsonDoc[serialBaudrate][2];
+      smuffConfig.serialBaudrates[3] =          jsonDoc[serialBaudrate][3];
       smuffConfig.fanSpeed =                    jsonDoc[fanSpeed];
       smuffConfig.powerSaveTimeout =            jsonDoc[psTimeout];
       smuffConfig.sendActionCmds =              jsonDoc[sendAction];
-      const char* p1 =                          jsonDoc[unloadCommand];
+
       const char* p2 =                          jsonDoc[wipeSequence];
-      const char* p3 =                          jsonDoc[lButtonDown];
-      const char* p4 =                          jsonDoc[lButtonHold];
-      const char* p5 =                          jsonDoc[rButtonDown];
-      const char* p6 =                          jsonDoc[rButtonHold];
-      if(p1 != nullptr && strlen(p1) > 0) {
-        strncpy(smuffConfig.unloadCommand, p1, ArraySize(smuffConfig.unloadCommand));
-      }
+      const char* p3 =                          jsonDoc[lBtnDown];
+      const char* p4 =                          jsonDoc[lBtnHold];
+      const char* p5 =                          jsonDoc[rBtnDown];
+      const char* p6 =                          jsonDoc[rBtnHold];
       if(p2 != nullptr && strlen(p2) > 0) {
         strncpy(smuffConfig.wipeSequence, p2, ArraySize(smuffConfig.wipeSequence));
       }
@@ -166,25 +172,13 @@ bool readConfig()
       if(p6 != nullptr && strlen(p6) > 0) {
         strncpy(smuffConfig.rButtonHold, p6, ArraySize(smuffConfig.rButtonHold));
       }
+
       smuffConfig.prusaMMU2 =                   jsonDoc[emulatePrusa];
       smuffConfig.hasPanelDue =                 jsonDoc[hasPanelDue];
-      smuffConfig.servoMinPwm =                 jsonDoc[servoMinPwm];
-      smuffConfig.servoMaxPwm =                 jsonDoc[servoMaxPwm];
-      if(smuffConfig.servoMinPwm == 0)
-        smuffConfig.servoMinPwm = 800;
-      if(smuffConfig.servoMaxPwm == 0)
-        smuffConfig.servoMaxPwm = 2400;
+      smuffConfig.servoMinPwm =                 jsonDoc[servoMinPwm] | 800;
+      smuffConfig.servoMaxPwm =                 jsonDoc[servoMaxPwm] | 2400;
       smuffConfig.sendPeriodicalStats =         jsonDoc[periodicalStats];
       smuffConfig.speedsInMMS =                 jsonDoc[speedsInMMS];
-      if(!smuffConfig.speedsInMMS) {
-        mmsMax = MAX_TICKS;
-        speedIncrement = INC_TICKS;
-      }
-      else {
-        mmsMax = MAX_MMS;
-        speedIncrement = INC_MMS;
-      }
-      smuffConfig.motorOnDelay =                jsonDoc[motDelay];
       smuffConfig.useCutter =                   jsonDoc[useCutter];
       smuffConfig.cutterOpen =                  jsonDoc[cutterOpen];
       smuffConfig.cutterClose =                 jsonDoc[cutterClose];
@@ -195,22 +189,56 @@ bool readConfig()
       smuffConfig.statusBPM =                   jsonDoc[statusBpm];
       smuffConfig.invertRelay =                 jsonDoc[invertRelay];
       smuffConfig.menuOnTerminal =              jsonDoc[menuOnTerm];
+      smuffConfig.servoCycles1 =                jsonDoc[servo1Cycles];
+      smuffConfig.servoCycles2 =                jsonDoc[servo2Cycles];
 
+      if(smuffConfig.speedsInMMS) {
+        mmsMax = MAX_MMS;
+        speedIncrement = INC_MMS;
+      }
+      else {
+        mmsMax = MAX_TICKS;
+        speedIncrement = INC_TICKS;
+      }
+      jsonDoc.clear();
+      __debugS(PSTR("Config: DONE reading config"));
+    }
+  }
+  return true;
+}
+
+bool readSteppersConfig()
+{
+  //__debugS(PSTR("Trying to open steppers config file '%s'"), STEPPERS_FILE);
+
+  SdFile cfg;
+  if(!cfg.open(STEPPERS_FILE)) {
+    showOpenFailed(&cfg, STEPPERS_FILE);
+    return false;
+  }
+  else {
+    if(!checkFileSize(&cfg, capacity, P_ConfigFail8)) {
+      cfg.close();
+      return false;
+    }
+
+    DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
+    DeserializationError error = deserializeJson(jsonDoc, cfg);
+    __debugS(PSTR("[readSteppersConfig] after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+    cfg.close();
+    if (error)
+      showDeserializeFailed(error, P_ConfigFail8);
+    else {
+      drawSDStatus(SD_READING_CONFIG);
       /*
       SELECTOR
       */
       smuffConfig.firstToolOffset =             jsonDoc[selector][offset];
       smuffConfig.toolSpacing =                 jsonDoc[selector][spacing];
       smuffConfig.stepsPerMM[SELECTOR] =        jsonDoc[selector][stepsPerMillimeter];
-      smuffConfig.maxSteps[SELECTOR] = ((smuffConfig.toolCount-1)*smuffConfig.toolSpacing+smuffConfig.firstToolOffset) * smuffConfig.stepsPerMM[SELECTOR];
-      uint16_t speed =                          jsonDoc[selector][maxSpeed];
-      uint16_t accel =                          jsonDoc[selector][accelSpeed];
-      if(speed < mmsMin || speed > mmsMax)
-        speed = mmsMin;
-      if(accel < mmsMin || accel > mmsMax)
-        accel = mmsMin;
-      smuffConfig.maxSpeed[SELECTOR] =          speed;
-      smuffConfig.accelSpeed[SELECTOR] =        accel;
+      smuffConfig.maxSteps[SELECTOR] =          ((smuffConfig.toolCount-1)*smuffConfig.toolSpacing+smuffConfig.firstToolOffset) * smuffConfig.stepsPerMM[SELECTOR];
+      smuffConfig.maxSpeed[SELECTOR] =          speedMinMax(jsonDoc[selector][maxSpeed]);
+      smuffConfig.accelSpeed[SELECTOR] =        speedMinMax(jsonDoc[selector][accelSpeed]);
       smuffConfig.accelDist[SELECTOR] =         jsonDoc[selector][accelDist];
       smuffConfig.invertDir[SELECTOR] =         jsonDoc[selector][invertDir];
       smuffConfig.endstopTrg[SELECTOR] =        jsonDoc[selector][endstopTrig];
@@ -220,16 +248,11 @@ bool readConfig()
       REVOLVER
       */
       smuffConfig.stepsPerRevolution =          jsonDoc[revolver][stepsPerRevolution];
+      smuffConfig.stepsPerMM[REVOLVER] =        jsonDoc[revolver][stepsPerMillimeter];
       smuffConfig.firstRevolverOffset =         jsonDoc[revolver][offset];
       smuffConfig.revolverSpacing =             smuffConfig.stepsPerRevolution / 10;
-      speed =                                   jsonDoc[revolver][maxSpeed];
-      accel =                                   jsonDoc[revolver][accelSpeed];
-      if(speed < mmsMin || speed > mmsMax)
-        speed = mmsMin;
-      if(accel < mmsMin || accel > mmsMax)
-        accel = mmsMin;
-      smuffConfig.maxSpeed[REVOLVER] =          speed;
-      smuffConfig.accelSpeed[REVOLVER] =        accel;
+      smuffConfig.maxSpeed[REVOLVER] =          speedMinMax(jsonDoc[revolver][maxSpeed]);
+      smuffConfig.accelSpeed[REVOLVER] =        speedMinMax(jsonDoc[revolver][accelSpeed]);
       smuffConfig.accelDist[REVOLVER] =         jsonDoc[revolver][accelDist];
       smuffConfig.resetBeforeFeed =             jsonDoc[revolver][resetBeforeFeed];
       smuffConfig.homeAfterFeed =               jsonDoc[revolver][homeAfterFeed];
@@ -240,30 +263,16 @@ bool readConfig()
       smuffConfig.revolverIsServo =             jsonDoc[revolver][useServo];
       smuffConfig.revolverOffPos =              jsonDoc[revolver][servoOffPos];
       smuffConfig.revolverOnPos =               jsonDoc[revolver][servoOnPos];
-      smuffConfig.servoCycles1 =                jsonDoc[revolver][servo1Cycles];
-      smuffConfig.servoCycles2 =                jsonDoc[revolver][servo2Cycles];
       smuffConfig.ms3config[REVOLVER] =         jsonDoc[revolver][ms3Config];
       /*
       FEEDER
       */
       smuffConfig.extControlFeeder =            jsonDoc[feeder][externalControl];
       smuffConfig.stepsPerMM[FEEDER] =          jsonDoc[feeder][stepsPerMillimeter];
-      speed =                                   jsonDoc[feeder][maxSpeed];
-      accel =                                   jsonDoc[feeder][accelSpeed];
-      uint16_t ispeed =                         jsonDoc[feeder][insertSpeed];
-      uint16_t pspeed =                         jsonDoc[feeder][purgeSpeed];
-      if(speed < mmsMin || speed > mmsMax)
-        speed = mmsMin;
-      if(accel < mmsMin || accel > mmsMax)
-        accel = mmsMin;
-      if(ispeed < mmsMin || ispeed > mmsMax)
-        ispeed = mmsMin;
-      if(pspeed < mmsMin || ispeed > mmsMax)
-        pspeed = mmsMin;
-      smuffConfig.maxSpeed[FEEDER] =            speed;
-      smuffConfig.accelSpeed[FEEDER] =          accel;
-      smuffConfig.insertSpeed =                 ispeed;
-      smuffConfig.purgeSpeed =                  pspeed;
+      smuffConfig.maxSpeed[FEEDER] =            speedMinMax(jsonDoc[feeder][maxSpeed]);
+      smuffConfig.accelSpeed[FEEDER] =          speedMinMax(jsonDoc[feeder][accelSpeed]);
+      smuffConfig.insertSpeed =                 speedMinMax(jsonDoc[feeder][insertSpeed]);
+      smuffConfig.purgeSpeed =                  speedMinMax(jsonDoc[feeder][purgeSpeed]);
       smuffConfig.accelDist[FEEDER] =           jsonDoc[feeder][accelDist];
       smuffConfig.invertDir[FEEDER] =           jsonDoc[feeder][invertDir];
       smuffConfig.endstopTrg[FEEDER] =          jsonDoc[feeder][endstopTrig];
@@ -275,23 +284,30 @@ bool readConfig()
       smuffConfig.unloadPushback =              jsonDoc[feeder][unloadPushback];
       smuffConfig.pushbackDelay =               jsonDoc[feeder][pushbackDelay];
       smuffConfig.enableChunks =                jsonDoc[feeder][enableChunks];
-      smuffConfig.feedChunks =                  jsonDoc[feeder][feedChunks];
-      if(smuffConfig.feedChunks == 0)
-        smuffConfig.feedChunks = 20;
-      smuffConfig.insertLength =                jsonDoc[feeder][insertLength];
-      if(smuffConfig.insertLength == 0)
-        smuffConfig.insertLength = 5;
+      smuffConfig.feedChunks =                  jsonDoc[feeder][feedChunks] | 20;
+      smuffConfig.insertLength =                jsonDoc[feeder][insertLength] | 5;
       smuffConfig.useDuetLaser =                jsonDoc[feeder][duetLaser];
       smuffConfig.isSharedStepper =             jsonDoc[feeder][sharedStepper];
       smuffConfig.ms3config[FEEDER] =           jsonDoc[feeder][ms3Config];
       smuffConfig.purgeLength =                 jsonDoc[feeder][purgeLength];
       smuffConfig.wipeBeforeUnload =            jsonDoc[feeder][autoWipe];
 
-      __debugS(PSTR("Config: DONE reading config"));
+      jsonDoc.clear();
+      __debugS(PSTR("Config: DONE reading steppers config"));
     }
-    cfg.close();
   }
   return true;
+}
+
+bool readConfig() {
+  if(!initSD())
+    return false;
+
+  if(readMainConfig()) {
+    if(readSteppersConfig())
+      return true;
+  }
+  return false;
 }
 
 /*
@@ -299,20 +315,24 @@ bool readConfig()
 */
 bool readTmcConfig()
 {
-  //DynamicJsonDocument jsonDoc(scapacity); // use memory from heap to deserialize
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
-
   if(!initSD())
     return false;
   //__debugS(PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
+  SdFile cfg;
   if(!cfg.open(TMC_CONFIG_FILE)) {
     showOpenFailed(&cfg, TMC_CONFIG_FILE);
     return false;
   }
   else {
-    if(!checkFileSize(&cfg, scapacity, P_ConfigFail6))
+    if(!checkFileSize(&cfg, scapacity, P_ConfigFail6)) {
+      cfg.close();
       return false;
+    }
+
+    DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
+    __debugS(PSTR("[readTmcConfig] after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+    cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail6);
     else {
@@ -382,9 +402,9 @@ bool readTmcConfig()
       smuffConfig.stepperStopOnStall[FEEDER2]=  jsonDoc[feeder2][stopOnStall];
       smuffConfig.stepperMaxStallCnt[FEEDER2]=  jsonDoc[feeder2][maxStallCount];
 
+      jsonDoc.clear();
       __debugS(PSTR("Config: DONE reading TMC config"));
     }
-    cfg.close();
   }
   return true;
 }
@@ -393,19 +413,24 @@ bool readTmcConfig()
   Reads mapping of the servos from SD-Card.
 */
 bool readServoMapping() {
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
 
   if(!initSD())
     return false;
   //__debugS(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
+  SdFile cfg;
   if(!cfg.open(SERVOMAP_FILE)) {
     showOpenFailed(&cfg, SERVOMAP_FILE);
     return false;
   }
   else {
-    if(!checkFileSize(&cfg, scapacity, P_ConfigFail7))
+    if(!checkFileSize(&cfg, scapacity, P_ConfigFail7)) {
+      cfg.close();
       return false;
+    }
+
+    DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
+    cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail7);
     else {
@@ -432,9 +457,10 @@ bool readServoMapping() {
       // read the Wiper servo output pin only
       servoMapping[16] = jsonDoc[wiper][servoOutput];
       #endif
+
+      jsonDoc.clear();
       __debugS(PSTR("Config: DONE reading servo mappings"));
     }
-    cfg.close();
   }
   return true;
 }
@@ -443,19 +469,23 @@ bool readServoMapping() {
   Reads materials assignment.
 */
 bool readMaterials() {
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
 
   if(!initSD())
     return false;
   //__debugS(PSTR("Trying to open TMC config file '%s'"), MATERIALS_FILE);
+  SdFile cfg;
   if(!cfg.open(MATERIALS_FILE)) {
     showOpenFailed(&cfg, MATERIALS_FILE);
     return false;
   }
   else {
-    if(!checkFileSize(&cfg, scapacity, P_ConfigFail5))
+    if(!checkFileSize(&cfg, scapacity, P_ConfigFail5)) {
+      cfg.close();
       return false;
+    }
+    DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
+    cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail5);
     else {
@@ -464,14 +494,14 @@ bool readMaterials() {
 #if defined(__STM32F1__) || defined(__ESP32__)
       char item[15];
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
-        memset(smuffConfig.materials[i], 0, ArraySize(smuffConfig.materials[i]));
+        memset(smuffConfig.materials[i], 0, MAX_MATERIAL_LEN);
         sprintf_P(item, P_Tool, i);
         const char* pItem = jsonDoc[item][color];
         if(pItem == nullptr) {
-          sprintf(smuffConfig.materials[i],"Tool%d", i);
+          sprintf_P(smuffConfig.materials[i], PSTR("Tool%d"), i);
         }
         else {
-          strncpy(smuffConfig.materials[i], pItem, ArraySize(smuffConfig.materials[i]));
+          strncpy(smuffConfig.materials[i], pItem, MAX_MATERIAL_LEN);
         }
         //__debugS(PSTR("%s: %s"), item, smuffConfig.materials[i]);
         uint16_t len = jsonDoc[item][pfactor];
@@ -500,9 +530,10 @@ bool readMaterials() {
         memset(smuffConfig.materials[i], 0, ArraySize(smuffConfig.materials[i]));
       }
 #endif
+
+      jsonDoc.clear();
       __debugS(PSTR("Config: DONE reading materials"));
     }
-    cfg.close();
   }
   return true;
 }
@@ -511,19 +542,18 @@ bool readMaterials() {
 /*
   Writes the basic configuration to SD-Card or Serial
 */
-bool writeConfig(Print* dumpTo) {
-  StaticJsonDocument<capacity> jsonDoc;
+bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
 
   if(dumpTo == nullptr) {
     if(!initSD())
       return false;
   }
 
-  JsonObject jsonObj = jsonDoc.to<JsonObject>();
-  jsonDoc[serial0Baudrate]      = smuffConfig.serialBaudrates[0];
-  jsonDoc[serial1Baudrate]      = smuffConfig.serialBaudrates[1];
-  jsonDoc[serial2Baudrate]      = smuffConfig.serialBaudrates[2];
-  jsonDoc[serial3Baudrate]      = smuffConfig.serialBaudrates[3];
+  DynamicJsonDocument jsonDoc(capacity);
+  jsonDoc[serialBaudrate][0]    = smuffConfig.serialBaudrates[0];
+  jsonDoc[serialBaudrate][1]    = smuffConfig.serialBaudrates[1];
+  jsonDoc[serialBaudrate][2]    = smuffConfig.serialBaudrates[2];
+  jsonDoc[serialBaudrate][3]    = smuffConfig.serialBaudrates[3];
   jsonDoc[toolCount]            = smuffConfig.toolCount;
   jsonDoc[bowdenLength]         = smuffConfig.bowdenLength;
   jsonDoc[selectorDist]         = smuffConfig.selectorDistance;
@@ -534,7 +564,6 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[psTimeout]            = smuffConfig.powerSaveTimeout;
   jsonDoc[sendAction]           = smuffConfig.sendActionCmds;
   jsonDoc[emulatePrusa]         = smuffConfig.prusaMMU2;
-  jsonDoc[unloadCommand]        = smuffConfig.unloadCommand;
   jsonDoc[hasPanelDue]          = smuffConfig.hasPanelDue;
   jsonDoc[servoMinPwm]          = smuffConfig.servoMinPwm;
   jsonDoc[servoMaxPwm]          = smuffConfig.servoMaxPwm;
@@ -543,12 +572,11 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[backlightColor]       = smuffConfig.backlightColor;
   jsonDoc[toolColor]            = smuffConfig.toolColor;
   jsonDoc[encoderTicks]         = smuffConfig.encoderTickSound;
-  jsonDoc[lButtonDown]          = smuffConfig.lButtonDown;
-  jsonDoc[lButtonHold]          = smuffConfig.lButtonHold;
-  jsonDoc[rButtonDown]          = smuffConfig.rButtonDown;
-  jsonDoc[rButtonHold]          = smuffConfig.rButtonHold;
+  jsonDoc[lBtnDown]             = smuffConfig.lButtonDown;
+  jsonDoc[lBtnHold]             = smuffConfig.lButtonHold;
+  jsonDoc[rBtnDown]             = smuffConfig.rButtonDown;
+  jsonDoc[rBtnHold]             = smuffConfig.rButtonHold;
   jsonDoc[speedsInMMS]          = smuffConfig.speedsInMMS;
-  jsonDoc[motDelay]             = smuffConfig.motorOnDelay;
   jsonDoc[useCutter]            = smuffConfig.useCutter;
   jsonDoc[cutterOpen]           = smuffConfig.cutterOpen;
   jsonDoc[cutterClose]          = smuffConfig.cutterClose;
@@ -559,8 +587,37 @@ bool writeConfig(Print* dumpTo) {
   jsonDoc[statusBpm]            = smuffConfig.statusBPM;
   jsonDoc[invertRelay]          = smuffConfig.invertRelay;
   jsonDoc[menuOnTerm]           = smuffConfig.menuOnTerminal;
+  jsonDoc[servo1Cycles]         = smuffConfig.servoCycles1;
+  jsonDoc[servo2Cycles]         = smuffConfig.servoCycles2;
 
-  JsonObject node = jsonObj.createNestedObject(selector);
+  if(dumpTo == nullptr) {
+    dumpTo = openCfgFileWrite(CONFIG_FILE);
+  }
+  if(dumpTo != nullptr) {
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
+    jsonDoc.clear();
+    closeCfgFile();
+    //__debugS(PSTR("Serializing '%s' done"), CONFIG_FILE);
+    return true;
+  }
+  return false;
+}
+
+/*
+  Writes the steppers configuration to SD-Card or Serial
+*/
+bool writeSteppersConfig(Print* dumpTo, bool useWebInterface) {
+
+  if(dumpTo == nullptr) {
+    if(!initSD())
+      return false;
+  }
+
+  DynamicJsonDocument jsonDoc(capacity);
+  JsonObject node = jsonDoc.createNestedObject(selector);
   node[offset]                = smuffConfig.firstToolOffset;
   node[spacing]               = smuffConfig.toolSpacing;
   node[stepsPerMillimeter]    = smuffConfig.stepsPerMM[SELECTOR];
@@ -572,9 +629,10 @@ bool writeConfig(Print* dumpTo) {
   node[endstopTrig]           = smuffConfig.endstopTrg[SELECTOR];
   node[ms3Config]             = smuffConfig.ms3config[SELECTOR];
 
-  node = jsonObj.createNestedObject(revolver);
+  node = jsonDoc.createNestedObject(revolver);
   node[offset]                = smuffConfig.firstRevolverOffset;
   node[stepsPerRevolution]    = smuffConfig.stepsPerRevolution;
+  node[stepsPerMillimeter]    = smuffConfig.stepsPerMM[REVOLVER];
   node[stepDelay]             = smuffConfig.stepDelay[REVOLVER];
   node[maxSpeed]              = smuffConfig.maxSpeed[REVOLVER];
   node[accelSpeed]            = smuffConfig.accelSpeed[REVOLVER];
@@ -587,11 +645,9 @@ bool writeConfig(Print* dumpTo) {
   node[useServo]              = smuffConfig.revolverIsServo;
   node[servoOffPos]           = smuffConfig.revolverOffPos;
   node[servoOnPos]            = smuffConfig.revolverOnPos;
-  node[servo1Cycles]          = smuffConfig.servoCycles1;
-  node[servo2Cycles]          = smuffConfig.servoCycles2;
   node[ms3Config]             = smuffConfig.ms3config[REVOLVER];
 
-  node = jsonObj.createNestedObject(feeder);
+  node = jsonDoc.createNestedObject(feeder);
   node[externalControl]       = smuffConfig.extControlFeeder;
   node[stepsPerMillimeter]    = smuffConfig.stepsPerMM[FEEDER];
   node[stepDelay]             = smuffConfig.stepDelay[FEEDER];
@@ -618,13 +674,29 @@ bool writeConfig(Print* dumpTo) {
   node[autoWipe]              = smuffConfig.wipeBeforeUnload;
 
   if(dumpTo == nullptr) {
-    dumpTo = openCfgFileWrite(CONFIG_FILE);
+    dumpTo = openCfgFileWrite(STEPPERS_FILE);
   }
   if(dumpTo != nullptr) {
-    serializeJsonPretty(jsonDoc, *dumpTo);
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
+    jsonDoc.clear();
     closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), CONFIG_FILE);
+    //__debugS(PSTR("Serializing '%s' done"), STEPPERS_FILE);
     return true;
+  }
+  return false;
+}
+
+/*
+  Write main a& steppers config combined
+*/
+bool writeConfig(Print* dumpTo, bool useWebInterface) {
+
+  if(writeMainConfig(dumpTo, useWebInterface)) {
+    if(writeSteppersConfig(dumpTo, useWebInterface))
+      return true;
   }
   return false;
 }
@@ -632,14 +704,14 @@ bool writeConfig(Print* dumpTo) {
 /*
   Writes the TMC configuration to SD-Card or Serial
 */
-bool writeTmcConfig(Print* dumpTo) {
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to serialize
+bool writeTmcConfig(Print* dumpTo, bool useWebInterface) {
 
   if(dumpTo == nullptr) {
     if(!initSD())
       return false;
   }
 
+  DynamicJsonDocument jsonDoc(capacity); // use memory on heap to serialize
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   JsonObject node = jsonObj.createNestedObject(selector);
   node[power]                 = smuffConfig.stepperPower[SELECTOR];
@@ -705,7 +777,11 @@ bool writeTmcConfig(Print* dumpTo) {
     dumpTo = openCfgFileWrite(TMC_CONFIG_FILE);
   }
   if(dumpTo != nullptr) {
-    serializeJsonPretty(jsonDoc, *dumpTo);
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
+    jsonDoc.clear();
     closeCfgFile();
     //__debugS(PSTR("Serializing '%s' done"), TMC_CONFIG_FILE);
     return true;
@@ -716,14 +792,14 @@ bool writeTmcConfig(Print* dumpTo) {
 /*
   Writes the servo mapping to SD-Card or Serial
 */
-bool writeServoMapping(Print* dumpTo)
+bool writeServoMapping(Print* dumpTo, bool useWebInterface)
 {
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to serialize
 
   if(dumpTo == nullptr) {
     if(!initSD())
       return false;
   }
+  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to serialize
   // create servo mappings
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   char item[15];
@@ -747,7 +823,10 @@ bool writeServoMapping(Print* dumpTo)
     dumpTo = openCfgFileWrite(SERVOMAP_FILE);
   }
   if(dumpTo != nullptr) {
-    serializeJsonPretty(jsonDoc, *dumpTo);
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
     //__debugS(PSTR("Serializing '%s' done"), SERVOMAP_FILE);
     return true;
@@ -758,13 +837,13 @@ bool writeServoMapping(Print* dumpTo)
 /*
   Writes materials configuration.
 */
-bool writeMaterials(Print* dumpTo) {
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
+bool writeMaterials(Print* dumpTo, bool useWebInterface) {
 
   if(dumpTo == nullptr) {
     if(!initSD())
       return false;
   }
+  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
   // create materials
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   char item[15];
@@ -781,10 +860,127 @@ bool writeMaterials(Print* dumpTo) {
     dumpTo = openCfgFileWrite(MATERIALS_FILE);
   }
   if(dumpTo != nullptr) {
-    serializeJsonPretty(jsonDoc, *dumpTo);
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
     //__debugS(PSTR("Serializing '%s' done"), MATERIALS_FILE);
     return true;
   }
   return false;
+}
+
+/*
+  Writes tools swapping configuration.
+*/
+bool writeSwapTools(Print* dumpTo, bool useWebInterface) {
+  if(dumpTo == nullptr) {
+    return false;
+  }
+  StaticJsonDocument<scapacity> jsonDoc;
+  char tmp[16];
+  for(uint8_t i=0; i < MAX_TOOLS; i++) {
+    sprintf_P(tmp, P_Tool, i);
+    jsonDoc[tmp] = swapTools[i];
+  }
+  if(dumpTo != nullptr) {
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
+    closeCfgFile();
+    //__debugS(PSTR("Serializing '%s' done"), "Swaps");
+    return true;
+  }
+  return false;
+
+}
+
+bool deserializeSwapTools(const char* cfg) {
+    DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
+    DeserializationError error = deserializeJson(jsonDoc, cfg);
+    if (error) {
+      __debugS(PSTR("deserializeJson() failed with code %s (Input: >%s<)"), error.c_str(), cfg);
+      return false;
+    }
+    else {
+      char tmp[10];
+      for(uint8_t i=0; i < MAX_TOOLS; i++) {
+        sprintf_P(tmp, P_Tool, i);
+        swapTools[i] = jsonDoc[tmp];
+        //__debugS(PSTR("T%d = %d"), i, swapTools[i]);
+      }
+    }
+    return true;
+}
+
+bool serializeTMCStats(Print* dumpTo, uint8_t axis, int8_t version, bool isStealth, uint16_t powerCfg, uint16_t powerRms, uint16_t microsteps, bool ms1, bool ms2, const char* uart,
+      const char* diag, const char* ola, const char* olb, const char* s2ga, const char* s2gb, const char* ot_stat) {
+  DynamicJsonDocument jsonDoc(scapacity); // use memory on stack to deserialize
+  // create status
+  JsonObject jsonObj = jsonDoc.to<JsonObject>();
+  JsonObject node = jsonObj.createNestedObject(P_TMCStatus);
+  char tmp[4];
+  sprintf_P(tmp,"%d%d", ms2, ms1);
+  node[P_TMCKeyAxis]  = axis;
+  node[P_TMCKeyVersion]  = version;
+  node[P_TMCKeyInUse]  = true;
+  node[P_TMCKeyMode]  = isStealth ? "StealthChop" : "SpreadCycle";
+  node[P_TMCKeyPwrCfg]  = powerCfg;
+  node[P_TMCKeyPwrRms]  = powerRms;
+  node[P_TMCKeyMS]  = microsteps;
+  node[P_TMCKeyAddr]  = tmp;
+  node[P_TMCKeyUart]  = uart;
+  node[P_TMCKeyDiag]  = diag;
+  node[P_TMCKeyOLA]  = ola;
+  node[P_TMCKeyOLB]  = olb;
+  node[P_TMCKeyS2GA]  = s2ga;
+  node[P_TMCKeyS2GB]  = s2gb;
+  node[P_TMCKeyOT] = ot_stat;
+  serializeJson(jsonDoc, *dumpTo);
+  return true;
+}
+
+bool saveConfig(String& buffer) {
+  if(!initSD())
+    return false;
+  String cfgType;
+
+  int16_t epos = buffer.indexOf("*/");
+  if(epos != -1) {
+    cfgType = buffer.substring(2, epos);
+  }
+  else
+    return false;
+  const char* filename;
+  if(cfgType.equals("S1")) {
+    filename = CONFIG_FILE;
+  }
+  if(cfgType.equals("S2")) {
+    filename = STEPPERS_FILE;
+  }
+  if(cfgType.equals("S3")) {
+    filename = TMC_CONFIG_FILE;
+  }
+  if(cfgType.equals("S4")) {
+    filename = SERVOMAP_FILE;
+  }
+  if(cfgType.equals("S5")) {
+    filename = MATERIALS_FILE;
+  }
+  //__debugS(PSTR("Processing config '%s' Data: \n%s"), filename, buffer.substring(epos+2).c_str());
+  DynamicJsonDocument jsonDoc(capacity);       // use memory from heap to deserialize
+  DeserializationError error = deserializeJson(jsonDoc, buffer.substring(epos+2));
+  if (error) {
+    __debugS(PSTR("deserializeJson() failed with code %s"), error.c_str());
+    return false;
+  }
+  else {
+    Print* dumpTo = openCfgFileWrite(filename);
+    serializeJsonPretty(jsonDoc, *dumpTo);
+    closeCfgFile();
+  }
+
+  return true;
 }

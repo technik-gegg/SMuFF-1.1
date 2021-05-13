@@ -500,8 +500,10 @@ bool getParamString(String buf, const char* token, char* dest, int16_t bufLen) {
       if(endPos != -1) {
         memset(dest, 0, bufLen);
         if(endPos+1 < bufLen) {
+          String tmp = buf.substring(pos+2, pos+endPos+3);
+          tmp.replace("''", "\"");
           if(dest != nullptr) {
-            buf.substring(pos+2, pos+endPos+3).toCharArray(dest, endPos+1);
+            tmp.toCharArray(dest, endPos+1);
             //__debugS(PSTR("ptmp: >%s< (%d)\n"), dest, strlen(dest));
           }
           return true;

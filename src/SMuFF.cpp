@@ -43,16 +43,16 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C display(U8G2_R2, /* reset=*/U8X8_PIN_NONE);
 //
 //  Attn.: Instructions to modify the ANET display can be found here: https://www.thingiverse.com/thing:4009810
 //
-#pragma error "Before you use this display, you have to make some heavy modifications on the wiring for the display connector! Please check, then comment out this line."
+#error "Before you use this display, you have to make some heavy modifications on the wiring for the display connector! Please check, then comment out this line."
 U8G2_ST7920_128X64_F_2ND_HW_SPI display(U8G2_R0, /* cs=*/DSP_CS_PIN, /* reset=*/U8X8_PIN_NONE);
 // if the hardware SPI doesn't work, you may try software SPI instead
 //U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clock=*/ DSP_DC_PIN, /* data=*/ DSP_DATA_PIN, /* cs=*/ DSP_CS_PIN, /* reset=*/ U8X8_PIN_NONE);
 #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
-#undef LED_TYPE
-#undef COLOR_ORDER
-#define LED_TYPE            WS2811
-#define COLOR_ORDER         RGB
+#if defined(__BRD_SKR_MINI)
 U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display(U8G2_R2, /* cs=*/DSP_CS_PIN, /* dc=*/DSP_DC_PIN, /* reset=*/DSP_RESET_PIN);
+#else
+U8G2_ST7567_JLX12864_F_4W_HW_SPI display(U8G2_R2, /* cs=*/DSP_CS_PIN, /* dc=*/DSP_DC_PIN, /* reset=*/DSP_RESET_PIN);
+#endif
 #elif defined(USE_CREALITY_DISPLAY)
 #if defined(CREALITY_HW_SPI)
 // use this only if you have a special connection cable
@@ -408,10 +408,10 @@ void enumI2cDevices()
 
 void setup()
 {
-  serialBuffer0.reserve(40); // initialize serial comm. buffers
-  serialBuffer1.reserve(40);
-  serialBuffer2.reserve(40);
-  serialBuffer3.reserve(40);
+  serialBuffer0.reserve(30); // initialize serial comm. buffers
+  serialBuffer1.reserve(30);
+  serialBuffer2.reserve(30);
+  serialBuffer3.reserve(30);
 
 // Setup a fixed baudrate until the config file was read.
 // This baudrate is the default setting on the ESP32 while
@@ -462,6 +462,7 @@ void setup()
   __debugS(PSTR("[ after setupDisplay ]"));
   setupEncoder(); // setup encoder - only relevant on LeoNerd display
   __debugS(PSTR("[ after setupEncoder ]"));
+  __debugS(PSTR("[ getting config... ]"));
   if (readConfig())
   {                     // read SMUFF.CFG from SD-Card
     readTmcConfig();    // read TMCDRVR.CFG from SD-Card
@@ -505,13 +506,6 @@ void setup()
     resetRevolver();
   //__debugS(PSTR("DONE reset Revolver"));
 
-  /*
-  #if defined(USE_TERMINAL_MENUS)
-  if(smuffConfig.menuOnTerminal)
-    __terminal(P_SendTermScroll); // define scrolling region
-  #endif
-  */
-
   sendStartResponse(0); // send "start<CR><LF>" to USB serial interface
   if (CAN_USE_SERIAL1)
     sendStartResponse(1); // send "start<CR><LF>" to all serial interfaces allowed to use
@@ -523,11 +517,12 @@ void setup()
   removeFirmwareBin();        // deletes the firmware.bin file to prevent re-flashing on each boot
   refreshStatus(true, false);
   #if defined(__BRD_SKR_MINI_E3)  // applies only to E3 V1.2 and 2.0 with integrated stepper drivers
-    if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
-      __debugS(PSTR("Warning: Your controller is equipped with TMC stepper drivers but at least one"));
-      __debugS(PSTR("of them is not being initialized for UART mode. Thus, your stepper motor may overheat!"));
-      __debugS(PSTR("Please check and change your configuration accordingly!"));
-    }
+  if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
+    __debugS(PSTR("WARNING: Your controller is equipped with TMC stepper drivers but"));
+    __debugS(PSTR("at least one of them is not being initialized for UART mode."));
+    __debugS(PSTR("Thus, your stepper motor may overheat!"));
+    __debugS(PSTR("Please check and change your configuration accordingly!"));
+  }
   #endif
   startupBeep();              // signal startup has finished
   pwrSaveTime = millis();     // init value for LCD screen timeout
@@ -1050,6 +1045,7 @@ void resetSerialBuffer(int8_t serial)
 bool isQuote = false;
 bool isFuncKey = false;
 bool isCtlKey = false;
+bool ignoreQuotes = false;
 
 void filterSerialInput(String &buffer, char in)
 {
@@ -1062,50 +1058,55 @@ void filterSerialInput(String &buffer, char in)
   if (isFuncKey)
   {
     //__debugS(PSTR("%02x"), in);
+    if (in == 'P') { // second escape char 'P' - swallow that, set ignore quotes
+      ignoreQuotes = true;
+      isFuncKey = false;
+      return;
+    }
     if (in == '[' || in == 'O') // second escape char '[' or 'O' - swallow that
       return;
     isFuncKey = false;
     switch (in)
     {
-    case 0x42:
-      remoteKey = REMOTE_UP;
-      return; // CursorUp   = turn right
-    case 0x41:
-      remoteKey = REMOTE_DOWN;
-      return; // CursorDown  = turn left
-    case 0x43:
-      remoteKey = REMOTE_SELECT;
-      return;  // CursorRight = wheel click
-    case 0x1b: // ESC Key
-    case 0x44:
-      remoteKey = REMOTE_ESCAPE;
-      return; // CursorLeft = main click
-    case 0x31:
-      remoteKey = REMOTE_HOME;
-      return; // Home Key
-    case 0x34:
-      remoteKey = REMOTE_END;
-      return; // End Key  (not used yet)
-    case 0x35:
-      remoteKey = REMOTE_PGUP;
-      return; // PageUp Key (not used yet)
-    case 0x36:
-      remoteKey = REMOTE_PGDN;
-      return; // PageDown Key (not used yet)
-    case 0x50:
-      remoteKey = REMOTE_PF1;
-      return; // F1 Key = fncKey1()
-    case 0x51:
-      remoteKey = REMOTE_PF2;
-      return; // F2 Key = fncKey2()
-    case 0x52:
-      remoteKey = REMOTE_PF3;
-      return; // F3 Key = fncKey3()
-    case 0x53:
-      remoteKey = REMOTE_PF4;
-      return; // F4 Key = fncKey4()
-    default:
-      return; // ignore any other code not in the list
+      case 0x42:
+        remoteKey = REMOTE_UP;
+        return; // CursorUp   = turn right
+      case 0x41:
+        remoteKey = REMOTE_DOWN;
+        return; // CursorDown  = turn left
+      case 0x43:
+        remoteKey = REMOTE_SELECT;
+        return;  // CursorRight = wheel click
+      case 0x1b: // ESC Key
+      case 0x44:
+        remoteKey = REMOTE_ESCAPE;
+        return; // CursorLeft = main click
+      case 0x31:
+        remoteKey = REMOTE_HOME;
+        return; // Home Key
+      case 0x34:
+        remoteKey = REMOTE_END;
+        return; // End Key  (not used yet)
+      case 0x35:
+        remoteKey = REMOTE_PGUP;
+        return; // PageUp Key (not used yet)
+      case 0x36:
+        remoteKey = REMOTE_PGDN;
+        return; // PageDown Key (not used yet)
+      case 0x50:
+        remoteKey = REMOTE_PF1;
+        return; // F1 Key = fncKey1()
+      case 0x51:
+        remoteKey = REMOTE_PF2;
+        return; // F2 Key = fncKey2()
+      case 0x52:
+        remoteKey = REMOTE_PF3;
+        return; // F3 Key = fncKey3()
+      case 0x53:
+        remoteKey = REMOTE_PF4;
+        return; // F4 Key = fncKey4()
+      default:
+        return; // ignore any other code not in the list
     }
   }
   isFuncKey = false;
@@ -1129,7 +1130,7 @@ void filterSerialInput(String &buffer, char in)
   }
   if (in >= 'a' && in <= 'z')
   {
-    if (!isQuote)
+    if (!isQuote && !ignoreQuotes)
       in = in - 0x20;
   }
   switch (in)
@@ -1219,12 +1220,49 @@ bool isJsonData(char in)
 }
 
 void handleSerial(char in, String& buffer, uint8_t port) {
+  // handle Ctrl-C sequence
+  if (in == 0x03) {
+    __debugS(PSTR("Ctrl-C received from port %d"), port);
+    isTestrun = false;
+    resetSerialBuffer(port);
+    return;
+  }
+  // do not proceed any further if a test is running
+  if(isTestrun)
+    return;
+
   if (in == '\n' || (isCtlKey && in == 'n'))
   {
-    parseGcode(buffer, port);
+    // special case: sender is transmitting configuration
+    if(buffer.startsWith("/*"))  {
+      /*
+      uint16_t l = 0;
+      __debugS(PSTR("Config received:"));
+      while(l < buffer.length()) {
+        __debugS(PSTR("%s"), buffer.substring(l,l+400).c_str());
+        l+=400;
+      }
+      */
+      if(saveConfig(buffer))
+        sendOkResponse(port);
+      else
+        sendErrorResponseP(port, PSTR("Writing configuration file failed!"));
+      resetSerialBuffer(port);
+    }
+    else {
+      parseGcode(buffer, port);
+    }
     isQuote = false;
     actionOk = false;
     isCtlKey = false;
+    ignoreQuotes = false;
+  }
+  else if(isCtlKey && in == '"') {
+    // don't handle quotes if they are escaped
+    isCtlKey = false;
+    buffer += '\\';
+    buffer += in;
+    return;
   }
   else
   {

@@ -104,9 +104,13 @@ void readSequences()
 
   if(readTune(LONGBEEP_FILE, tuneData, bufLen))
     strncpy(tuneLongBeep, tuneData, MAX_TUNE3);
-
+#if defined(USE_LEONERD_DISPLAY)
+  if(readTune(ENCBEEPLEO_FILE, tuneData, bufLen))
+    strncpy(tuneEncoder, tuneData, MAX_TUNE3);
+#else
   if(readTune(ENCBEEP_FILE, tuneData, bufLen))
     strncpy(tuneEncoder, tuneData, MAX_TUNE3);
+#endif
 }
 
 /*
@@ -144,6 +148,7 @@ void initHwDebug()
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN != -1
   pinMode(DEBUG_PIN, OUTPUT);
   digitalWrite(DEBUG_PIN, HIGH);
+  __debugS(PSTR("Hardware Debug Pin initialized"));
 #endif
 }
 
@@ -200,8 +205,9 @@ void setupSerial()
   }
   else
   {
-    __debugS(PSTR("Config error for serial"));
+    __debugS(PSTR("Config error for serial\n--------------------\n"));
     writeConfig((Print *)debugSerial);
+    __debugS(PSTR("\n--------------------"));
     longBeep(3);
     showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail4, P_OkButtonOnly);
   }
@@ -507,7 +513,7 @@ void setupSteppers()
 #endif
   }
 
-#if !defined(SMUFF_V5)
+#if !defined(SMUFF_V5) && !defined(SMUFF_V6S)
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
@@ -537,9 +543,40 @@ void setupSteppers()
   }
 
 #else
+  #if !defined(SMUFF_V6S)
   // we don't use the Revolver stepper but a servo instead, although
   // create a dummy instance
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", -1, -1, Y_ENABLE_PIN, 0, 0);
+  #else
+  // except for V6S, which uses a linear stepper instead of a servo
+  maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
+  accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
+  steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
+  steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MIN);
+  steppers[REVOLVER].stepFunc = overrideStepY;
+  steppers[REVOLVER].setStepsPerMM(smuffConfig.stepsPerMM[REVOLVER]);
+  steppers[REVOLVER].endstopFunc = endstopEventY;
+  steppers[REVOLVER].setInvertDir(smuffConfig.invertDir[REVOLVER]);
+  steppers[REVOLVER].setAccelDistance(smuffConfig.accelDist[REVOLVER]);
+  steppers[REVOLVER].setStopOnStallDetected(false);
+  steppers[REVOLVER].setStallThreshold(smuffConfig.stepperMaxStallCnt[REVOLVER]);
+  if (smuffConfig.stepperStealth[REVOLVER])
+  {
+    steppers[REVOLVER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[REVOLVER]);
+#ifdef HAS_TMC_SUPPORT
+    if (STALL_Y_PIN != -1)
+      attachInterrupt(STALL_Y_PIN, isrStallDetectedY, FALLING);
+#endif
+  }
+  if (smuffConfig.stepperMode[REVOLVER] == 0 && smuffConfig.ms3config[REVOLVER] > 0)
+  {
+#if defined(MS3_Y) && MS3_Y != -1
+    pinMode(MS3_Y, OUTPUT);
+    digitalWrite(MS3_Y, smuffConfig.ms3config[REVOLVER] == 1 ? LOW : HIGH);
+#endif
+  }
+  __debugS(PSTR("Y-Stepper initialized for V6S"));
+  #endif
 #endif
 
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER);
@@ -607,7 +644,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   int8_t csmax = smuffConfig.stepperCSmax[axis];
   int8_t csdown = smuffConfig.stepperCSdown[axis];
   float rsense = smuffConfig.stepperRSense[axis];
-  uint8_t drvrAdr = axis == 3 ? 3 : (uint8_t)smuffConfig.stepperAddr[axis];
+  uint8_t drvrAdr = (uint8_t)smuffConfig.stepperAddr[axis];
   int8_t toff = smuffConfig.stepperToff[axis];
   if(toff == -1) {
      toff = (tmode ? 4 : 3);
@@ -726,6 +763,9 @@ void setupTMCDrivers()
 #endif
 #if defined(Z_SERIAL_TX_PIN)
   drivers[FEEDER] = initDriver(FEEDER, Z_SERIAL_TX_PIN, Z_SERIAL_TX_PIN);
+#endif
+#if defined(E_SERIAL_TX_PIN)
+  drivers[FEEDER2] = initDriver(FEEDER2, E_SERIAL_TX_PIN, E_SERIAL_TX_PIN);
 #endif
 #endif
   //__debugS(PSTR("[setupTMCDrivers] initialized"));

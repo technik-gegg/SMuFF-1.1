@@ -1,42 +1,77 @@
-M205 P"..." Sn [ X | Y | Z ]
+M205 P"..." S n | n.n | "..." [ I | X | Y | Z ]
 Parameter Name In P 	Option:
--------------------------------
+-------------------------------------------
+AccelDist           	S n      X | Y | Z
+AccelSpeed          	S n      X | Y | Z
 AnimBPM             	S n
+AutoWipe            	S 0|1
 BackColor           	S n
+Baudrates           	S "..." I 0..3
 BowdenLen           	S n.n
+Chunks              	S n
+Close               	S 0..180 I 0..11
+Color               	S "..."  I 0..11
 CSDown              	S n      X | Y | Z
 CSMax               	S n      X | Y | Z
 CSMin               	S n      X | Y | Z
+CValue              	S "..."  I 0..11
 DrvAddr             	S n      X | Y | Z
-DuetLaser           	S 0|1
 EmulPrusa           	S 0|1
 EncTicks            	S 0|1
+EStopTest            	S 0|1
 EStopTrg            	S 0|1    X | Y | Z
+ExtCtrl             	S 0|1
 HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
 IdleAnim            	S 0|1
 InvDir              	S 0|1    X | Y | Z
 InsLen              	S n.n
+LBtnDown            	S "..."
+LBtnHold            	S "..."
+LCDCont             	S 60..255
+Material            	S "..."  I 0..11
+MaxSpeed            	S n      X | Y | Z
 MaxStall            	S n      X | Y | Z
 MenuClose           	S n
 Mode                	S 0|1|2  X | Y | Z
+MS                  	S 0|2|4|8|16|32|64|128|256   X | Y | Z
+MS3                 	S 0|1|2
+Offset              	S n.n    X | Y | Z
+Output              	S 0..15  I 0..11
+PFactor             	S n      I 0..11
+Power               	S n      X | Y | Z
+PurgeLen            	S n
+PurgeSpeed          	S n
 PwrSaveTime         	S n
+RBtnDown            	S "..."
+RBtnHold            	S "..."
 ReinforceLen        	S n.n
 ResetBeforeFd       	S 0|1
 RSense              	S n.n    X | Y | Z
 SelectorDist        	S n.n
 SendAction          	S 0|1
 SendStats           	S 0|1
-ServoOpen           	S 0..180
+Servo1Cyc           	S n
+Servo2Cyc           	S n
 ServoClose          	S 0..180
+ServoMaxPwm         	S 500..2500
+ServoMinPwm         	S 500..2500
+ServoOpen           	S 0..180
 SharedStepper       	S 0|1
+Spacing             	S n.n
+SpdsInMms             	S 0|1
+Stall               	S n      X | Y | Z
 StatusBPM           	S n
-StepsMM             	S n      X | Z
+StepDly             	S n      X | Y | Z
+StepsMM             	S n      X | Y | Z
 StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z
-Spacing             	S n.n
 TermMenu            	S 0|1
-Tools               	S n
+TMode               	S 0|1    X | Y | Z
 TOff                	S n      X | Y | Z
+ToolColor           	S 0..15
+Tools               	S n
+UnldRetract         	S n
+UsePurge            	S 0|1
 UseServo            	S 0|1
 WipeSeq             	S "..."

@@ -1,3 +1,6 @@
-M20 [ L"..." ]
+M20 [ L"..." | S"..." F"DSR" ] [ W ]
 ------------
 L"..." 		List contents of the file in quotes
+S"..." 		List contents of the folder in quotes
+F"DSR" 		Flags for S"...". D = show file date, S = show file size, R = recursive listing (include subfolders)
+W   		Create output for WebInterface

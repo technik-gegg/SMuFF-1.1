@@ -207,6 +207,8 @@ void drawStatus()
       display.drawGlyph(display.getDisplayWidth() - 18, 35, feederEndstop(2) ? 0x41 : 0x42);
   }
   drawFeed(false);
+
+  #if defined(USE_TERMINAL_MENUS)
   if(smuffConfig.menuOnTerminal) {
     termRefresh++;
     if(termRefresh % 5 == 0) {
@@ -222,7 +224,6 @@ void drawStatus()
       #else
         sprintf_P(driver, PSTR(" A4988 "));
       #endif
-      #if defined(USE_TERMINAL_MENUS)
       __terminal(P_SendTermStatus,
             tool, TERM_VERTLINE_CHR,
             f1, TERM_VERTLINE_CHR,
@@ -233,11 +234,10 @@ void drawStatus()
             purge, TERM_VERTLINE_CHR,
             pstat, TERM_VERTLINE_CHR,
             brand);
-      #endif
     }
   }
+  #endif
   //__debugS(PSTR("[drawStatus] end..."));
-
 }
 
 void drawFeed(bool updateBuffer)
@@ -470,6 +470,56 @@ void showTMCStatus(uint8_t axis)
   tmcWarning = false;
   displayingUserMessage = false;
 #endif
+}
+
+void sendTMCStatus(uint8_t axis, int8_t port) {
+
+#ifdef HAS_TMC_SUPPORT
+  showDriver = drivers[axis];
+#else
+#define showDriver nullptr
+#endif
+
+  char tmp[80];
+  if(showDriver == nullptr) {
+    sprintf_P(tmp, P_TMCStatusNotUsed, P_TMCStatus, P_TMCKeyAxis, axis, P_TMCKeyInUse);
+    printResponse(tmp, port);
+    return;
+  }
+
+  steppers[axis].setEnabled(true);
+  const char *ot_stat = P_No;
+
+  if (showDriver->ot())  {
+    if (showDriver->t157())
+      ot_stat = P_OT_157;
+    else if (showDriver->t150())
+      ot_stat = P_OT_150;
+    else if (showDriver->t143())
+      ot_stat = P_OT_143;
+    else if (showDriver->t120())
+      ot_stat = P_OT_120;
+  }
+  Print* out = getSerialInstance(port);
+
+  serializeTMCStats(out,
+      axis,
+      showDriver->version()- 0x20,
+      showDriver->stealth(),
+      smuffConfig.stepperPower[axis],
+      showDriver->rms_current(),
+      showDriver->microsteps(),
+      showDriver->ms2(),
+      showDriver->ms1(),
+      showDriver->pdn_uart() ? P_Yes : P_No,
+      showDriver->diag() ? P_Low : P_High,
+      showDriver->ola() ? P_Yes : P_No,
+      showDriver->olb() ? P_Yes : P_No,
+      showDriver->s2ga() ? P_Yes : P_No,
+      showDriver->s2gb() ? P_Yes : P_No,
+      ot_stat);
+  printResponse("\n", port);
+
 }
 
 void resetDisplay()
@@ -1872,18 +1922,21 @@ void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndsto
 
 void printPeriodicalState(int8_t serial)
 {
-  char tmp[80];
+  char tmp[100];
 
   const char *_triggered = "on";
   const char *_open = "off";
   int8_t tool = getToolSelected();
 
-  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\n"),
+  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\n"),
             tool,
             selectorEndstop() ? _triggered : _open,
             revolverEndstop() ? _triggered : _open,
             feederEndstop(1) ? _triggered : _open,
-            feederEndstop(2) ? _triggered : _open);
+            feederEndstop(2) ? _triggered : _open,
+            isUsingTmc ? '+' : '-',
+            tmcWarning ? _triggered : _open,
+            sdRemoved ? _triggered : _open);
   printResponse(tmp, serial);
 }
 
@@ -2527,9 +2580,20 @@ void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, 
   char runtm[20], gco[40], err[10], lop[10], cmdc[10], tc[20], stallS[10], stallF[10];
   char etmp[15], ehit[smuffConfig.toolCount * 10], emiss[smuffConfig.toolCount * 10];
 
-  // load report from SD-Card; Can contain 10 lines at max.
-  if(!loadReport(PSTR("report"), report, ArraySize(report)))
-    return;
+  if(smuffConfig.webInterface) {
+    // load JSON report when in WebInterface mode
+    if(!loadReport(PSTR("report"), report, "json", ArraySize(report))) {
+      __debugS(PSTR("Failed to load report.json"));
+      return;
+    }
+  }
+  else {
+    // load report from SD-Card; Can contain 10 lines at max.
+    if(!loadReport(PSTR("report"), report, nullptr, ArraySize(report))) {
+      __debugS(PSTR("Failed to load report.txt"));
+      return;
+    }
+  }
 
   sprintf_P(gco, PSTR("%-25s"), line);
   sprintf_P(err, PSTR("%4lu"), feederErrors);
@@ -2565,12 +2629,18 @@ void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, 
     s.replace("{STALLF}", stallF);
     s.replace("{HIT}", ehit);
     s.replace("{MISS}", emiss);
-    s.replace("{ESC:", "\033[");
-    s.replace("f}", "f");
-    s.replace("m}", "m");
-    s.replace("J}", "J");
-    s.replace("H}", "H");
-    __log(s.c_str());
+    if(!smuffConfig.webInterface) {
+      s.replace("{ESC:", "\033[");
+      s.replace("f}", "f");
+      s.replace("m}", "m");
+      s.replace("J}", "J");
+      s.replace("H}", "H");
+      __log(s.c_str());
+    }
+    else {
+      debugSerial->print(PSTR("echo: testrun: "));
+      debugSerial->println(s.c_str());
+    }
   }
 }
 
@@ -2630,8 +2700,9 @@ void testRun(const char *fname)
       {
         setPwrSave(0);
         showReport = false;
+        checkSerialPending();
         getInput(&turn, &btn, &isHeld, &isClicked, false);
-        if (isHeld || isClicked)
+        if (isHeld || isClicked || !isTestrun)
         {
           break;
         }
@@ -2896,13 +2967,16 @@ const char *loadOptions(const char *filename PROGMEM)
   return nullptr;
 }
 
-bool loadReport(const char *filename PROGMEM, char *buffer, uint16_t maxLen)
+bool loadReport(const char *filename PROGMEM, char *buffer, const char* ext, uint16_t maxLen)
 {
   SdFile file;
   char fname[40];
 
   memset(buffer, 0, maxLen);
-  sprintf_P(fname, PSTR("/test/%s.txt"), filename);
+  if(ext == nullptr)
+    sprintf_P(fname, PSTR("/test/%s.txt"), filename);
+  else
+    sprintf_P(fname, PSTR("/test/%s.%s"), filename, ext);
   if (file.open(fname, O_READ))
   {
     int n = file.read(buffer, maxLen - 1);

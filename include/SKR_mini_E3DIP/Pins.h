@@ -62,10 +62,17 @@
 #define RELAY_PIN PC14 // PROBE (Relay for stepper motor switching)
 
 #if !defined(SMUFF_V5)
+#if defined(SMUFF_V6S)  // V6S uses linear stepper for lid; servo signals move to Z-Driver socket
+#define SERVO_OPEN_DRAIN 0
+#define SERVO1_PIN PC5  // Z-DIR (Wiper Servo)
+#define SERVO2_PIN -1   // not used
+#define SERVO3_PIN PD2  // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
+#else
 #define SERVO_OPEN_DRAIN 0
 #define SERVO1_PIN PC2 // E0-STOP (Wiper Servo)
 #define SERVO2_PIN PA1 // SERVO (Lid Servo)
 #define SERVO3_PIN -1  // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
+#endif
 #else
 #define SERVO_OPEN_DRAIN 0
 #define SERVO1_PIN PB13 // Y STEP pin (Wiper Servo) used because of 5V tolerance
@@ -83,12 +90,23 @@
 // while compiling if NEOXPIXEL_PIN is in use
 #endif
 
+#if defined(USE_MINI12864_PANEL_V21)
+#define NEOPIXEL_PIN        PB7
+#else
 #define NEOPIXEL_PIN        -1
-#define NEOPIXEL_TOOL_PIN   -1          // for tools
+#endif
+#define NEOPIXEL_TOOL_PIN   PA1         // SERVOS (NeoPixel for tools)
+//#define NEOPIXEL_TOOL_PIN   -1          // NeoPixel for tools
 #define NUM_LEDS            3           // number of Neopixel LEDS
+#if defined(USE_MINI12864_PANEL_V21)
+#define BRIGHTNESS          200
+#define LED_TYPE            WS2812B
+#define COLOR_ORDER         RGB
+#else
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
+#endif
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
@@ -138,6 +156,16 @@
 
 #define DEBUG_PIN PB9 // EXP1.5
 
+#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
+#define DSP_CS_PIN          PB9     // DOGLCD_CS
+#define DSP_DC_PIN          PB6     // DOGLCD_A0
+#define DSP_RESET_PIN       PA13    // SWDIO --- IMPORTANT: This display needs a RESET signal!
+
+#define ENCODER1_PIN        PA9
+#define ENCODER2_PIN        PA10
+#define ENCODER_BUTTON_PIN  PB8
+
+#define DEBUG_PIN           -1
 #else
 // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
 #define DSP_DATA_PIN -1 // USE MOSI ON SPI1 HEADER
@@ -160,11 +188,15 @@
 #define X_SERIAL_TX_PIN PC10 // XUART - UART4 TX
 #define Y_SERIAL_TX_PIN PC11 // YUART - UART4 RX
 #define Z_SERIAL_TX_PIN PD2  // EUART - UART5 RX
-//#define E_SERIAL_TX_PIN     PC12     // ZUART - UART5 TX
+//#define E_SERIAL_TX_PIN PC12 // ZUART - UART5 TX (not used anyways)
 
 #define MS3_X PC10 // the MS3 pin (if needed for the stepper driver)
 #define MS3_Y PC11 // is connected to the MCU and thus
+#if !defined(SMUFF_V6S)
 #define MS3_Z PD2  // must be controlled via software on this controller board
+#else
+#define MS3_Z -1    // used for Cutter servo
+#endif
 
 #define STALL_X_PIN PA13 // SWDIO
 #define STALL_Y_PIN -1   //

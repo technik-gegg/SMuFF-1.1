@@ -25,6 +25,7 @@
 #include "SMuFF.h"
 #include "GCodes.h"
 #include "ConfigNamesExt.h"
+#include "StrPrint.h"
 #ifdef __ESP32__
 #include "ZPortExpander.h"
 
@@ -54,6 +55,7 @@ const char *U_Param = (char *)"U";
 const char *B_Param = (char *)"B";
 const char *D_Param = (char *)"D";
 const char *H_Param = (char *)"H";
+const char *W_Param = (char *)"W";
 
 void rangeError(int8_t serial, int min, int max);
 void rangeError(int8_t serial, long min, long max);
@@ -100,7 +102,9 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {350, M350},
     {412, M412},
     {500, M500},
+    {502, M502},
     {503, M503},
+    {504, M504},
     {569, M569},
     {575, M575},
     {577, M577},
@@ -146,21 +150,17 @@ bool dummy(const char *msg, String buf, int8_t serial)
 bool M17(const char *msg, String buf, int8_t serial)
 {
   bool stat = true;
-  char tmp[128];
+  printResponse(msg, serial);
+  char tmp[20];
   if (buf.indexOf(E_Param) != -1)
-  {
     switchFeederStepper(EXTERNAL);
-  }
   else if (buf.indexOf(I_Param) != -1)
-  {
     switchFeederStepper(INTERNAL);
-  }
   else
   {
     sprintf_P(tmp, PSTR("echo: %s\n"), smuffConfig.externalStepper ? P_External : P_Internal);
     printResponse(tmp, serial);
   }
-  printResponse(msg, serial);
   return stat;
 }
 
@@ -199,17 +199,23 @@ bool M18(const char *msg, String buf, int8_t serial)
 bool M20(const char *msg, String buf, int8_t serial)
 {
   char tmp[80];
+  char fmt[20];
+  bool lsInString = false;
+
   if(!getParamString(buf, L_Param, tmp, ArraySize(tmp))) {
-    if(!getParamString(buf, S_Param, tmp, ArraySize(tmp)))
-    {
+    if(!getParamString(buf, S_Param, tmp, ArraySize(tmp))) {
       sprintf(tmp, "/");
+    }
+    if(!getParamString(buf, F_Param, fmt, ArraySize(fmt))) {
+      sprintf(fmt, "DSR");
     }
   }
   else {
     listTextFile(tmp, serial);
     return true;
   }
-  Print *out = &Serial;
+  Print *out;
+  StrPrint *strOut;
   if (initSD(false))
   {
     switch (serial)
@@ -224,9 +230,29 @@ bool M20(const char *msg, String buf, int8_t serial)
         out = &Serial2;
         break;
       default:
+        out = &Serial;
         break;
     }
-    SD.ls(out, LS_DATE | LS_SIZE | LS_R);
+    if(hasParam(buf, W_Param)) {
+      strOut = new StrPrint();
+      lsInString = true;
+    }
+    String f = String(fmt);
+    uint8_t flags = 0;
+    if(f.indexOf("D") > -1)  flags |= LS_DATE;
+    if(f.indexOf("S") > -1)  flags |= LS_SIZE;
+    if(f.indexOf("R") > -1)  flags |= LS_R;
+    if(lsInString) {
+      SD.ls((Print*)strOut, tmp, flags);
+      String json = "/* Testscripts */[\"" + ((StrPrint*)strOut)->get();
+      json.replace("\r\n", "\",\"");
+      json += "\"]";
+      //__debugS(PSTR("LS in String: %s"), json.c_str());
+      out->println(json.c_str());
+    }
+    else {
+      SD.ls(out, tmp, flags);
+    }
   }
   else
   {
@@ -435,11 +461,45 @@ bool M115(const char *msg, String buf, int8_t serial)
 {
   char tmp[200];
   char ver[8];
+  char options[80] = {0};
   sprintf(ver, VERSION_STRING);
 #if defined(DEBUG)
   strcat(ver, "D");
 #endif
-  sprintf_P(tmp, P_GVersion, ver, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : "SMuFF");
+#if defined(MULTISERVO)
+  strcat(options, "MULTISERVO|");
+#endif
+#if defined(HAS_TMC_SUPPORT)
+  strcat(options, "TMC|");
+#endif
+#if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
+  strcat(options, "NEOPIXELS|");
+#endif
+#if defined(USE_TWI_DISPLAY)
+  strcat(options, "TWI");
+#elif defined(USE_LEONERD_DISPLAY)
+  strcat(options, "LEONERD");
+#elif defined(USE_ANET_DISPLAY)
+  strcat(options, "ANET");
+#elif defined(USE_MINI12864_PANEL_V21)
+  strcat(options, "MINIPANEL V2.1");
+#elif defined(USE_MINI12864_PANEL_V20)
+  strcat(options, "MINIPANEL V2.0");
+#elif defined(USE_CREALITY_DISPLAY)
+  strcat(options, "CREALITY");
+  #if defined(CREALITY_HW_SPI)
+    strcat(options, " HW-SPI");
+  #endif
+#else
+  strcat(options, "REPRAP");
+#endif
+#if defined(SMUFF_V6S)
+#define SMUFF_MODE  "SMuFF V6S"
+  strcat(options, "|V6S");
+#else
+#define SMUFF_MODE  "SMuFF"
+#endif
+  sprintf_P(tmp, P_GVersion, ver, BOARD_INFO, VERSION_DATE, smuffConfig.prusaMMU2 ? "PMMU" : SMUFF_MODE, options);
   printResponse(tmp, serial);
   return true;
 }
@@ -503,6 +563,16 @@ bool M122(const char *msg, String buf, int8_t serial)
   }
   char spacer[] = {"          "};
   char eol[] = {"\n"};
+
+  // special format for WebInterface
+  if ((param = getParam(buf, W_Param)) != -1) {
+    if(param >= 0 && param <= 3) {
+      sendTMCStatus(param, serial);
+      return true;
+    }
+    else
+      return false;
+  }
 
   printResponseP(P_TMC_Setup00, serial);
   // IC-Version
@@ -1249,423 +1319,201 @@ bool M205(const char *msg, String buf, int8_t serial)
 
   char cmd[80];
   char tmp[50];
+  char strpar[40] = {0};
+  //__debugS(PSTR("Got paramsS: %s [%s]"), paramS ? "Yes" : "No", strpar);
   if (getParamString(buf, P_Param, cmd, sizeof(cmd)))
   {
+    int8_t axis = -1;
+    int8_t stallPin = -1;
+    if (hasParam(buf, X_Param)) { axis = SELECTOR; stallPin = STALL_X_PIN; }
+    if (hasParam(buf, Y_Param)) { axis = REVOLVER; stallPin = STALL_Y_PIN; }
+    if (hasParam(buf, Z_Param)) { axis = FEEDER; stallPin = STALL_Z_PIN; }
+    int index = getParam(buf, I_Param);
+    bool paramS = getParamString(buf, S_Param, strpar, sizeof(strpar));
     float fParam = getParamF(buf, S_Param);
-    if ((param = getParam(buf, S_Param)) != -1)
-    {
-      //__debugS(PSTR("Value: %d"), param);
-
-      if (strcmp(cmd, toolCount) == 0)
-      {
-        if (param >= 1 && param <= MAX_TOOLS)
-          smuffConfig.toolCount = (uint8_t)param;
-        else
-          rangeError(serial, 1, MAX_TOOLS);
-      }
-      else if (strcmp(cmd, spacing) == 0)
-      {
-        smuffConfig.toolSpacing = fParam;
-      }
-      else if (strcmp(cmd, bowdenLength) == 0)
-      {
-        smuffConfig.bowdenLength = fParam;
-      }
-      else if (strcmp(cmd, insertLength) == 0)
-      {
-        smuffConfig.insertLength = fParam;
-      }
-      else if (strcmp(cmd, purgeLength) == 0)
-      {
-        smuffConfig.purgeLength = fParam;
-      }
-      else if (strcmp(cmd, purgeSpeed) == 0)
-      {
-        smuffConfig.purgeSpeed = (uint16_t)param;
-      }
-      else if (strcmp(cmd, reinforceLength) == 0)
-      {
-        smuffConfig.reinforceLength = fParam;
-      }
-      else if (strcmp(cmd, selectorDist) == 0)
-      {
-        smuffConfig.selectorDistance = fParam;
-      }
-      else if (strcmp(cmd, homeAfterFeed) == 0)
-      {
-        smuffConfig.homeAfterFeed = (param > 0);
-      }
-      else if (strcmp(cmd, resetBeforeFeed) == 0)
-      {
-        smuffConfig.resetBeforeFeed = (param > 0);
-      }
-      else if (strcmp(cmd, emulatePrusa) == 0)
-      {
-        smuffConfig.prusaMMU2 = (param > 0);
-      }
-      else if (strcmp(cmd, useServo) == 0)
-      {
-        smuffConfig.revolverIsServo = (param > 0);
-      }
-      else if (strcmp(cmd, servoOffPos) == 0)
-      {
-        smuffConfig.revolverOffPos = (uint8_t)param;
-      }
-      else if (strcmp(cmd, servoOnPos) == 0)
-      {
-        smuffConfig.revolverOnPos = (uint8_t)param;
-        servoPosClosed[toolSelected] = smuffConfig.revolverOnPos;
-      }
-      else if (strcmp(cmd, wipeSequence) == 0)
-      {
-        getParamString(cmd, S_Param, tmp, sizeof(smuffConfig.wipeSequence));
-#if defined(__STM32F1__) || defined(__ESP32__)
-        strncpy(smuffConfig.wipeSequence, tmp, sizeof(smuffConfig.wipeSequence));
-#else
-        strlcpy(smuffConfig.wipeSequence, tmp, sizeof(smuffConfig.wipeSequence));
-#endif
-      }
-      else if (strcmp(cmd, stepsPerMillimeter) == 0)
-      {
-        if (hasParam(buf, X_Param))
-        {
-          smuffConfig.stepsPerMM[SELECTOR] = (uint16_t)param;
-          steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM[SELECTOR]);
-        }
-        if (hasParam(buf, Z_Param))
-        {
-          smuffConfig.stepsPerMM[FEEDER] = (uint16_t)param;
-          steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM[FEEDER]);
-        }
-      }
-      else if (strcmp(cmd, stepsPerRevolution) == 0)
-      {
-        smuffConfig.stepsPerRevolution = param;
-        steppers[REVOLVER].setStepsPerDegree(param / 360);
-      }
-      else if (strcmp(cmd, invertDir) == 0)
-      {
-        if (hasParam(buf, X_Param))
-          smuffConfig.invertDir[SELECTOR] = (param > 0);
-        if (hasParam(buf, Y_Param))
-          smuffConfig.invertDir[REVOLVER] = (param > 0);
-        if (hasParam(buf, Z_Param))
-          smuffConfig.invertDir[FEEDER] = (param > 0);
-      }
-      else if (strcmp(cmd, endstopTrig) == 0)
-      {
-        if (hasParam(buf, X_Param))
-          smuffConfig.endstopTrg[SELECTOR] = (uint8_t)param;
-        if (hasParam(buf, Y_Param))
-          smuffConfig.endstopTrg[REVOLVER] = (uint8_t)param;
-        if (hasParam(buf, Z_Param))
-          smuffConfig.endstopTrg[FEEDER] = (uint8_t)param;
-      }
-      else if (strcmp(cmd, autoClose) == 0)
-      {
-        smuffConfig.menuAutoClose = (uint8_t)param;
-      }
-      else if (strcmp(cmd, psTimeout) == 0)
-      {
-        smuffConfig.powerSaveTimeout = (uint16_t)param;
-      }
-      else if (strcmp(cmd, sendAction) == 0)
-      {
-        smuffConfig.sendActionCmds = (param > 0);
-      }
-      else if (strcmp(cmd, backlightColor) == 0)
-      {
-        if (param >= 0 && param <= 15)
-          smuffConfig.backlightColor = (uint8_t)param;
-      }
-      else if (strcmp(cmd, hasPanelDue) == 0)
-      {
-        smuffConfig.hasPanelDue = (param > 0);
-      }
-      else if (strcmp(cmd, duetLaser) == 0)
-      {
-        smuffConfig.useDuetLaser = (param > 0);
-      }
-      else if (strcmp(cmd, sharedStepper) == 0)
-      {
-        smuffConfig.isSharedStepper = (param > 0);
-      }
-      else if (strcmp(cmd, encoderTicks) == 0)
-      {
-        smuffConfig.encoderTickSound = (param > 0);
-      }
-      else if (strcmp(cmd, periodicalStats) == 0)
-      {
-        smuffConfig.sendPeriodicalStats = (param > 0);
-      }
-      else if (strcmp(cmd, rsense) == 0)
-      {
-        if (fParam >= 0 && fParam <= 1.0)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperRSense[SELECTOR] = fParam;
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperPower[REVOLVER] = fParam;
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperPower[FEEDER] = fParam;
-          }
-        }
-        else
-          rangeError(serial, 0, 1.0);
-      }
-      else if (strcmp(cmd, mode) == 0)
-      {
-        if (param >= 0 && param <= 2)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperMode[SELECTOR] = (uint8_t)param;
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperMode[REVOLVER] = (uint8_t)param;
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperMode[FEEDER] = (uint8_t)param;
-          }
-        }
-        else
-          rangeError(serial, 0, 2);
-      }
-      else if (strcmp(cmd, cstepmin) == 0)
-      {
-        if (param >= 0 && param <= 15)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperCSmin[SELECTOR] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[SELECTOR] != nullptr)
-              drivers[SELECTOR]->semin(smuffConfig.stepperCSmin[SELECTOR]);
-#endif
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperCSmin[REVOLVER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[REVOLVER] != nullptr)
-              drivers[REVOLVER]->semin(smuffConfig.stepperCSmin[REVOLVER]);
-#endif
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperCSmin[FEEDER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[FEEDER] != nullptr)
-              drivers[FEEDER]->semin(smuffConfig.stepperCSmin[FEEDER]);
-#endif
-          }
-        }
-        else
-          rangeError(serial, 0, 15);
-      }
-      else if (strcmp(cmd, cstepmax) == 0)
-      {
-        if (param >= 0 && param <= 15)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperCSmax[SELECTOR] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[SELECTOR] != nullptr)
-              drivers[SELECTOR]->semax(smuffConfig.stepperCSmax[SELECTOR]);
-#endif
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperCSmax[REVOLVER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[REVOLVER] != nullptr)
-              drivers[REVOLVER]->semax(smuffConfig.stepperCSmax[REVOLVER]);
-#endif
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperCSmax[FEEDER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[FEEDER] != nullptr)
-              drivers[FEEDER]->semax(smuffConfig.stepperCSmax[FEEDER]);
-#endif
-          }
-        }
-        else
-          rangeError(serial, 0, 15);
-      }
-      else if (strcmp(cmd, cstepdown) == 0)
-      {
-        if (param >= 0 && param <= 15)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperCSdown[SELECTOR] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[SELECTOR] != nullptr)
-            {
-              drivers[SELECTOR]->sedn(smuffConfig.stepperCSdown[SELECTOR]);
-              drivers[SELECTOR]->seup(smuffConfig.stepperCSdown[SELECTOR]);
-            }
-#endif
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperCSdown[REVOLVER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[REVOLVER] != nullptr)
-            {
-              drivers[REVOLVER]->sedn(smuffConfig.stepperCSdown[REVOLVER]);
-              drivers[REVOLVER]->seup(smuffConfig.stepperCSdown[REVOLVER]);
-            }
-#endif
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperCSdown[FEEDER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[FEEDER] != nullptr)
-            {
-              drivers[FEEDER]->sedn(smuffConfig.stepperCSdown[FEEDER]);
-              drivers[FEEDER]->seup(smuffConfig.stepperCSdown[FEEDER]);
-            }
-#endif
-          }
-        }
-        else
-          rangeError(serial, 0, 15);
-      }
-      else if (strcmp(cmd, drvrAdr) == 0)
-      {
-        if (param >= 0 && param <= 3)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperAddr[SELECTOR] = (int8_t)param;
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperAddr[REVOLVER] = (int8_t)param;
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperAddr[FEEDER] = (int8_t)param;
-          }
-        }
-        else
-          rangeError(serial, 0, 3);
-      }
-      else if (strcmp(cmd, toff) == 0)
-      {
-        if (param >= 0 && param <= 15)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperToff[SELECTOR] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[SELECTOR] != nullptr)
-              drivers[SELECTOR]->toff(smuffConfig.stepperToff[SELECTOR]);
-#endif
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperToff[REVOLVER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[REVOLVER] != nullptr)
-              drivers[REVOLVER]->toff(smuffConfig.stepperToff[REVOLVER]);
-#endif
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperToff[FEEDER] = (int8_t)param;
-#ifdef HAS_TMC_SUPPORT
-            if (drivers[FEEDER] != nullptr)
-              drivers[FEEDER]->toff(smuffConfig.stepperToff[FEEDER]);
-#endif
-          }
-        }
-        else
-          rangeError(serial, 0, 15);
-      }
-      else if (strcmp(cmd, stopOnStall) == 0)
-      {
-        if (hasParam(buf, X_Param))
-        {
-          smuffConfig.stepperStopOnStall[SELECTOR] = (param > 0);
-          steppers[SELECTOR].setStopOnStallDetected(param > 0);
-        }
-        if (hasParam(buf, Y_Param))
-        {
-          smuffConfig.stepperStopOnStall[REVOLVER] = (param > 0);
-          steppers[REVOLVER].setStopOnStallDetected(param > 0);
-        }
-        if (hasParam(buf, Z_Param))
-        {
-          smuffConfig.stepperStopOnStall[FEEDER] = (param > 0);
-          steppers[FEEDER].setStopOnStallDetected(param > 0);
-        }
-      }
-      else if (strcmp(cmd, maxStallCount) == 0)
-      {
-        if (param >= 0 && param <= MAX_STALL_COUNT)
-        {
-          if (hasParam(buf, X_Param))
-          {
-            smuffConfig.stepperMaxStallCnt[SELECTOR] = (int8_t)param;
-            steppers[SELECTOR].setStallThreshold(smuffConfig.stepperMaxStallCnt[SELECTOR]);
-          }
-          if (hasParam(buf, Y_Param))
-          {
-            smuffConfig.stepperMaxStallCnt[REVOLVER] = (int8_t)param;
-            steppers[REVOLVER].setStallThreshold(smuffConfig.stepperMaxStallCnt[REVOLVER]);
-          }
-          if (hasParam(buf, Z_Param))
-          {
-            smuffConfig.stepperMaxStallCnt[FEEDER] = (int8_t)param;
-            steppers[FEEDER].setStallThreshold(smuffConfig.stepperMaxStallCnt[FEEDER]);
-          }
-        }
-        else
-          rangeError(serial, 0, MAX_STALL_COUNT);
-      }
-      else if (strcmp(cmd, idleAnim) == 0)
-      {
-        smuffConfig.useIdleAnimation = (param > 0);
-      }
-      else if (strcmp(cmd, animBpm) == 0)
-      {
-        if(param > 0 && param <= 255) {
-          smuffConfig.animationBPM = (uint8_t)param;
-          lastEvent = millis() - smuffConfig.powerSaveTimeout*1500;
-          isIdle = true;
-        }
-      }
-      else if (strcmp(cmd, statusBpm) == 0)
-      {
-        if(param > 0 && param <= 255)
-          smuffConfig.statusBPM = (uint8_t)param;
-      }
-      else if (strcmp(cmd, menuOnTerm) == 0)
-      {
-        smuffConfig.menuOnTerminal = (param > 0);
-      }
-      else
-      {
+    param = getParam(buf, S_Param);
+    //__debugS("%d | %f | %s", param, fParam, paramS ? strpar : "");
+    if(paramS) {
+      if (strcmp(cmd, wipeSequence) == 0)           { strncpy(smuffConfig.wipeSequence, strpar, sizeof(smuffConfig.wipeSequence)); }
+      else if (strcmp(cmd, material) == 0)          { strncpy(smuffConfig.lButtonDown, strpar, MAX_BUTTON_LEN); }
+      else if (strcmp(cmd, color) == 0)             { if(index != -1) { strncpy(smuffConfig.materials[index], strpar, MAX_MATERIAL_LEN); } else stat = false; }
+      else if (strcmp(cmd, lBtnDown) == 0)          { strncpy(smuffConfig.lButtonDown, strpar, MAX_BUTTON_LEN); }
+      else if (strcmp(cmd, lBtnHold) == 0)          { strncpy(smuffConfig.lButtonHold, strpar, MAX_BUTTON_LEN); }
+      else if (strcmp(cmd, rBtnDown) == 0)          { strncpy(smuffConfig.rButtonDown, strpar, MAX_BUTTON_LEN); }
+      else if (strcmp(cmd, rBtnHold) == 0)          { strncpy(smuffConfig.rButtonHold, strpar, MAX_BUTTON_LEN); }
+      else if (strcmp(cmd, serialBaudrate) == 0)    { if(index != -1) { uint32_t baud = 0; sscanf(strpar, "%lu", &baud); if(baud >= 4800 && baud <= 230400) smuffConfig.serialBaudrates[index] = baud; } else stat = false; }
+      else if (strcmp(cmd, colorVal) == 0)          { if(index != -1) { uint32_t cval = 0; sscanf(strpar, "%lu", &cval); smuffConfig.materialColors[index] = cval; } else stat = false; }
+      else {
         sprintf_P(tmp, P_UnknownParam, cmd);
         printResponse(tmp, serial);
         stat = false;
       }
     }
-    else
-    {
+    else if (param != -1) {
+      if (strcmp(cmd, toolCount) == 0)                { if (param >= 1 && param <= MAX_TOOLS) smuffConfig.toolCount = (uint8_t)param; else rangeError(serial, 1, MAX_TOOLS); }
+      else if (strcmp(cmd, spacing) == 0)             { smuffConfig.toolSpacing = fParam;  }
+      else if (strcmp(cmd, bowdenLength) == 0)        { smuffConfig.bowdenLength = fParam; }
+      else if (strcmp(cmd, insertLength) == 0)        { smuffConfig.insertLength = fParam; }
+      else if (strcmp(cmd, purgeLength) == 0)         { smuffConfig.purgeLength = fParam;  }
+      else if (strcmp(cmd, purgeSpeed) == 0)          { smuffConfig.purgeSpeed = (uint16_t)param; }
+      else if (strcmp(cmd, reinforceLength) == 0)     { smuffConfig.reinforceLength = fParam; }
+      else if (strcmp(cmd, selectorDist) == 0)        { smuffConfig.selectorDistance = fParam; }
+      else if (strcmp(cmd, offset) == 0)              { smuffConfig.firstToolOffset = fParam; }
+      else if (strcmp(cmd, homeAfterFeed) == 0)       { smuffConfig.homeAfterFeed = (param > 0); }
+      else if (strcmp(cmd, resetBeforeFeed) == 0)     { smuffConfig.resetBeforeFeed = (param > 0); }
+      else if (strcmp(cmd, emulatePrusa) == 0)        { smuffConfig.prusaMMU2 = (param > 0); }
+      else if (strcmp(cmd, useServo) == 0)            { smuffConfig.revolverIsServo = (param > 0); }
+      else if (strcmp(cmd, servoOffPos) == 0)         { smuffConfig.revolverOffPos = (uint8_t)param; }
+      else if (strcmp(cmd, servoOnPos) == 0)          { smuffConfig.revolverOnPos = (uint8_t)param; servoPosClosed[toolSelected] = smuffConfig.revolverOnPos; }
+      else if (strcmp(cmd, stepsPerMillimeter) == 0)  { if(axis != -1) { smuffConfig.stepsPerMM[axis] = (uint16_t)param; steppers[axis].setStepsPerMM(smuffConfig.stepsPerMM[axis]); } else stat = false; }
+      else if (strcmp(cmd, stepsPerRevolution) == 0)  { smuffConfig.stepsPerRevolution = param; steppers[REVOLVER].setStepsPerDegree(param / 360); }
+      else if (strcmp(cmd, invertDir) == 0)           { if (axis != -1) smuffConfig.invertDir[axis] = (param > 0); else stat = false; }
+      else if (strcmp(cmd, endstopTrig) == 0)         { if (axis != -1) smuffConfig.endstopTrg[axis] = (uint8_t)param; else stat = false; }
+      else if (strcmp(cmd, endstopTest) == 0)         { smuffConfig.endstopTrg[3] = (uint8_t)param; }
+      else if (strcmp(cmd, autoClose) == 0)           { smuffConfig.menuAutoClose = (uint8_t)param; }
+      else if (strcmp(cmd, psTimeout) == 0)           { smuffConfig.powerSaveTimeout = (uint16_t)param; }
+      else if (strcmp(cmd, sendAction) == 0)          { smuffConfig.sendActionCmds = (param > 0); }
+      else if (strcmp(cmd, backlightColor) == 0)      { if (param >= 0 && param <= 15) { smuffConfig.backlightColor = (uint8_t)param; setBacklightIndex(smuffConfig.backlightColor); } else stat = false; }
+      else if (strcmp(cmd, toolColor) == 0)           { if (param >= 0 && param <= 15) { smuffConfig.toolColor = (uint8_t)param; setToolColorIndex(smuffConfig.toolColor); } else stat = false; }
+      else if (strcmp(cmd, hasPanelDue) == 0)         { smuffConfig.hasPanelDue = (uint8_t)param; }
+      else if (strcmp(cmd, sharedStepper) == 0)       { smuffConfig.isSharedStepper = (param > 0); }
+      else if (strcmp(cmd, encoderTicks) == 0)        { smuffConfig.encoderTickSound = (param > 0); }
+      else if (strcmp(cmd, periodicalStats) == 0)     { smuffConfig.sendPeriodicalStats = (param > 0); }
+      else if (strcmp(cmd, idleAnim) == 0)            { smuffConfig.useIdleAnimation = (param > 0); }
+      else if (strcmp(cmd, animBpm) == 0)             { if(param > 0 && param <= 255) { smuffConfig.animationBPM = (uint8_t)param; lastEvent = millis() - smuffConfig.powerSaveTimeout*1500; isIdle = true; } else stat = false; }
+      else if (strcmp(cmd, statusBpm) == 0)           { if(param > 0 && param <= 255) smuffConfig.statusBPM = (uint8_t)param; else stat = false; }
+      else if (strcmp(cmd, menuOnTerm) == 0)          { smuffConfig.menuOnTerminal = (param > 0); }
+      else if (strcmp(cmd, webInterface) == 0)        { smuffConfig.webInterface = (param > 0); if(smuffConfig.webInterface) smuffConfig.menuOnTerminal = false; }
+      else if (strcmp(cmd, usePurge) == 0)            { smuffConfig.usePurge = (param > 0); }
+      else if (strcmp(cmd, speedsInMms) == 0)         { smuffConfig.speedsInMMS = (param > 0); }
+      else if (strcmp(cmd, invertRelay) == 0)         { smuffConfig.invertRelay = (param > 0); }
+      else if (strcmp(cmd, useCutter) == 0)           { smuffConfig.useCutter = (param > 0); }
+      else if (strcmp(cmd, autoWipe) == 0)            { smuffConfig.wipeBeforeUnload = (param > 0); }
+      else if (strcmp(cmd, sendAction) == 0)          { smuffConfig.sendActionCmds = (param > 0); }
+      else if (strcmp(cmd, externalControl) == 0)     { smuffConfig.extControlFeeder = (param > 0); }
+      else if (strcmp(cmd, cutterOpen) == 0)          { smuffConfig.cutterOpen = (uint8_t)param; }
+      else if (strcmp(cmd, cutterClose) == 0)         { smuffConfig.cutterClose = (uint8_t)param; }
+      else if (strcmp(cmd, fanSpeed) == 0)            { if(param > 0 && param <= 100) { smuffConfig.fanSpeed = (uint8_t)param; setupFan(); } else stat = false; }
+      else if (strcmp(cmd, contrast) == 0)            { if(param >= 60 && param <= 255) { smuffConfig.lcdContrast = (uint8_t)param; display.setContrast(smuffConfig.lcdContrast); } else stat = false; }
+      else if (strcmp(cmd, unloadRetract) == 0)       { smuffConfig.unloadRetract = fParam;  }
+      else if (strcmp(cmd, enableChunks) == 0)        { smuffConfig.enableChunks = (param > 0); }
+      else if (strcmp(cmd, feedChunks) == 0)          { smuffConfig.feedChunks = (uint8_t)param; }
+      else if (strcmp(cmd, servoMinPwm) == 0)         { smuffConfig.servoMinPwm = (uint16_t)param; for(int8_t i=0; i< 3; i++) setServoMinPwm(i, smuffConfig.servoMinPwm); }
+      else if (strcmp(cmd, servoMaxPwm) == 0)         { smuffConfig.servoMaxPwm = (uint16_t)param; for(int8_t i=0; i< 3; i++) setServoMaxPwm(i, smuffConfig.servoMaxPwm); }
+      else if (strcmp(cmd, servo1Cycles) == 0)        { smuffConfig.servoCycles1 = (uint8_t)param; servoWiper.setMaxCycles(smuffConfig.servoCycles1); }
+      else if (strcmp(cmd, servo2Cycles) == 0)        { smuffConfig.servoCycles2 = (uint8_t)param; servoLid.setMaxCycles(smuffConfig.servoCycles2); }
+      else if (strcmp(cmd, maxSpeed) == 0)            { if (axis != -1) { smuffConfig.maxSpeed[axis] = (uint16_t)param; steppers[axis].setMaxSpeed(smuffConfig.maxSpeed[axis]); } else stat = false; }
+      else if (strcmp(cmd, accelSpeed) == 0)          { if (axis != -1) { smuffConfig.accelSpeed[axis] = (uint16_t)param; steppers[axis].setAcceleration(smuffConfig.accelSpeed[axis]); } else stat = false; }
+      else if (strcmp(cmd, accelDist) == 0)           { if (axis != -1) { smuffConfig.accelDist[axis] = (uint8_t)param; steppers[axis].setAccelDistance(smuffConfig.accelDist[axis]); } else stat = false; }
+      else if (strcmp(cmd, stepDelay) == 0)           { if (axis != -1) { smuffConfig.stepDelay[axis] = (uint8_t)param; } else stat = false; }
+      else if (strcmp(cmd, rsense) == 0)              { if (fParam >= 0 && fParam <= 1.0) { if(axis != -1) smuffConfig.stepperPower[axis] = fParam; } else { rangeError(serial, 0, 1.0); stat = false; } }
+      else if (strcmp(cmd, mode) == 0)                { if (param >= 0 && param <= 2) { if(axis != -1) smuffConfig.stepperMode[axis] = (uint8_t)param; } else { rangeError(serial, 0, 2); stat = false; }}
+      else if (strcmp(cmd, drvrAdr) == 0)             { if (param >= 0 && param <= 3) { if (axis != -1) smuffConfig.stepperAddr[axis] = (int8_t)param; } else { rangeError(serial, 0, 3); stat = false; }}
+      else if (strcmp(cmd, stopOnStall) == 0)         { if (axis != -1) { smuffConfig.stepperStopOnStall[axis] = (param > 0); steppers[axis].setStopOnStallDetected(param > 0); } else stat = false; }
+      else if (strcmp(cmd, maxStallCount) == 0)       { if (param >= 0 && param <= MAX_STALL_COUNT && axis != -1) { smuffConfig.stepperMaxStallCnt[axis] = (int8_t)param; steppers[axis].setStallThreshold(smuffConfig.stepperMaxStallCnt[axis]); } else rangeError(serial, 0, MAX_STALL_COUNT); }
+      else if (strcmp(cmd, ms3Config) == 0)           { if(axis != -1) { smuffConfig.ms3config[axis] = (int8_t)param; } else stat = false; }
+      else if (strcmp(cmd, stall) == 0)               { if(axis != -1) { smuffConfig.stepperStall[axis] = (int8_t)param; } else stat = false; }
+      else if (strcmp(cmd, power) == 0) {
+                                                        if (param > 0 && param <= MAX_POWER && axis != -1) {
+                                                          smuffConfig.stepperPower[axis] = (uint16_t)param;
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr) {
+                                                              drivers[axis]->rms_current(smuffConfig.stepperPower[axis]);
+                                                          }
+                                                          #endif
+                                                        } else stat = false;
+      }
+      else if (strcmp(cmd, msteps) == 0) {
+                                                        if ( axis != -1 && (param == 0 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128 || param == 256)) {
+                                                          smuffConfig.stepperMicrosteps[axis] = (uint16_t)param;
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr)
+                                                            drivers[axis]->microsteps(smuffConfig.stepperMicrosteps[axis]);
+                                                          #endif
+                                                        } else stat = false;
+      }
+      else if (strcmp(cmd, tmode) == 0) {
+                                                        if (param >= 0 && param <= 1 && axis != -1) {
+                                                          smuffConfig.stepperStealth[axis] = (param == 0);
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr) {
+                                                            uint8_t toff = smuffConfig.stepperToff[axis] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperToff[axis];
+                                                            setDriverSpreadCycle(drivers[axis], (param > 0), smuffConfig.stepperStall[axis], smuffConfig.stepperCSmin[axis], smuffConfig.stepperCSmax[axis], smuffConfig.stepperCSdown[axis], toff);
+                                                            if (param == 0 && (stallPin != -1))
+                                                              attachInterrupt(stallPin, (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
+                                                            else if (param == 1 && stallPin != -1)
+                                                              detachInterrupt(stallPin);
+                                                          }
+                                                          else {
+                                                            if (stallPin != -1)
+                                                              detachInterrupt(stallPin);
+                                                          }
+                                                          #endif
+                                                        } else stat = false;
+      }
+      else if (strcmp(cmd, cstepmin) == 0) {
+                                                        if (param >= 0 && param <= 15 && axis != -1) {
+                                                          smuffConfig.stepperCSmin[axis] = (int8_t)param;
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr)
+                                                            drivers[axis]->semin(smuffConfig.stepperCSmin[axis]);
+                                                          #endif
+                                                        }
+                                                        else { rangeError(serial, 0, 15); stat = false; }
+      }
+      else if (strcmp(cmd, cstepmax) == 0) {
+                                                        if (param >= 0 && param <= 15 && axis != -1) {
+                                                          smuffConfig.stepperCSmax[axis] = (int8_t)param;
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr)
+                                                            drivers[axis]->semax(smuffConfig.stepperCSmax[axis]);
+                                                          #endif
+                                                        } else { rangeError(serial, 0, 15); stat = false; }
+      }
+      else if (strcmp(cmd, cstepdown) == 0) {
+                                                        if (param >= 0 && param <= 15  && axis != -1) {
+                                                          smuffConfig.stepperCSdown[axis] = (int8_t)param;
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr) {
+                                                            drivers[axis]->sedn(smuffConfig.stepperCSdown[axis]);
+                                                            drivers[axis]->seup(smuffConfig.stepperCSdown[axis]);
+                                                          }
+                                                          #endif
+                                                        } else { rangeError(serial, 0, 15); stat = false; }
+      }
+      else if (strcmp(cmd, toff) == 0) {
+                                                        if (param >= 0 && param <= 15  && axis != -1) {
+                                                          smuffConfig.stepperToff[axis] = (int8_t)param;
+                                                          #ifdef HAS_TMC_SUPPORT
+                                                          steppers[axis].setEnabled(true);
+                                                          if (drivers[axis] != nullptr)
+                                                            drivers[axis]->toff(smuffConfig.stepperToff[SELECTOR]);
+                                                          #endif
+                                                        } else { rangeError(serial, 0, 15); stat = false; }
+      }
+      else if (strcmp(cmd, pfactor) == 0)           { if(index != -1) { smuffConfig.purges[index] = (uint16_t) param; } else stat = false; }
+      #if defined(MULTISERVO)
+      else if (strcmp(cmd, servoOutput) == 0)       { if(index >= 0 && index < 16) { servoMapping[index] = (uint8_t) param; } else stat = false; }
+      else if (strcmp(cmd, servoClosed) == 0)       { if(index >= 0 && index < 16) { servoPosClosed[index] = (uint8_t) param; } else stat = false; }
+      else if (strcmp(cmd, wiper) == 0)             { servoMapping[16] = (uint8_t) param; } }
+      #else
+      else if (strcmp(cmd, servoClosed) == 0)       { if(index >= 0 && index < MAX_TOOLS) { servoPosClosed[index] = (uint8_t) param; } else stat = false; }
+      else if (strcmp(cmd, servoOutput) == 0)       { /* ignore this */ }
+      else if (strcmp(cmd, wiper) == 0)             { /* ignore this */ }
+      #endif
+      else {
+        sprintf_P(tmp, P_UnknownParam, cmd);
+        printResponse(tmp, serial);
+        stat = false;
+      }
+    }
+    else {
       sprintf_P(tmp, P_NoValue, cmd);
       printResponse(tmp, serial);
       stat = false;
@@ -1905,59 +1753,130 @@ bool M500(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M503(const char *msg, String buf, int8_t serial)
+bool M502(const char *msg, String buf, int8_t serial)
 {
   printResponse(msg, serial);
+  return false;
+}
+
+Print* getSerialInstance(int8_t serial) {
   Print *_print = &Serial;
   switch (serial)
   {
-  case 0:
-    _print = &Serial;
-    break;
-  case 1:
-    _print = &Serial1;
-    break;
-  case 2:
-    _print = &Serial2;
-    break;
-#if !defined(__ESP32__)
-  case 3:
-    _print = &Serial3;
-    break;
-#endif
-  default:
-    break;
+    case 0:
+      _print = &Serial;
+      break;
+    case 1:
+      _print = &Serial1;
+      break;
+    case 2:
+      _print = &Serial2;
+      break;
+  #if !defined(__ESP32__)
+    case 3:
+      _print = &Serial3;
+      break;
+  #endif
+    default:
+      break;
   }
+  return _print;
+
+}
+
+bool M503(const char *msg, String buf, int8_t serial)
+{
+  printResponse(msg, serial);
+  Print *_print = getSerialInstance(serial);
   int8_t part = 0;
+  bool useWI = false;
   if ((param = getParam(buf, S_Param)) != -1)
   {
     part = param;
   }
+  if(hasParam(buf, W_Param))
+    useWI = true;
   if (part == 0 || part == 1)
   {
     printResponseP(P_M503S1, serial);
-    writeConfig(_print);
+    writeMainConfig(_print, useWI);
   }
   if (part == 0 || part == 2)
   {
     printResponseP(P_M503S2, serial);
-    writeTmcConfig(_print);
+    writeSteppersConfig(_print, useWI);
   }
   if (part == 0 || part == 3)
   {
     printResponseP(P_M503S3, serial);
-    writeServoMapping(_print);
+    writeTmcConfig(_print, useWI);
   }
   if (part == 0 || part == 4)
   {
     printResponseP(P_M503S4, serial);
-    writeMaterials(_print);
+    writeServoMapping(_print, useWI);
   }
   if (part == 0 || part == 5)
   {
+    printResponseP(P_M503S5, serial);
+    writeMaterials(_print, useWI);
+  }
+  if (part == 6)
+  {
+    printResponseP(P_M503S6, serial);
+    writeSwapTools(_print, useWI);
   }
   printResponseP(PSTR("\n"), serial);
   return true;
+}
+
+bool writeToCfgFile(const char* buf, const char* filename) {
+
+  __debugS(PSTR("Attempt to write '%s'"), filename);
+  return true;
+}
+
+bool M504(const char *msg, String buf, int8_t serial)
+{
+  char cfg[2048];
+  char target[40];
+  printResponse(msg, serial);
+  if (!getParamString(buf, P_Param, target, ArraySize(target))) {
+    __debugS(PSTR("No target applied"));
+    return false;
+  }
+  if (getParamString(buf, S_Param, cfg, ArraySize(cfg))) {
+    //__debugS(PSTR("cfg: %s"), cfg);
+    if(strcmp(target, "Basic") == 0) {
+      return writeToCfgFile(cfg, CONFIG_FILE);
+    }
+    else if(strcmp(target, "Steppers") == 0) {
+      return writeToCfgFile(cfg, STEPPERS_FILE);
+    }
+    else if(strcmp(target, "TMC") == 0) {
+      return writeToCfgFile(cfg, TMC_CONFIG_FILE);
+    }
+    else if(strcmp(target, "Servos") == 0) {
+      return writeToCfgFile(cfg, SERVOMAP_FILE);
+    }
+    else if(strcmp(target, "Materials") == 0) {
+      return writeToCfgFile(cfg, MATERIALS_FILE);
+    }
+    else if(strcmp(target, "Swaps") == 0) {
+      if(deserializeSwapTools(cfg)) {
+        saveStore();
+        return true;
+      }
+    }
+    else {
+      __debugS(PSTR("Unknown target '%s'"), target);
+      return false;
+    }
+  }
+  else {
+    __debugS(PSTR("No data applied"));
+  }
+  return false;
 }
 
 bool M569(const char *msg, String buf, int8_t serial)

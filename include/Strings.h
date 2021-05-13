@@ -89,7 +89,7 @@ const char P_ConfigFail1 [] PROGMEM         = { "Config file is" };
 const char P_ConfigFail5 [] PROGMEM         = { "Materials file is" };
 const char P_ConfigFail6 [] PROGMEM         = { "TMC config file is" };
 const char P_ConfigFail7 [] PROGMEM         = { "ServoMap file is" };
-const char P_ConfigFail8 [] PROGMEM         = { "Purge file is" };
+const char P_ConfigFail8 [] PROGMEM         = { "Steppers file is" };
 const char P_ConfigFail2 [] PROGMEM         = { "possibly corrupted,\nplease check!" };
 const char P_ConfigFail3 [] PROGMEM         = { "too big,\nplease reduce content!" };
 const char P_ConfigFail4 [] PROGMEM         = { "data inconsistent\nor memory failure!" };
@@ -159,10 +159,11 @@ const char P_Value[] PROGMEM                = { "value:" };
 const char P_MS3State[] PROGMEM             = { "state:" };
 
 const char P_M503S1[] PROGMEM               = { "\n/* Basic */\n" };
-const char P_M503S2[] PROGMEM               = { "\n/* TMC Driver */\n" };
-const char P_M503S3[] PROGMEM               = { "\n/* Servo mapping */\n" };
-const char P_M503S4[] PROGMEM               = { "\n/* Materials */\n" };
-const char P_M503S5[] PROGMEM               = { "\n\n" };
+const char P_M503S2[] PROGMEM               = { "\n/* Steppers */\n" };
+const char P_M503S3[] PROGMEM               = { "\n/* TMC Driver */\n" };
+const char P_M503S4[] PROGMEM               = { "\n/* Servo mapping */\n" };
+const char P_M503S5[] PROGMEM               = { "\n/* Materials */\n" };
+const char P_M503S6[] PROGMEM               = { "\n/* Tool swaps */\n" };
 
 const char P_ConfigWriteSuccess[] PROGMEM   = { "Config\nsuccessfully\nwritten!" };
 const char P_ConfigWriteFail[] PROGMEM      = { "Saving failed!\nPlease check SD-Card." };
@@ -199,7 +200,7 @@ const char P_Echo[] PROGMEM                 = { "echo: %s\n" };
 const char P_UnknownCmd[] PROGMEM           = { "Unknown command: %s" };
 const char P_UnknownParam[] PROGMEM         = { "Unknown parameter '%s'\n" };
 const char P_NoValue[] PROGMEM              = { "Value ('Sn') missing for parameter '%s'\n" };
-const char P_GVersion[] PROGMEM             = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s\n" };
+const char P_GVersion[] PROGMEM             = { "FIRMWARE_NAME: Smart.Multi.Filament.Feeder (SMuFF) FIRMWARE_VERSION: %s ELECTRONICS: %s DATE: %s MODE: %s OPTIONS: %s\n" };
 const char P_TResponse[] PROGMEM            = { "T%d\n" };
 const char P_GResponse[] PROGMEM            = { "G%d\n" };
 const char P_MResponse[] PROGMEM            = { "M%d\n" };
@@ -297,7 +298,25 @@ const char P_ActionWait[] PROGMEM           = { "WAIT" };
 const char P_ActionCont[] PROGMEM           = { "CONTINUE" };
 const char P_ActionPong[] PROGMEM           = { "PONG" };
 
-const char P_Duet_StatusAll[] PROGMEM        = { "Selector: %s\nFeeder:   %s\n" };
+const char P_Duet_StatusAll[] PROGMEM       = { "Selector: %s\nFeeder:   %s\n" };
+
+const char P_TMCStatus[] PROGMEM            = { "TMCStatus" };
+const char P_TMCStatusNotUsed[] PROGMEM     = { "{\"%s\": {\"%s\": %d, \"%s\": false}}\n" };
+const char P_TMCKeyAxis[] PROGMEM           = { "Axis" };
+const char P_TMCKeyVersion[] PROGMEM        = { "Version" };
+const char P_TMCKeyInUse[] PROGMEM          = { "InUse" };
+const char P_TMCKeyMode[] PROGMEM           = { "Mode"};
+const char P_TMCKeyPwrCfg[] PROGMEM         = { "Power"};
+const char P_TMCKeyPwrRms[] PROGMEM         = { "RMS"};
+const char P_TMCKeyMS[] PROGMEM             = { "MS"};
+const char P_TMCKeyAddr[] PROGMEM           = { "DrvAddr"};
+const char P_TMCKeyUart[] PROGMEM           = { "UART"};
+const char P_TMCKeyDiag[] PROGMEM           = { "Diag"};
+const char P_TMCKeyOLA[] PROGMEM            = { "OLA"};
+const char P_TMCKeyOLB[] PROGMEM            = { "OLB"};
+const char P_TMCKeyS2GA[] PROGMEM           = { "S2GA"};
+const char P_TMCKeyS2GB[] PROGMEM           = { "S2GB"};
+const char P_TMCKeyOT[] PROGMEM             = { "OT"};
 
 // VT-100 Escape codes
 const char P_SendTermCls[] PROGMEM          = { "\033[2J" };

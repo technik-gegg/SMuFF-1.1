@@ -1,0 +1,1 @@
+{ "GCode": "{GCO}", "Elapsed": "{TIME}", "Loops": "{LOOP}", "Cmds": "{CMDS}", "ToolChanges": "{TC}", "FeederErrors": "{ERR}", "SelectorStalls": "{STALL}", "FeederStalls": "{STALLF}", "FeedsOk": "{HIT}", "FeedsMissed": "{MISS}" }
