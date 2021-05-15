@@ -1928,7 +1928,7 @@ void printPeriodicalState(int8_t serial)
   const char *_open = "off";
   int8_t tool = getToolSelected();
 
-  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\n"),
+  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\n"),
             tool,
             selectorEndstop() ? _triggered : _open,
             revolverEndstop() ? _triggered : _open,
@@ -1936,7 +1936,8 @@ void printPeriodicalState(int8_t serial)
             feederEndstop(2) ? _triggered : _open,
             isUsingTmc ? '+' : '-',
             tmcWarning ? _triggered : _open,
-            sdRemoved ? _triggered : _open);
+            sdRemoved ? _triggered : _open,
+            settingsChanged ? _triggered : _open);
   printResponse(tmp, serial);
 }
 

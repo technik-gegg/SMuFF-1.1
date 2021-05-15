@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.26"
+#define VERSION_STRING    "V2.27"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
 #define VERSION_DATE      "2021-05-12"

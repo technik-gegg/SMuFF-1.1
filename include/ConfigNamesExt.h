@@ -99,7 +99,7 @@ extern char* invertRelay;
 extern char* menuOnTerm;
 extern char* webInterface;
 extern char* fanSpeed;
-extern char* speedsInMms;
+extern char* speedsInMMS;
 extern char* contrast;
 extern char* servoMinPwm;
 extern char* servoMaxPwm;

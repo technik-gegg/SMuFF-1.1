@@ -251,9 +251,8 @@ void setupSwSerial0()
 
 void setupRelay()
 {
-  if (RELAY_PIN != -1 && smuffConfig.revolverIsServo)
+  if (RELAY_PIN != -1)
   {
-    // Relay mode will only work on servo variants
     pinMode(RELAY_PIN, OUTPUT);
     // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
     // switch on the external stepper by default. Otherwise, use the interal stepper.
@@ -372,6 +371,7 @@ void setupHeaterBed()
   {
 #if defined(__STM32F1__)
     pinMode(HEATBED_PIN, PWM);
+    analogWrite(HEATBED_PIN, 0);
 #else
     pinMode(HEATBED_PIN, OUTPUT);
 #endif

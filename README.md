@@ -44,6 +44,14 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.27** - Bug fixes for WebInterface
+
++ corrected setting for "Speeds in mm/s".
++ corrected "Fan Speed" value validation (minimum was 1 instead of 0).
++ added synchronization with WebInterface when settings were changed locally.
++ set Heated Bed pin to 0 in init. So it won't turn on the heater MOSFET anymore.
++ fixed bug that caused the relay not switching when *useServo* was set to false.
+
 **2.26** - Important changes
 
 + due to low memory on some boards, I had to split the **SMUFF.json** and relocate the steppers configuration into a separate file **STEPPERS.json**. Please make sure that you copy this new file to your SD-Card as well.

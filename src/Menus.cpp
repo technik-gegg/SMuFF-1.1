@@ -1456,6 +1456,7 @@ void saveSettings() {
 void checkSaveSettings() {
   userBeep();
   uint8_t button = showDialog(P_TitleWarning, P_SettingsChanged, P_AskSave, P_YesNoButtons);
+  every2s();  // send states once
   if (button == 1) {
     saveSettings();
   }

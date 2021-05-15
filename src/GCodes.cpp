@@ -1385,7 +1385,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, menuOnTerm) == 0)          { smuffConfig.menuOnTerminal = (param > 0); }
       else if (strcmp(cmd, webInterface) == 0)        { smuffConfig.webInterface = (param > 0); if(smuffConfig.webInterface) smuffConfig.menuOnTerminal = false; }
       else if (strcmp(cmd, usePurge) == 0)            { smuffConfig.usePurge = (param > 0); }
-      else if (strcmp(cmd, speedsInMms) == 0)         { smuffConfig.speedsInMMS = (param > 0); }
+      else if (strcmp(cmd, speedsInMMS) == 0)         { smuffConfig.speedsInMMS = (param > 0); }
       else if (strcmp(cmd, invertRelay) == 0)         { smuffConfig.invertRelay = (param > 0); }
       else if (strcmp(cmd, useCutter) == 0)           { smuffConfig.useCutter = (param > 0); }
       else if (strcmp(cmd, autoWipe) == 0)            { smuffConfig.wipeBeforeUnload = (param > 0); }
@@ -1393,7 +1393,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, externalControl) == 0)     { smuffConfig.extControlFeeder = (param > 0); }
       else if (strcmp(cmd, cutterOpen) == 0)          { smuffConfig.cutterOpen = (uint8_t)param; }
       else if (strcmp(cmd, cutterClose) == 0)         { smuffConfig.cutterClose = (uint8_t)param; }
-      else if (strcmp(cmd, fanSpeed) == 0)            { if(param > 0 && param <= 100) { smuffConfig.fanSpeed = (uint8_t)param; setupFan(); } else stat = false; }
+      else if (strcmp(cmd, fanSpeed) == 0)            { if(param >= 0 && param <= 100) { smuffConfig.fanSpeed = (uint8_t)param; setupFan(); } else stat = false; }
       else if (strcmp(cmd, contrast) == 0)            { if(param >= 60 && param <= 255) { smuffConfig.lcdContrast = (uint8_t)param; display.setContrast(smuffConfig.lcdContrast); } else stat = false; }
       else if (strcmp(cmd, unloadRetract) == 0)       { smuffConfig.unloadRetract = fParam;  }
       else if (strcmp(cmd, enableChunks) == 0)        { smuffConfig.enableChunks = (param > 0); }

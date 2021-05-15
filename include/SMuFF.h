@@ -34,7 +34,6 @@
 #include <SPI.h>
 #include "SdFat.h"
 #include "U8g2lib.h"
-#include "MemoryFree.h"
 #include "DataStore.h"
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
 #define FASTLED_ALLOW_INTERRUPTS 0
