@@ -138,6 +138,7 @@ int8_t servoMapping[18] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 uint8_t servoPosClosed[16] = {90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
 #else
 uint8_t servoPosClosed[MAX_TOOLS];
+float stepperPosClosed[MAX_TOOLS];
 #endif
 
 String wirelessHostname = "";
@@ -464,10 +465,13 @@ void setup()
   __debugS(PSTR("[ after setupEncoder ]"));
   __debugS(PSTR("[ getting config... ]"));
   if (readConfig())
-  {                     // read SMUFF.CFG from SD-Card
-    readTmcConfig();    // read TMCDRVR.CFG from SD-Card
-    readServoMapping(); // read SERVOMAP.CFG from SD-Card
-    readMaterials();    // read MATERIALS.CFG from SD-Card
+  {                     // read SMUFF.json from SD-Card
+    readTmcConfig();    // read TMCDRVR.json from SD-Card
+    readServoMapping(); // read SERVOMAP.json from SD-Card
+    readMaterials();    // read MATERIALS.json from SD-Card
+    #if defined(SMUFF_V6S)
+    readRevolverMapping();  // read REVOLVERMAPS.json from SD-Card
+    #endif
   }
   __debugS(PSTR("[ after readConfig ]"));
   testFastLED(false); // run a test sequence on FastLEDs
@@ -965,6 +969,12 @@ void loop()
   monitorTMC(FEEDER);
 #endif
 
+  if(isTestPending) {
+    isTestPending = false;
+    showMenu = true;
+    testRun(testToRun);
+    showMenu = false;
+  }
   // For testing only
   // loopEx();
 }

@@ -191,6 +191,7 @@ bool readMainConfig()
       smuffConfig.menuOnTerminal =              jsonDoc[menuOnTerm];
       smuffConfig.servoCycles1 =                jsonDoc[servo1Cycles];
       smuffConfig.servoCycles2 =                jsonDoc[servo2Cycles];
+      smuffConfig.revolverClose =               jsonDoc[revolverClosed];
 
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -264,6 +265,11 @@ bool readSteppersConfig()
       smuffConfig.revolverOffPos =              jsonDoc[revolver][servoOffPos];
       smuffConfig.revolverOnPos =               jsonDoc[revolver][servoOnPos];
       smuffConfig.ms3config[REVOLVER] =         jsonDoc[revolver][ms3Config];
+      #if defined(SMUFF_V6S)
+      smuffConfig.revolverIsServo = false;
+      #elif defined(SMUFF_V5)
+      smuffConfig.revolverIsServo = true;
+      #endif
       /*
       FEEDER
       */
@@ -466,6 +472,48 @@ bool readServoMapping() {
 }
 
 /*
+  Reads mapping for the Revolver stepper from SD-Card.
+*/
+bool readRevolverMapping() {
+
+  if(!initSD())
+    return false;
+  //__debugS(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
+  SdFile cfg;
+  if(!cfg.open(STEPPERMAP_FILE)) {
+    showOpenFailed(&cfg, STEPPERMAP_FILE);
+    return false;
+  }
+  else {
+    if(!checkFileSize(&cfg, scapacity, P_ConfigFail7)) {
+      cfg.close();
+      return false;
+    }
+
+    DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
+    DeserializationError error = deserializeJson(jsonDoc, cfg);
+    cfg.close();
+    if (error)
+      showDeserializeFailed(error, P_ConfigFail8);
+    else {
+      drawSDStatus(SD_READING_STEPPERS);
+      // read servo mappings
+      char item[15];
+      for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
+        sprintf_P(item, P_Tool, i);
+        if(jsonDoc[item] == nullptr)
+          stepperPosClosed[i] = smuffConfig.revolverClose;
+        else
+          stepperPosClosed[i] = (float)jsonDoc[item];
+      }
+      jsonDoc.clear();
+      __debugS(PSTR("Config: DONE reading Revolver stepper mappings"));
+    }
+  }
+  return true;
+}
+
+/*
   Reads materials assignment.
 */
 bool readMaterials() {
@@ -490,20 +538,20 @@ bool readMaterials() {
       showDeserializeFailed(error, P_ConfigFail5);
     else {
       drawSDStatus(SD_READING_MATERIALS);
-      // read materials if running on 32-Bit MCU
-#if defined(__STM32F1__) || defined(__ESP32__)
+      // read materials
       char item[15];
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
+        memset(smuffConfig.materialNames[i], 0, MAX_MATERIAL_NAME_LEN);
         memset(smuffConfig.materials[i], 0, MAX_MATERIAL_LEN);
         sprintf_P(item, P_Tool, i);
         const char* pItem = jsonDoc[item][color];
         if(pItem == nullptr) {
-          sprintf_P(smuffConfig.materials[i], PSTR("Tool%d"), i);
+          sprintf_P(smuffConfig.materialNames[i], PSTR("Tool%d"), i);
         }
         else {
-          strncpy(smuffConfig.materials[i], pItem, MAX_MATERIAL_LEN);
+          strncpy(smuffConfig.materialNames[i], pItem, MAX_MATERIAL_NAME_LEN);
         }
-        //__debugS(PSTR("%s: %s"), item, smuffConfig.materials[i]);
+        //__debugS(PSTR("%s: %s"), item, smuffConfig.materialNames[i]);
         uint16_t len = jsonDoc[item][pfactor];
         if(len > 0) {
           smuffConfig.purges[i] = len;
@@ -519,17 +567,12 @@ bool readMaterials() {
             //__debugS(PSTR("Material color: #%lX"), color);
           }
         }
-
-        const char* pFItem = jsonDoc[item][material];
-        if(pFItem != nullptr) {
-          __debugS(PSTR("%s: %s"), item, pFItem);
+        const char* mat = jsonDoc[item][material];
+        if(mat != nullptr) {
+          //__debugS(PSTR("%s: %s"), item, mat);
+          strncpy(smuffConfig.materials[i], mat, MAX_MATERIAL_LEN);
         }
       }
-#else
-      for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
-        memset(smuffConfig.materials[i], 0, ArraySize(smuffConfig.materials[i]));
-      }
-#endif
 
       jsonDoc.clear();
       __debugS(PSTR("Config: DONE reading materials"));
@@ -538,6 +581,26 @@ bool readMaterials() {
   return true;
 }
 
+bool dumpConfig(Print* dumpTo, bool useWebInterface, const char* filename, DynamicJsonDocument& jsonDoc) {
+  if(dumpTo == nullptr && filename == nullptr)
+    return false;
+  bool hasFile = false;
+  if(dumpTo == nullptr && filename != nullptr) {
+    dumpTo = openCfgFileWrite(filename);
+    hasFile = true;
+  }
+  if(dumpTo != nullptr) {
+    if(useWebInterface)
+      serializeJson(jsonDoc, *dumpTo);
+    else
+      serializeJsonPretty(jsonDoc, *dumpTo);
+    if(hasFile)
+      closeCfgFile();
+    //__debugS(PSTR("Serializing '%s' done"), filename);
+    return true;
+  }
+  return false;
+}
 
 /*
   Writes the basic configuration to SD-Card or Serial
@@ -589,21 +652,9 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[menuOnTerm]           = smuffConfig.menuOnTerminal;
   jsonDoc[servo1Cycles]         = smuffConfig.servoCycles1;
   jsonDoc[servo2Cycles]         = smuffConfig.servoCycles2;
+  jsonDoc[revolverClosed]       = smuffConfig.revolverClose;
 
-  if(dumpTo == nullptr) {
-    dumpTo = openCfgFileWrite(CONFIG_FILE);
-  }
-  if(dumpTo != nullptr) {
-    if(useWebInterface)
-      serializeJson(jsonDoc, *dumpTo);
-    else
-      serializeJsonPretty(jsonDoc, *dumpTo);
-    jsonDoc.clear();
-    closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), CONFIG_FILE);
-    return true;
-  }
-  return false;
+  return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }
 
 /*
@@ -673,20 +724,7 @@ bool writeSteppersConfig(Print* dumpTo, bool useWebInterface) {
   node[endstop2]              = smuffConfig.useEndstop2;
   node[autoWipe]              = smuffConfig.wipeBeforeUnload;
 
-  if(dumpTo == nullptr) {
-    dumpTo = openCfgFileWrite(STEPPERS_FILE);
-  }
-  if(dumpTo != nullptr) {
-    if(useWebInterface)
-      serializeJson(jsonDoc, *dumpTo);
-    else
-      serializeJsonPretty(jsonDoc, *dumpTo);
-    jsonDoc.clear();
-    closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), STEPPERS_FILE);
-    return true;
-  }
-  return false;
+  return dumpConfig(dumpTo, useWebInterface, STEPPERS_FILE, jsonDoc);
 }
 
 /*
@@ -773,20 +811,7 @@ bool writeTmcConfig(Print* dumpTo, bool useWebInterface) {
   node[stopOnStall]           = smuffConfig.stepperStopOnStall[FEEDER2];
   node[maxStallCount]         = smuffConfig.stepperMaxStallCnt[FEEDER2];
 
-  if(dumpTo == nullptr) {
-    dumpTo = openCfgFileWrite(TMC_CONFIG_FILE);
-  }
-  if(dumpTo != nullptr) {
-    if(useWebInterface)
-      serializeJson(jsonDoc, *dumpTo);
-    else
-      serializeJsonPretty(jsonDoc, *dumpTo);
-    jsonDoc.clear();
-    closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), TMC_CONFIG_FILE);
-    return true;
-  }
-  return false;
+  return dumpConfig(dumpTo, useWebInterface, TMC_CONFIG_FILE, jsonDoc);
 }
 
 /*
@@ -794,12 +819,11 @@ bool writeTmcConfig(Print* dumpTo, bool useWebInterface) {
 */
 bool writeServoMapping(Print* dumpTo, bool useWebInterface)
 {
-
   if(dumpTo == nullptr) {
     if(!initSD())
       return false;
   }
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to serialize
+  DynamicJsonDocument jsonDoc(scapacity); // use memory on heap to serialize
   // create servo mappings
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   char item[15];
@@ -819,31 +843,36 @@ bool writeServoMapping(Print* dumpTo, bool useWebInterface)
   node[servoOutput] = 0;
   #endif
 
+  return dumpConfig(dumpTo, useWebInterface, SERVOMAP_FILE, jsonDoc);
+}
+
+/*
+  Writes the Revolver stepper mapping to SD-Card or Serial
+*/
+bool writeRevolverMapping(Print* dumpTo, bool useWebInterface) {
   if(dumpTo == nullptr) {
-    dumpTo = openCfgFileWrite(SERVOMAP_FILE);
+    if(!initSD())
+      return false;
   }
-  if(dumpTo != nullptr) {
-    if(useWebInterface)
-      serializeJson(jsonDoc, *dumpTo);
-    else
-      serializeJsonPretty(jsonDoc, *dumpTo);
-    closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), SERVOMAP_FILE);
-    return true;
+  DynamicJsonDocument jsonDoc(scapacity); // use memory on heap to serialize
+  // create revolver mappings
+  char item[15];
+  for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
+    sprintf_P(item, P_Tool, i);
+    jsonDoc[item] = stepperPosClosed[i];
   }
-  return false;
+  return dumpConfig(dumpTo, useWebInterface, STEPPERMAP_FILE, jsonDoc);
 }
 
 /*
   Writes materials configuration.
 */
 bool writeMaterials(Print* dumpTo, bool useWebInterface) {
-
   if(dumpTo == nullptr) {
     if(!initSD())
       return false;
   }
-  StaticJsonDocument<scapacity> jsonDoc; // use memory on stack to deserialize
+  DynamicJsonDocument jsonDoc(scapacity); // use memory on heap to deserialize
   // create materials
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   char item[15];
@@ -851,24 +880,13 @@ bool writeMaterials(Print* dumpTo, bool useWebInterface) {
   for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
     sprintf_P(item, P_Tool, i);
     JsonObject node = jsonObj.createNestedObject(item);
-    node[color] = smuffConfig.materials[i];
+    node[material] = smuffConfig.materials[i];
+    node[color] = smuffConfig.materialNames[i];
     node[pfactor] = smuffConfig.purges[i];
     sprintf(tmp,"%06lX", smuffConfig.materialColors[i]);
     node[colorVal] = tmp;
   }
-  if(dumpTo == nullptr) {
-    dumpTo = openCfgFileWrite(MATERIALS_FILE);
-  }
-  if(dumpTo != nullptr) {
-    if(useWebInterface)
-      serializeJson(jsonDoc, *dumpTo);
-    else
-      serializeJsonPretty(jsonDoc, *dumpTo);
-    closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), MATERIALS_FILE);
-    return true;
-  }
-  return false;
+  return dumpConfig(dumpTo, useWebInterface, MATERIALS_FILE, jsonDoc);
 }
 
 /*
@@ -878,23 +896,13 @@ bool writeSwapTools(Print* dumpTo, bool useWebInterface) {
   if(dumpTo == nullptr) {
     return false;
   }
-  StaticJsonDocument<scapacity> jsonDoc;
+  DynamicJsonDocument jsonDoc(scapacity); // use memory on heap to deserialize
   char tmp[16];
   for(uint8_t i=0; i < MAX_TOOLS; i++) {
     sprintf_P(tmp, P_Tool, i);
     jsonDoc[tmp] = swapTools[i];
   }
-  if(dumpTo != nullptr) {
-    if(useWebInterface)
-      serializeJson(jsonDoc, *dumpTo);
-    else
-      serializeJsonPretty(jsonDoc, *dumpTo);
-    closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), "Swaps");
-    return true;
-  }
-  return false;
-
+  return dumpConfig(dumpTo, useWebInterface, nullptr, jsonDoc);
 }
 
 bool deserializeSwapTools(const char* cfg) {

@@ -29,6 +29,7 @@
 #define SD_READING_TMC        4
 #define SD_READING_SERVOS     5
 #define SD_READING_PURGES     6
+#define SD_READING_STEPPERS   7
 
 const char P_MenuItemBack [] PROGMEM        = { "< BACK\n" };
 const char P_MenuItemSeparator [] PROGMEM   = { "\035\n"};
@@ -164,6 +165,7 @@ const char P_M503S3[] PROGMEM               = { "\n/* TMC Driver */\n" };
 const char P_M503S4[] PROGMEM               = { "\n/* Servo mapping */\n" };
 const char P_M503S5[] PROGMEM               = { "\n/* Materials */\n" };
 const char P_M503S6[] PROGMEM               = { "\n/* Tool swaps */\n" };
+const char P_M503S7[] PROGMEM               = { "\n/* Revolver mapping */\n" };
 
 const char P_ConfigWriteSuccess[] PROGMEM   = { "Config\nsuccessfully\nwritten!" };
 const char P_ConfigWriteFail[] PROGMEM      = { "Saving failed!\nPlease check SD-Card." };
@@ -190,6 +192,7 @@ const char P_SD_ReadingMaterials[] PROGMEM  = { "Materials" };
 const char P_SD_ReadingTmc[] PROGMEM        = { "TMC" };
 const char P_SD_ReadingServos[] PROGMEM     = { "Servos" };
 const char P_SD_ReadingPurges[] PROGMEM     = { "Purges" };
+const char P_SD_ReadingSteppers[] PROGMEM   = { "Steppers" };
 const char P_SD_InitError[] PROGMEM         = { "SD-Card not ready!" };
 const char P_SD_NoConfig[] PROGMEM          = { "No config file found!" };
 
@@ -205,6 +208,7 @@ const char P_TResponse[] PROGMEM            = { "T%d\n" };
 const char P_GResponse[] PROGMEM            = { "G%d\n" };
 const char P_MResponse[] PROGMEM            = { "M%d\n" };
 const char P_M250Response[] PROGMEM         = { "M250 C%d\n" };
+const char P_XlateSpeedResponse[] PROGMEM   = { "echo: speed: %s\n" };
 const char P_Tool[] PROGMEM                 = { "T%d" };
 const char P_AccelSpeedMms[] PROGMEM        = { "X (S):\t%d mm/s, Delay: %d\nY (R):\t%d mm/s, Delay: %d\nZ (F):\t%d mm/s%s, Delay: %d, Insert: %d mm/s\n" };
 const char P_AccelSpeedTicks[] PROGMEM      = { "X (S):\t%d ticks, Delay: %d\nY (R):\t%d ticks, Delay: %d\nZ (F):\t%d ticks%s, Delay: %d, Insert: %d ticks\n" };

@@ -200,7 +200,8 @@ typedef struct
   bool useEndstop2 = false;
 
   uint16_t motorOnDelay = 30;
-  char materials[MAX_TOOLS][MAX_MATERIAL_LEN];
+  char materials[MAX_TOOLS][MAX_MATERIAL_LEN+1];
+  char materialNames[MAX_TOOLS][MAX_MATERIAL_NAME_LEN+1];
   uint32_t materialColors[MAX_TOOLS];
   uint16_t purges[MAX_TOOLS];
   bool wipeBeforeUnload = false;
@@ -211,6 +212,7 @@ typedef struct
   bool invertRelay = false;
   bool menuOnTerminal = false;
   bool webInterface = false;
+  float revolverClose = 0;
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -310,6 +312,7 @@ extern Adafruit_PWMServoDriver servoPwm;
 extern int8_t servoMapping[];
 #endif
 extern uint8_t servoPosClosed[];
+extern float stepperPosClosed[];
 
 extern SMuFFConfig smuffConfig;
 extern GCodeFunctions gCodeFuncsM[];
@@ -371,6 +374,8 @@ extern volatile bool fastLedFadeFlag;
 extern volatile bool isIdle;
 extern bool tmcWarning;
 extern bool isTestrun;
+extern bool isTestPending;
+extern char testToRun[];
 extern bool isUsingTmc;
 extern volatile bool sdRemoved;
 
@@ -464,6 +469,7 @@ extern bool readConfig();
 extern bool readTmcConfig();
 extern bool readMaterials();
 extern bool readServoMapping();
+extern bool readRevolverMapping();
 extern bool writeConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeMainConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeSteppersConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
@@ -471,6 +477,7 @@ extern bool writeTmcConfig(Print *dumpTo = nullptr, bool useWebInterface = false
 extern bool writeServoMapping(Print *dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeMaterials(Print *dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeSwapTools(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeRevolverMapping(Print* dumpTo = nullptr, bool useWebInterface = false);
 extern bool deserializeSwapTools(const char* cfg);
 extern bool saveConfig(String& buffer);
 extern bool serializeTMCStats(Print* out, uint8_t axis, int8_t version, bool isStealth, uint16_t powerCfg, uint16_t powerRms, uint16_t microsteps, bool ms1, bool ms2, const char* uart, const char* diag, const char* ola, const char* olb, const char* s2ga, const char* s2gb, const char* ot_stat);
@@ -577,7 +584,7 @@ extern void playSequence();
 extern void setParserBusy();
 extern void setParserReady();
 extern void runHomeAfterFeed();
-
+extern void purgeFilament();
 
 extern void showLed(uint8_t mode, uint8_t count);
 extern void setBacklightIndex(int color);
@@ -604,7 +611,7 @@ extern void showMemInfo(int8_t serial);
 extern uint8_t scanI2CDevices(uint8_t *devices, uint8_t);
 extern bool initSD(bool showStatus = true);
 
-extern unsigned long translateSpeed(uint16_t speed, uint8_t axis);
+extern unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTranslation = false);
 extern bool getEncoderButton(bool encoderOnly);
 extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool *isClicked);
 
@@ -616,3 +623,5 @@ extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* e
 
 extern void sendTMCStatus(uint8_t axis, int8_t port);
 extern Print* getSerialInstance(int8_t serial);
+extern void sendStates();
+extern void setTestRunPending(const char* testfile);

@@ -34,5 +34,6 @@
  "InvRelay": false,
  "TermMenu": false,
  "Servo1Cyc": 0,
- "Servo2Cyc": 0
+ "Servo2Cyc": 0,
+ "RevolverClose": 2.0
 }

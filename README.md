@@ -44,6 +44,17 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.28** - More bug fixing for WebInterface, added linear stepper support for Lid
+
++ fixed bug causing test GCode not being executed when initiated over [WebInterface](https://github.com/technik-gegg/SMuFF-WI).
++ added new periodical status infomration for TMC, SD-Card and LID.
++ changed the periodical status interval to 0.5 sec. when connected to the [WebInterface](https://github.com/technik-gegg/SMuFF-WI).
++ added option to compile for **V6S**, which is basically V6 but using a linear stepper on the Y-Axis (Revolver) for the Lid instead of a servo.
+**Please notice:** *When using this option, the servo signals (Wiper & Cutter) come from the Z-Axis socket. Wiper signal moves to DIR pin, whereas Cutter signal moves to MS3 pin. That's because the STEP and EN pins are being used for the 3rd serial interface.*
++ added REVOLVERMAP.json to the configuration files, which defines the travel distance for the Lid linear stepper on each slot separately.
++ added materials (as in PLA, PETG, ...) to the materials definitions. Old "Materials" became "MaterialColors".
++ cleaned up code in GCode parser, saved a few bytes of Flash memory.
+
 **2.27** - Bug fixes for WebInterface
 
 + corrected setting for "Speeds in mm/s".

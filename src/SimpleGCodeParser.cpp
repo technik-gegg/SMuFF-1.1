@@ -24,6 +24,8 @@
 #include "SMuFF.h"
 
 extern ZStepper steppers[];
+extern int8_t currentSerial;
+
 volatile bool parserBusy = false;
 volatile bool sendingResponse = false;
 uint16_t currentLine = 0;
@@ -121,6 +123,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
   }
 
   setParserBusy();
+  currentSerial = serial;
 
   if(line.startsWith("G")) {
     if(parse_G(line.substring(1), serial))
@@ -172,6 +175,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
     }
   }
   setParserReady();
+  currentSerial = -1;
 }
 
 bool parse_T(const String& buf, int8_t serial) {

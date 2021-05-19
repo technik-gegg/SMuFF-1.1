@@ -105,6 +105,7 @@ const char* lBtnHold PROGMEM           = "LBtnHold";
 const char* rBtnDown PROGMEM           = "RBtnDown";
 const char* rBtnHold PROGMEM           = "RBtnHold";
 const char* speedsInMMS PROGMEM        = "SpdsInMms";
+const char* xlateSpeed PROGMEM         = "XlateSpeed";
 const char* ms3Config PROGMEM          = "MS3";
 const char* motDelay PROGMEM           = "MDly";
 const char* useCutter PROGMEM          = "UseCutter";
@@ -125,4 +126,6 @@ const char* statusBpm PROGMEM          = "StatusBPM";
 const char* invertRelay PROGMEM        = "InvRelay";
 const char* menuOnTerm PROGMEM         = "TermMenu";
 const char* webInterface PROGMEM       = "WebInterface";
+const char* revolverClosed PROGMEM     = "RevolverClose";
+
 

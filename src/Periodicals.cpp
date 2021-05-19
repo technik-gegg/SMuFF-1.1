@@ -41,6 +41,23 @@ void every250ms() {
 }
 
 void every500ms() {
+  if(smuffConfig.webInterface) {
+    sendStates();
+  }
+  // Add your periodical code here
+}
+
+void sendStates() {
+  if(parserBusy || sendingResponse) {
+    __debugS(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
+  }
+  // send status of endstops and current tool to all listeners, if configured
+  if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone && !parserBusy) {
+    printPeriodicalState(0);
+    if(CAN_USE_SERIAL1)                                   printPeriodicalState(1);
+    if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)   printPeriodicalState(2);
+    if(CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)   printPeriodicalState(3);
+  }
   // Add your periodical code here
 }
 
@@ -67,17 +84,9 @@ void every1s() {
 }
 
 void every2s() {
-  if(parserBusy || sendingResponse) {
-    __debugS(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
+  if(!smuffConfig.webInterface) {
+    sendStates();
   }
-  // send status of endstops and current tool to all listeners, if configured
-  if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone && !parserBusy) {
-    printPeriodicalState(0);
-    if(CAN_USE_SERIAL1)                                   printPeriodicalState(1);
-    if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)   printPeriodicalState(2);
-    if(CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)   printPeriodicalState(3);
-  }
-  // Add your periodical code here
 }
 
 void every5s() {

@@ -65,8 +65,8 @@
 #if defined(SMUFF_V6S)  // V6S uses linear stepper for lid; servo signals move to Z-Driver socket
 #define SERVO_OPEN_DRAIN 0
 #define SERVO1_PIN PC5  // Z-DIR (Wiper Servo)
-#define SERVO2_PIN -1   // not used
-#define SERVO3_PIN PD2  // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
+#define SERVO2_PIN -1   // not used because of the linear stepper
+#define SERVO3_PIN PD2  // Z-MS3 (Cutter Servo)
 #else
 #define SERVO_OPEN_DRAIN 0
 #define SERVO1_PIN PC2 // E0-STOP (Wiper Servo)

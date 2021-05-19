@@ -554,6 +554,7 @@ void setupSteppers()
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MIN);
   steppers[REVOLVER].stepFunc = overrideStepY;
+  steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerMM[REVOLVER]*10);
   steppers[REVOLVER].setStepsPerMM(smuffConfig.stepsPerMM[REVOLVER]);
   steppers[REVOLVER].endstopFunc = endstopEventY;
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir[REVOLVER]);

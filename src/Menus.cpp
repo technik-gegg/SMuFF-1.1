@@ -199,7 +199,7 @@ void setupPurgeMenu(char* menu) {
   uint8_t n=7;    // next possible ordinal (after separator)
   for(uint8_t i=0; i< smuffConfig.toolCount; i++) {
     uint8_t ndx = swapTools[i];
-    sprintf_P(tmp, P_ToolPurgeMenu, i, smuffConfig.materials[ndx], smuffConfig.purges[ndx]);
+    sprintf_P(tmp, P_ToolPurgeMenu, i, smuffConfig.materialNames[ndx], smuffConfig.purges[ndx]);
     strcat(menu, tmp);
     menuOrdinals[n++] = 10+i;
   }
@@ -1456,7 +1456,7 @@ void saveSettings() {
 void checkSaveSettings() {
   userBeep();
   uint8_t button = showDialog(P_TitleWarning, P_SettingsChanged, P_AskSave, P_YesNoButtons);
-  every2s();  // send states once
+  sendStates();  // send states once
   if (button == 1) {
     saveSettings();
   }

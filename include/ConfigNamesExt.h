@@ -100,6 +100,7 @@ extern char* menuOnTerm;
 extern char* webInterface;
 extern char* fanSpeed;
 extern char* speedsInMMS;
+extern char* xlateSpeed;
 extern char* contrast;
 extern char* servoMinPwm;
 extern char* servoMaxPwm;
@@ -119,6 +120,6 @@ extern char* servoOutput;
 extern char* servoClosed;
 extern char* servoOpened;
 extern char* wiper;
-
+extern char* revolverClosed;
 
 

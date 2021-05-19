@@ -62,6 +62,7 @@ char PROGMEM tuneEncoder[MAX_TUNE3] = {"F1440D3."};
 
 uint16_t sequence[MAX_SEQUENCE][3]; // store for tune sequence for background playing
 uint8_t sequenceCnt = 0;
+int8_t currentSerial = -1;
 
 #define _F_ 0
 #define _D_ 1
@@ -519,7 +520,10 @@ void sendTMCStatus(uint8_t axis, int8_t port) {
       showDriver->s2gb() ? P_Yes : P_No,
       ot_stat);
   printResponse("\n", port);
-
+  #if defined(SMUFF_V6S)
+  if(axis == REVOLVER)
+    steppers[axis].setEnabled(false);
+  #endif
 }
 
 void resetDisplay()
@@ -541,8 +545,8 @@ void drawSelectingMessage(uint8_t tool)
   display.clearBuffer();
   sprintf_P(_sel, P_Selecting);
   sprintf_P(_wait, P_Wait);
-  if (*smuffConfig.materials[tool] != 0)
-    sprintf_P(tmp, PSTR("%s"), smuffConfig.materials[tool]);
+  if (*smuffConfig.materialNames[tool] != 0)
+    sprintf_P(tmp, PSTR("%s"), smuffConfig.materialNames[tool]);
   else
     sprintf_P(tmp, P_ToolMenu, tool);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
@@ -581,6 +585,11 @@ void drawPurgingMessage(uint16_t len, uint8_t tool)
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
   display.updateDisplay();
+  if(smuffConfig.webInterface) {
+    sprintf_P(tmp, PSTR("echo: purging: T:%d L:%d C:%f\n"), tool, len, len*2.4);
+    if(currentSerial != -1)
+      printResponse(tmp, currentSerial);
+  }
 #if defined(USE_TERMINAL_MENUS)
   if(smuffConfig.menuOnTerminal) {
     terminalClear(true);
@@ -720,6 +729,9 @@ void drawSDStatus(int8_t stat)
     case SD_READING_PURGES:
       sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
       break;
+    case SD_READING_STEPPERS:
+      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingSteppers);
+      break;
   }
   display.clearBuffer();
   drawLogo();
@@ -803,7 +815,29 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder)
   {
     //__debugS(PSTR("Stepper home non SERVO variant"));
     // not a servo variant, home stepper which ever it is
-    steppers[index].home();
+    if (index != REVOLVER)
+      steppers[index].home();
+    else {
+      uint8_t retries = 5;
+      do {
+        steppers[index].home();
+        if(steppers[index].getEndstopHit())
+          break;
+        delay(250);
+        retries--;
+        if(retries == 0)
+          break;
+        __debugS(PSTR("Revolver not homed, retrying: %d"), retries);
+      } while(1);
+    }
+
+    #if defined(SMUFF_V6S)
+    if (index == REVOLVER) {
+      steppers[index].setEnabled(false);    // turn off LID stepper when done
+      if(steppers[index].getEndstopHit())
+        lidOpen = true;
+    }
+    #endif
   }
 
   //__debugS(PSTR("DONE Stepper home"));
@@ -819,6 +853,9 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder)
   saveStore();
   //__debugS(PSTR("DONE save store"));
   setParserReady();
+  #if defined(SMUFF_V6S)
+    return lidOpen;
+  #endif
   return true;
 }
 
@@ -944,6 +981,7 @@ void positionRevolver()
 {
   // disable Feeder temporarily
   steppers[FEEDER].setEnabled(false);
+  #if !defined(SMUFF_V6S)
   if (smuffConfig.resetBeforeFeed && !ignoreHoming)
   {
     if (smuffConfig.revolverIsServo)
@@ -957,7 +995,18 @@ void positionRevolver()
     steppers[FEEDER].setEnabled(true);
     return;
   }
+  #endif
 
+  #if defined(SMUFF_V6S)
+    float newPos = stepperPosClosed[toolSelected];
+    if(newPos > 0) {
+      steppers[REVOLVER].setEnabled(true);   // turn on the Lid stepper
+      prepSteppingRelMillimeter(REVOLVER, newPos, true); // go to position, don't mind the endstop
+      //__debugS(PSTR("Position Revolver, pos=%f"), newPos);
+      remainingSteppersFlag |= _BV(REVOLVER);
+      runAndWait(REVOLVER);
+    }
+  #else
   long pos = steppers[REVOLVER].getStepPosition();
   long newPos = smuffConfig.firstRevolverOffset + (toolSelected * smuffConfig.revolverSpacing);
   // calculate the new position and decide whether to move forward or backard
@@ -989,8 +1038,14 @@ void positionRevolver()
       runAndWait(-1);
     }
   }
+  #endif
   steppers[FEEDER].setEnabled(true);
   delay(150);
+  #if defined(SMUFF_V6S)
+  if(toolSelected != -1)
+    lidOpen = false;
+  steppers[REVOLVER].setEnabled(false);   // turn off the Lid stepper
+  #endif
   //__debugS(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
 
@@ -1295,8 +1350,21 @@ bool loadFilament(bool showMessage)
     runAndWait(FEEDER);
   }
 
+  purgeFilament();
+  steppers[FEEDER].setMaxSpeed(curSpeed);
+  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
+  saveStore();
+  runHomeAfterFeed();
+  signalDuetReady();
+  setParserReady();
+  return true;
+}
+
+void purgeFilament() {
   if (smuffConfig.usePurge && smuffConfig.purgeLength > 0 && !steppers[FEEDER].getAbort())
   {
+    positionRevolver();
+    uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
     changeFeederSpeed(smuffConfig.purgeSpeed);
     uint16_t len = smuffConfig.purgeLength;
     if (smuffConfig.purges[toolSelected] > 100)
@@ -1307,15 +1375,8 @@ bool loadFilament(bool showMessage)
     prepSteppingRelMillimeter(FEEDER, len, true);
     runAndWait(FEEDER);
     delay(250);
+    steppers[FEEDER].setMaxSpeed(curSpeed);
   }
-
-  steppers[FEEDER].setMaxSpeed(curSpeed);
-  dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
-  saveStore();
-  runHomeAfterFeed();
-  signalDuetReady();
-  setParserReady();
-  return true;
 }
 
 /*
@@ -1792,6 +1853,11 @@ bool selectTool(int8_t ndx, bool showMessage)
     // release servo prior moving the selector
     setServoLid(SERVO_OPEN);
   }
+  else {
+    #if defined(SMUFF_V6S)
+    setServoLid(SERVO_OPEN);
+    #endif
+  }
   //__debugS(PSTR("Selecting tool: %d"), ndx);
   setParserBusy();
   drawSelectingMessage(ndx);
@@ -1867,8 +1933,12 @@ void resetRevolver()
   {
     if (!smuffConfig.revolverIsServo)
     {
+      #if !defined(SMUFF_V6S)
       prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + (toolSelected * smuffConfig.revolverSpacing), true);
       runAndWait(REVOLVER);
+      #else
+      positionRevolver();
+      #endif
     }
     else
     {
@@ -1928,7 +1998,7 @@ void printPeriodicalState(int8_t serial)
   const char *_open = "off";
   int8_t tool = getToolSelected();
 
-  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\n"),
+  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\tLID: %s\n"),
             tool,
             selectorEndstop() ? _triggered : _open,
             revolverEndstop() ? _triggered : _open,
@@ -1937,7 +2007,8 @@ void printPeriodicalState(int8_t serial)
             isUsingTmc ? '+' : '-',
             tmcWarning ? _triggered : _open,
             sdRemoved ? _triggered : _open,
-            settingsChanged ? _triggered : _open);
+            settingsChanged ? _triggered : _open,
+            !lidOpen ? _triggered : _open);
   printResponse(tmp, serial);
 }
 
@@ -2329,7 +2400,7 @@ void setSignalPort(uint8_t port, bool state)
     #if defined(DUET_SIG_FED_PIN)
     if(DUET_SIG_FED_PIN != -1) {
       digitalWrite(DUET_SIG_FED_PIN, state);
-      __debugS(PSTR("Duet Feeder Signal %s"), state ? "HIGH" : "LOW");
+      //__debugS(PSTR("Duet Feeder Signal %s"), state ? "HIGH" : "LOW");
     }
     #endif
   }
@@ -2337,7 +2408,7 @@ void setSignalPort(uint8_t port, bool state)
     #if defined(DUET_SIG_SEL_PIN)
     if(DUET_SIG_SEL_PIN != -1) {
       digitalWrite(DUET_SIG_SEL_PIN, state);
-      __debugS(PSTR("Duet Selector Signal %s"), state ? "HIGH" : "LOW");
+      //__debugS(PSTR("Duet Selector Signal %s"), state ? "HIGH" : "LOW");
     }
     #endif
   }
@@ -2596,22 +2667,42 @@ void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, 
     }
   }
 
-  sprintf_P(gco, PSTR("%-25s"), line);
-  sprintf_P(err, PSTR("%4lu"), feederErrors);
-  sprintf_P(lop, PSTR("%4lu"), loopCnt);
-  sprintf_P(cmdc, PSTR("%5lu"), cmdCnt);
-  sprintf_P(tc, PSTR("%5ld"), toolChanges);
-  sprintf_P(stallS, PSTR("%4lu"), stallDetectedCountSelector);
-  sprintf_P(stallF, PSTR("%4lu"), stallDetectedCountFeeder);
-  sprintf_P(runtm, PSTR("%4d:%02d:%02d"), (int)(secs / 3600), (int)(secs / 60) % 60, (int)(secs % 60));
-  memset(ehit, 0, ArraySize(ehit));
-  memset(emiss, 0, ArraySize(emiss));
-  for (uint8_t tcnt = 0; tcnt < smuffConfig.toolCount; tcnt++)
-  {
-    sprintf_P(etmp, PSTR("%5lu | "), endstop2Hit[tcnt]);
-    strcat(ehit, etmp);
-    sprintf_P(etmp, PSTR("%5lu | "), endstop2Miss[tcnt]);
-    strcat(emiss, etmp);
+  if(!smuffConfig.webInterface) {
+    sprintf_P(gco, PSTR("%-25s"), line);
+    sprintf_P(err, PSTR("%4lu"), feederErrors);
+    sprintf_P(lop, PSTR("%4lu"), loopCnt);
+    sprintf_P(cmdc, PSTR("%5lu"), cmdCnt);
+    sprintf_P(tc, PSTR("%5ld"), toolChanges);
+    sprintf_P(stallS, PSTR("%4lu"), stallDetectedCountSelector);
+    sprintf_P(stallF, PSTR("%4lu"), stallDetectedCountFeeder);
+    sprintf_P(runtm, PSTR("%4d:%02d:%02d"), (int)(secs / 3600), (int)(secs / 60) % 60, (int)(secs % 60));
+    memset(ehit, 0, ArraySize(ehit));
+    memset(emiss, 0, ArraySize(emiss));
+    for (uint8_t tcnt = 0; tcnt < smuffConfig.toolCount; tcnt++){
+      sprintf_P(etmp, PSTR("%5lu | "), endstop2Hit[tcnt]);
+      strcat(ehit, etmp);
+      sprintf_P(etmp, PSTR("%5lu | "), endstop2Miss[tcnt]);
+      strcat(emiss, etmp);
+    }
+  }
+  else {
+    sprintf_P(gco, PSTR("%s"), line);
+    sprintf_P(err, PSTR("%lu"), feederErrors);
+    sprintf_P(lop, PSTR("%lu"), loopCnt);
+    sprintf_P(cmdc, PSTR("%lu"), cmdCnt);
+    sprintf_P(tc, PSTR("%ld"), toolChanges);
+    sprintf_P(stallS, PSTR("%lu"), stallDetectedCountSelector);
+    sprintf_P(stallF, PSTR("%lu"), stallDetectedCountFeeder);
+    sprintf_P(runtm, PSTR("%4d:%02d:%02d"), (int)(secs / 3600), (int)(secs / 60) % 60, (int)(secs % 60));
+    memset(ehit, 0, ArraySize(ehit));
+    memset(emiss, 0, ArraySize(emiss));
+    for (uint8_t tcnt = 0; tcnt < smuffConfig.toolCount; tcnt++) {
+      sprintf_P(etmp, PSTR("%lu|"), endstop2Hit[tcnt]);
+      strcat(ehit, etmp);
+      sprintf_P(etmp, PSTR("%lu|"), endstop2Miss[tcnt]);
+      strcat(emiss, etmp);
+    }
+
   }
   char *lines[10];
   // format report to be sent to terminal
@@ -2646,6 +2737,13 @@ void printReport(const char* line, unsigned long loopCnt, unsigned long cmdCnt, 
 }
 
 bool isTestrun = false;
+bool isTestPending = false;
+char testToRun[80];
+
+void setTestRunPending(const char* testfile) {
+  strncpy(testToRun, testfile, ArraySize(testToRun));
+  isTestPending = true;
+}
 
 void testRun(const char *fname)
 {
@@ -2697,6 +2795,7 @@ void testRun(const char *fname)
       encoder.setLED(LED_GREEN, true);
 #endif
       isTestrun = true;
+      isTestPending = false;
       while (1)
       {
         setPwrSave(0);
@@ -2724,8 +2823,11 @@ void testRun(const char *fname)
           if (*line == ';')
             continue;
           gCode = String(line);
-          if (gCode.indexOf("{RNDT}") > -1)
-          {
+          if(gCode.indexOf("{PRPT}") > -1) {
+            printReport(line, loopCnt, cmdCnt, toolChanges, secs, endstop2Hit, endstop2Miss);
+            continue;
+          }
+          if (gCode.indexOf("{RNDT}") > -1) {
             // randomize the next tool number in a loop to avoid
             // selecting the same tool that's currently set
             int8_t retry = smuffConfig.toolCount;
@@ -2738,8 +2840,7 @@ void testRun(const char *fname)
             } while(tool == lastTool);
             gCode.replace("{RNDT}", String(tool));
           }
-          if (gCode.indexOf("{RNDTL}") > -1)
-          {
+          if (gCode.indexOf("{RNDTL}") > -1) {
             gCode.replace("{RNDTL}", String(tool));
           }
           parseGcode(gCode, -1);
@@ -2794,6 +2895,8 @@ void testRun(const char *fname)
         }
         drawTestrunMessage(loopCnt, msg);
         delay(150);
+        if (!showReport)
+            printReport(line, loopCnt, cmdCnt, toolChanges, secs, endstop2Hit, endstop2Miss);
       }
       file.close();
 #if defined(USE_LEONERD_DISPLAY)
@@ -2807,6 +2910,9 @@ void testRun(const char *fname)
       delay(3000);
     }
   }
+  #if defined(SMUFF_V6S)
+  steppers[REVOLVER].setEnabled(false);
+  #endif
   isTestrun = false;
 }
 
@@ -3047,13 +3153,14 @@ void blinkLED()
 
 /*
   Translates speeds from mm/s into MCU timer ticks.
-  Please notice: This method runs the stepper far slower since it has to ensure that the
+  Please notice: Using speeds in mm/s will run the steppers far slower since it has to ensure that the
   distance per second will match.
 */
-unsigned long translateSpeed(uint16_t speed, uint8_t axis)
+unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTranslation)
 {
-  if (!smuffConfig.speedsInMMS)
-    return speed;
+  if(!forceTranslation)
+    if (!smuffConfig.speedsInMMS)
+      return speed;
   uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution / 360 : smuffConfig.stepsPerMM[axis];
   uint8_t delay = smuffConfig.stepDelay[axis];
   // correction can be set via M202 GCode command if needed; Default is 1.0 (i.e. no correction)
@@ -3086,19 +3193,26 @@ unsigned long translateSpeed(uint16_t speed, uint8_t axis)
 
 void setServoLid(uint8_t pos)
 {
-#if !defined(MULTISERVO)
+#if !defined(SMUFF_V6S)
+  #if !defined(MULTISERVO)
   uint8_t posForTool = (toolSelected < 0 || toolSelected > smuffConfig.toolCount-1) ? 0 : servoPosClosed[toolSelected];
   uint8_t p = (pos == SERVO_OPEN) ? smuffConfig.revolverOffPos : (posForTool == 0) ? smuffConfig.revolverOnPos : posForTool;
   if(servoLid.getDegree() != p) {
     //__debugS(PSTR("setServoLid called with %d (posForTool: %d)"), pos, posForTool);
     setServoPos(SERVO_LID, p);
   }
-#else
+  #else
   uint8_t p = (pos == SERVO_OPEN) ? servoPosClosed[toolSelected] - SERVO_CLOSED_OFS : servoPosClosed[toolSelected];
   //__debugS(PSTR("Tool%d = %d"), toolSelected, p);
   setServoPos(toolSelected + 10, p);
-#endif
+  #endif
   lidOpen = pos == SERVO_OPEN;
+#else
+  if(pos == SERVO_OPEN)
+    moveHome(REVOLVER, false, false);
+  else
+    positionRevolver();
+#endif
 }
 
 uint8_t scanI2CDevices(uint8_t *devices, uint8_t maxDevices)
