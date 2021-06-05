@@ -121,5 +121,8 @@ extern char* servoClosed;
 extern char* servoOpened;
 extern char* wiper;
 extern char* revolverClosed;
+extern char* useSplitter;
+extern char* splitterDist;
+extern char* feedState;
 
 

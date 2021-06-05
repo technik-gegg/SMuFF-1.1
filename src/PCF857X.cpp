@@ -5,27 +5,31 @@
  *  it under the terms of the GNU General Public License as published by\n
  *  the Free Software Foundation, either version 3 of the License, or\n
  *  (at your option) any later version.\n
- * 
+ *
  *  This program is distributed in the hope that it will be useful,\n
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of\n
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n
  *  GNU General Public License for more details.\n
- * 
+ *
  *  You should have received a copy of the GNU General Public License\n
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
 /*
-	Technik Gegg 2020-05-06: 
-		Corrected ::updateGPIO() method to respect either 8 bit (8574) or 16 bit (8575) 
+	Technik Gegg 2020-05-06:
+		Corrected ::updateGPIO() method to respect either 8 bit (8574) or 16 bit (8575)
+	Technik Gegg 2021-05-31:
+		changed I2C access to use HAL
 */
 
 /* Dependencies */
-#include <Wire.h>
+//#include <Wire.h>
 #include "PCF857X.h"
 #ifdef PCF857X_INTERRUPT_SUPPORT
 #include "PCint.h"
 #endif
+
+extern void __debugS(const char *fmt, ...);
 
 // max pins of chips: 8 pins for PCF8574, 16 pins for PCF8575
 uint8_t PCF857X_MAX_PINS[2] = { 8, 16 };
@@ -38,15 +42,31 @@ PCF857X::PCF857X() :
 {
 }
 
-void PCF857X::begin(uint8_t address, uint8_t chip) {
+#if !defined(USE_SW_TWI)
+void PCF857X::begin(TwoWire* i2cInst, uint8_t address, uint8_t chip) {
+	_i2cBusInst = i2cInst;
+	begin(address, chip);
+}
+#else
+void PCF857X::begin(SoftWire* i2cInst, uint8_t address, uint8_t chip) {
+	_i2cBusInst = i2cInst;
+	begin(address, chip);
+}
+#endif
 
+void PCF857X::begin(uint8_t address, uint8_t chip) {
 	/* Store the I2C address */
 	_address = address;
 	/* Store the chip type */
 	_chip = chip;
 	/* Init the Wire library */
-	Wire.begin();
-	readGPIO();
+	if(_i2cBusInst != nullptr) {
+		_i2cBusInst->begin();
+		readGPIO();
+	}
+	else {
+		__debugS(PSTR("I2C Bus Instance not set"));
+	}
 }
 
 void PCF857X::pinMode(uint8_t pin, uint8_t mode) {
@@ -213,7 +233,7 @@ void PCF857X::checkForInterrupt() {
 		return;
 	else
 		_isrIgnore = 1;
-		
+
 	/* Re-enable interrupts to allow Wire library to work */
 	sei();
 
@@ -250,7 +270,7 @@ void PCF857X::checkForInterrupt() {
 			break;
 		}
 	}
-	
+
 	/* Turn off ISR ignore flag */
 	_isrIgnore = 0;
 }
@@ -278,13 +298,16 @@ void PCF857X::readGPIO() {
 #endif
 
 	/* Start request, wait for data and receive GPIO values as byte */
-	Wire.requestFrom(_address, (uint8_t) 0x02);
-	if (Wire.available() >= 2) {
-		if (_chip == CHIP_PCF8575) {
+	if (_chip == CHIP_PCF8575) {
+		_i2cBusInst->requestFrom(_address, (uint8_t) 0x02);
+		if (_i2cBusInst->available() >= 2) {
 			_PIN = I2CREAD(); /* LSB first */
 			_PIN |= I2CREAD() << 8;
-		} 
-		else {
+		}
+	}
+	else {
+		_i2cBusInst->requestFrom(_address, (uint8_t) 0x01);
+		if (_i2cBusInst->available() >= 1) {
 			// Technik Gegg: Corrected wrong assignment & shifting
 			_PIN = I2CREAD();
 		}
@@ -292,12 +315,12 @@ void PCF857X::readGPIO() {
 }
 
 /*
-	Technik Gegg: Corrected write function to respect either 8 bit (8574) or 16 bit (8575) 
+	Technik Gegg: Corrected write function to respect either 8 bit (8574) or 16 bit (8575)
 */
 void PCF857X::updateGPIO() {
 
 	/* Start communication and send GPIO values as byte */
-	Wire.beginTransmission(_address);
+	_i2cBusInst->beginTransmission(_address);
 	if (_chip == CHIP_PCF8575) {
 		/* Compute new GPIO states */
 		uint16_t value = (_PIN & ~_DDR) | _PORT;
@@ -309,5 +332,5 @@ void PCF857X::updateGPIO() {
 		uint8_t value = (_PIN & ~_DDR) | _PORT;
 		I2CWRITE(value & 0xFF);
 	}
-	Wire.endTransmission();
+	_i2cBusInst->endTransmission();
 }

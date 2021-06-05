@@ -132,11 +132,14 @@ void setupMainMenu(char* menu) {
   if(smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
     sprintf(menu, loadMenu(P_MnuMain0, menuOrdinals), motors, servo, maint);
   }
-  else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2) {
+  else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2 && !smuffConfig.useSplitter) {
     sprintf(menu, loadMenu(P_MnuMain1, menuOrdinals), motors, servo, maint);
   }
   else if(!smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
     sprintf(menu, loadMenu(P_MnuMain2, menuOrdinals), motors, maint);
+  }
+  else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2 && smuffConfig.useSplitter) {
+    sprintf(menu, loadMenu(P_MnuMain4, menuOrdinals), motors, servo, maint);
   }
   else {
     sprintf(menu, loadMenu(P_MnuMain3, menuOrdinals), motors, maint);
@@ -182,7 +185,9 @@ void setupOptionsMenu(char* menu) {
     smuffConfig.useCutter ? P_Yes : P_No,
     smuffConfig.cutterOpen,
     smuffConfig.cutterClose,
-    smuffConfig.invertRelay ? P_Yes : P_No
+    smuffConfig.invertRelay ? P_Yes : P_No,
+    smuffConfig.useSplitter ? P_Yes : P_No,
+    String(smuffConfig.splitterDist).c_str()
   );
 }
 
@@ -440,6 +445,14 @@ void showMainMenu() {
         case 18:
           showTestrunMenu(title);
           current_selection = 1;
+          break;
+
+        case 19:
+          loadToSplitter(true);
+          break;
+
+        case 20:
+          unloadFromSplitter(true);
           break;
 
       }
@@ -1567,6 +1580,7 @@ void showOptionsMenu(char* menuTitle) {
   uint32_t startTime = millis();
   uint8_t current_selection = 0;
   int iVal;
+  float fVal;
   bool bVal;
   char *title;
   char _menu[300];
@@ -1687,6 +1701,19 @@ void showOptionsMenu(char* menuTitle) {
             }
             break;
 
+        case 15: // Use Splitter
+            bVal = smuffConfig.useSplitter;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.useSplitter = bVal;
+            }
+            break;
+
+        case 16: // Splitter Distance
+            fVal = smuffConfig.splitterDist;
+            if(showInputDialog(title, P_InMillimeter, &fVal, 0, 200, nullptr, 1)) {
+              smuffConfig.splitterDist = fVal;
+            }
+            break;
 
       }
       startTime = millis();

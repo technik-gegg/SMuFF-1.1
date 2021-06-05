@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.28"
+#define VERSION_STRING    "V2.29"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-05-15"
+#define VERSION_DATE      "2021-05-29"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
@@ -61,6 +61,8 @@
 #define I2C_SERVOCTL_ADDRESS    0x40        // default address for multi servo controller
 #define I2C_EEPROM_ADDRESS      0x50        // default address for EEPROM on E3 2.0
 #define I2C_SERVOBCAST_ADDRESS  0x70        // default address for multi servo controller (Broadcast Address)
+#define I2C_PORTEX_ADDRESS      0x3F
+#define I2C_SPL_MUX_ADDRESS     0x3E
 
 #define SERVO_WIPER         0
 #define SERVO_LID           1
@@ -138,6 +140,7 @@
 #define LOGO_FONT               BASE_FONT
 #define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
 #define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x_t
+#define ICONIC_FONT3            u8g2_font_open_iconic_other_2x_t
 #define TOOL_FONT               u8g2_font_logisoso22_tr
 
 #define FASTLED_STAT_NONE       0

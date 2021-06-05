@@ -67,6 +67,7 @@ extern bool M700(const char* msg, String buf, int8_t serial);
 extern bool M701(const char* msg, String buf, int8_t serial);
 extern bool M906(const char* msg, String buf, int8_t serial);
 extern bool M914(const char* msg, String buf, int8_t serial);
+extern bool M997(const char* msg, String buf, int8_t serial);
 extern bool M999(const char* msg, String buf, int8_t serial);
 extern bool M2000(const char* msg, String buf, int8_t serial);
 extern bool M2001(const char* msg, String buf, int8_t serial);

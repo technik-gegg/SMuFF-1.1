@@ -1,1 +1,6 @@
-M701	Unload Filament (no params)
+M701	 [S | Rn]
+---------------------------
+S 		unload filament from Splitter
+Rn 		reset loaded status for Splitter option (n: 0..12 or -1 for all)
+
+Without parameters the tool gets unloaded from Nozzle (default for non Splitter option).

@@ -1,0 +1,19 @@
+< BACK|1
+Home All|2
+Motors %s|3
+%s Lid|4
+Tool Maint. %s|5
+Reset Feeder Jam|6
+Load Filament|7
+Unload Filament|8
+Load To Splitter|19
+Unload from Splitter|20
+Wipe Nozzle|10
+Cut Filament|11
+-
+Swap Tools	>|13
+Status Info	>|14
+-
+Settings	>|16
+-
+Testrun	>|18

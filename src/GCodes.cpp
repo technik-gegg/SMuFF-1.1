@@ -43,10 +43,19 @@ void setTMCCSDown(int8_t axis, int param);
 void setTMCTOff(int8_t axis, int param);
 bool isMStepValid(int param);
 void xlateSpeed205(int8_t axis, uint16_t speed, int8_t serial);
+void rangeError(int8_t serial, int min, int max);
+void rangeError(int8_t serial, long min, long max);
+void rangeError(int8_t serial, float min, float max);
 
 extern SdFat SD;
 extern uint32_t lastEvent;
 extern int8_t currentSerial;
+
+char firmware[80];
+bool gotFirmware = false;
+int32_t uploadLen = 0;
+SdFile upload;
+
 
 const char *S_Param = (char *)"S";
 const char *P_Param = (char *)"P";
@@ -69,10 +78,6 @@ const char *B_Param = (char *)"B";
 const char *D_Param = (char *)"D";
 const char *H_Param = (char *)"H";
 const char *W_Param = (char *)"W";
-
-void rangeError(int8_t serial, int min, int max);
-void rangeError(int8_t serial, long min, long max);
-void rangeError(int8_t serial, float min, float max);
 
 GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {0, dummy}, // used in Prusa Emulation mode to switch to normal mode
@@ -125,6 +130,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {701, M701},
     {906, M906},
     {914, M914},
+    {997, M997},
     {999, M999},
     {2000, M2000},
     {2001, M2001},
@@ -486,6 +492,9 @@ bool M115(const char *msg, String buf, int8_t serial)
 #if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
   strcat(options, "NEOPIXELS|");
 #endif
+#if defined(USE_SPLITTER_ENDSTOPS)
+  strcat(options, "ESTOP-MUX|");
+#endif
 #if defined(USE_TWI_DISPLAY)
   strcat(options, "TWI");
 #elif defined(USE_LEONERD_DISPLAY)
@@ -540,7 +549,7 @@ bool M119(const char *msg, String buf, int8_t serial)
 }
 
 /*
-  Print out all infomration available on the TMC steppers
+  Print out all information available on the TMC steppers
   if there are any configured.
 
   Looks a bit messy and could have been done quite a bit more
@@ -1370,6 +1379,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, purgeLength) == 0)         { smuffConfig.purgeLength = fParam;  }
       else if (strcmp(cmd, reinforceLength) == 0)     { smuffConfig.reinforceLength = fParam; }
       else if (strcmp(cmd, selectorDist) == 0)        { smuffConfig.selectorDistance = fParam; }
+      else if (strcmp(cmd, splitterDist) == 0)        { smuffConfig.splitterDist = fParam; }
       else if (strcmp(cmd, offset) == 0)              { smuffConfig.firstToolOffset = fParam; }
       else if (strcmp(cmd, unloadRetract) == 0)       { smuffConfig.unloadRetract = fParam;  }
       else if (strcmp(cmd, rsense) == 0)              { if (fParam >= 0 && fParam <= 1.0 && axis != -1) smuffConfig.stepperRSense[axis] = fParam;   else { rangeError(serial, 0, 1.0); stat = false; } }
@@ -1396,6 +1406,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, enableChunks) == 0)        { smuffConfig.enableChunks = (param > 0); }
       else if (strcmp(cmd, endstop2) == 0)            { smuffConfig.useEndstop2 = (param > 0); }
       else if (strcmp(cmd, invertDir) == 0)           { if (axis != -1) smuffConfig.invertDir[axis] = (param > 0); else stat = false; }
+      else if (strcmp(cmd, useSplitter) == 0)         { smuffConfig.useSplitter = (param > 0); }
 
       else if (strcmp(cmd, purgeSpeed) == 0)          { smuffConfig.purgeSpeed = (uint16_t)param; }
       else if (strcmp(cmd, servoOffPos) == 0)         { if(index == 99) setServoPos(SERVO_LID, (uint8_t) param); else smuffConfig.revolverOffPos = (uint8_t)param; }
@@ -1477,7 +1488,7 @@ void setTMCStall(int8_t axis, int8_t stallPin, int param, int cool, int trigg) {
     if (trigg != -1)
       steppers[axis].setStallThreshold(trigg);
     if (stallPin != -1)
-      attachInterrupt(stallPin, (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
+      attachInterrupt(digitalPinToInterrupt(stallPin), (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
   }
   else {
     if (stallPin != -1)
@@ -1502,7 +1513,7 @@ void setTMCTmode(int8_t axis, int8_t stallPin, int param) {
     uint8_t toff = smuffConfig.stepperToff[axis] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperToff[axis];
     setDriverSpreadCycle(drivers[axis], (param > 0), smuffConfig.stepperStall[axis], smuffConfig.stepperCSmin[axis], smuffConfig.stepperCSmax[axis], smuffConfig.stepperCSdown[axis], toff);
     if (param == 0 && (stallPin != -1))
-      attachInterrupt(stallPin, (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
+      attachInterrupt(digitalPinToInterrupt(stallPin), (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
     else if (param == 1 && stallPin != -1)
       detachInterrupt(stallPin);
   }
@@ -1875,6 +1886,10 @@ bool M503(const char *msg, String buf, int8_t serial)
     printResponseP(P_M503S7, serial);
     writeRevolverMapping(_print, useWI);
   }
+  if (part == 8) {
+    printResponseP(P_M503S8, serial);
+    writefeedLoadState(_print, useWI);
+  }
   printResponseP(PSTR("\n"), serial);
   return true;
 }
@@ -1887,31 +1902,17 @@ bool writeToCfgFile(const char* buf, const char* filename) {
 
 bool M504(const char *msg, String buf, int8_t serial)
 {
-  char cfg[2048];
+  char cfg[128];
   char target[40];
   printResponse(msg, serial);
   if (!getParamString(buf, P_Param, target, ArraySize(target))) {
     __debugS(PSTR("No target applied"));
     return false;
   }
+  //__debugS(PSTR("buf: %s"), buf.c_str());
   if (getParamString(buf, S_Param, cfg, ArraySize(cfg))) {
     //__debugS(PSTR("cfg: %s"), cfg);
-    if(strcmp(target, "Basic") == 0) {
-      return writeToCfgFile(cfg, CONFIG_FILE);
-    }
-    else if(strcmp(target, "Steppers") == 0) {
-      return writeToCfgFile(cfg, STEPPERS_FILE);
-    }
-    else if(strcmp(target, "TMC") == 0) {
-      return writeToCfgFile(cfg, TMC_CONFIG_FILE);
-    }
-    else if(strcmp(target, "Servos") == 0) {
-      return writeToCfgFile(cfg, SERVOMAP_FILE);
-    }
-    else if(strcmp(target, "Materials") == 0) {
-      return writeToCfgFile(cfg, MATERIALS_FILE);
-    }
-    else if(strcmp(target, "Swaps") == 0) {
+    if(strcmp(target, "Swaps") == 0) {
       if(deserializeSwapTools(cfg)) {
         saveStore();
         return true;
@@ -2018,29 +2019,74 @@ bool M577(const char *msg, String buf, int8_t serial) {
 
 bool M700(const char *msg, String buf, int8_t serial)
 {
-  bool stat = true;
+  bool stat = false;
   printResponse(msg, serial);
-  if(hasParam(buf, P_Param)) {
-    purgeFilament();
-    return stat;
-  }
+  currentSerial = serial;
   int8_t tool = toolSelected;
   if (tool >= 0 && tool <= MAX_TOOLS)
   {
-    getParamString(buf, S_Param, smuffConfig.materialNames[tool], sizeof(smuffConfig.materialNames[0]));
-    //__debugS(PSTR("Material: %s\n"),smuffConfig.materialNames[tool]);
-    currentSerial = serial;
-    return loadFilament();
+    if(hasParam(buf, P_Param)) {
+      purgeFilament();
+      stat = true;
+    }
+    else if(hasParam(buf, S_Param)) {
+      if(smuffConfig.feedLoadState[tool] == SPL_NOT_LOADED) {
+        stat = loadToSplitter(false);
+      }
+    }
+    else
+      stat = loadFilament();
   }
-  else
-    stat = false;
   return stat;
 }
 
 bool M701(const char *msg, String buf, int8_t serial)
 {
+  bool stat = false;
   printResponse(msg, serial);
-  return unloadFilament();
+  currentSerial = serial;
+  int8_t tool = getToolSelected();
+  if(hasParam(buf, R_Param)) {
+    int slot = getParam(buf, R_Param);
+    if(slot == -1) {
+      // reset all feed loaded states
+      for(uint8_t i=0; i < MAX_TOOLS; i++) {
+        smuffConfig.feedLoadState[i] = SPL_NOT_LOADED;
+      }
+      stat = true;
+    }
+    else if(slot >=0 && slot < MAX_TOOLS) {
+      // reset feed loaded status for this particular slot only
+      smuffConfig.feedLoadState[slot] = SPL_NOT_LOADED;
+      stat = true;
+    }
+    saveStore();
+    if(smuffConfig.webInterface) {
+      printResponseP(P_M503S8, serial);
+      writefeedLoadState(getSerialInstance(serial), true);
+    }
+  }
+  else if (tool >= 0 && tool <= MAX_TOOLS)
+  {
+    if(hasParam(buf, S_Param) && smuffConfig.useSplitter) {
+      if(smuffConfig.feedLoadState[tool] == SPL_NOT_LOADED) {
+        //__debugS(PSTR("Not loaded. Doing nothing"));
+        stat = true;
+      }
+      if(smuffConfig.feedLoadState[tool] > SPL_NOT_LOADED) {
+        //__debugS(PSTR("Unloading from Splitter"));
+        stat = unloadFromSplitter(false);
+      }
+    }
+    else {
+      //__debugS(PSTR("Unloading from Nozzle"));
+      stat = unloadFilament();
+    }
+  }
+  else {
+    __debugS(PSTR("No tool selected"));
+  }
+  return stat;
 }
 
 bool M906(const char *msg, String buf, int8_t serial)
@@ -2108,9 +2154,42 @@ bool M914(const char *msg, String buf, int8_t serial)
 #endif
 }
 
+bool M997(const char *msg, String buf, int8_t serial)
+{
+  bool stat = false;
+  printResponse(msg, serial);
+  gotFirmware = false;
+  memset(firmware, 0, ArraySize(firmware));
+
+  if(getParamString(buf, P_Param, firmware, ArraySize(firmware))) {
+    SD.remove(firmware);
+    if(hasParam(buf, L_Param)) {
+      if(initSD()) {
+        if(!upload.open(firmware, O_WRITE | O_CREAT)) {
+          __debugS(PSTR("Can't open file '%s' for downloading"), firmware);
+          return false;
+        }
+      }
+      else {
+        __debugS(PSTR("Can't init SD-Card for file '%s'"), firmware);
+        return false;
+      }
+      uploadLen = getParamL(buf, L_Param);
+      gotFirmware = true;
+      isUpload = true;
+      stat = true;
+    }
+  }
+  return stat;
+}
+
 bool M999(const char *msg, String buf, int8_t serial)
 {
   printResponse(msg, serial);
+  // turn off all stepper motors, just in case
+  steppers[SELECTOR].setEnabled(false);
+  steppers[REVOLVER].setEnabled(false);
+  steppers[FEEDER].setEnabled(false);
   delay(500);
 #if __STM32F1__
   nvic_sys_reset();
@@ -2300,6 +2379,7 @@ bool G1(const char *msg, String buf, int8_t serial)
     __debugS(P_DIinfo, 'X', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
     steppers[SELECTOR].setEnabled(true);
     prepStepping(SELECTOR, paramL, false, true);
+    toolSelected = -1;
   }
   if (hasParam(buf, Y_Param))
   {
@@ -2415,9 +2495,12 @@ bool G12(const char *msg, String buf, int8_t serial)
   if ((param = getParam(p, R_Param)) != -1) {
     repeat = param; // defines the number of repeats
   }
-  if (hasParam(p, C_Param) && smuffConfig.useCutter) {
-    cutFilament(false);
-    return true;
+  if (hasParam(p, C_Param)) {
+    if(smuffConfig.useCutter) {
+      cutFilament(false);
+      return true;
+    }
+    return false;
   }
 
   unsigned n = 1;

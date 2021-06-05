@@ -42,10 +42,12 @@ void saveStore() {
   pos[revolver] = dataStore.stepperPos[REVOLVER];
   pos[feeder] = dataStore.stepperPos[FEEDER];
   JsonObject swps = jsonObj.createNestedObject(swaps);
+  JsonObject splitter = jsonObj.createNestedObject(feedState);
   char tmp[16];
   for(uint8_t i=0; i < MAX_TOOLS; i++) {
     sprintf_P(tmp, P_Tool, i);
     swps[tmp] = swapTools[i];
+    splitter[tmp] = smuffConfig.feedLoadState[i];
   }
 
   if(initSD(false)) {
@@ -86,6 +88,12 @@ void recoverStore() {
           sprintf_P(tmp, P_Tool, i);
           if(jsonDoc[swaps][tmp] != nullptr) {
             swapTools[i] = jsonDoc[swaps][tmp];
+          }
+          if(jsonDoc[feedState][tmp] != nullptr) {
+            smuffConfig.feedLoadState[i] = jsonDoc[feedState][tmp];
+          }
+          else {
+            smuffConfig.feedLoadState[i] = SPL_NOT_LOADED;
           }
         }
       }

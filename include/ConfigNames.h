@@ -127,5 +127,8 @@ const char* invertRelay PROGMEM        = "InvRelay";
 const char* menuOnTerm PROGMEM         = "TermMenu";
 const char* webInterface PROGMEM       = "WebInterface";
 const char* revolverClosed PROGMEM     = "RevolverClose";
+const char* useSplitter PROGMEM        = "UseSplitter";
+const char* splitterDist PROGMEM       = "SplitterDist";
+const char* feedState PROGMEM          = "FeedState";
 
 

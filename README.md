@@ -44,6 +44,20 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.29** - Some critical changes, Splitter option added
+
++ **Critical:** Moved pin for **switching the relay** from *PROBE* to the *MS3* pin of the Z-Axis stepper driver for E3-DIP boards. This was needed since the PROBE pin sometimes has a problem delivering a valid signal for the relay board. If you still encounter problems switching the relay, try adding a 10K pull-ip resistor between +5V and the signal pin MS3.
++ added some minor changes to improve the communication with the [WebInterface](https://github.com/technik-gegg/SMuFF-WI).
++ fully integrated the Splitter option.
++ added new **main-menu** variant for the Splitter option.
++ added Splitter option settings in **options** menu.
++ extended **M700** and **M701** GCodes to handle Splitter option. A suffix **S** loads unloads to/from Splitter, whereas an  **R** suffix in M701 allows you to reset the currently saved states.
++ added feed states for Splitter option, which reflects if and to where the filament has been loaded. States will also get saved to EEPROM.json.
++ added new icon for the "fully loaded" state (in F2) on the main screen when using Splitter option.
++ fixed bug not turning display backlight back on after idle state.
++ set Servo min./max PWM to more conservative values of 900 and 2100. This might force you to tweak the Lid open/close positions on your SMuFF a bit. If you go below minimum and above maximum, this might cause your servo to overheat and eventually break (depends on the servo).
++ added software support for EStop MUX when using the "advanced" Splitter option. This feature is using the 2nd I2C (EN/STEP pins on Z-Axis steper driver socket) pins for communication if not compiled for the DIY/LeoNerd's display. On DIY/LeoNerd's displays it uses the 1st I2C, which also drives the display. To enable you to use this option, you'll need to compile the firmware with setting the **USE_SPLITTER_ENDSTOPS** definition in *platformio.ini*.
+
 **2.28** - More bug fixing for WebInterface, added linear stepper support for Lid
 
 + fixed bug causing test GCode not being executed when initiated over [WebInterface](https://github.com/technik-gegg/SMuFF-WI).

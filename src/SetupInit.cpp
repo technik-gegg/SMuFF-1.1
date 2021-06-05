@@ -415,9 +415,8 @@ void setupPortExpander()
   extern ZPortExpander portEx;
 
   // init the PCF8574 port expander and set pin modes (0-5 OUTPUT, 6-7 INPUT)
-  portEx.begin(PORT_EXPANDER_ADDRESS, false);
-  for (uint8_t i = 0; i < 6; i++)
-  {
+  portEx.begin(I2C_PORTEX_ADDRESS, false);
+  for (uint8_t i = 0; i < 6; i++) {
     portEx.pinMode(i, OUTPUT);
     portEx.setPin(i);
   }
@@ -425,6 +424,27 @@ void setupPortExpander()
   portEx.pinMode(7, INPUT_PULLUP);
   portEx.resetPin(0);
 //__debugS(PSTR("DONE PortExpander init"));
+#endif
+}
+
+void setupEStopMux() {
+#if defined(USE_SPLITTER_ENDSTOPS)
+  extern ZEStopMux splitterMux;
+  #if defined(USE_I2C)
+  splitterMux.begin(&I2CBus, I2C_SPL_MUX_ADDRESS);
+  #else
+  splitterMux.begin(&I2CBus2, I2C_SPL_MUX_ADDRESS);
+  #endif
+  for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
+    splitterMux.setTool(i);
+    delay(50);
+    if(Z_END_PIN != -1) {
+      smuffConfig.feedLoadState[i] = ((int8_t)digitalRead(Z_END_PIN) == steppers[FEEDER].getEndstopState());
+      __debugS(PSTR("T%d is %s"), i, smuffConfig.feedLoadState[i] == SPL_NOT_LOADED ? "open" : "triggered");
+    }
+  }
+  splitterMux.setTool(toolSelected);
+  __debugS(PSTR("DONE SplitterMUX init."));
 #endif
 }
 
@@ -502,7 +522,7 @@ void setupSteppers()
     steppers[SELECTOR].setStopOnStallDetected(smuffConfig.stepperStopOnStall[SELECTOR]);
 #ifdef HAS_TMC_SUPPORT
     if (STALL_X_PIN != -1)
-      attachInterrupt(STALL_X_PIN, isrStallDetectedX, FALLING);
+      attachInterrupt(digitalPinToInterrupt(STALL_X_PIN), isrStallDetectedX, FALLING);
 #endif
   }
   if (smuffConfig.stepperMode[SELECTOR] == 0 && smuffConfig.ms3config[SELECTOR] > 0)
@@ -531,7 +551,7 @@ void setupSteppers()
     steppers[REVOLVER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[REVOLVER]);
 #ifdef HAS_TMC_SUPPORT
     if (STALL_Y_PIN != -1)
-      attachInterrupt(STALL_Y_PIN, isrStallDetectedY, FALLING);
+      attachInterrupt(digitalPinToInterrupt(STALL_Y_PIN), isrStallDetectedY, FALLING);
 #endif
   }
   if (smuffConfig.stepperMode[REVOLVER] == 0 && smuffConfig.ms3config[REVOLVER] > 0)
@@ -566,7 +586,7 @@ void setupSteppers()
     steppers[REVOLVER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[REVOLVER]);
 #ifdef HAS_TMC_SUPPORT
     if (STALL_Y_PIN != -1)
-      attachInterrupt(STALL_Y_PIN, isrStallDetectedY, FALLING);
+      attachInterrupt(digitalPinToInterrupt(STALL_Y_PIN), isrStallDetectedY, FALLING);
 #endif
   }
   if (smuffConfig.stepperMode[REVOLVER] == 0 && smuffConfig.ms3config[REVOLVER] > 0)
@@ -583,13 +603,7 @@ void setupSteppers()
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER);
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER);
   steppers[FEEDER] = ZStepper(FEEDER, (char *)"Feeder", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, accelSpeed, maxSpeed);
-  if (smuffConfig.useDuetLaser)
-  {
-    steppers[FEEDER].setEndstop(-1, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
-    steppers[FEEDER].endstopCheck = checkDuetEndstop;
-  }
-  else
-    steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
+  steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX);
   if (Z_END2_PIN != -1)
     steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2); // optional
   steppers[FEEDER].stepFunc = overrideStepZ;
@@ -605,7 +619,7 @@ void setupSteppers()
     steppers[FEEDER].setStopOnStallDetected(smuffConfig.stepperStopOnStall[FEEDER]);
 #ifdef HAS_TMC_SUPPORT
     if (STALL_Z_PIN != -1)
-      attachInterrupt(STALL_Z_PIN, isrStallDetectedZ, FALLING);
+      attachInterrupt(digitalPinToInterrupt(STALL_Z_PIN), isrStallDetectedZ, FALLING);
 #endif
   }
   if (smuffConfig.stepperMode[FEEDER] == 0 && smuffConfig.ms3config[FEEDER] > 0)
@@ -616,16 +630,14 @@ void setupSteppers()
 #endif
   }
 
-  for (uint8_t i = 0; i < NUM_STEPPERS; i++)
-  {
+  for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
     steppers[i].runAndWaitFunc = runAndWait;
     steppers[i].runNoWaitFunc = runNoWait;
     steppers[i].setEnabled(true);
   }
 
   //__debugS(PSTR("DONE init/enabling steppers"));
-  for (uint8_t i = 0; i < MAX_TOOLS; i++)
-  {
+  for (uint8_t i = 0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
   //__debugS(PSTR("DONE initializing swaps"));

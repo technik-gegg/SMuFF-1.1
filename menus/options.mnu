@@ -12,3 +12,5 @@ Use Cutter	%s|11
 Cutter Open	%d|12
 Cutter Close	%d|13
 Invert Relay	%s|14
+Use Splitter	%s|15
+Splitter Dist.	%s|16

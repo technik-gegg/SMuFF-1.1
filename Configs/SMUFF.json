@@ -10,8 +10,8 @@
  "PwrSavTime": 300,
  "SendAction": false,
  "EmulPrusa": false,
- "ServoMinPwm": 800,
- "ServoMaxPwm": 2200,
+ "ServoMinPwm": 900,
+ "ServoMaxPwm": 2100,
  "WipeSeq": "S10I140J160P90R20",
  "BackColor": 4,
  "ToolColor": 5,
@@ -35,5 +35,7 @@
  "TermMenu": false,
  "Servo1Cyc": 0,
  "Servo2Cyc": 0,
- "RevolverClose": 2.0
+ "RevolverClose": 2.0,
+ "UseSplitter": false,
+ "SplitterDist": 55.0
 }

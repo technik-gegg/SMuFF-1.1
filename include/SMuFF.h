@@ -31,6 +31,8 @@
 #else
 #include "ClickEncoder.h"
 #endif
+#include "iostream/iostream.h"
+#include "iostream/fstream.h"
 #include <SPI.h>
 #include "SdFat.h"
 #include "U8g2lib.h"
@@ -45,6 +47,7 @@
 #include "ZServo.h"
 #include "ZPortExpander.h"
 #include "ZFan.h"
+#include "ZEStopMux.h"
 #include "DuetLaserSensor.h"
 #if defined(HAS_TMC_SUPPORT)
 #include <TMCStepper.h>
@@ -74,12 +77,18 @@ extern USBCompositeSerial CompositeSerial;
 #include <BluetoothSerial.h>
 #endif
 
+#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO) || defined(USE_SW_TWI)
+#define USE_I2C
+#endif
+
 #define FEEDER_SIGNAL 1
 #define SELECTOR_SIGNAL 2
 #define REVOLVER_SIGNAL 3
 #define LED_SIGNAL 4
 
-#define PORT_EXPANDER_ADDRESS 0x3F
+#define SPL_NOT_LOADED          0
+#define SPL_LOADED_TO_SPLITTER  1
+#define SPL_LOADED_TO_NOZZLE    2
 
 #define INTERNAL 1
 #define EXTERNAL 0
@@ -128,6 +137,7 @@ typedef struct
   char wipeSequence[MAX_WIPE_SEQUENCE] = {0};
   uint8_t backlightColor = 0x4; // Cyan by default
   uint8_t hasPanelDue = 0;      // Serial Port for PanelDue (0=None)
+  uint8_t duet3Dport = 0;       // Serial Port for Duet3D (0=none)
   bool encoderTickSound = false;
   bool sendPeriodicalStats = true;
   char lButtonDown[MAX_BUTTON_LEN] = {0};
@@ -213,6 +223,9 @@ typedef struct
   bool menuOnTerminal = false;
   bool webInterface = false;
   float revolverClose = 0;
+  bool useSplitter = false;
+  float splitterDist = 0;
+  uint8_t feedLoadState[MAX_TOOLS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -293,6 +306,8 @@ extern ZServo servoWiper;
 extern ZServo servoLid;
 extern ZServo servoCutter;
 extern ZFan fan;
+extern ZEStopMux splitterMux;
+
 #if defined(USE_LEONERD_DISPLAY)
 extern LeoNerdEncoder encoder;
 #else
@@ -378,6 +393,12 @@ extern bool isTestPending;
 extern char testToRun[];
 extern bool isUsingTmc;
 extern volatile bool sdRemoved;
+extern char firmware[];
+extern bool gotFirmware;
+extern int32_t uploadLen;
+extern SdFile upload;
+extern bool isUpload;
+extern bool splitterEndstopChanged;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper *drivers[];
@@ -393,6 +414,7 @@ extern void setupServos();
 extern void setupHeaterBed();
 extern void setupFan();
 extern void setupPortExpander();
+extern void setupEStopMux();
 extern void setupRelay();
 extern void setupI2C();
 extern void setupDeviceName();
@@ -410,6 +432,7 @@ extern void drawLogo();
 extern void drawStatus();
 extern void drawSelectingMessage(uint8_t tool);
 extern void drawPurgingMessage(uint16_t len, uint8_t tool);
+extern void drawUpload(uint32_t remain);
 extern void drawUserMessage(String message, bool smallFont = false, bool center = true, void (*drawCallbackFunc)() = nullptr);
 extern void drawSDStatus(int8_t stat);
 extern void drawFeed(bool updateBuffer = true);
@@ -478,6 +501,7 @@ extern bool writeServoMapping(Print *dumpTo = nullptr, bool useWebInterface = fa
 extern bool writeMaterials(Print *dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeSwapTools(Print *dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeRevolverMapping(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writefeedLoadState(Print* dumpTo = nullptr, bool useWebInterface = false);
 extern bool deserializeSwapTools(const char* cfg);
 extern bool saveConfig(String& buffer);
 extern bool serializeTMCStats(Print* out, uint8_t axis, int8_t version, bool isStealth, uint16_t powerCfg, uint16_t powerRms, uint16_t microsteps, bool ms1, bool ms2, const char* uart, const char* diag, const char* ola, const char* olb, const char* s2ga, const char* s2gb, const char* ot_stat);
@@ -514,6 +538,9 @@ extern void endstopEventY();
 extern void endstopEventZ();
 extern void endstopEventZ2();
 extern bool checkDuetEndstop();
+extern bool checkSplitterEndstop();
+extern void readSplitterEndstops();
+extern void isrSplitterEndstops();
 extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);
 extern void isrStepperHandler();
 extern void isrGPTimerHandler();
@@ -556,6 +583,8 @@ extern void sendStartResponse(int8_t serial);
 extern void sendOkResponse(int8_t serial);
 extern void sendErrorResponse(int8_t serial, const char *msg = nullptr);
 extern void sendErrorResponseP(int8_t serial, const char *msg = nullptr);
+extern void sendXon(Stream* serial);
+extern void sendXoff(Stream* serial);
 extern void parseGcode(const String &serialBuffer, int8_t serial);
 extern bool parse_G(const String &buf, int8_t serial);
 extern bool parse_M(const String &buf, int8_t serial);
@@ -609,6 +638,7 @@ extern void switchFeederStepper(uint8_t stepper);
 extern void removeFirmwareBin();
 extern void showMemInfo(int8_t serial);
 extern uint8_t scanI2CDevices(uint8_t *devices, uint8_t);
+extern uint8_t scanI2C2Devices(uint8_t *devices, uint8_t);
 extern bool initSD(bool showStatus = true);
 
 extern unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTranslation = false);
@@ -625,3 +655,7 @@ extern void sendTMCStatus(uint8_t axis, int8_t port);
 extern Print* getSerialInstance(int8_t serial);
 extern void sendStates();
 extern void setTestRunPending(const char* testfile);
+extern void resetUpload();
+
+extern bool loadToSplitter(bool showMessage);
+extern bool unloadFromSplitter(bool showMessage);

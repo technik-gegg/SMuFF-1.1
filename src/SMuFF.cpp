@@ -124,6 +124,7 @@ SoftwareSerial swSer0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);
 USBMassStorage MassStorage;
 USBCompositeSerial CompositeSerial;
 #endif
+ZEStopMux splitterMux;
 #elif defined(__ESP32__)
 ZPortExpander portEx;
 #endif
@@ -175,6 +176,14 @@ uint32_t lastEvent = 0;
 volatile bool isIdle = false;
 bool tmcWarning = false;
 bool isUsingTmc = false;
+bool isQuote = false;
+bool isFuncKey = false;
+bool isCtlKey = false;
+bool ignoreQuotes = false;
+bool isUpload = false;
+bool isReceiving = false;
+uint32_t uploadStart = 0;
+
 
 static volatile uint16_t intervalMask; // bit-mask for interval reached
 IntervalHandler intervalHandlers[] = {
@@ -237,19 +246,17 @@ void overrideStepZ()
 void endstopEventY()
 {
   // add your code here it you want to hook into the endstop event for the Revolver
-  //__debugS(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
 }
 
 void endstopEventZ()
 {
   // add your code here it you want to hook into the 1st endstop event for the Feeder
-  //__debugS(PSTR("Endstop Revolver: %d"), steppers[REVOLVER].getStepPosition());
+  //__debugS(PSTR("Feeder endstop: %d"), feederEndstop());
 }
 
 void endstopEventZ2()
 {
   // add your code here it you want to hook into the 2nd endstop event for the Feeder
-  //__debugS(PSTR("Z2 hit: %d"), endstop2Hit++);
 }
 
 /*
@@ -285,10 +292,9 @@ bool checkDuetEndstop()
   return false;
 }
 
-void isrFastLEDTimerHandler()
-{
+void isrFastLEDTimerHandler() {
   #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-  if(!initDone)
+  if(!initDone || isUpload)
     return;
   fastLEDTickCounter++;
   if(fastLEDTickCounter % 3 == 0) {   // every 60ms
@@ -346,10 +352,10 @@ void isrGPTimerHandler()
     if (initDone)
       encoder.service(); // service the rotary encoder
 #endif
-    if (smuffConfig.useDuetLaser)
-    {
+    if (smuffConfig.useDuetLaser) {
       duetLS.service(); // service the Duet3D laser Sensor reader
     }
+
 #ifdef FLIPDBG
     FLIPDBG               // flips the debug pin polarity which is supposed to generate a 500Hz signal for debug purposes
 #endif
@@ -361,12 +367,12 @@ void isrGPTimerHandler()
   interrupts();
 }
 
-void enumI2cDevices()
+void enumI2cDevices(uint8_t bus)
 {
   uint8_t devs[40]; // unlikey that there are more devices than that on the bus
   const char *name;
   bool encoder = false;
-  uint8_t deviceCnt = scanI2CDevices(devs, ArraySize(devs));
+  uint8_t deviceCnt = (bus == 1) ? scanI2CDevices(devs, ArraySize(devs)) : scanI2C2Devices(devs, ArraySize(devs));
   if (deviceCnt > 0)
   {
     for (uint8_t i = 0; i < ArraySize(devs); i++)
@@ -389,11 +395,14 @@ void enumI2cDevices()
         case I2C_EEPROM_ADDRESS:
           name = PSTR("EEPROM");
           break;
+        case I2C_SPL_MUX_ADDRESS:
+          name = PSTR("EStop MUX Splitter");
+          break;
         default:
           name = PSTR("n.a.");
           break;
       }
-      __debugS(PSTR("I2C device @ 0x%02x (%s)"), devs[i], name);
+      __debugS(PSTR("I2C device on bus %d @ 0x%02x (%s)"), bus, devs[i], name);
     }
   }
   else {
@@ -448,10 +457,14 @@ void setup()
   initFastLED(); // init FastLED if configured
   initHwDebug(); // init hardware debugging
 
-#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO)
+#if defined(USE_I2C)
   // don't scan I2C if no I2C devices are being used; Scan will take ages
-  enumI2cDevices();
+  enumI2cDevices(1);
   __debugS(PSTR("[ after enumI2CDevices ]"));
+#endif
+#if defined(USE_SPLITTER_ENDSTOPS)
+  enumI2cDevices(2);
+  __debugS(PSTR("[ after enumI2C2Devices ]"));
 #endif
 //#endif
   setupBuzzer(); // setup buzzer before reading config
@@ -496,10 +509,12 @@ void setup()
   setupDuetLaserSensor(); // setup other peripherials
   setupHeaterBed();
   setupFan();
-  setupPortExpander();
   setupI2C();
+  setupPortExpander();
   setupHBridge();
   getStoredData(); // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
+  setupEStopMux();
+  __debugS(PSTR("[ after setupEStopMux ]"));
   uint32_t now = millis();
   readSequences();  // read sound files from SD-Card sounds folder
   __debugS(PSTR("[ after readSequences ] (loading took %ld ms)"), millis()-now);
@@ -619,7 +634,7 @@ void runAndWait(int8_t index)
 
 void refreshStatus(bool withLogo, bool feedOnly)
 {
-  if (initDone && !isPwrSave && !showMenu && !displayingUserMessage && !isTestrun) {
+  if (initDone && !isPwrSave && !showMenu && !displayingUserMessage && !isTestrun && !isUpload) {
     if (feedOnly) {
       drawFeed();
     }
@@ -800,6 +815,9 @@ void loop()
       userBeep();
       leoNerdBlinkRed = true;
       setFastLEDStatus(FASTLED_STAT_ERROR);
+      if (isPwrSave) {
+        setPwrSave(0);
+      }
     }
     isIdle = false;
     sdRemoved = true;
@@ -876,10 +894,10 @@ void loop()
     }
 
     getInput(&turn, &button, &isHeld, &isClicked);
-    if (isClicked || turn != 0)
-    {
-      if (isPwrSave)
-      {
+    if (isClicked || turn != 0) {
+      if(isClicked && isUpload)
+        resetUpload();
+      if (isPwrSave) {
         setPwrSave(0);
         return;
       }
@@ -982,10 +1000,13 @@ void loop()
 void setPwrSave(int8_t state)
 {
   display.setPowerSave(state);
+
   isPwrSave = state == 1;
-  if (!isPwrSave)
-  {
+  if (!isPwrSave) {
     pwrSaveTime = millis();
+    #if defined(USE_FASTLED_BACKLIGHT)
+    setBacklightIndex(smuffConfig.backlightColor);       // turn back on the backlight
+    #endif
   }
 }
 
@@ -1052,11 +1073,6 @@ void resetSerialBuffer(int8_t serial)
   }
 }
 
-bool isQuote = false;
-bool isFuncKey = false;
-bool isCtlKey = false;
-bool ignoreQuotes = false;
-
 void filterSerialInput(String &buffer, char in)
 {
   // function key sequence starts with 'ESC['
@@ -1071,6 +1087,14 @@ void filterSerialInput(String &buffer, char in)
     if (in == 'P') { // second escape char 'P' - swallow that, set ignore quotes
       ignoreQuotes = true;
       isFuncKey = false;
+      return;
+    }
+    if (in == 'U') { // second escape char 'U' - swallow that, set isUpload flag
+      drawUpload(uploadLen);
+      isUpload = true;
+      parserBusy = true;
+      isFuncKey = false;
+      uploadStart = 0;
       return;
     }
     if (in == '[' || in == 'O') // second escape char '[' or 'O' - swallow that
@@ -1145,8 +1169,9 @@ void filterSerialInput(String &buffer, char in)
   }
   switch (in)
   {
-    case '\b':
-      {
+    case '\b': {
+        if(buffer.substring(buffer.length() - 1)=="\"")
+          isQuote = !isQuote;
         buffer = buffer.substring(0, buffer.length() - 1);
       }
       break;
@@ -1161,140 +1186,231 @@ void filterSerialInput(String &buffer, char in)
         buffer += in;
       break;
     default:
-      if (buffer.length() < 4096)
+      if (buffer.length() < 4096) {
         if (in >= 0x21 && in <= 0x7e) // read over non-ascii characters, just in case
           buffer += in;
+      }
+      else {
+        __debugS(PSTR("Buffer exceeded length 4096"));
+      }
       break;
   }
 }
 
-void sendToPanelDue(char in)
-{
-  // only if PanelDue is configured...
-  switch (smuffConfig.hasPanelDue)
-  {
-  case 0:
-    return;
-  case 1:
-    if (CAN_USE_SERIAL1)
-      Serial1.write(in);
-    break;
-  case 2:
-    if (CAN_USE_SERIAL2)
-      Serial2.write(in);
-    break;
-  case 3:
-    if (CAN_USE_SERIAL3)
-      Serial3.write(in);
-    break;
+void sendToDuet3D(char in) {
+  switch (smuffConfig.duet3Dport) {
+    case 0:
+      return;
+    case 1:
+      if (CAN_USE_SERIAL1)
+        Serial1.write(in);
+      break;
+    case 2:
+      if (CAN_USE_SERIAL2)
+        Serial2.write(in);
+      break;
+    case 3:
+      if (CAN_USE_SERIAL3)
+        Serial3.write(in);
+      break;
   }
 }
 
-bool isJsonData(char in)
-{
+void sendToPanelDue(char in) {
+  // only if PanelDue is configured...
+  switch (smuffConfig.hasPanelDue) {
+    case 0:
+      return;
+    case 1:
+      if (CAN_USE_SERIAL1)
+        Serial1.write(in);
+      break;
+    case 2:
+      if (CAN_USE_SERIAL2)
+        Serial2.write(in);
+      break;
+    case 3:
+      if (CAN_USE_SERIAL3)
+        Serial3.write(in);
+      break;
+  }
+}
+
+bool isJsonData(char in, uint8_t port) {
   // check for JSON formatted data
-  if (in == '{')
-  {
+  if (in == '{') {
     bracketCnt++;
   }
-  else if (in == '}')
-  {
+  else if (in == '}') {
     bracketCnt--;
   }
-  if (bracketCnt > 0)
-  {
+  if (bracketCnt > 0) {
     jsonPtr++;
     //__debugS(PSTR("JSON nesting level: %d"), bracketCnt);
   }
 
-  if (jsonPtr > 0)
-  {
-    sendToPanelDue(in);
+  if (jsonPtr > 0) {
+    // data not comming from PanelDue port...
+    if(port != smuffConfig.hasPanelDue) {
+      if(smuffConfig.duet3Dport == 0)
+        smuffConfig.duet3Dport = port;
+      // send to PanelDue
+      sendToPanelDue(in);
+    }
+    else { // data sent from PanelDue...
+      sendToDuet3D(in);
+    }
     if (bracketCnt > 0)
       return true;
   }
-  if (bracketCnt == 0 && jsonPtr > 0)
-  {
-    /*
-    if(smuffConfig.hasPanelDue) {
-      __debugS(PSTR("JSON data passed through to PanelDue: %d"), jsonPtr+1);
-    }
-    else {
-      __debugS(PSTR("PanelDue not configured. JSON data ignored"));
-    }
-    */
+  if (bracketCnt == 0 && jsonPtr > 0) {
     jsonPtr = 0;
     return true;
   }
   return false;
 }
 
-void handleSerial(char in, String& buffer, uint8_t port) {
-  // handle Ctrl-C sequence
-  if (in == 0x03) {
-    __debugS(PSTR("Ctrl-C received from port %d"), port);
-    isTestrun = false;
-    resetSerialBuffer(port);
+void resetUpload() {
+  upload.close();
+  isUpload = false;
+  gotFirmware = false;
+  parserBusy = false;
+  uploadStart = 0;
+}
+
+void handleUpload(const char* buffer, size_t len, Stream* serial) {
+  if(uploadStart > 0 && millis()-uploadStart > 10000) {
+    resetUpload();
+    __debugS(PSTR("Upload aborted because of timeout"), firmware);
     return;
   }
-  // do not proceed any further if a test is running
-  if(isTestrun)
+  if (isPwrSave)
+    setPwrSave(0);
+  drawUpload(uploadLen);
+  if(!isUpload)
     return;
+  //sendXoff(serial);
+  upload.write(buffer, len);
+  upload.flush();
+  //sendXon(serial);
+  uploadLen -= len;
+  uploadStart = millis();
 
-  if (in == '\n' || (isCtlKey && in == 'n'))
-  {
-    // special case: sender is transmitting configuration
-    if(buffer.startsWith("/*"))  {
-      /*
-      uint16_t l = 0;
-      __debugS(PSTR("Config received:"));
-      while(l < buffer.length()) {
-        __debugS(PSTR("%s"), buffer.substring(l,l+400).c_str());
-        l+=400;
-      }
-      */
-      if(saveConfig(buffer))
-        sendOkResponse(port);
-      else
-        sendErrorResponseP(port, PSTR("Writing configuration file failed!"));
+  if(uploadLen <= 0) {
+    resetUpload();
+    __debugS(PSTR("Upload of '%s' finished"), firmware);
+    return;
+  }
+}
+
+void handleSerial(const char* in, size_t len, String& buffer, uint8_t port) {
+  for(size_t i=0; i< len; i++) {
+    // handle Ctrl-C sequence, which will interrupt a running test
+    if (in[i] == 0x03) {
+      isTestrun = false;
       resetSerialBuffer(port);
+      //__debugS(PSTR("Ctrl-C received from port %d"), port);
+      return;
+    }
+    // do not proceed any further if a test is running
+    if(isTestrun)
+      return;
+    // parse for JSON data coming from Duet3D
+    if(port == 1 || port == 3) {
+      if(isJsonData(in[i], port)) {
+        __debugS(PSTR("JSON data received on port %d"), port);
+        continue;
+      }
+    }
+    if (in[i] == '\n' || (isCtlKey && in[i] == 'n')) {
+      parseGcode(buffer, port);
+      isQuote = false;
+      actionOk = false;
+      isCtlKey = false;
+      ignoreQuotes = false;
+    }
+    else if(isCtlKey && in[i] == '"') {
+      // don't handle quotes if they are escaped
+      isCtlKey = false;
+      buffer += '\\';
+      buffer += in[i];
+      return;
     }
     else {
-      parseGcode(buffer, port);
+      filterSerialInput(buffer, in[i]);
     }
-    isQuote = false;
-    actionOk = false;
-    isCtlKey = false;
-    ignoreQuotes = false;
   }
-  else if(isCtlKey && in == '"') {
-    // don't handle quotes if they are escaped
-    isCtlKey = false;
-    buffer += '\\';
-    buffer += in;
+}
+
+size_t readSerialToBuffer(Stream* serial, char* buffer, size_t maxLen) {
+  size_t got = 0;
+  int avail = serial->available();
+  if(avail != -1) {
+    noInterrupts();
+    size_t len = avail;
+    if((size_t)avail > maxLen)
+      len = maxLen;
+    got = serial->readBytes(buffer, len);
+    interrupts();
+  }
+  return got;
+}
+
+void serialEvent() {  // USB-Serial port
+  char tmp[128];
+  memset(tmp, 0, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial, tmp, ArraySize(tmp));
+  if(got > 0) {
+    if(isUpload)
+      handleUpload(tmp, got, &Serial);
+    else
+      handleSerial(tmp, got, serialBuffer0, 0);
+  }
+}
+
+void serialEvent1() {
+  char tmp[128];
+  memset(tmp, 0, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial1, tmp, ArraySize(tmp));
+  if(got > 0) {
+    if(isUpload)
+      handleUpload(tmp, got, &Serial1);
+    else
+      handleSerial(tmp, got, serialBuffer1, 1);
+  }
+}
+
+void serialEvent2() {
+  char tmp[128];
+  memset(tmp, 0, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial2, tmp, ArraySize(tmp));
+  if(got > 0) {
+    //__debugS(PSTR("Got: %d <%s>"), got, tmp);
+    if(isUpload)
+      handleUpload(tmp, got, &Serial2);
+    else
+      handleSerial(tmp, got, serialBuffer2, 2);
+  }
+}
+
+void serialEvent3() {
+  char tmp[128];
+  memset(tmp, 0, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial3, tmp, ArraySize(tmp));
+  if(got > 0) {
+    if(isUpload)
+      handleUpload(tmp, got, &Serial3);
+    else
+      handleSerial(tmp, got, serialBuffer3, 3);
+  }
+}
+
+/* Old code
+void serialEvent2() {
+  if(isUpload) {
+    //handleUpload(&Serial2);
     return;
   }
-  else
-  {
-    filterSerialInput(buffer, in);
-  }
-}
-
-void serialEvent()
-{
-  uint16_t avail = 0;
-  while ((avail = Serial.available()))
-  {
-    char in = (char)Serial.read();
-    // check for JSON data first
-    if (isJsonData(in))
-      continue;
-    handleSerial(in, serialBuffer0, 0);
-  }
-}
-
-void serialEvent2()
-{
   uint16_t avail = 0;
   while ((avail = Serial2.available()))
   {
@@ -1309,35 +1425,5 @@ void serialEvent2()
       handleSerial(in, serialBuffer2, 2);
   }
 }
+*/
 
-void serialEvent1()
-{
-  uint16_t avail = 0;
-  while ((avail = Serial1.available()))
-  {
-    char in = (char)Serial1.read();
-    // check for JSON data first
-    if (isJsonData(in))
-      continue;
-    handleSerial(in, serialBuffer1, 1);
-  }
-}
-
-void serialEvent3()
-{
-  uint16_t avail = 0;
-  while ((avail = Serial3.available()))
-  {
-    char in = (char)Serial3.read();
-    // in case of PanelDue connected, route everthing to Duet3D - do not process it any further
-    if (smuffConfig.hasPanelDue == 2)
-    {
-      if (CAN_USE_SERIAL2)
-        Serial2.write(in);
-    }
-    else {
-      handleSerial(in, serialBuffer3, 3);
-      //__debugS(PSTR("Serial3: %c\n"), in);
-    }
-  }
-}

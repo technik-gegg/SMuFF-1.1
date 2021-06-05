@@ -58,7 +58,17 @@ public:
     ZPortExpander() { }
     ZPortExpander(uint8_t i2cAddress) { begin(i2cAddress, false); }
     ZPortExpander(uint8_t i2cAddress, bool is8575) { begin(i2cAddress, is8575); }
+    #if !defined(USE_SW_TWI)
+    ZPortExpander(TwoWire* i2cInst, uint8_t i2cAddress, bool is8575) { begin(i2cInst, i2cAddress, is8575); }
+    #else
+    ZPortExpander(SoftWire* i2cInst, uint8_t i2cAddress, bool is8575) { begin(i2cInst, i2cAddress, is8575); }
+    #endif
 
+    #if !defined(USE_SW_TWI)
+    void        begin(TwoWire* i2cInst, uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate = BAUD_600_TIM);
+    #else
+    void        begin(SoftWire* i2cInst, uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate = BAUD_600_TIM);
+    #endif
     void        begin(uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate = BAUD_600_TIM);
     void        pinMode(uint8_t pin, uint8_t mode)     { _pcf857x.pinMode(pin, mode); }
     uint8_t     digitalRead(int8_t pin)                { return readPin(pin); }

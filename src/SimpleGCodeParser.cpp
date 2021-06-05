@@ -207,7 +207,8 @@ bool parse_T(const String& buf, int8_t serial) {
       // Same goes if the Feeder stepper is declared shared
       if(smuffConfig.prusaMMU2 || smuffConfig.isSharedStepper)
         //__debugS(PSTR("must unload first!"));
-        unloadFilament();
+        if(!smuffConfig.useSplitter)
+          unloadFilament();
     }
     stat = selectTool(tool, false);
     if(stat) {
@@ -566,6 +567,16 @@ void sendErrorResponseP(int8_t serial, const char* msg /* = nullptr */) {
 
 void sendOkResponse(int8_t serial) {
   printResponseP(P_Ok, serial);
+}
+
+void sendXon(Stream* serial) {
+  char seq[] = { 0x11 };
+  serial->write(seq, 1);
+}
+
+void sendXoff(Stream* serial) {
+  char seq[] = { 0x13 };
+  serial->write(seq, 1);
 }
 
 void sendStartResponse(int8_t serial){

@@ -80,7 +80,7 @@ bool checkFileSize(SdFile* file, size_t cap, const char* PROGMEM errMsg) {
 
 SdFile cfgOut;
 Print* openCfgFileWrite(const char* filename) {
-  if(cfgOut.open(filename, (uint8_t)(O_WRITE | O_CREAT | O_TRUNC))) {
+  if(cfgOut.open(filename, O_WRITE | O_CREAT)) {
     return &cfgOut;
   }
   return nullptr;
@@ -192,6 +192,8 @@ bool readMainConfig()
       smuffConfig.servoCycles1 =                jsonDoc[servo1Cycles];
       smuffConfig.servoCycles2 =                jsonDoc[servo2Cycles];
       smuffConfig.revolverClose =               jsonDoc[revolverClosed];
+      smuffConfig.useSplitter =                 jsonDoc[useSplitter];
+      smuffConfig.splitterDist =            jsonDoc[splitterDist];
 
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -590,8 +592,10 @@ bool dumpConfig(Print* dumpTo, bool useWebInterface, const char* filename, Dynam
     hasFile = true;
   }
   if(dumpTo != nullptr) {
-    if(useWebInterface)
+    if(useWebInterface) {
       serializeJson(jsonDoc, *dumpTo);
+      dumpTo->println();
+    }
     else
       serializeJsonPretty(jsonDoc, *dumpTo);
     if(hasFile)
@@ -653,6 +657,8 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[servo1Cycles]         = smuffConfig.servoCycles1;
   jsonDoc[servo2Cycles]         = smuffConfig.servoCycles2;
   jsonDoc[revolverClosed]       = smuffConfig.revolverClose;
+  jsonDoc[useSplitter]          = smuffConfig.useSplitter;
+  jsonDoc[splitterDist]     = smuffConfig.splitterDist;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }
@@ -904,6 +910,20 @@ bool writeSwapTools(Print* dumpTo, bool useWebInterface) {
   }
   return dumpConfig(dumpTo, useWebInterface, nullptr, jsonDoc);
 }
+
+/*
+  Writes the "Feed Load State" status to serial
+*/
+bool writefeedLoadState(Print* dumpTo, bool useWebInterface) {
+  DynamicJsonDocument jsonDoc(scapacity); // use memory on heap to serialize
+  char item[15];
+  for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
+    sprintf_P(item, P_Tool, i);
+    jsonDoc[item] = smuffConfig.feedLoadState[i];
+  }
+  return dumpConfig(dumpTo, useWebInterface, nullptr, jsonDoc);
+}
+
 
 bool deserializeSwapTools(const char* cfg) {
     DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize

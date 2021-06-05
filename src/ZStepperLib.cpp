@@ -160,7 +160,7 @@ void ZStepper::handleISR() {
      }
      else {
       if(endstopCheck != nullptr)
-        hit = endstopCheck();
+        hit = endstopCheck() == _endstopState;
     }
     setEndstopHit(hit);
   }
@@ -237,7 +237,7 @@ bool ZStepper::getEndstopHit(int8_t index) {
     }
     else {
       if(endstopCheck != nullptr)
-        setEndstopHit(endstopCheck());
+        setEndstopHit(endstopCheck()==_endstopState);
       else
         setEndstopHit(false);
     }

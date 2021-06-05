@@ -1,1 +1,5 @@
-M700	Load Filament (no params)
+M700	 [S]
+---------------------------
+S 		load filament to Splitter
+
+Without parameters the tool gets loaded to Nozzle (default for non Splitter option).

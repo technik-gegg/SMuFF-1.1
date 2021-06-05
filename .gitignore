@@ -6,3 +6,4 @@
 .vscode
 *.bak
 
+include/SKR_mini_E3-2.0/Pins_X-Swap.h

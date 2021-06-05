@@ -5,6 +5,7 @@
 #if !defined(USE_SW_TWI)
 #include <Wire.h>
   extern TwoWire I2CBus;
+  extern TwoWire I2CBus2;
 #else
   #include <U8g2lib.h>
   #include <SoftWire.h>
@@ -18,4 +19,5 @@
   };
 
   extern SoftWire I2CBus;
+  extern SoftWire I2CBus2;
 #endif

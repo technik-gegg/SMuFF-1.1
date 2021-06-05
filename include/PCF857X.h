@@ -36,14 +36,17 @@
 //#define PCF857X_INTERRUPT_SUPPORT
 
 /* Retro-compatibility with arduino 0023 and previous version */
+#if defined(__STM32F1__)
+#include "HAL/STM32F1/i2c.h"
+#endif
 #if ARDUINO >= 100
 #include "Arduino.h"
-#define I2CWRITE(x) Wire.write(x)
-#define I2CREAD() Wire.read()
+#define I2CWRITE(x) _i2cBusInst->write(x)
+#define I2CREAD() _i2cBusInst->read()
 #else
 #include "WProgram.h"
-#define I2CWRITE(x) Wire.send(x)
-#define I2CREAD() Wire.receive()
+#define I2CWRITE(x) _i2cBusInst->send(x)
+#define I2CREAD() _i2cBusInst->receive()
 #define INPUT_PULLUP 2
 #endif
 
@@ -65,6 +68,11 @@ public:
 	 * Start the I2C controller and store the PCF857X chip address and chip type
 	 */
 	void begin(uint8_t address = 0x21, uint8_t chip = CHIP_PCF8575);
+	#if !defined(USE_SW_TWI)
+	void begin(TwoWire* i2cInst, uint8_t address = 0x21, uint8_t chip = CHIP_PCF8575);
+	#else
+	void begin(SoftWire* i2cInst, uint8_t address = 0x21, uint8_t chip = CHIP_PCF8575);
+	#endif
 
 	/**
 	 * Set the direction of a pin (OUTPUT, INPUT or INPUT_PULLUP)
@@ -208,6 +216,13 @@ protected:
 
 	/** Chip type (PCF8574 or PCF8575) */
 	uint8_t _chip;
+
+	/** instance of which to use **/
+	#if !defined(USE_SW_TWI)
+	TwoWire* 	_i2cBusInst = nullptr;
+	#else
+	SoftWire* 	_i2cBusInst = nullptr;
+	#endif
 
 #ifdef PCF857X_INTERRUPT_SUPPORT
 	/** Old value of _PIN variable */

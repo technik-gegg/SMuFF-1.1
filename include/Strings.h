@@ -40,6 +40,7 @@ const char P_MnuMain0 [] PROGMEM            = { "main0" };
 const char P_MnuMain1 [] PROGMEM            = { "main1" };
 const char P_MnuMain2 [] PROGMEM            = { "main2" };
 const char P_MnuMain3 [] PROGMEM            = { "main3" };
+const char P_MnuMain4 [] PROGMEM            = { "main4" };
 const char P_MnuSettings [] PROGMEM         = { "settings" };
 const char P_MnuBaudrates [] PROGMEM        = { "baudrates" };
 const char P_MnuStatus [] PROGMEM           = { "status" };
@@ -111,6 +112,8 @@ const char P_Purging [] PROGMEM             = { "Purging" };
 const char P_PurgeLen [] PROGMEM            = { "%d%% = %smm" };
 const char P_PurgeCubic [] PROGMEM          = { "(= %smm3)" };
 const char P_Usage [] PROGMEM               = { "USAGE:\n" };
+const char P_Upload [] PROGMEM              = { "Upload in Progress" };
+const char P_BytesRemain [] PROGMEM         = { "%ld %sBytes left" };
 
 const char P_Off[] PROGMEM                  = { "OFF" };
 const char P_On[] PROGMEM                   = { "ON" };
@@ -166,6 +169,7 @@ const char P_M503S4[] PROGMEM               = { "\n/* Servo mapping */\n" };
 const char P_M503S5[] PROGMEM               = { "\n/* Materials */\n" };
 const char P_M503S6[] PROGMEM               = { "\n/* Tool swaps */\n" };
 const char P_M503S7[] PROGMEM               = { "\n/* Revolver mapping */\n" };
+const char P_M503S8[] PROGMEM               = { "\n/* Feed State */\n" };
 
 const char P_ConfigWriteSuccess[] PROGMEM   = { "Config\nsuccessfully\nwritten!" };
 const char P_ConfigWriteFail[] PROGMEM      = { "Saving failed!\nPlease check SD-Card." };

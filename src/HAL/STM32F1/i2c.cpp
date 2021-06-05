@@ -2,8 +2,10 @@
 
 #if !defined(USE_SW_TWI)
   TwoWire I2CBus(1);
+  TwoWire I2CBus2(2);
 #else
   SoftWire I2CBus(DSP_SCL, DSP_SDA);
+  SoftWire I2CBus2(PCF857x_SCL, PCF857x_SDA);
 
   uint8_t u8x8_byte_smuff_sw_i2c(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr) {
     switch(msg) {

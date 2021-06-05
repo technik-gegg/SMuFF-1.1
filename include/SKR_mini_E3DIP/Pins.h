@@ -59,7 +59,8 @@
 
 #define BEEPER_PIN PA15 // EXP1.10
 
-#define RELAY_PIN PC14 // PROBE (Relay for stepper motor switching)
+//#define RELAY_PIN PC14 // PROBE (Relay for stepper motor switching)
+#define RELAY_PIN PC12  // Z-MS3
 
 #if !defined(SMUFF_V5)
 #if defined(SMUFF_V6S)  // V6S uses linear stepper for lid; servo signals move to Z-Driver socket
@@ -181,6 +182,12 @@
 
 #endif
 
+#if defined(USE_SPLITTER_ENDSTOPS)
+// only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
+#define PCF857x_SCL          PB10 // Z-Axis STEP
+#define PCF857x_SDA          PB11 // Z-Axis ENABLE
+#endif
+
 #define DUET_SIG_FED_PIN     PB2    // Z-Axis DIR
 #define DUET_SIG_SEL_PIN     PC12   // Z-Axis MS3
 #define DEBUG_OFF_PIN       -1      // not needed on TWI display
@@ -215,7 +222,11 @@
 #define RX2_PIN PA3 // RX on TFT header
 
 // SERIAL3 - Cannot be used for serial comm. on E3 but can on E3-DIP
-#define CAN_USE_SERIAL3 true // if no Z-Axis driver is being used
+#if !defined(USE_SPLITTER_ENDSTOPS)
+#define CAN_USE_SERIAL3 true    // if no Z-Axis driver is being used
+#else
+#define CAN_USE_SERIAL3 false   // Serial3 cannot be used when Splitter with endstops is being used
+#endif
 
 #define TX3_PIN PB10 // Z-Axis STEP
 #define RX3_PIN PB11 // Z-Axis ENABLE

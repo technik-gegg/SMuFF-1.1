@@ -48,6 +48,20 @@ void timerServiceTask(void* parameter) {
 }
 #endif
 
+#if !defined(USE_SW_TWI)
+void ZPortExpander::begin(TwoWire* i2cInst, uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate) {
+    _pcf857x.begin(i2cInst, i2cAddress, is8575 ? CHIP_PCF8575 : CHIP_PCF8574);
+    _maxPin = is8575 ? 15 : 7;
+    _baudrate = baudrate;
+}
+#else
+void ZPortExpander::begin(SoftWire* i2cInst, uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate) {
+    _pcf857x.begin(i2cInst, i2cAddress, is8575 ? CHIP_PCF8575 : CHIP_PCF8574);
+    _maxPin = is8575 ? 15 : 7;
+    _baudrate = baudrate;
+}
+#endif
+
 void ZPortExpander::begin(uint8_t i2cAddress, bool is8575, ZPortExpanderBaudrate baudrate) {
 
     _pcf857x.begin(i2cAddress, is8575 ? CHIP_PCF8575 : CHIP_PCF8574);
