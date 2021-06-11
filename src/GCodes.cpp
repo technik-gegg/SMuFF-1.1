@@ -495,6 +495,9 @@ bool M115(const char *msg, String buf, int8_t serial)
 #if defined(USE_SPLITTER_ENDSTOPS)
   strcat(options, "ESTOP-MUX|");
 #endif
+#if defined(USE_DDE)
+  strcat(options, "DDE|");
+#endif
 #if defined(USE_TWI_DISPLAY)
   strcat(options, "TWI");
 #elif defined(USE_LEONERD_DISPLAY)
@@ -1384,7 +1387,9 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, unloadRetract) == 0)       { smuffConfig.unloadRetract = fParam;  }
       else if (strcmp(cmd, rsense) == 0)              { if (fParam >= 0 && fParam <= 1.0 && axis != -1) smuffConfig.stepperRSense[axis] = fParam;   else { rangeError(serial, 0, 1.0); stat = false; } }
       else if (strcmp(cmd, revolverClosed) == 0)      { smuffConfig.revolverClose = fParam; stepperPosClosed[toolSelected] = smuffConfig.revolverClose; }
+      else if (strcmp(cmd, ddeDist) == 0)             { smuffConfig.ddeDist = fParam; }
 
+      else if (strcmp(cmd, useDDE) == 0)              { smuffConfig.useDDE = (param > 0); }
       else if (strcmp(cmd, homeAfterFeed) == 0)       { smuffConfig.homeAfterFeed = (param > 0); }
       else if (strcmp(cmd, resetBeforeFeed) == 0)     { smuffConfig.resetBeforeFeed = (param > 0); }
       else if (strcmp(cmd, emulatePrusa) == 0)        { smuffConfig.prusaMMU2 = (param > 0); }
@@ -2066,8 +2071,7 @@ bool M701(const char *msg, String buf, int8_t serial)
       writefeedLoadState(getSerialInstance(serial), true);
     }
   }
-  else if (tool >= 0 && tool <= MAX_TOOLS)
-  {
+  else if (tool >= 0 && tool <= MAX_TOOLS) {
     if(hasParam(buf, S_Param) && smuffConfig.useSplitter) {
       if(smuffConfig.feedLoadState[tool] == SPL_NOT_LOADED) {
         //__debugS(PSTR("Not loaded. Doing nothing"));

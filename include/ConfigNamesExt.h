@@ -124,5 +124,6 @@ extern char* revolverClosed;
 extern char* useSplitter;
 extern char* splitterDist;
 extern char* feedState;
-
+extern char* ddeDist;
+extern char* useDDE;
 

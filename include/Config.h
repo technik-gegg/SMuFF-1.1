@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.29"
+#define VERSION_STRING    "V2.30"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-05-29"
+#define VERSION_DATE      "2021-06-08"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
 #define MATERIALS_FILE    "/MATERIALS.json"

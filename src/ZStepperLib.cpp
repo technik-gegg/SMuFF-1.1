@@ -68,6 +68,8 @@ void ZStepper::prepareMovement(long steps, bool ignoreEndstop /*= false */) {
   setDirection(steps < 0 ? CCW : CW);
   _totalSteps = abs(steps)+1;
   _accelDistSteps = _accelDistance * (_endstopType == ORBITAL ? _stepsPerDegree : _stepsPerMM);
+  if(_accelDistSteps > _totalSteps)
+    _accelDistSteps = _totalSteps/2;
   _stepsAcceleration = (float)((_acceleration - _minStepInterval+.1) / _accelDistSteps);
   _ignoreEndstop = ignoreEndstop;
   resetStepper();

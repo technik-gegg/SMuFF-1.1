@@ -130,5 +130,7 @@ const char* revolverClosed PROGMEM     = "RevolverClose";
 const char* useSplitter PROGMEM        = "UseSplitter";
 const char* splitterDist PROGMEM       = "SplitterDist";
 const char* feedState PROGMEM          = "FeedState";
+const char* ddeDist PROGMEM            = "DDEDist";
+const char* useDDE PROGMEM             = "UseDDE";
 
 

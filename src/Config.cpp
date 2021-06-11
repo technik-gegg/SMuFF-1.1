@@ -193,7 +193,13 @@ bool readMainConfig()
       smuffConfig.servoCycles2 =                jsonDoc[servo2Cycles];
       smuffConfig.revolverClose =               jsonDoc[revolverClosed];
       smuffConfig.useSplitter =                 jsonDoc[useSplitter];
-      smuffConfig.splitterDist =            jsonDoc[splitterDist];
+      smuffConfig.splitterDist =                jsonDoc[splitterDist];
+      #if defined(USE_DDE)
+      smuffConfig.useDDE =                      true;
+      #else
+      smuffConfig.useDDE =                      false;
+      #endif
+      smuffConfig.ddeDist =                     jsonDoc[ddeDist];
 
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -658,7 +664,10 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[servo2Cycles]         = smuffConfig.servoCycles2;
   jsonDoc[revolverClosed]       = smuffConfig.revolverClose;
   jsonDoc[useSplitter]          = smuffConfig.useSplitter;
-  jsonDoc[splitterDist]     = smuffConfig.splitterDist;
+  jsonDoc[splitterDist]         = smuffConfig.splitterDist;
+  jsonDoc[useDDE]               = smuffConfig.useDDE;
+  jsonDoc[ddeDist]              = smuffConfig.ddeDist;
+
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }

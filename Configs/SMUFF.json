@@ -37,5 +37,7 @@
  "Servo2Cyc": 0,
  "RevolverClose": 2.0,
  "UseSplitter": false,
- "SplitterDist": 55.0
+ "SplitterDist": 55.0,
+ "UseDDE": false,
+ "DDEDist": 100
 }

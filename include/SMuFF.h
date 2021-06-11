@@ -226,6 +226,8 @@ typedef struct
   bool useSplitter = false;
   float splitterDist = 0;
   uint8_t feedLoadState[MAX_TOOLS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  bool useDDE = false;
+  float ddeDist = 0;
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)

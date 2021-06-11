@@ -187,7 +187,13 @@ void setupOptionsMenu(char* menu) {
     smuffConfig.cutterClose,
     smuffConfig.invertRelay ? P_Yes : P_No,
     smuffConfig.useSplitter ? P_Yes : P_No,
-    String(smuffConfig.splitterDist).c_str()
+    String(smuffConfig.splitterDist).c_str(),
+    #if defined(USE_DDE)
+    P_Yes,
+    #else
+    P_No,
+    #endif
+    String(smuffConfig.ddeDist).c_str()
   );
 }
 
@@ -1583,7 +1589,7 @@ void showOptionsMenu(char* menuTitle) {
   float fVal;
   bool bVal;
   char *title;
-  char _menu[300];
+  char _menu[350];
 
   while(!stopMenu) {
     setupOptionsMenu(_menu);
@@ -1715,6 +1721,16 @@ void showOptionsMenu(char* menuTitle) {
             }
             break;
 
+        case 17: // Use DDE
+            // does nothing since it's defined during compilation
+            break;
+
+        case 18: // DDE Distance
+            fVal = smuffConfig.ddeDist;
+            if(showInputDialog(title, P_InMillimeter, &fVal, 0, 400, nullptr, 1)) {
+              smuffConfig.ddeDist = fVal;
+            }
+            break;
       }
       startTime = millis();
     }

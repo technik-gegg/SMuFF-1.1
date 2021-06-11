@@ -615,10 +615,23 @@ void runNoWait(int8_t index)
 void runAndWait(int8_t index)
 {
   static uint32_t lastFeedUpdate = 0;
+  bool dualFeeder = false;
+  #if defined(USE_DDE)
+  if((remainingSteppersFlag & _BV(FEEDER)) && (remainingSteppersFlag & _BV(REVOLVER)))
+    dualFeeder = true;
+  #endif
   runNoWait(index);
   while (remainingSteppersFlag)
   {
     checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
+    #if defined(USE_DDE)
+    // stop internal feeder when the DDE feeder has stopped
+    if(dualFeeder && ((remainingSteppersFlag & _BV(FEEDER)) && !(remainingSteppersFlag & _BV(REVOLVER)))) {
+      steppers[FEEDER].setMovementDone(true);
+      remainingSteppersFlag = 0;
+      break;
+    }
+    #endif
 #if defined(__STM32F1__) // || defined(__ESP32__)
   #if !defined(USE_TWI_DISPLAY) && !defined(USE_LEONERD_DISPLAY)
     // can't display feed on I2C display because they'll hang

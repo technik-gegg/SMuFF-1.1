@@ -256,10 +256,14 @@ void setupRelay()
     pinMode(RELAY_PIN, OUTPUT);
     // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
     // switch on the external stepper by default. Otherwise, use the interal stepper.
+    #if defined(USE_DDE)
+    switchFeederStepper(EXTERNAL);
+    #else
     if (smuffConfig.extControlFeeder)
       switchFeederStepper(EXTERNAL);
     else
       switchFeederStepper(INTERNAL);
+    #endif
   }
 }
 
@@ -533,7 +537,7 @@ void setupSteppers()
 #endif
   }
 
-#if !defined(SMUFF_V5) && !defined(SMUFF_V6S)
+#if !defined(SMUFF_V5) && !defined(SMUFF_V6S) && !defined(USE_DDE)
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
@@ -563,18 +567,24 @@ void setupSteppers()
   }
 
 #else
-  #if !defined(SMUFF_V6S)
+  #if !defined(SMUFF_V6S) && !defined(USE_DDE)
   // we don't use the Revolver stepper but a servo instead, although
   // create a dummy instance
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", -1, -1, Y_ENABLE_PIN, 0, 0);
   #else
   // except for V6S, which uses a linear stepper instead of a servo
+  // or for Direct Drive Extruder
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
   steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"Revolver", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
+  #if defined(SMUFF_V6S)
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MIN);
+  steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerMM[REVOLVER]*10);  // max. movement 10mm
+  #else
+  steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MINMAX);
+  steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerMM[REVOLVER]*300); // max. movement 300mm
+  #endif
   steppers[REVOLVER].stepFunc = overrideStepY;
-  steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerMM[REVOLVER]*10);
   steppers[REVOLVER].setStepsPerMM(smuffConfig.stepsPerMM[REVOLVER]);
   steppers[REVOLVER].endstopFunc = endstopEventY;
   steppers[REVOLVER].setInvertDir(smuffConfig.invertDir[REVOLVER]);
@@ -596,7 +606,11 @@ void setupSteppers()
     digitalWrite(MS3_Y, smuffConfig.ms3config[REVOLVER] == 1 ? LOW : HIGH);
 #endif
   }
-  __debugS(PSTR("Y-Stepper initialized for V6S"));
+    #if defined(SMUFF_V6S)
+    __debugS(PSTR("Y-Stepper initialized for V6S"));
+    #else
+    __debugS(PSTR("Y-Stepper initialized for DDE"));
+    #endif
   #endif
 #endif
 

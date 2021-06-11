@@ -23,30 +23,34 @@
 
 #define BOARD_INFO "SKR mini E3-DIP V1.1"
 // SELECTOR (X)
-#define STEP_HIGH_X digitalWrite(X_STEP_PIN, HIGH);
-#define STEP_LOW_X digitalWrite(X_STEP_PIN, LOW);
-#define X_STEP_PIN PC6
-#define X_DIR_PIN PB15
-#define X_ENABLE_PIN PC7
-#define X_END_PIN PC1 // X-STOP
+#define STEP_HIGH_X     digitalWrite(X_STEP_PIN, HIGH);
+#define STEP_LOW_X      digitalWrite(X_STEP_PIN, LOW);
+#define X_STEP_PIN      PC6
+#define X_DIR_PIN       PB15
+#define X_ENABLE_PIN    PC7
+#define X_END_PIN       PC1 // X-STOP
 // REVOLVER (Y)
-#define STEP_HIGH_Y digitalWrite(Y_STEP_PIN, HIGH);
-#define STEP_LOW_Y digitalWrite(Y_STEP_PIN, LOW);
-#define Y_STEP_PIN PB13
-#define Y_DIR_PIN PB12
-#define Y_ENABLE_PIN PB14
-#define Y_END_PIN PC0 // Y-STOP
+#define STEP_HIGH_Y     digitalWrite(Y_STEP_PIN, HIGH);
+#define STEP_LOW_Y      digitalWrite(Y_STEP_PIN, LOW);
+#define Y_STEP_PIN      PB13
+#define Y_DIR_PIN       PB12
+#define Y_ENABLE_PIN    PB14
+#if defined(USE_DDE)
+#define Y_END_PIN       PC2 // E0-STOP
+#else
+#define Y_END_PIN       PC0 // Y-STOP
+#endif
 // Feeder (E)
 // moved from Z to E because of the pins for 3rd Serial port,
 // so don't get confused by the pin names
-#define STEP_HIGH_Z digitalWrite(Z_STEP_PIN, HIGH);
-#define STEP_LOW_Z digitalWrite(Z_STEP_PIN, LOW);
-#define Z_STEP_PIN PB0
-#define Z_DIR_PIN PC5
-#define Z_ENABLE_PIN PB1
-#define Z_END_PIN PC15 // Z-STOP
-#define Z_END2_PIN PC2 // E0-STOP
-#define Z_END_DUET_PIN Z_END2_PIN
+#define STEP_HIGH_Z     digitalWrite(Z_STEP_PIN, HIGH);
+#define STEP_LOW_Z      digitalWrite(Z_STEP_PIN, LOW);
+#define Z_STEP_PIN      PB0
+#define Z_DIR_PIN       PC5
+#define Z_ENABLE_PIN    PB1
+#define Z_END_PIN       PC15 // Z-STOP
+#define Z_END2_PIN      PC2 // E0-STOP
+#define Z_END_DUET_PIN  Z_END2_PIN
 
 // SPI for stepper drivers
 #define ST_MISO_PIN PB4 // MISO3
@@ -60,7 +64,8 @@
 #define BEEPER_PIN PA15 // EXP1.10
 
 //#define RELAY_PIN PC14 // PROBE (Relay for stepper motor switching)
-#define RELAY_PIN PC12  // Z-MS3
+#define RELAY_PIN PC12   // Z-MS3
+
 
 #if !defined(SMUFF_V5)
 #if defined(SMUFF_V6S)  // V6S uses linear stepper for lid; servo signals move to Z-Driver socket
@@ -75,10 +80,18 @@
 #define SERVO3_PIN -1  // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
 #endif
 #else
-#define SERVO_OPEN_DRAIN 0
-#define SERVO1_PIN PB13 // Y STEP pin (Wiper Servo) used because of 5V tolerance
-#define SERVO2_PIN PB12 // Y DIR pin (Lid Servo)
-#define SERVO3_PIN PB14 // Y EN pin (Cutter Servo)
+#if !defined(USE_DDE)
+    #define SERVO_OPEN_DRAIN 0
+    #define SERVO1_PIN PB13 // Y STEP pin (Wiper Servo) used because of 5V tolerance
+    #define SERVO2_PIN PB12 // Y DIR pin (Lid Servo)
+    #define SERVO3_PIN PB14 // Y EN pin (Cutter Servo)
+#else
+    // relocate servo pins to Z-Axis driver socket because Y-Axis is being used for Shared Stepper.
+    // Please notice: If USE_DDE is set, Serial3 can't be used anymore for serial communication
+    #define SERVO1_PIN PB10 // Z-STEP (Wiper Servo)
+    #define SERVO2_PIN PB2  // Z-DIR  (Lid-Servo)
+    #define SERVO3_PIN PB11 // Z-EN   (Cutter Servo)
+#endif
 #endif
 
 #define FAN_PIN PA8     // FAN0
@@ -223,7 +236,11 @@
 
 // SERIAL3 - Cannot be used for serial comm. on E3 but can on E3-DIP
 #if !defined(USE_SPLITTER_ENDSTOPS)
-#define CAN_USE_SERIAL3 true    // if no Z-Axis driver is being used
+    #if defined(USE_DDE)
+    #define CAN_USE_SERIAL3 false   // Serial3 cannot be used when using DDE
+    #else
+    #define CAN_USE_SERIAL3 true    // if no Z-Axis driver is being used
+    #endif
 #else
 #define CAN_USE_SERIAL3 false   // Serial3 cannot be used when Splitter with endstops is being used
 #endif

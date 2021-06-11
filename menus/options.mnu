@@ -14,3 +14,5 @@ Cutter Close	%d|13
 Invert Relay	%s|14
 Use Splitter	%s|15
 Splitter Dist.	%s|16
+Use DDE	%s|17
+DDE Dist.	%s|18
