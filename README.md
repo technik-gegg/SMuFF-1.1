@@ -46,7 +46,7 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 **2.30** - DDE option added
 
-+ added **USE_DDE** flag in platformio.ini. Set this flag if you intend using the SMuFF on a Direct Drive Extruder. Further instructions you'll find on the [SMuFFs website](https://sites.google.com/view/the-smuff/).
++ added **USE_DDE** flag in platformio.ini. Set this flag if you intend using the SMuFF on a Direct Drive Extruder. Further instructions you'll find on the [SMuFFs website](https://sites.google.com/view/the-smuff/how-to/tutorials/set-up-a-dde).
 + added new menu items in **options** menu for DDE. *Please notice:* The Use DDE flag can't be switched during runtime, it's only shown to indicate whether ot not this firmware was compiled for DDE.
 
 **2.29** - Some critical changes, Splitter option added
