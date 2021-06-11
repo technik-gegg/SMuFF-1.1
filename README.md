@@ -44,6 +44,11 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.30** - DDE option added
+
++ added **USE_DDE** flag in platformio.ini. Set this flag if you intend using the SMuFF on a Direct Drive Extruder. Further instructions you'll find on the [SMuFFs website](https://sites.google.com/view/the-smuff/).
++ added new menu items in **options** menu for DDE. *Please notice:* The Use DDE flag can't be switched during runtime, it's only shown to indicate whether ot not this firmware was compiled for DDE.
+
 **2.29** - Some critical changes, Splitter option added
 
 + **Critical:** Moved pin for **switching the relay** from *PROBE* to the *MS3* pin of the Z-Axis stepper driver for E3-DIP boards. This was needed since the PROBE pin sometimes has a problem delivering a valid signal for the relay board. If you still encounter problems switching the relay, try adding a 10K pull-ip resistor between +5V and the signal pin MS3.
