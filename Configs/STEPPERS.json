@@ -48,11 +48,12 @@
     "StepDly": 0,
     "UseChunks": false,
     "Chunks": 20,
-    "InsLen": 5,
+    "InsLen": 15,
     "DuetLaser": false,
     "SharedStepper": false,
     "MS3": 0,
     "UseEStop2": false,
-    "AutoWipe": false
+    "AutoWipe": false,
+    "EStop2Ofs": 0
    }
 }

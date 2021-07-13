@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.30"
+#define VERSION_STRING    "V2.31"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2021-06-08"
+#define VERSION_DATE      "2021-07-11"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
@@ -42,18 +42,19 @@
 #define MAX_WIPE_SEQUENCE       25                // max. length of wipe sequence
 #define MAX_BUTTON_LEN          15                // max. length of button commands
 
-#define NUM_STEPPERS      3
-#define SELECTOR          0
-#define REVOLVER          1
-#define FEEDER            2
-#define FEEDER2           3                 // added for boards with pre-installed stepper drivers
+#define NUM_STEPPERS            3
+#define SELECTOR                0
+#define REVOLVER                1
+#define DDE_FEEDER              1
+#define FEEDER                  2
+#define FEEDER2                 3                 // added for boards with pre-installed stepper drivers
 
-#define MIN_TOOLS         2
-#define MAX_TOOLS         12
+#define MIN_TOOLS               2
+#define MAX_TOOLS               12
 
-#define DSP_CONTRAST        200
-#define MIN_CONTRAST        60
-#define MAX_CONTRAST        250
+#define DSP_CONTRAST            200
+#define MIN_CONTRAST            60
+#define MAX_CONTRAST            250
 
 #define I2C_SLAVE_ADDRESS       0x88
 #define I2C_DISPLAY_ADDRESS     0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
@@ -94,6 +95,7 @@
 
 #if defined(__STM32F1__)
 #define STEPPER_PSC         3           // 24MHz on STM32 (72MHz MCU)
+//#define STEPPER_PSC         2           // 36MHz on STM32 (72MHz MCU)
 #elif defined(__ESP32__)
 #define STEPPER_PSC         10          // 8MHz on ESP32 (80MHz MCU)
 #else

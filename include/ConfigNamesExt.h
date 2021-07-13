@@ -126,4 +126,6 @@ extern char* splitterDist;
 extern char* feedState;
 extern char* ddeDist;
 extern char* useDDE;
-
+extern char* purgeDDE;
+extern char* traceUsb;
+extern char* devName;

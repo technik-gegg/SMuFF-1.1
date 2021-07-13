@@ -157,6 +157,7 @@ bool readMainConfig()
       const char* p4 =                          jsonDoc[lBtnHold];
       const char* p5 =                          jsonDoc[rBtnDown];
       const char* p6 =                          jsonDoc[rBtnHold];
+      const char* p7 =                          jsonDoc[devName];
       if(p2 != nullptr && strlen(p2) > 0) {
         strncpy(smuffConfig.wipeSequence, p2, ArraySize(smuffConfig.wipeSequence));
       }
@@ -171,6 +172,9 @@ bool readMainConfig()
       }
       if(p6 != nullptr && strlen(p6) > 0) {
         strncpy(smuffConfig.rButtonHold, p6, ArraySize(smuffConfig.rButtonHold));
+      }
+      if(p7 != nullptr && strlen(p7) > 0) {
+        strncpy(smuffConfig.deviceName, p7, ArraySize(smuffConfig.deviceName));
       }
 
       smuffConfig.prusaMMU2 =                   jsonDoc[emulatePrusa];
@@ -200,6 +204,8 @@ bool readMainConfig()
       smuffConfig.useDDE =                      false;
       #endif
       smuffConfig.ddeDist =                     jsonDoc[ddeDist];
+      smuffConfig.purgeDDE =                    jsonDoc[purgeDDE];
+      smuffConfig.traceUSBTraffic =             jsonDoc[traceUsb];
 
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -667,7 +673,9 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[splitterDist]         = smuffConfig.splitterDist;
   jsonDoc[useDDE]               = smuffConfig.useDDE;
   jsonDoc[ddeDist]              = smuffConfig.ddeDist;
-
+  jsonDoc[purgeDDE]             = smuffConfig.purgeDDE;
+  jsonDoc[traceUsb]             = smuffConfig.traceUSBTraffic;
+  jsonDoc[devName]              = smuffConfig.deviceName;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }

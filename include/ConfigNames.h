@@ -132,5 +132,8 @@ const char* splitterDist PROGMEM       = "SplitterDist";
 const char* feedState PROGMEM          = "FeedState";
 const char* ddeDist PROGMEM            = "DDEDist";
 const char* useDDE PROGMEM             = "UseDDE";
+const char* purgeDDE PROGMEM           = "PurgeDDE";
+const char* traceUsb PROGMEM           = "TraceUSB";
+const char* devName PROGMEM            = "Device";
 
 

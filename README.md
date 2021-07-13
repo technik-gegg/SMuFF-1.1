@@ -1,6 +1,6 @@
 # Welcome to the SMuFF project
 
-![The SMuFF](images/SMuFF-V5.png)
+![The SMuFF](images/SMuFF-V6.png)
 
 Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story here on the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
 
@@ -40,9 +40,18 @@ Each test result will be displayed on the LCD and also sent to the log serial po
 
 For more information about building the SMuFF and some more detailed stuff, head over to my official [SMuFF homepage](https://sites.google.com/view/the-smuff/) or to my [Discord server](https://discord.com/invite/BzZ3rBf).
 
+[![Open in VS-Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/technik-gegg/SMuFF-1.1/tree/SMuFF-2.0-(Experimental))
+
 ---
 
 ## Recent changes
+
+**2.31** - added Cutter handling for DDE option
+
++ added purging of filament when DDE is being used in conjunction with the Cutter in order to release the 2nd endstop. To use this, set the **PurgeDDE** flag in SMUFF.json accordingly.
++ fixed bug in feedToEndstop which caused an abort if the *InsLen* parameter was set too low.
++ added all **STL files** for V6 to this repository
++ added **Device** parameter in SMUFF.json. This string can be 15 charaters long and sets a distinct name for the current SMuFF device (i.e. the printer it is attached to). The name of the device will be show up in the WebInterface and also in GCode **M503**. This name can only be set/changed through the WebInterface or directly in the config file but not in the menu.
 
 **2.30** - DDE option added
 

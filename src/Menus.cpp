@@ -193,7 +193,8 @@ void setupOptionsMenu(char* menu) {
     #else
     P_No,
     #endif
-    String(smuffConfig.ddeDist).c_str()
+    String(smuffConfig.ddeDist).c_str(),
+    smuffConfig.purgeDDE ? P_Yes : P_No
   );
 }
 
@@ -1729,6 +1730,13 @@ void showOptionsMenu(char* menuTitle) {
             fVal = smuffConfig.ddeDist;
             if(showInputDialog(title, P_InMillimeter, &fVal, 0, 400, nullptr, 1)) {
               smuffConfig.ddeDist = fVal;
+            }
+            break;
+
+        case 19: // Purge DDE
+            bVal = smuffConfig.purgeDDE;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.purgeDDE = bVal;
             }
             break;
       }

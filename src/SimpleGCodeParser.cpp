@@ -214,6 +214,7 @@ bool parse_T(const String& buf, int8_t serial) {
     if(stat) {
       if(!smuffConfig.prusaMMU2) {
         if((param = getParam(buf.substring(ofs), (char*)"S")) != -1) {
+          //__debugS(PSTR("Tx has S Param: %d"), param);
           if(param == 1)
             loadFilament(false);
           else if(param == 0)
@@ -221,6 +222,13 @@ bool parse_T(const String& buf, int8_t serial) {
         }
       }
     }
+    #if defined(USE_DDE)
+    switchFeederStepper(EXTERNAL);
+    #else
+    if(smuffConfig.isSharedStepper)
+      switchFeederStepper(EXTERNAL);
+    #endif
+
     if(!smuffConfig.prusaMMU2)  // Prusa doesn't expect "Tx" as a response
       printResponse(msg, serial);
   }

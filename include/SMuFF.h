@@ -228,6 +228,9 @@ typedef struct
   uint8_t feedLoadState[MAX_TOOLS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
   bool useDDE = false;
   float ddeDist = 0;
+  bool purgeDDE = false;
+  bool traceUSBTraffic = false;
+  char deviceName[MAX_BUTTON_LEN] = {0};
 } SMuFFConfig;
 
 #if defined(__BRD_I3_MINI)
@@ -401,6 +404,8 @@ extern int32_t uploadLen;
 extern SdFile upload;
 extern bool isUpload;
 extern bool splitterEndstopChanged;
+extern bool asyncDDE;
+extern bool refreshingDisplay;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper *drivers[];

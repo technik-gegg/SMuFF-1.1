@@ -617,7 +617,7 @@ void runAndWait(int8_t index)
   static uint32_t lastFeedUpdate = 0;
   bool dualFeeder = false;
   #if defined(USE_DDE)
-  if((remainingSteppersFlag & _BV(FEEDER)) && (remainingSteppersFlag & _BV(REVOLVER)))
+  if(!asyncDDE && (remainingSteppersFlag & _BV(FEEDER)) && (remainingSteppersFlag & _BV(DDE_FEEDER)))
     dualFeeder = true;
   #endif
   runNoWait(index);
@@ -626,28 +626,26 @@ void runAndWait(int8_t index)
     checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
     #if defined(USE_DDE)
     // stop internal feeder when the DDE feeder has stopped
-    if(dualFeeder && ((remainingSteppersFlag & _BV(FEEDER)) && !(remainingSteppersFlag & _BV(REVOLVER)))) {
+    if(dualFeeder && ((remainingSteppersFlag & _BV(FEEDER)) && !(remainingSteppersFlag & _BV(DDE_FEEDER)))) {
       steppers[FEEDER].setMovementDone(true);
       remainingSteppersFlag = 0;
       break;
     }
     #endif
-#if defined(__STM32F1__) // || defined(__ESP32__)
-  #if !defined(USE_TWI_DISPLAY) && !defined(USE_LEONERD_DISPLAY)
-    // can't display feed on I2C display because they'll hang
-    if ((remainingSteppersFlag & _BV(FEEDER)) && !showMenu && (millis()-lastFeedUpdate >200))
-    {
-      refreshStatus(false, true);
-      lastFeedUpdate = millis();
+    if(index != -1 && !(remainingSteppersFlag & _BV(index))) {
+      break;
     }
-  #endif
-#endif
   }
 }
 
+bool refreshingDisplay = false;
+
 void refreshStatus(bool withLogo, bool feedOnly)
 {
+  if(refreshingDisplay)
+    return;
   if (initDone && !isPwrSave && !showMenu && !displayingUserMessage && !isTestrun && !isUpload) {
+    refreshingDisplay = true;
     if (feedOnly) {
       drawFeed();
     }
@@ -658,6 +656,7 @@ void refreshStatus(bool withLogo, bool feedOnly)
       // note to myself: if it's hanging here, there's something wrong with Timer 4 CH1 (STM32)
       //__debugS(PSTR("refreshStatus done"));
     }
+    refreshingDisplay = false;
   }
 }
 
@@ -983,7 +982,7 @@ void loop()
       }
       pwrSaveTime = millis();
       showMenu = false;
-      refreshStatus(true, false);
+      // refreshStatus(true, false);
       terminalClear();
     }
   }
@@ -1372,19 +1371,22 @@ size_t readSerialToBuffer(Stream* serial, char* buffer, size_t maxLen) {
 void serialEvent() {  // USB-Serial port
   char tmp[128];
   memset(tmp, 0, ArraySize(tmp));
-  size_t got = readSerialToBuffer(&Serial, tmp, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial, tmp, ArraySize(tmp)-1);
   if(got > 0) {
     if(isUpload)
       handleUpload(tmp, got, &Serial);
-    else
+    else {
+      if(smuffConfig.traceUSBTraffic)
+        __debugS(PSTR("Recv(0): %s"), tmp);
       handleSerial(tmp, got, serialBuffer0, 0);
+    }
   }
 }
 
 void serialEvent1() {
   char tmp[128];
   memset(tmp, 0, ArraySize(tmp));
-  size_t got = readSerialToBuffer(&Serial1, tmp, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial1, tmp, ArraySize(tmp)-1);
   if(got > 0) {
     if(isUpload)
       handleUpload(tmp, got, &Serial1);
@@ -1396,7 +1398,7 @@ void serialEvent1() {
 void serialEvent2() {
   char tmp[128];
   memset(tmp, 0, ArraySize(tmp));
-  size_t got = readSerialToBuffer(&Serial2, tmp, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial2, tmp, ArraySize(tmp)-1);
   if(got > 0) {
     //__debugS(PSTR("Got: %d <%s>"), got, tmp);
     if(isUpload)
@@ -1409,7 +1411,7 @@ void serialEvent2() {
 void serialEvent3() {
   char tmp[128];
   memset(tmp, 0, ArraySize(tmp));
-  size_t got = readSerialToBuffer(&Serial3, tmp, ArraySize(tmp));
+  size_t got = readSerialToBuffer(&Serial3, tmp, ArraySize(tmp)-1);
   if(got > 0) {
     if(isUpload)
       handleUpload(tmp, got, &Serial3);

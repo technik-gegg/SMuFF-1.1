@@ -23,6 +23,8 @@ void every10ms() {
 }
 
 void every20ms() {
+  if(refreshingDisplay)
+    return;
   isrFastLEDTimerHandler();
   // Add your periodical code here
 }
@@ -36,23 +38,21 @@ void every100ms() {
 }
 
 void every250ms() {
-  refreshStatus(true, false);     // refresh main screen
   // Add your periodical code here
 }
 
 void every500ms() {
-  if(smuffConfig.webInterface) {
-    sendStates();
-  }
+  refreshStatus(true, false);     // refresh main screen
   // Add your periodical code here
 }
 
 void sendStates() {
-  /*
+  
   if(parserBusy || sendingResponse) {
     __debugS(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
+    return;
   }
-  */
+  
   // send status of endstops and current tool to all listeners, if configured
   if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone && !parserBusy) {
     printPeriodicalState(0);
@@ -82,6 +82,10 @@ void every1s() {
     encoder.setLED(LED_RED, false);
   }
   #endif
+  // send states to WebInterface
+  if(smuffConfig.webInterface) {
+    sendStates();
+  }
   // Add your periodical code here
 }
 

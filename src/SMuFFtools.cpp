@@ -117,7 +117,7 @@ void drawStatus()
   strcat(brand, "D");
   #endif
   char tmp[80];
-  char tool [5];
+  char tool[5];
   char mode[6];
   char relay[4];
   char driver[10];
@@ -1000,7 +1000,7 @@ void switchFeederStepper(uint8_t stepper)
   if (RELAY_PIN == -1)
     return;
   #if defined(USE_DDE)
-  steppers[REVOLVER].setEnabled(false);
+  steppers[DDE_FEEDER].setEnabled(false);
   #else
   steppers[FEEDER].setEnabled(false);
   #endif
@@ -1008,7 +1008,7 @@ void switchFeederStepper(uint8_t stepper)
   smuffConfig.externalStepper = stepper == EXTERNAL;
   delay(250);   // gain the relay some time to debounce
   #if defined(USE_DDE)
-  steppers[REVOLVER].setEnabled(true);
+  steppers[DDE_FEEDER].setEnabled(true);
   #endif
 }
 
@@ -1099,8 +1099,13 @@ void changeFeederSpeed(uint16_t speed)
   unsigned long _speed = translateSpeed(speed, FEEDER);
   //__debugS(PSTR("Changing Feeder speed to %3d (%6ld ticks)"), _speed, maxSpeed);
   steppers[FEEDER].setMaxSpeed(_speed);
+}
+
+void changeDDEFeederSpeed(uint16_t speed)
+{
   #if defined(USE_DDE)
-  steppers[REVOLVER].setMaxSpeed(_speed*.9);  // let the DDE extruder run slightly faster
+  unsigned long _speed = translateSpeed(speed, FEEDER);
+  steppers[DDE_FEEDER].setMaxSpeed(_speed*.9);  // let the DDE extruder run slightly faster
   #endif
 }
 
@@ -1134,9 +1139,9 @@ void repositionSelector(bool retractFilament)
 
 bool feedToEndstop(bool showMessage)
 {
+  //__debugS(PSTR("Feeding to endstop (1)"));
   // enable steppers if they were turned off
-  if (!steppers[FEEDER].getEnabled())
-    steppers[FEEDER].setEnabled(true);
+  steppers[FEEDER].setEnabled(true);
 
   // don't allow "feed to endstop" being interrupted
   steppers[FEEDER].setIgnoreAbort(true);
@@ -1150,9 +1155,11 @@ bool feedToEndstop(bool showMessage)
   if (smuffConfig.accelSpeed[FEEDER] > smuffConfig.insertSpeed)
     steppers[FEEDER].setAllowAccel(false);
 
-  uint16_t max = (uint16_t)(smuffConfig.selectorDistance * 2); // calculate a maximum distance to avoid feeding endlesly
+  uint16_t max = (uint16_t)(smuffConfig.selectorDistance * 2); // calculate a maximum distance to avoid feeding endlessly
   uint8_t n = 0;
   int8_t retries = FEED_ERROR_RETRIES; // max. retries for this operation
+  if(retries < ((int8_t)smuffConfig.selectorDistance/smuffConfig.insertLength))
+    retries = (int8_t)(smuffConfig.selectorDistance/smuffConfig.insertLength)+2;
 
   feederJammed = false;
 
@@ -1188,6 +1195,7 @@ bool feedToEndstop(bool showMessage)
     // if endstop hasn't triggered yet, feed was not successful
     if (n >= max && !feederEndstop())
     {
+      //__debugS(PSTR("Feed beyond MAX... Escalating"));
       delay(250);
       // retract half a insertLength and reset the Revolver
       prepSteppingRelMillimeter(FEEDER, -(smuffConfig.insertLength / 2), true);
@@ -1241,6 +1249,7 @@ bool feedToEndstop(bool showMessage)
   steppers[FEEDER].setAllowAccel(true);
   steppers[FEEDER].setMaxSpeed(curSpeed);
   delay(300);
+  //__debugS(PSTR("Done. Feeder jammed: %d"), feederJammed);
   return feederJammed ? false : true;
 }
 
@@ -1382,9 +1391,11 @@ bool feedToNozzle(bool showMessage)
 {
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
+  
   #if defined(USE_DDE)
-  uint16_t speed2 = smuffConfig.maxSpeed[REVOLVER];
+  uint16_t speed2 = smuffConfig.maxSpeed[DDE_FEEDER];
   #endif
+  
   int8_t retries = FEED_ERROR_RETRIES;
 
   if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks)
@@ -1405,6 +1416,7 @@ bool feedToNozzle(bool showMessage)
     // prepare 95% to feed full speed
     do
     {
+      __debugS(PSTR("Feeding to Nozzle (95%%)"));
       prepSteppingRelMillimeter(FEEDER, len - remains, true);
       runAndWait(FEEDER);
       // did the Feeder stall?
@@ -1412,7 +1424,7 @@ bool feedToNozzle(bool showMessage)
       if (!stat)
       {
         remains = steppers[FEEDER].getStepPositionMM();
-        __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
+        //__debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
       }
       #if !defined(USE_DDE)
       // check whether the 2nd endstop has triggered as well if configured to do so
@@ -1433,11 +1445,27 @@ bool feedToNozzle(bool showMessage)
       speed = smuffConfig.insertSpeed;
       float len = (smuffConfig.useSplitter ? smuffConfig.splitterDist : smuffConfig.bowdenLength) * .05;
       float remains = 0;
+      uint32_t timeout = 20000;
       steppers[FEEDER].setStepPositionMM(0);
+      #if defined(USE_DDE)
+      if(smuffConfig.useCutter) {
+        // wait for the 2nd feeder endstop to trigger
+        __debugS(PSTR("Endstop2 state: %s %s"), String(feederEndstop(2)).c_str(), feederEndstop(2)==1 ? " - waiting..." : "");
+        while(feederEndstop(2)) {
+          delay(500);
+          timeout -= 500;
+          if(timeout == 0)
+            break;
+        }
+        if(timeout == 0)
+          __debugS(PSTR("Aborted because of timeout"));
+      }
+      #endif
       // rest of it feed slowly
       do
       {
         changeFeederSpeed(speed);
+        changeDDEFeederSpeed(speed);
         #if !defined (USE_DDE)
         prepSteppingRelMillimeter(FEEDER, len - remains, true);
         runAndWait(FEEDER);
@@ -1446,18 +1474,18 @@ bool feedToNozzle(bool showMessage)
         #else
         __debugS(PSTR("Feeding both extruders..."));
         steppers[FEEDER].setAllowAccel(false);
-        steppers[REVOLVER].setAllowAccel(false);
-        steppers[REVOLVER].setEnabled(true);
+        steppers[DDE_FEEDER].setAllowAccel(false);
+        steppers[DDE_FEEDER].setEnabled(true);
         delay(250);
         prepSteppingRelMillimeter(FEEDER, len - remains, true);
-        prepSteppingRelMillimeter(REVOLVER, len - remains, false);
-        remainingSteppersFlag = _BV(FEEDER) | _BV(REVOLVER);
+        prepSteppingRelMillimeter(DDE_FEEDER, len - remains, false);
+        remainingSteppersFlag = _BV(FEEDER) | _BV(DDE_FEEDER);
         runAndWait(-1);
         #endif
         if (!stat)
         {
           remains = steppers[FEEDER].getStepPositionMM();
-          __debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
+          //__debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
         }
       } while (!stat && retries > 0);
 
@@ -1465,21 +1493,25 @@ bool feedToNozzle(bool showMessage)
       len = smuffConfig.reinforceLength == 0 ? 5 : smuffConfig.reinforceLength; // feed another 5 mm with both extruders before the main extruder takes over
       steppers[FEEDER].setIgnoreAbort(false);
       prepSteppingRelMillimeter(FEEDER, len, true);
-      prepSteppingRelMillimeter(REVOLVER, len, false);
-      remainingSteppersFlag = _BV(FEEDER) | _BV(REVOLVER);
+      prepSteppingRelMillimeter(DDE_FEEDER, len, false);
+      remainingSteppersFlag = _BV(FEEDER) | _BV(DDE_FEEDER);
       runAndWait(-1);
       // reset max. speed on the DDE and acceleration on both, Feeder and DDE
       steppers[FEEDER].setAllowAccel(true);
-      steppers[REVOLVER].setAllowAccel(true);
-      steppers[REVOLVER].setMaxSpeed(speed2);
+      steppers[DDE_FEEDER].setAllowAccel(true);
       setServoLid(SERVO_OPEN);
       delay(750);  // wait for the servo to react
-      // only on Direct Drive Extruder
-      len = smuffConfig.ddeDist;
-      if(len > 0) {
-        prepSteppingRelMillimeter(REVOLVER, len, true);
-        runAndWait(REVOLVER);
+      // purge Direct Drive Extruder if configured likewise
+      if(smuffConfig.usePurge && smuffConfig.purgeLength > 0) {
+        len = smuffConfig.purgeLength;
+        __debugS(PSTR("Purging DDE... (%s mm)"), String(len).c_str());
+        prepSteppingRelMillimeter(DDE_FEEDER, len, true);
+        runAndWait(DDE_FEEDER);
+        if(smuffConfig.wipeBeforeUnload) {
+          wipeNozzle();
+        }
       }
+      steppers[DDE_FEEDER].setMaxSpeed(speed2);
       #endif
     }
   }
@@ -1563,9 +1595,9 @@ bool loadFilament(bool showMessage)
     prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
     runAndWait(FEEDER);
   }
+  purgeFilament();
   #endif
 
-  purgeFilament();
   steppers[FEEDER].setMaxSpeed(curSpeed);
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
@@ -1582,8 +1614,9 @@ void purgeFilament() {
     positionRevolver();
     #endif
     uint16_t curSpeed = steppers[FEEDER].getMaxSpeed();
-    uint16_t curSpeed2 = steppers[REVOLVER].getMaxSpeed();
+    uint16_t curSpeed2 = steppers[DDE_FEEDER].getMaxSpeed();
     changeFeederSpeed(smuffConfig.purgeSpeed);
+    changeDDEFeederSpeed(smuffConfig.purgeSpeed);
     uint16_t len = smuffConfig.purgeLength;
     if (smuffConfig.purges[toolSelected] > 100)
     {
@@ -1594,12 +1627,12 @@ void purgeFilament() {
     prepSteppingRelMillimeter(FEEDER, len, true);
     runAndWait(FEEDER);
     #else
-    prepSteppingRelMillimeter(REVOLVER, len, true);
-    runAndWait(REVOLVER);
+    prepSteppingRelMillimeter(DDE_FEEDER, len, true);
+    runAndWait(DDE_FEEDER);
     #endif
     delay(250);
     steppers[FEEDER].setMaxSpeed(curSpeed);
-    steppers[REVOLVER].setMaxSpeed(curSpeed2);
+    steppers[DDE_FEEDER].setMaxSpeed(curSpeed2);
     drawPurgingMessage(0, 0);
   }
 }
@@ -1691,22 +1724,28 @@ bool unloadFromNozzle(bool showMessage)
   {
     float len = smuffConfig.ddeDist * 1.1;
     #if defined (USE_DDE)
-    bool endstopState = steppers[REVOLVER].getEndstopState();
-    // invert endstop trigger state
-    steppers[REVOLVER].setEndstopState(!endstopState);
-    steppers[REVOLVER].setEnabled(true);
-    setServoLid(SERVO_OPEN);    // just in case
-    // only on Direct Drive Extruder
-    if(len > 0) {
-      prepSteppingRelMillimeter(REVOLVER, -len, false);
-      runAndWait(REVOLVER);
+    // don't feed in reverse if Cutter is being used
+    if(!smuffConfig.useCutter) {
+      bool endstopState = steppers[DDE_FEEDER].getEndstopState();
+      // invert endstop trigger state
+      steppers[DDE_FEEDER].setEndstopState(!endstopState);
+      steppers[DDE_FEEDER].setEnabled(true);
+      setServoLid(SERVO_OPEN);    // just in case
+      // only on Direct Drive Extruder
+      if(len > 0) {
+        prepSteppingRelMillimeter(DDE_FEEDER, -len, false);
+        runAndWait(DDE_FEEDER);
+      }
+      // move it another 5 mm out of the main Feeder, just to make sure the SMuFF is able to retract
+      len = smuffConfig.reinforceLength == 0 ? 5 : smuffConfig.reinforceLength;
+      prepSteppingRelMillimeter(DDE_FEEDER, -len, true);
+      runAndWait(DDE_FEEDER);
+      setServoLid(SERVO_CLOSED);
+      steppers[DDE_FEEDER].setEndstopState(endstopState);
     }
-    // move it another 5 mm out of the main Feeder, just to make sure the SMuFF is able to retract
-    len = smuffConfig.reinforceLength == 0 ? 5 : smuffConfig.reinforceLength;
-    prepSteppingRelMillimeter(REVOLVER, -len, true);
-    runAndWait(REVOLVER);
-    setServoLid(SERVO_CLOSED);
-    steppers[REVOLVER].setEndstopState(endstopState);
+    else {
+      setServoLid(SERVO_CLOSED);
+    }
     #endif
 
     do
@@ -1728,9 +1767,8 @@ bool unloadFromNozzle(bool showMessage)
             retries--;
             stat = false;
             __debugS(PSTR("E-Stop2 failed. Retrying"));
-            // if only one retry is left, try cutting the filament again (if the cutter is configured)
-            if (retries == 1)
-            {
+            // if only one retry is left, try cutting the filament again
+            if (retries == 1) {
               cutFilament();
             }
           }
@@ -1760,6 +1798,7 @@ bool unloadFromNozzle(bool showMessage)
   }
   // reset feeder to max. speed
   changeFeederSpeed(smuffConfig.maxSpeed[FEEDER]);
+  changeDDEFeederSpeed(smuffConfig.maxSpeed[DDE_FEEDER]);
   delay(500);
   return stat;
 }
@@ -1811,6 +1850,62 @@ void cutFilament(bool keepClosed /* = true */)
       delay(200);
       setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
     }
+  }
+}
+
+
+void (*defaultEndstopDDEFunc)() = nullptr;
+bool defaultEndstopDDEState;
+bool asyncDDE = false;
+
+void endstopDDEEvent() {
+  __debugS(PSTR("DDE endstop triggered at position: %s mm"), String(steppers[DDE_FEEDER].getStepPositionMM()).c_str());
+  asyncDDE = false;
+  // revert endstop trigger inversion
+  steppers[DDE_FEEDER].setEndstopState(defaultEndstopDDEState);
+  // reset max speed to default
+  steppers[DDE_FEEDER].setMaxSpeed(smuffConfig.maxSpeed[DDE_FEEDER]);
+  // reset endstop event
+  steppers[DDE_FEEDER].endstopFunc = defaultEndstopDDEFunc;
+}
+
+// purge out the piece of filament that's stuck in between the cutter and the 
+// DDE gears in order to free the DDE (endstop).
+void purgeDDE() {
+  // This applies only if the Cutter is being utilized
+  if(smuffConfig.purgeDDE) {
+    // only if the endstop is still triggering
+    if(steppers[DDE_FEEDER].getEndstopHit()) {
+      // invert endstop trigger state for purging
+      defaultEndstopDDEState = steppers[DDE_FEEDER].getEndstopState();
+      steppers[DDE_FEEDER].setEndstopState(!defaultEndstopDDEState);
+      uint16_t curSpeed = steppers[DDE_FEEDER].getMaxSpeed();
+      steppers[DDE_FEEDER].setMaxSpeed(smuffConfig.purgeSpeed);
+      steppers[DDE_FEEDER].setStepPositionMM(0);
+      float len = smuffConfig.ddeDist == 0 ? 100 : smuffConfig.ddeDist * 2;
+      __debugS(PSTR("Purging DDE (max. %s mm)..."),String(len).c_str());
+      // save the endstop hit function
+      defaultEndstopDDEFunc = steppers[DDE_FEEDER].endstopFunc;
+      steppers[DDE_FEEDER].endstopFunc = endstopDDEEvent;
+      // feed twice the "DDE Distance" (endstop is supposed to interrupt purging)
+      prepSteppingRelMillimeter(DDE_FEEDER, len, false);
+      asyncDDE = true;
+      runNoWait(DDE_FEEDER);  // purge DDE asynchronously in background
+      /*
+      runAndWait(DDE_FEEDER);
+      steppers[DDE_FEEDER].setMaxSpeed(curSpeed);
+      */
+    }
+    else {
+      __debugS(PSTR("Endstop 2 not hit..."));
+    }
+    /*
+    // revert endstop trigger inversion
+    steppers[DDE_FEEDER].setEndstopState(endstopDDEState);
+    if(smuffConfig.wipeBeforeUnload) {
+      wipeNozzle();
+    }
+    */
   }
 }
 
@@ -1870,6 +1965,9 @@ bool unloadFilament()
   // cut the filament if configured likewise
   cutFilament();
 
+  #if defined(USE_DDE)
+  purgeDDE();
+  #endif
   // invert endstop trigger state for unloading
   bool endstopState = steppers[FEEDER].getEndstopState();
   steppers[FEEDER].setEndstopState(!endstopState);
@@ -2085,12 +2183,10 @@ bool selectTool(int8_t ndx, bool showMessage)
     }
     else {
       //__debugS(PSTR("Not using Splitter"));
-      if (!smuffConfig.extControlFeeder && feederEndstop())
-      {
+      if (!smuffConfig.extControlFeeder && feederEndstop()) {
         unloadFilament();
       }
-      else if (smuffConfig.extControlFeeder && feederEndstop())
-      {
+      else if (smuffConfig.extControlFeeder && feederEndstop()) {
         beep(4);
         if (smuffConfig.sendActionCmds)
         {
@@ -2129,8 +2225,7 @@ bool selectTool(int8_t ndx, bool showMessage)
       }
     }
   }
-  if (smuffConfig.revolverIsServo)
-  {
+  if (smuffConfig.revolverIsServo) {
     // release servo prior moving the selector
     setServoLid(SERVO_OPEN);
   }
@@ -2139,7 +2234,7 @@ bool selectTool(int8_t ndx, bool showMessage)
     setServoLid(SERVO_OPEN);
     #endif
   }
-  //__debugS(PSTR("Selecting tool: %d"), ndx);
+  __debugS(PSTR("Selecting tool: %d"), ndx);
   setParserBusy();
   drawSelectingMessage(ndx);
   //__debugS(PSTR("Message shown"));
@@ -2276,7 +2371,7 @@ void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndsto
 
 void printPeriodicalState(int8_t serial)
 {
-  char tmp[180];
+  char tmp[120];
 
   const char *_triggered = "on";
   const char *_open = "off";

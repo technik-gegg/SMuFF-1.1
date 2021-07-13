@@ -61,15 +61,17 @@ void ZStepper::resetStepper() {
   _stallDetected = false;
   _stallCount = 0;
   _abort = false;
-  //__debugS(PSTR("total: %6ld  _accelDist: %5ld  _acceleration: %d  _stepsAcceleration: %s   _minStepInterval: %d  _duration: %d  ignoreEndstop: %d"), _totalSteps, _accelDistSteps, _acceleration, String(_stepsAcceleration).c_str(), _minStepInterval, _durationInt, _ignoreEndstop);
+  //__debugS(PSTR("total: %6ld  _accelDist: %5ld  _acceleration: %d  _stepsAcceleration: %s   _minStepInterval: %d  _durationInt: %d  ignoreEndstop: %d"), _totalSteps, _accelDistSteps, _acceleration, String(_stepsAcceleration).c_str(), _minStepInterval, _durationInt, _ignoreEndstop);
 }
 
 void ZStepper::prepareMovement(long steps, bool ignoreEndstop /*= false */) {
   setDirection(steps < 0 ? CCW : CW);
   _totalSteps = abs(steps)+1;
   _accelDistSteps = _accelDistance * (_endstopType == ORBITAL ? _stepsPerDegree : _stepsPerMM);
-  if(_accelDistSteps > _totalSteps)
+  if(_accelDistSteps > _totalSteps) {
+    //__debugS(PSTR("Accel. dist. > total dist."));
     _accelDistSteps = _totalSteps/2;
+  }
   _stepsAcceleration = (float)((_acceleration - _minStepInterval+.1) / _accelDistSteps);
   _ignoreEndstop = ignoreEndstop;
   resetStepper();

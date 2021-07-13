@@ -507,8 +507,7 @@ void setupEncoder()
 #endif
 }
 
-void setupSteppers()
-{
+void setupSteppers(){
 
   uint16_t maxSpeed = translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR);
   uint16_t accelSpeed = translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR);
