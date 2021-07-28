@@ -249,8 +249,7 @@ void setupSwSerial0()
 #endif
 }
 
-void setupRelay()
-{
+void setupRelay() {
   if (RELAY_PIN != -1)
   {
     pinMode(RELAY_PIN, OUTPUT);
@@ -267,8 +266,7 @@ void setupRelay()
   }
 }
 
-void setupServos()
-{
+void setupServos() {
 
   // setup the Wiper servo
   if (SERVO1_PIN != -1)

@@ -1505,6 +1505,16 @@ bool feedToNozzle(bool showMessage)
       if(smuffConfig.usePurge && smuffConfig.purgeLength > 0) {
         len = smuffConfig.purgeLength;
         __debugS(PSTR("Purging DDE... (%s mm)"), String(len).c_str());
+        changeDDEFeederSpeed(smuffConfig.purgeSpeed);
+        prepSteppingRelMillimeter(DDE_FEEDER, len, true);
+        runAndWait(DDE_FEEDER);
+        if(smuffConfig.wipeBeforeUnload) {
+          wipeNozzle();
+        }
+      }
+      else if(smuffConfig.useCutter && !smuffConfig.cutterOnTop) {
+        len = smuffConfig.ddeDist;
+        __debugS(PSTR("Feeding DDE to nozzle... (%s mm)"), String(len).c_str());
         prepSteppingRelMillimeter(DDE_FEEDER, len, true);
         runAndWait(DDE_FEEDER);
         if(smuffConfig.wipeBeforeUnload) {
@@ -1725,7 +1735,8 @@ bool unloadFromNozzle(bool showMessage)
     float len = smuffConfig.ddeDist * 1.1;
     #if defined (USE_DDE)
     // don't feed in reverse if Cutter is being used
-    if(!smuffConfig.useCutter) {
+    if(!smuffConfig.useCutter || (smuffConfig.useCutter && !smuffConfig.cutterOnTop)) {
+      __debugS(PSTR("DDE reverse feed %s mm"), String(len).c_str());
       bool endstopState = steppers[DDE_FEEDER].getEndstopState();
       // invert endstop trigger state
       steppers[DDE_FEEDER].setEndstopState(!endstopState);

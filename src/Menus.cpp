@@ -194,7 +194,8 @@ void setupOptionsMenu(char* menu) {
     P_No,
     #endif
     String(smuffConfig.ddeDist).c_str(),
-    smuffConfig.purgeDDE ? P_Yes : P_No
+    smuffConfig.purgeDDE ? P_Yes : P_No,
+    smuffConfig.cutterOnTop ? P_Yes : P_No
   );
 }
 
@@ -1737,6 +1738,13 @@ void showOptionsMenu(char* menuTitle) {
             bVal = smuffConfig.purgeDDE;
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.purgeDDE = bVal;
+            }
+            break;
+
+        case 20: // Cutter On Top
+            bVal = smuffConfig.cutterOnTop;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.cutterOnTop = bVal;
             }
             break;
       }

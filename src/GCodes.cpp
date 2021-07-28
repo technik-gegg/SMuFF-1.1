@@ -1414,6 +1414,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, invertDir) == 0)           { if (axis != -1) smuffConfig.invertDir[axis] = (param > 0); else stat = false; }
       else if (strcmp(cmd, useSplitter) == 0)         { smuffConfig.useSplitter = (param > 0); }
       else if (strcmp(cmd, purgeDDE) == 0)            { smuffConfig.purgeDDE = (param > 0); }
+      else if (strcmp(cmd, cutterTop) == 0)           { smuffConfig.cutterOnTop = (param > 0); }
 
       else if (strcmp(cmd, purgeSpeed) == 0)          { smuffConfig.purgeSpeed = (uint16_t)param; }
       else if (strcmp(cmd, servoOffPos) == 0)         { if(index == 99) setServoPos(SERVO_LID, (uint8_t) param); else smuffConfig.revolverOffPos = (uint8_t)param; }

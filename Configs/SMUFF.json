@@ -42,5 +42,6 @@
  "UseDDE": false,
  "DDEDist": 100.0,
  "PurgeDDE": false,
- "TraceUSB": false
+ "TraceUSB": false,
+ "CutterTop": false
 }

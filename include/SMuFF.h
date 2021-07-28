@@ -151,6 +151,7 @@ typedef struct
   uint16_t cutterOpen = 90;
   uint16_t cutterClose = 50;
   float cutterLength = 0;
+  bool cutterOnTop = false;
 
   // ALL STEPPERS
   uint16_t stepsPerMM[NUM_STEPPERS+1] = {80, 0, 410};

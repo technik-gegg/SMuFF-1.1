@@ -135,5 +135,6 @@ const char* useDDE PROGMEM             = "UseDDE";
 const char* purgeDDE PROGMEM           = "PurgeDDE";
 const char* traceUsb PROGMEM           = "TraceUSB";
 const char* devName PROGMEM            = "Device";
+const char* cutterTop PROGMEM          = "CutterTop";
 
 

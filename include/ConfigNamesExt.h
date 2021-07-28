@@ -129,3 +129,4 @@ extern char* useDDE;
 extern char* purgeDDE;
 extern char* traceUsb;
 extern char* devName;
+extern char* cutterTop;

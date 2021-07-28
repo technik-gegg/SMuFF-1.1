@@ -186,6 +186,7 @@ bool readMainConfig()
       smuffConfig.useCutter =                   jsonDoc[useCutter];
       smuffConfig.cutterOpen =                  jsonDoc[cutterOpen];
       smuffConfig.cutterClose =                 jsonDoc[cutterClose];
+      smuffConfig.cutterOnTop =                 jsonDoc[cutterTop];
       smuffConfig.usePurge =                    jsonDoc[usePurge];
       smuffConfig.cutterLength =                jsonDoc[cutterLength];
       smuffConfig.useIdleAnimation =            jsonDoc[idleAnim];
@@ -676,6 +677,7 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[purgeDDE]             = smuffConfig.purgeDDE;
   jsonDoc[traceUsb]             = smuffConfig.traceUSBTraffic;
   jsonDoc[devName]              = smuffConfig.deviceName;
+  jsonDoc[cutterTop]            = smuffConfig.cutterOnTop;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }

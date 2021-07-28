@@ -63,8 +63,12 @@
 
 #define BEEPER_PIN PA15 // EXP1.10
 
-//#define RELAY_PIN PC14 // PROBE (Relay for stepper motor switching)
+#if defined(RELAY_ON_PROBE)
+#define RELAY_PIN PC14   // PROBE (Relay for stepper motor switching)
+//#define RELAY_PIN PC0    // Y-STOP (alternative for Relay; if nothing else is connected to)
+#else
 #define RELAY_PIN PC12   // Z-MS3
+#endif
 
 
 #if !defined(SMUFF_V5)
