@@ -48,7 +48,7 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 **2.32** - added Cutter position for DDE option
 
-+ added **CutterTop** option is SMUFF.json which was needed for the latest Orbiter-Extruder mod. For the Orbiter you'd need to set this option to *false* since the Cutter sits below the DDE.
++ added **CutterTop** option in SMUFF.json which was needed for the latest Orbiter-Extruder mod. For the Orbiter you'd need to set this option to *false* since the Cutter sits below the DDE.
 
 **2.31** - added Cutter handling for DDE option
 
