@@ -1104,8 +1104,8 @@ void changeFeederSpeed(uint16_t speed)
 void changeDDEFeederSpeed(uint16_t speed)
 {
   #if defined(USE_DDE)
-  unsigned long _speed = translateSpeed(speed, FEEDER);
-  steppers[DDE_FEEDER].setMaxSpeed(_speed*.9);  // let the DDE extruder run slightly faster
+  unsigned long _speed = translateSpeed(speed, DDE_FEEDER);
+  steppers[DDE_FEEDER].setMaxSpeed(_speed);
   #endif
 }
 
@@ -1245,6 +1245,12 @@ bool feedToEndstop(bool showMessage)
       break;
     }
   }
+  // feed another "Selector Distance" slowly
+  __debugS(PSTR("Feeding through fitting: %s mm"), String(smuffConfig.selectorDistance).c_str());
+  prepSteppingRelMillimeter(FEEDER, smuffConfig.selectorDistance, false);
+  runAndWait(FEEDER);
+
+  sendStates(true);
   steppers[FEEDER].setIgnoreAbort(false);
   steppers[FEEDER].setAllowAccel(true);
   steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -1448,24 +1454,27 @@ bool feedToNozzle(bool showMessage)
       uint32_t timeout = 20000;
       steppers[FEEDER].setStepPositionMM(0);
       #if defined(USE_DDE)
-      if(smuffConfig.useCutter) {
+      if(smuffConfig.useCutter && smuffConfig.cutterOnTop) {
         // wait for the 2nd feeder endstop to trigger
         __debugS(PSTR("Endstop2 state: %s %s"), String(feederEndstop(2)).c_str(), feederEndstop(2)==1 ? " - waiting..." : "");
         while(feederEndstop(2)) {
           delay(500);
           timeout -= 500;
-          if(timeout == 0)
+          if(timeout == 0) {
+            showFeederBlockedMessage();
             break;
+          }
         }
         if(timeout == 0)
           __debugS(PSTR("Aborted because of timeout"));
       }
       #endif
+      sendStates(true);
       // rest of it feed slowly
       do
       {
         changeFeederSpeed(speed);
-        changeDDEFeederSpeed(speed);
+        changeDDEFeederSpeed(speed*0.9);   // let the DDE extruder run slightly faster
         #if !defined (USE_DDE)
         prepSteppingRelMillimeter(FEEDER, len - remains, true);
         runAndWait(FEEDER);
@@ -1488,6 +1497,7 @@ bool feedToNozzle(bool showMessage)
           //__debugS(PSTR("Len: %s  Remain: %s  To go: %s"), String(len).c_str(), String(remains).c_str(), String(len - remains).c_str());
         }
       } while (!stat && retries > 0);
+      sendStates(true);
 
       #if defined (USE_DDE)
       len = smuffConfig.reinforceLength == 0 ? 5 : smuffConfig.reinforceLength; // feed another 5 mm with both extruders before the main extruder takes over
@@ -1588,6 +1598,7 @@ bool loadFilament(bool showMessage)
     setParserReady();
     return false;
   }
+  sendStates(true);
   if(smuffConfig.useSplitter) {
     smuffConfig.feedLoadState[toolSelected] = SPL_LOADED_TO_NOZZLE;
     if(smuffConfig.webInterface) {
@@ -1758,6 +1769,7 @@ bool unloadFromNozzle(bool showMessage)
       setServoLid(SERVO_CLOSED);
     }
     #endif
+    sendStates(true);
 
     do
     {
@@ -1811,6 +1823,7 @@ bool unloadFromNozzle(bool showMessage)
   changeFeederSpeed(smuffConfig.maxSpeed[FEEDER]);
   changeDDEFeederSpeed(smuffConfig.maxSpeed[DDE_FEEDER]);
   delay(500);
+  sendStates(true);
   return stat;
 }
 
@@ -1832,6 +1845,7 @@ bool unloadFromSelector()
       stat = handleFeederStall(&speed, &retries);
     } while (!stat && retries > 0);
   }
+  sendStates(true);
   return stat;
 }
 
@@ -1902,21 +1916,10 @@ void purgeDDE() {
       prepSteppingRelMillimeter(DDE_FEEDER, len, false);
       asyncDDE = true;
       runNoWait(DDE_FEEDER);  // purge DDE asynchronously in background
-      /*
-      runAndWait(DDE_FEEDER);
-      steppers[DDE_FEEDER].setMaxSpeed(curSpeed);
-      */
     }
     else {
       __debugS(PSTR("Endstop 2 not hit..."));
     }
-    /*
-    // revert endstop trigger inversion
-    steppers[DDE_FEEDER].setEndstopState(endstopDDEState);
-    if(smuffConfig.wipeBeforeUnload) {
-      wipeNozzle();
-    }
-    */
   }
 }
 

@@ -661,7 +661,7 @@ extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* e
 
 extern void sendTMCStatus(uint8_t axis, int8_t port);
 extern Print* getSerialInstance(int8_t serial);
-extern void sendStates();
+extern void sendStates(bool override = false);
 extern void setTestRunPending(const char* testfile);
 extern void resetUpload();
 

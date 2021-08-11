@@ -46,9 +46,15 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.33** - bug fixing for DDE option
+
++ fixed a bug that caused stalling on the DDE stepper motor while purging because of wrong settings.
++ added more frequent status information for the WebInterface while swapping tools.
+
 **2.32** - added Cutter position for DDE option
 
-+ added **CutterTop** option is SMUFF.json which was needed for the latest Orbiter-Extruder mod. For the Orbiter you'd need to set this option to *false* since the Cutter sits below the DDE.
++ **moved main repository on Github to SMuFF-2.0 branch. No need to download from the SMuFF-2.0-(Experimental) anymore.**
++ added **CutterTop** option in SMUFF.json which was needed for the latest Orbiter-Extruder mod. For the Orbiter-Extruder you need to set this option to *false* because the Cutter sits below the DDE.
 
 **2.31** - added Cutter handling for DDE option
 

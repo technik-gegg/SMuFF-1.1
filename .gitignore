@@ -5,5 +5,7 @@
 *SMuFF.code-workspace
 .vscode
 *.bak
+*-Gerber.zip
+*-BOM.zip
 
 include/SKR_mini_E3-2.0/Pins_X-Swap.h

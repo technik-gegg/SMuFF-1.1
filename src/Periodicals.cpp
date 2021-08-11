@@ -46,15 +46,18 @@ void every500ms() {
   // Add your periodical code here
 }
 
-void sendStates() {
+void sendStates(bool override) {
   
-  if(parserBusy || sendingResponse) {
+  if(!override && (parserBusy || sendingResponse)) {
     __debugS(PSTR("Parser busy: %s  Sending Response: %s"), parserBusy ? P_Yes : P_No, sendingResponse ? P_Yes : P_No);
     return;
   }
-  
+  if(override)
+    drawStatus();
   // send status of endstops and current tool to all listeners, if configured
-  if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone && !parserBusy) {
+  if(!sendingResponse && smuffConfig.sendPeriodicalStats && initDone) {
+    if(parserBusy && !override)
+      return;
     printPeriodicalState(0);
     if(CAN_USE_SERIAL1)                                   printPeriodicalState(1);
     if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)   printPeriodicalState(2);
