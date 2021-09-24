@@ -1,3 +1,0 @@
-(sym_lib_table
-  (lib (name SKR-mini-LCD-board-rescue)(type Legacy)(uri "${KIPRJMOD}/SKR mini LCD board-rescue.lib")(options "")(descr ""))
-)
