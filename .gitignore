@@ -1,11 +1,22 @@
 .pio
 .pioenvs
 .piolibdeps
+.lib
 *.workspace
 *SMuFF.code-workspace
 .vscode
 *.bak
 *-Gerber.zip
 *-BOM.zip
+fp-info-cache
+sym-lib-table
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*.kicad_prl
+*.sch-bak
+*.dcm
+Schematics/*.xml
+Schematics/*.csv
+_autosave-*
 
 include/SKR_mini_E3-2.0/Pins_X-Swap.h
