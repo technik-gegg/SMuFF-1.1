@@ -17,7 +17,6 @@
  *
  */
 #include "SMuFF.h"
-#include "Config.h"
 #include "InputDialogs.h"
 
 bool settingsChanged = false;
@@ -121,7 +120,7 @@ void getInput(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked, boo
   #if defined(USE_LEONERD_DISPLAY)
   encoder.loop();
   #endif
-  #if defined(__STM32F1__) || defined(__ESP32__)
+  #if defined(__STM32F1__)
   if(checkSerial)
     checkSerialPending();
   #endif

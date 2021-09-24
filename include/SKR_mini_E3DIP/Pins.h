@@ -61,7 +61,6 @@
 #define Z_CS_PIN PC12   // doubles as ZUART when used in serial mode
 #define E_CS_PIN PD2    // doubles as EUART when used in serial mode
 
-#define BEEPER_PIN PA15 // EXP1.10
 
 #if defined(RELAY_ON_PROBE)
 #define RELAY_PIN PC14   // PROBE (Relay for stepper motor switching)
@@ -98,9 +97,7 @@
 #endif
 #endif
 
-#define FAN_PIN PA8     // FAN0
-#define HEATER0_PIN PC8 // HE0
-#define HEATBED_PIN PC9 // BED
+#define FAN_PIN PA8         // FAN0
 
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
 #include "FastLED.h"
@@ -108,105 +105,45 @@
 // while compiling if NEOXPIXEL_PIN is in use
 #endif
 
-#if defined(USE_MINI12864_PANEL_V21)
-#define NEOPIXEL_PIN        PB7
-#else
-#define NEOPIXEL_PIN        -1
-#endif
 #define NEOPIXEL_TOOL_PIN   PA1         // SERVOS (NeoPixel for tools)
-//#define NEOPIXEL_TOOL_PIN   -1          // NeoPixel for tools
-#define NUM_LEDS            3           // number of Neopixel LEDS
-#if defined(USE_MINI12864_PANEL_V21)
-#define BRIGHTNESS          200
-#define LED_TYPE            WS2812B
-#define COLOR_ORDER         RGB
-#else
-#define BRIGHTNESS          127
-#define LED_TYPE            WS2812B
-#define COLOR_ORDER         GRB
-#endif
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
-#define SDCS_PIN -1 // use default
-
-#define USB_CONNECT_PIN PC13
-#define SD_DETECT_PIN PC4
-#define USE_TERMINAL_MENUS 1
-
-#if defined(USE_CREALITY_DISPLAY)
-#if !defined(CREALITY_HW_SPI)
-#define DSP_DATA_PIN PB7 // EXP1.3 = LCD_PINS_EN = ST9720 DAT
-#define DSP_CS_PIN PB8   // EXP1.4 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN PB9   // EXP1.5 = LCD_PINS_D4 = ST9720 CLK
-#define DSP_RESET_PIN -1
-
-#define ENCODER1_PIN PA9       // EXP1.8
-#define ENCODER2_PIN PA10      // EXP1.6
-#define ENCODER_BUTTON_PIN PB6 // EXP1.9
-#else
-// SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
-#define DSP_DATA_PIN -1 // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN PB9  // EXP1.5 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN -1   // USE SCK ON SPI1 HEADER
-#define DSP_RESET_PIN -1
-
-#define ENCODER1_PIN PA9       // EXP1.8
-#define ENCODER2_PIN PA10      // EXP1.6
-#define ENCODER_BUTTON_PIN PB8 // EXP1.4
-#endif
-
-#define DEBUG_PIN -1
-
-#elif defined(USE_TWI_DISPLAY)
-
-#define DSP_SCL PB6 // EXP1.9
-#define DSP_SDA PB7 // EXP1.3
-
-#define DSP_CS_PIN -1
-#define DSP_DC_PIN -1
-#define DSP_RESET_PIN -1
-
-#define ENCODER1_PIN PA9       // EXP1.8
-#define ENCODER2_PIN PA10      // EXP1.6
-#define ENCODER_BUTTON_PIN PB8 // EXP1.4
-
-#define DEBUG_PIN PB9 // EXP1.5
-
-#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
-#define DSP_CS_PIN          PB9     // DOGLCD_CS
-#define DSP_DC_PIN          PB6     // DOGLCD_A0
-#define DSP_RESET_PIN       PA13    // SWDIO --- IMPORTANT: This display needs a RESET signal!
-
-#define ENCODER1_PIN        PA9
-#define ENCODER2_PIN        PA10
-#define ENCODER_BUTTON_PIN  PB8
-
+#define SDCS_PIN            -1          // use default
 #define DEBUG_PIN           -1
+
+#define USB_CONNECT_PIN     PC13
+#define SD_DETECT_PIN       PC4
+#define USE_TERMINAL_MENUS  1
+
+// Moved display pins configuration into separate header files
+#if defined(USE_CREALITY_DISPLAY)
+#include "DSP_Creality.h"
+#include "../Display/Creality.h"
+#elif defined(USE_TWI_DISPLAY)
+#include "DSP_TWILeonerd.h"
+#include "../Display/TWI.h"
+#elif defined(USE_LEONERD_DISPLAY)
+#include "DSP_TWILeonerd.h"
+#include "../Display/Leonerd.h"
+#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
+#include "DSP_Minipanel.h"
+#include "../Display/Minipanel.h"
 #else
-// SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
-#define DSP_DATA_PIN -1 // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN PB9  // EXP1.5 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN PB6  // EXP1.9
-#define DSP_RESET_PIN -1
-
-#define ENCODER1_PIN PA9       // EXP1.8
-#define ENCODER2_PIN PA10      // EXP1.6
-#define ENCODER_BUTTON_PIN PB8 // EXP1.4
-
-#define DEBUG_PIN -1
-
+#include "DSP_Default.h"
+#include "../Display/Default.h"
 #endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
-#define PCF857x_SCL          PB10 // Z-Axis STEP
-#define PCF857x_SDA          PB11 // Z-Axis ENABLE
+#define SPLITTER_SCL          PB10 // Z-Axis STEP
+#define SPLITTER_SDA          PB11 // Z-Axis ENABLE
 #endif
 
 #define DUET_SIG_FED_PIN     PB2    // Z-Axis DIR
 #define DUET_SIG_SEL_PIN     PC12   // Z-Axis MS3
+
 #define DEBUG_OFF_PIN       -1      // not needed on TWI display
 
 #define X_SERIAL_TX_PIN PC10 // XUART - UART4 TX

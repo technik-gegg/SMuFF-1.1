@@ -256,7 +256,7 @@ void testFastLED(bool tools)
 {
 #if defined(NEOPIXEL_PIN) && defined(USE_FASTLED_BACKLIGHT)
   if(!tools) {
-    __debugS(PSTR("Testing backlight FastLED"));
+    __debugS(PSTR("[ testing Backlight FastLED ]"));
     for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
       leds[i] = ColorsFastLED[(uint8_t)random(1,7)];
@@ -269,7 +269,7 @@ void testFastLED(bool tools)
 #endif
 #if defined(NEOPIXEL_TOOL_PIN) && defined(USE_FASTLED_TOOLS)
   if(tools) {
-    __debugS(PSTR("Testing tools FastLED"));
+    __debugS(PSTR("[ testing Tools FastLED ]"));
     // set black as active tool color
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {

@@ -18,14 +18,22 @@
  */
 #pragma once
 
-extern void setupMainMenu(char* menu);
-extern void setupToolsMenu(char* menu);
-extern void setupStatusInfoMenu(char* menu);
-extern void setupSwapMenu(char* menu);
-extern void setupSettingsMenu(char* menu);
-extern void setupTestrunMenu(char* menu);
-extern void setupOptionsMenu(char* menu);
-extern void setupPurgeMenu(char* menu);
+extern void setupToolsMenu(char* menu, size_t maxBuffer);
+extern void setupMainMenu(char* menu, size_t maxBuffer);
+extern void setupStatusInfoMenu(char* menu, size_t maxBuffer);
+extern void setupSwapMenu(char* menu, size_t maxBuffer);
+extern void setupSettingsMenu(char* menu, size_t maxBuffer);
+extern void setupOptionsMenu(char* menu, size_t maxBuffer);
+extern void setupPurgeMenu(char* menu, size_t maxBuffer);
+extern void setupBaudrateMenu(char* menu, size_t maxBuffer);
+extern void setupSteppersMenu(char *menu, size_t maxBuffer);
+extern void setupTMCMenu(char* menu, size_t maxBuffer, uint8_t axis);
+extern void setupServoMenu(char* menu, size_t maxBuffer);
+extern void setupRevolverMenu(char* menu, size_t maxBuffer);
+extern void setupFeederMenu(char* menu, size_t maxBuffer);
+extern void setupSelectorMenu(char* menu, size_t maxBuffer);
+extern void setupDisplayMenu(char* menu, size_t maxBuffer);
+extern void setupTestrunMenu(char* menu, size_t maxBuffer);
 
 extern void showMainMenu();
 extern void showToolsMenu();

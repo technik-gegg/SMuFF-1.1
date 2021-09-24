@@ -17,7 +17,6 @@
  *
  */
 #include "SMuFF.h"
-#include "Config.h"
 #include "ZStepperLib.h"
 #include "ZServo.h"
 #include "InputDialogs.h"
@@ -102,7 +101,7 @@ char* extractFile(const char* files, uint8_t index) {
   return tok;
 }
 
-void setupToolsMenu(char* menu) {
+void setupToolsMenu(char* menu, size_t maxBuffer) {
   char tmp[50];
   sprintf_P(menu, P_MenuItemBack);
   memset(toolSelections, 0, sizeof(int)*MAX_TOOLS);
@@ -120,7 +119,7 @@ void setupToolsMenu(char* menu) {
   menu[strlen(menu)-1] = '\0';
 }
 
-void setupMainMenu(char* menu) {
+void setupMainMenu(char* menu, size_t maxBuffer) {
     char motors[10];
     char servo[30];
     char maint[10];
@@ -130,27 +129,27 @@ void setupMainMenu(char* menu) {
     maintainingMode ? sprintf_P(maint, P_Off) : sprintf_P(maint, P_On);
 
   if(smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
-    sprintf(menu, loadMenu(P_MnuMain0, menuOrdinals), motors, servo, maint);
+    snprintf(menu, maxBuffer, loadMenu(P_MnuMain0, menuOrdinals, maxBuffer), motors, servo, maint);
   }
   else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2 && !smuffConfig.useSplitter) {
-    sprintf(menu, loadMenu(P_MnuMain1, menuOrdinals), motors, servo, maint);
+    snprintf(menu, maxBuffer, loadMenu(P_MnuMain1, menuOrdinals, maxBuffer), motors, servo, maint);
   }
   else if(!smuffConfig.revolverIsServo && smuffConfig.prusaMMU2) {
-    sprintf(menu, loadMenu(P_MnuMain2, menuOrdinals), motors, maint);
+    snprintf(menu, maxBuffer, loadMenu(P_MnuMain2, menuOrdinals, maxBuffer), motors, maint);
   }
   else if(smuffConfig.revolverIsServo && !smuffConfig.prusaMMU2 && smuffConfig.useSplitter) {
-    sprintf(menu, loadMenu(P_MnuMain4, menuOrdinals), motors, servo, maint);
+    snprintf(menu, maxBuffer, loadMenu(P_MnuMain4, menuOrdinals, maxBuffer), motors, servo, maint);
   }
   else {
-    sprintf(menu, loadMenu(P_MnuMain3, menuOrdinals), motors, maint);
+    snprintf(menu, maxBuffer, loadMenu(P_MnuMain3, menuOrdinals, maxBuffer), motors, maint);
   }
 }
 
-void setupStatusInfoMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuStatus, menuOrdinals));
+void setupStatusInfoMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu,  maxBuffer, loadMenu(P_MnuStatus, menuOrdinals, maxBuffer));
 }
 
-void setupSwapMenu(char* menu) {
+void setupSwapMenu(char* menu, size_t maxBuffer) {
   char tmp[128];
   sprintf_P(menu, P_MenuItemBack);
   sprintf_P(tmp, P_SwapReset);
@@ -163,16 +162,16 @@ void setupSwapMenu(char* menu) {
   menu[strlen(menu)-1] = '\0';
 }
 
-void setupSettingsMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuSettings, menuOrdinals),
+void setupSettingsMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuSettings, menuOrdinals, maxBuffer),
     smuffConfig.toolCount,
     String(smuffConfig.bowdenLength).c_str(),
     String(smuffConfig.selectorDistance).c_str()
   );
 }
 
-void setupOptionsMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuOptions, menuOrdinals),
+void setupOptionsMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuOptions, menuOrdinals, maxBuffer),
     smuffConfig.menuAutoClose,
     smuffConfig.fanSpeed,
     smuffConfig.prusaMMU2 ? P_Yes : P_No,
@@ -199,10 +198,10 @@ void setupOptionsMenu(char* menu) {
   );
 }
 
-void setupPurgeMenu(char* menu) {
+void setupPurgeMenu(char* menu, size_t maxBuffer) {
   char tmp[50];
 
-  sprintf(menu, loadMenu(P_MnuPurge, menuOrdinals),
+  snprintf(menu, maxBuffer, loadMenu(P_MnuPurge, menuOrdinals, maxBuffer),
     smuffConfig.usePurge  ? P_Yes : P_No,
     smuffConfig.purgeSpeed,
     String(smuffConfig.purgeLength).c_str(),
@@ -219,21 +218,21 @@ void setupPurgeMenu(char* menu) {
   menu[strlen(menu)-1] = '\0';
 }
 
-void setupBaudrateMenu(char* menu) {
+void setupBaudrateMenu(char* menu, size_t maxBuffer) {
   char none[] = { "n.a." };
-  sprintf(menu, loadMenu(P_MnuBaudrates, menuOrdinals),
+  snprintf(menu, maxBuffer, loadMenu(P_MnuBaudrates, menuOrdinals, maxBuffer),
     String(smuffConfig.serialBaudrates[0]).c_str(),
     CAN_USE_SERIAL1 ? String(smuffConfig.serialBaudrates[1]).c_str() : none,
     CAN_USE_SERIAL2 ? String(smuffConfig.serialBaudrates[2]).c_str() : none,
     CAN_USE_SERIAL3 ? String(smuffConfig.serialBaudrates[3]).c_str() : none);
 }
 
-void setupSteppersMenu(char *menu) {
-  sprintf(menu, loadMenu((smuffConfig.revolverIsServo) ? P_MnuSteppersServo : P_MnuSteppers, menuOrdinals));
+void setupSteppersMenu(char *menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu((smuffConfig.revolverIsServo) ? P_MnuSteppersServo : P_MnuSteppers, menuOrdinals, maxBuffer));
 }
 
-void setupTMCMenu(char* menu, uint8_t axis) {
-  sprintf(menu, loadMenu(P_MnuTmc, menuOrdinals),
+void setupTMCMenu(char* menu, size_t maxBuffer, uint8_t axis) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuTmc, menuOrdinals, maxBuffer),
     translateTMCDriverMode(smuffConfig.stepperMode[axis]),
     smuffConfig.stepperStealth[axis] ? P_Yes : P_No,
     smuffConfig.stepperPower[axis],
@@ -250,8 +249,8 @@ void setupTMCMenu(char* menu, uint8_t axis) {
   );
 }
 
-void setupServoMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuServo, menuOrdinals),
+void setupServoMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuServo, menuOrdinals, maxBuffer),
     smuffConfig.homeAfterFeed ? P_Yes : P_No,
     smuffConfig.resetBeforeFeed ? P_Yes : P_No,
     smuffConfig.revolverIsServo ? P_Yes : P_No,
@@ -267,8 +266,8 @@ void setupServoMenu(char* menu) {
   );
 }
 
-void setupRevolverMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuRevolver, menuOrdinals),
+void setupRevolverMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuRevolver, menuOrdinals, maxBuffer),
     translateTMCDriverMode(smuffConfig.stepperMode[REVOLVER]),
     smuffConfig.invertDir[REVOLVER] ? P_Yes : P_No,
     smuffConfig.endstopTrg[REVOLVER] ? P_High : P_Low,
@@ -286,8 +285,8 @@ void setupRevolverMenu(char* menu) {
     );
 }
 
-void setupFeederMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuFeeder, menuOrdinals),
+void setupFeederMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuFeeder, menuOrdinals, maxBuffer),
     translateTMCDriverMode(smuffConfig.stepperMode[FEEDER]),
     smuffConfig.invertDir[FEEDER] ? P_Yes : P_No,
     smuffConfig.endstopTrg[FEEDER] ? P_High : P_Low,
@@ -310,8 +309,8 @@ void setupFeederMenu(char* menu) {
   );
 }
 
-void setupSelectorMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuSelector, menuOrdinals),
+void setupSelectorMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuSelector, menuOrdinals, maxBuffer),
     translateTMCDriverMode(smuffConfig.stepperMode[SELECTOR]),
     smuffConfig.invertDir[SELECTOR] ? P_Yes : P_No,
     smuffConfig.endstopTrg[SELECTOR] ? P_High : P_Low,
@@ -326,8 +325,8 @@ void setupSelectorMenu(char* menu) {
 
 }
 
-void setupDisplayMenu(char* menu) {
-  sprintf(menu, loadMenu(P_MnuDisplay, menuOrdinals),
+void setupDisplayMenu(char* menu, size_t maxBuffer) {
+  snprintf(menu, maxBuffer, loadMenu(P_MnuDisplay, menuOrdinals, maxBuffer),
     smuffConfig.powerSaveTimeout,
     smuffConfig.lcdContrast,
     smuffConfig.encoderTickSound ? P_Yes : P_No,
@@ -339,7 +338,7 @@ void setupDisplayMenu(char* menu) {
   );
 }
 
-void setupTestrunMenu(char* menu, uint8_t maxFiles) {
+void setupTestrunMenu(char* menu, size_t maxBuffer, uint8_t maxFiles) {
   char items[maxFiles*30];
 
   sprintf_P(menu, P_MenuItemBack);
@@ -360,10 +359,7 @@ void showMainMenu() {
 
   while(!stopMenu) {
     sprintf_P(_title, P_TitleMainMenu);
-    setupMainMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuMain0, _menu, ArraySize(_menu));
-    #endif
+    setupMainMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -478,10 +474,7 @@ void showTestrunMenu(char* menuTitle) {
   char* _file;
 
   while(!stopMenu) {
-    setupTestrunMenu(_menu, 20);
-    #if defined(CHECK_MENU)
-    checkMenuSize(PSTR("Testrun"), _menu, ArraySize(_menu));
-    #endif
+    setupTestrunMenu(_menu, ArraySize(_menu)-1, 20);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -509,7 +502,7 @@ void showTestrunMenu(char* menuTitle) {
 const char* translateColor(uint8_t color, uint8_t index) {
   char* colorNames[16];
   char tmp[80];
-  sprintf_P(tmp, loadOptions(P_OptColors));
+  sprintf_P(tmp, loadOptions(P_OptColors, ArraySize(tmp)));
   splitStringLines(colorNames, (int)ArraySize(colorNames), tmp);
   if(color >= 0 && color < (int)ArraySize(colorNames))
     strcpy(selColorName[index], colorNames[color]);
@@ -520,7 +513,7 @@ const char* translateColor(uint8_t color, uint8_t index) {
 const char* translatePanelDuePort(uint8_t port) {
   char* ports[3];
   char tmp[40];
-  sprintf_P(tmp, loadOptions(P_OptPanelDue));
+  sprintf_P(tmp, loadOptions(P_OptPanelDue, ArraySize(tmp)));
   splitStringLines(ports, (int)ArraySize(ports), tmp);
   if(port >= 0 && port < (int)ArraySize(ports))
     strcpy(duePort, ports[port]);
@@ -531,7 +524,7 @@ const char* translatePanelDuePort(uint8_t port) {
 const char* translateTMCDriverMode(uint8_t mode) {
   char* modes[3];
   char tmp[40];
-  sprintf_P(tmp, loadOptions(P_OptTmcModes));
+  sprintf_P(tmp, loadOptions(P_OptTmcModes, ArraySize(tmp)));
   splitStringLines(modes, (int)ArraySize(modes), tmp);
   if(mode >= 0 && mode < (int)ArraySize(modes))
     strcpy(driverMode, modes[mode]);
@@ -542,7 +535,7 @@ const char* translateTMCDriverMode(uint8_t mode) {
 const char* translateMS3State(uint8_t mode) {
   char* states[3];
   char tmp[40];
-  sprintf_P(tmp, loadOptions(P_OptMS3States));
+  sprintf_P(tmp, loadOptions(P_OptMS3States, ArraySize(tmp)));
   splitStringLines(states, (int)ArraySize(states), tmp);
   if(mode >= 0 && mode < (int)ArraySize(states))
     strcpy(ms3State, states[mode]);
@@ -552,14 +545,14 @@ const char* translateMS3State(uint8_t mode) {
 
 void selectPanelDuePort(char* menuTitle) {
   int val = smuffConfig.hasPanelDue;
-  if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptPanelDue)), nullptr, true))
+  if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptPanelDue, 300)), nullptr, true))
     smuffConfig.hasPanelDue = val;
 }
 
 bool selectBaudrate(uint8_t port, char* menuTitle) {
   unsigned long val;
   char tmp[128];
-  sprintf(tmp, loadOptions(P_OptBaudrates));
+  sprintf(tmp, loadOptions(P_OptBaudrates, ArraySize(tmp)));
   if(port == 0) {
       val = smuffConfig.serialBaudrates[0];
       if(showInputDialog(menuTitle, P_Baud, &val, String(tmp))) {
@@ -608,7 +601,7 @@ bool selectBaudrate(uint8_t port, char* menuTitle) {
 bool selectBacklightColor(int color, char* menuTitle) {
   int val = color;
   char tmp[80];
-  sprintf_P(tmp, loadOptions(P_OptColors));
+  sprintf_P(tmp, loadOptions(P_OptColors, ArraySize(tmp)));
   if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setBacklightIndex, true)) {
     smuffConfig.backlightColor = val;
     //__debugS(PSTR("Backlight: %d"), val);
@@ -619,7 +612,7 @@ bool selectBacklightColor(int color, char* menuTitle) {
 bool selectToolColor(int color, char* menuTitle) {
   int val = color;
   char tmp[80];
-  sprintf_P(tmp, loadOptions(P_OptColors));
+  sprintf_P(tmp, loadOptions(P_OptColors, ArraySize(tmp)));
   if(showInputDialog(menuTitle, P_Color, &val, String(tmp), setToolColorIndex, true)) {
     smuffConfig.toolColor = val;
   }
@@ -660,10 +653,7 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
   char tmp[50];
 
   while(!stopMenu) {
-    setupTMCMenu(_menu, axis);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuTmc, _menu, ArraySize(_menu));
-    #endif
+    setupTMCMenu(_menu, ArraySize(_menu)-1, axis);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -681,7 +671,7 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
 
         case 2: // Mode
             iVal = smuffConfig.stepperMode[axis];
-            sprintf_P(tmp, loadOptions(P_OptTmcModes));
+            sprintf_P(tmp, loadOptions(P_OptTmcModes, ArraySize(tmp)));
             if(showInputDialog(title, P_DriverMode, &iVal, String(tmp), nullptr, true))
               smuffConfig.stepperMode[axis] = (uint8_t)iVal;
             break;
@@ -716,7 +706,7 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
 
         case 6: // Microsteps
             iVal = smuffConfig.stepperMicrosteps[axis];
-            sprintf_P(tmp, loadOptions(P_OptMicrosteps));
+            sprintf_P(tmp, loadOptions(P_OptMicrosteps, ArraySize(tmp)));
             if(showInputDialog(title, P_Microsteps, &iVal, String(tmp), nullptr, false)) {
               smuffConfig.stepperMicrosteps[axis] = (uint16_t)iVal;
 #ifdef HAS_TMC_SUPPORT
@@ -822,10 +812,7 @@ void showServoMenu(char* menuTitle) {
   char _menu[350];
 
   while(!stopMenu) {
-    setupServoMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuServo, _menu, ArraySize(_menu));
-    #endif
+    setupServoMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -918,10 +905,7 @@ void showRevolverMenu(char* menuTitle) {
   char tmp[50];
 
   while(!stopMenu) {
-    setupRevolverMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuRevolver, _menu, ArraySize(_menu));
-    #endif
+    setupRevolverMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1029,7 +1013,7 @@ void showRevolverMenu(char* menuTitle) {
 
         case 15: // MS3 Pin State
             iVal = smuffConfig.ms3config[REVOLVER];
-            sprintf_P(tmp, loadOptions(P_OptMS3States));
+            sprintf_P(tmp, loadOptions(P_OptMS3States, ArraySize(tmp)));
             if(showInputDialog(title, P_MS3State, &iVal, String(tmp), nullptr, true))
               smuffConfig.ms3config[REVOLVER] = (int8_t)iVal;
             break;
@@ -1051,10 +1035,7 @@ void showSelectorMenu(char* menuTitle) {
   char tmp[50];
 
   while(!stopMenu) {
-    setupSelectorMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuSelector, _menu, ArraySize(_menu));
-    #endif
+    setupSelectorMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1137,7 +1118,7 @@ void showSelectorMenu(char* menuTitle) {
 
         case 11: // MS3 Pin State
             iVal = smuffConfig.ms3config[SELECTOR];
-            sprintf_P(tmp, loadOptions(P_OptMS3States));
+            sprintf_P(tmp, loadOptions(P_OptMS3States, ArraySize(tmp)));
             if(showInputDialog(title, P_MS3State, &iVal, String(tmp), nullptr, true))
               smuffConfig.ms3config[SELECTOR] = (int8_t)iVal;
             break;
@@ -1160,10 +1141,7 @@ void showFeederMenu(char* menuTitle) {
   char tmp[50];
 
   while(!stopMenu) {
-    setupFeederMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuFeeder, _menu, ArraySize(_menu));
-    #endif
+    setupFeederMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1288,7 +1266,7 @@ void showFeederMenu(char* menuTitle) {
 
         case 17: // MS3 Pin State
             iVal = smuffConfig.ms3config[FEEDER];
-            sprintf_P(tmp, loadOptions(P_OptMS3States));
+            sprintf_P(tmp, loadOptions(P_OptMS3States, ArraySize(tmp)));
             if(showInputDialog(title, P_MS3State, &iVal, String(tmp), nullptr, true))
               smuffConfig.ms3config[FEEDER] = (int8_t)iVal;
             break;
@@ -1327,10 +1305,7 @@ void showSteppersMenu(char* menuTitle) {
   char _menu[128];
 
   while(!stopMenu) {
-    setupSteppersMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuSteppers, _menu, ArraySize(_menu));
-    #endif
+    setupSteppersMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1381,10 +1356,7 @@ void showDisplayMenu(char* menuTitle) {
   bool bVal;
 
   while(!stopMenu) {
-    setupDisplayMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuDisplay, _menu, ArraySize(_menu));
-    #endif
+    setupDisplayMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1494,10 +1466,7 @@ void showSettingsMenu(char* menuTitle) {
   char _menu[300];
 
   while(!stopMenu) {
-    setupSettingsMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuSettings, _menu, ArraySize(_menu));
-    #endif
+    setupSettingsMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1594,10 +1563,7 @@ void showOptionsMenu(char* menuTitle) {
   char _menu[350];
 
   while(!stopMenu) {
-    setupOptionsMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuOptions, _menu, ArraySize(_menu));
-    #endif
+    setupOptionsMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1765,10 +1731,7 @@ void showPurgeMenu(char* menuTitle) {
   char _menu[300];
 
   while(!stopMenu) {
-    setupPurgeMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuPurge, _menu, ArraySize(_menu));
-    #endif
+    setupPurgeMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1864,10 +1827,7 @@ void showSwapMenu(char* menuTitle) {
   char _menu[128];
 
   while(!stopMenu) {
-    setupSwapMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(PSTR("Swap"), _menu, ArraySize(_menu));
-    #endif
+    setupSwapMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1902,10 +1862,7 @@ void showBaudratesMenu(char* menuTitle) {
   char _menu[300];
 
   while(!stopMenu) {
-    setupBaudrateMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuBaudrates, _menu, ArraySize(_menu));
-    #endif
+    setupBaudrateMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -1953,10 +1910,7 @@ void showStatusInfoMenu(char* menuTitle) {
   char _menu[120];
 
   while(!stopMenu) {
-    setupStatusInfoMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(P_MnuStatus, _menu, ArraySize(_menu));
-    #endif
+    setupStatusInfoMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -2084,10 +2038,7 @@ void showToolsMenu() {
 
   while(!stopMenu) {
     sprintf_P(_title, P_TitleToolsMenu);
-    setupToolsMenu(_menu);
-    #if defined(CHECK_MENU)
-    checkMenuSize(PSTR("Tools"), _menu, ArraySize(_menu));
-    #endif
+    setupToolsMenu(_menu, ArraySize(_menu)-1);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 

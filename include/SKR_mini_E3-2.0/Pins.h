@@ -54,8 +54,6 @@
 #define E_ENABLE_PIN        PD2
 #define E_END_PIN           PC15    // E0-STOP
 
-#define BEEPER_PIN          PB5     // EXP1.10
-
 #define RELAY_PIN           PC13    // PS-ON (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
@@ -64,85 +62,50 @@
 #define SERVO3_PIN          PC12    // PWR-DET    (Cutter Servo)
 
 #define FAN_PIN             PC6     // FAN0
-#define HEATER0_PIN         PC8     // HE0
-#define HEATBED_PIN         PC9     // BED
 
 #define SW_SERIAL_TX_PIN    -1      //
 #define SW_SERIAL_RX_PIN    -1      //
 
-#define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
-//#define NEOPIXEL_TOOL_PIN   PA8       // for tools (NEOPIXEL)
-#define NEOPIXEL_TOOL_PIN   PA9       // for tools (NEOPIXEL) EXT1.8; Important: only usable with TWI / LEONERD display
-//#define NEOPIXEL_TOOL_PIN   PB15    // alternative for tools (EXT1.3); Important: not usable with TWI / LEONERD display
-#define NUM_LEDS            3       // number of Neopixel LEDS
-#define BRIGHTNESS          127
-#define LED_TYPE            WS2812B
+#define NEOPIXEL_TOOL_PIN   PA8       // for tools (NEOPIXEL)
+//#define NEOPIXEL_TOOL_PIN   PA9       // alternative for tools (EXT1.8); Important: only usable with TWI / LEONERD display
+//#define NEOPIXEL_TOOL_PIN   PB15      // alternative for tools (EXT1.3); Important: not! usable with TWI / LEONERD display
 #define COLOR_ORDER         GRB
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            -1      // use default
+#define DEBUG_PIN           PC3     // TB0 (using this header will lead to to sine wave on the output - see schematic)
 
 #define USB_CONNECT_PIN     PA14    // SWCLK
 #define SD_DETECT_PIN       PC4
 
+// Moved display pins configuration into separate header files
 #if defined(USE_CREALITY_DISPLAY)
-    #if !defined(CREALITY_HW_SPI)
-#define DSP_DATA_PIN        PB15    // EXP1.3 = LCD_PINS_EN = ST9720 DAT
-#define DSP_CS_PIN          PB8     // EXP1.4 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN          PB9     // EXP1.5 = LCD_PINS_D4 = ST9720 CLK
-#define DSP_RESET_PIN       -1
-
-#define ENCODER1_PIN        PA9     // EXP1.8 (TX1)
-#define ENCODER2_PIN        PA10    // EXP1.6 (RX1)
-#define ENCODER_BUTTON_PIN  PA15    // EXP1.9
-    #else
-    // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
-#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN          -1      // USE SCK ON SPI1 HEADER
-#define DSP_RESET_PIN       -1
-
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-    #endif
-
-#define DEBUG_PIN           -1      // SWDIO or -1
-
-#elif defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY)
-#define USE_SW_TWI          1       //  only SW I2C/TWI is available due to pins PB6/PB7 are not routed to EXP1
-#define DSP_SCL             PA15    // EXP1.9
-#define DSP_SDA             PB15    // EXP1.3
-
-#define DSP_CS_PIN          -1
-#define DSP_DC_PIN          -1
-#define DSP_RESET_PIN       -1
-
-#if !defined(USE_LEONERD_DISPLAY)
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-
-#define DEBUG_PIN           PB9     // EXP1.5
+#include "DSP_Creality.h"
+#include "../Display/Creality.h"
+#elif defined(USE_TWI_DISPLAY)
+#include "DSP_TWILeonerd.h"
+#include "../Display/TWI.h"
+#elif defined(USE_LEONERD_DISPLAY)
+#include "DSP_TWILeonerd.h"
+#include "../Display/Leonerd.h"
+#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
+#include "DSP_Minipanel.h"
+#include "../Display/Minipanel.h"
 #else
-#define DEBUG_PIN           -1
+#include "DSP_Default.h"
+#include "../Display/Default.h"
 #endif
-#else
-    // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
-#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN          PB6     // EXP1.9
-#define DSP_RESET_PIN       -1
 
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-
-#define DEBUG_PIN           -1
-
+#if defined(USE_SPLITTER_ENDSTOPS)
+// only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
+#define SPLITTER_SCL        PB10    // Z-Axis STEP
+#define SPLITTER_SDA        PB11    // Z-Axis ENABLE
 #endif
+
+#define DUET_SIG_FED_PIN    -1
+#define DUET_SIG_SEL_PIN    -1
 
 #define DEBUG_OFF_PIN       -1      // not needed on TWI display
 

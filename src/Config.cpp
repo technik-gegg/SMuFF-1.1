@@ -27,13 +27,8 @@
 
 SdFat SD;
 
-#if defined(__STM32F1__) || defined(__ESP32__)
 const size_t capacity = 2000;
 const size_t scapacity = 1300;
-#else
-const size_t capacity = 1300;
-const size_t scapacity = 1000;
-#endif
 
 bool initSD(bool showStatus) {
   #if !defined(USE_COMPOSITE_SERIAL)
@@ -129,7 +124,7 @@ bool readMainConfig()
 
     DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    __debugS(PSTR("[readMainConfig] after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+    //__debugS(PSTR("[ readMainConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
     cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail1);
@@ -216,8 +211,8 @@ bool readMainConfig()
         mmsMax = MAX_TICKS;
         speedIncrement = INC_TICKS;
       }
+      __debugS(PSTR("[\treadMainConfig:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
-      __debugS(PSTR("Config: DONE reading config"));
     }
   }
   return true;
@@ -240,7 +235,7 @@ bool readSteppersConfig()
 
     DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    __debugS(PSTR("[readSteppersConfig] after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+    //__debugS(PSTR("[ readSteppersConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
     cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail8);
@@ -313,8 +308,8 @@ bool readSteppersConfig()
       smuffConfig.purgeLength =                 jsonDoc[feeder][purgeLength];
       smuffConfig.wipeBeforeUnload =            jsonDoc[feeder][autoWipe];
 
+      __debugS(PSTR("[\treadSteppersConfig:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
-      __debugS(PSTR("Config: DONE reading steppers config"));
     }
   }
   return true;
@@ -352,7 +347,7 @@ bool readTmcConfig()
 
     DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    __debugS(PSTR("[readTmcConfig] after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+    //__debugS(PSTR("[ readTmcConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
     cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail6);
@@ -423,8 +418,8 @@ bool readTmcConfig()
       smuffConfig.stepperStopOnStall[FEEDER2]=  jsonDoc[feeder2][stopOnStall];
       smuffConfig.stepperMaxStallCnt[FEEDER2]=  jsonDoc[feeder2][maxStallCount];
 
+      __debugS(PSTR("[\treadTmcConfig:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
-      __debugS(PSTR("Config: DONE reading TMC config"));
     }
   }
   return true;
@@ -479,8 +474,8 @@ bool readServoMapping() {
       servoMapping[16] = jsonDoc[wiper][servoOutput];
       #endif
 
+      __debugS(PSTR("[\treadServoMapping:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
-      __debugS(PSTR("Config: DONE reading servo mappings"));
     }
   }
   return true;
@@ -521,8 +516,8 @@ bool readRevolverMapping() {
         else
           stepperPosClosed[i] = (float)jsonDoc[item];
       }
+      __debugS(PSTR("[\treadRevolverMapping:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
-      __debugS(PSTR("Config: DONE reading Revolver stepper mappings"));
     }
   }
   return true;
@@ -566,7 +561,7 @@ bool readMaterials() {
         else {
           strncpy(smuffConfig.materialNames[i], pItem, MAX_MATERIAL_NAME_LEN);
         }
-        //__debugS(PSTR("%s: %s"), item, smuffConfig.materialNames[i]);
+        //__debugS(PSTR("[\treadMaterials: '%s' named '%s']"), item, smuffConfig.materialNames[i]);
         uint16_t len = jsonDoc[item][pfactor];
         if(len > 0) {
           smuffConfig.purges[i] = len;
@@ -579,18 +574,18 @@ bool readMaterials() {
           long color;
           if(sscanf(cval,"%lx", &color) > 0) {
             smuffConfig.materialColors[i] = (uint32_t)color;
-            //__debugS(PSTR("Material color: #%lX"), color);
+            //__debugS(PSTR("[\treadMaterials: '%s' is color #%lX ]"), item, color);
           }
         }
         const char* mat = jsonDoc[item][material];
         if(mat != nullptr) {
-          //__debugS(PSTR("%s: %s"), item, mat);
+          //__debugS(PSTR("[\treadMaterials: '%s' is '%s']"), item, mat);
           strncpy(smuffConfig.materials[i], mat, MAX_MATERIAL_LEN);
         }
       }
 
+      __debugS(PSTR("[\treadMaterials:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
-      __debugS(PSTR("Config: DONE reading materials"));
     }
   }
   return true;

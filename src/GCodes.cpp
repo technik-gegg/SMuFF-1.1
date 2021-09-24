@@ -26,11 +26,6 @@
 #include "GCodes.h"
 #include "ConfigNamesExt.h"
 #include "StrPrint.h"
-#ifdef __ESP32__
-#include "ZPortExpander.h"
-
-extern ZPortExpander portEx;
-#endif
 
 void setTMCStall(int8_t axis, int8_t stallPin, int param, int cool, int trigg);
 void setTMCMaxStall(int8_t axis, int param);
@@ -51,7 +46,7 @@ extern SdFat SD;
 extern uint32_t lastEvent;
 extern int8_t currentSerial;
 
-char firmware[80];
+char firmware[30];
 bool gotFirmware = false;
 int32_t uploadLen = 0;
 SdFile upload;
@@ -296,44 +291,6 @@ bool M42(const char *msg, String buf, int8_t serial)
     // pins over 1000 go to the port expander
     if (pin >= 1000)
     {
-#if defined(__ESP32__)
-      pin -= 1000;
-      if ((mode = getParam(buf, M_Param)) != -1)
-      {
-        // 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN
-        switch (mode)
-        {
-        case 0:
-          portEx.pinMode(pin, INPUT);
-          break;
-        case 1:
-          portEx.pinMode(pin, OUTPUT);
-          break;
-        case 2:
-          portEx.pinMode(pin, INPUT_PULLUP);
-          break;
-        case 3:
-          portEx.pinMode(pin, INPUT_PULLDOWN);
-          break;
-        }
-      }
-      else
-      {
-        mode = 1;
-        portEx.pinMode(pin, OUTPUT);
-      }
-      if ((param = getParam(buf, S_Param)) != -1 && mode == 1)
-      {
-        //__debugS(PSTR("Pin%d set to %s"), pin, param==0 ? "LOW" : "HIGH");
-        portEx.writePin(pin, param);
-      }
-      if (mode != 1)
-      {
-        uint8_t state = portEx.readPin(pin);
-        sprintf_P(tmp, PSTR("echo: P%d: %s\n"), pin + 1000, state == 0 ? "LOW" : "HIGH");
-        printResponse(tmp, serial);
-      }
-#endif
     }
     else
     {
@@ -365,13 +322,11 @@ bool M42(const char *msg, String buf, int8_t serial)
       {
         if (param >= 0 && param <= 255)
         {
-#ifdef __STM32F1__
+          #ifdef __STM32F1__
           pwmWrite(pin, param);
-#elif __ESP32__
-          ledcWrite(pin, param);
-#else
+          #else
           analogWrite(pin, param);
-#endif
+          #endif
         }
       }
       if (mode != 1)
@@ -422,8 +377,6 @@ bool M106(const char *msg, String buf, int8_t serial)
     fan.setPulseWidthMax(max);
   }
   fan.setFanSpeed(param);
-#elif __ESP32__
-  ledcWrite(FAN_PIN, map(param, 0, 100, 0, 255));
 #else
   analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
 #endif
@@ -433,13 +386,11 @@ bool M106(const char *msg, String buf, int8_t serial)
 bool M107(const char *msg, String buf, int8_t serial)
 {
   printResponse(msg, serial);
-#ifdef __STM32F1__
+  #ifdef __STM32F1__
   fan.setFanSpeed(0);
-#elif __ESP32__
-  ledcWrite(FAN_PIN, 0);
-#else
+  #else
   analogWrite(FAN_PIN, 0);
-#endif
+  #endif
   return true;
 }
 
@@ -1113,8 +1064,12 @@ bool M150(const char *msg, String buf, int8_t serial)
   int8_t index = -1, colorNdx = -1;
   uint8_t intensity = 255;
 
+  #if !defined(NEOPIXEL_PIN)
+    return false;
+  #else
   if (NEOPIXEL_PIN == -1)
     return false;
+  #endif
 
   if ((param = getParam(buf, R_Param)) != -1)
   {
@@ -1842,11 +1797,9 @@ Print* getSerialInstance(int8_t serial) {
     case 2:
       _print = &Serial2;
       break;
-  #if !defined(__ESP32__)
     case 3:
       _print = &Serial3;
       break;
-  #endif
     default:
       break;
   }
@@ -1992,11 +1945,9 @@ bool M575(const char *msg, String buf, int8_t serial)
       case 2:
         smuffConfig.serialBaudrates[2] = paramL;
         break;
-#if !defined(__ESP32__)
       case 3:
         smuffConfig.serialBaudrates[3] = paramL;
         break;
-#endif
       }
     }
     else
@@ -2004,9 +1955,7 @@ bool M575(const char *msg, String buf, int8_t serial)
       smuffConfig.serialBaudrates[0] = paramL;
       smuffConfig.serialBaudrates[1] = paramL;
       smuffConfig.serialBaudrates[2] = paramL;
-#if !defined(__ESP32__)
       smuffConfig.serialBaudrates[3] = paramL;
-#endif
     }
     setupSerial();
   }
@@ -2198,11 +2147,9 @@ bool M999(const char *msg, String buf, int8_t serial)
   steppers[REVOLVER].setEnabled(false);
   steppers[FEEDER].setEnabled(false);
   delay(500);
-#if __STM32F1__
+  #if __STM32F1__
   nvic_sys_reset();
-#elif __ESP32__
-  ESP.restart();
-#endif
+  #endif
   return true;
 }
 

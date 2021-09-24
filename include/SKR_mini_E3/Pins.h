@@ -54,8 +54,6 @@
 #define E_ENABLE_PIN        PD2
 #define E_END_PIN           PC15    // E0-STOP
 
-#define BEEPER_PIN          PB5     // EXP1.10
-
 #define RELAY_PIN           PC14    // PROBE (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
@@ -64,8 +62,6 @@
 #define SERVO3_PIN          -1      // SERVO (Cutter Servo) -- can use only one servo; pick either WIPER or CUTTER
 
 #define FAN_PIN             PA8     // FAN0
-#define HEATER0_PIN         PC8     // HE0
-#define HEATBED_PIN         PC9     // BED
 
 #define SW_SERIAL_TX_PIN    PC7     // NEOPIXEL for testing only
 #define SW_SERIAL_RX_PIN    PC7     // NEOPIXEL for testing only
@@ -73,73 +69,43 @@
 #include "FastLED.h"
 _DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specified" while compiling
 
-#define NEOPIXEL_PIN        -1 //PC7     // NEOPIXEL
-#define NEOPIXEL_TOOL_PIN   -1 // for tools
-
-#define NUM_LEDS            3       // number of Neopixel LEDS
-#define BRIGHTNESS          127
-#define LED_TYPE            WS2812B
-#define COLOR_ORDER         GRB
+#define NEOPIXEL_TOOL_PIN   PC7     // for tools (NEOPIXEL)
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            -1      // use default
+#define DEBUG_PIN           -1
 
 #define USB_CONNECT_PIN     PC13
 #define SD_DETECT_PIN       PC4
 
+// Moved display pins configuration into separate header files
 #if defined(USE_CREALITY_DISPLAY)
-    #if !defined(CREALITY_HW_SPI)
-#define DSP_DATA_PIN        PB7     // EXP1.3 = LCD_PINS_EN = ST9720 DAT
-#define DSP_CS_PIN          PB8     // EXP1.4 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN          PB9     // EXP1.5 = LCD_PINS_D4 = ST9720 CLK
-#define DSP_RESET_PIN       -1
-
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB6     // EXP1.9
-    #else
-    // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
-#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN          -1      // USE SCK ON SPI1 HEADER
-#define DSP_RESET_PIN       -1
-
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-    #endif
-
-#define DEBUG_PIN           -1
-
+#include "DSP_Creality.h"
+#include "../Display/Creality.h"
 #elif defined(USE_TWI_DISPLAY)
-#define DSP_SCL             PB6     // EXP1.9
-#define DSP_SDA             PB7     // EXP1.3
-
-#define DSP_CS_PIN          -1
-#define DSP_DC_PIN          -1
-#define DSP_RESET_PIN       -1
-
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-
-#define DEBUG_PIN           PB9     // EXP1.5
+#include "DSP_TWILeonerd.h"
+#include "../Display/TWI.h"
+#elif defined(USE_LEONERD_DISPLAY)
+#include "DSP_TWILeonerd.h"
+#include "../Display/Leonerd.h"
+#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
+#include "DSP_Minipanel.h"
+#include "../Display/Minipanel.h"
 #else
-    // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
-#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
-#define DSP_DC_PIN          PB6     // EXP1.9
-#define DSP_RESET_PIN       -1
-
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-
-#define DEBUG_PIN           -1
-
+#include "DSP_Default.h"
+#include "../Display/Default.h"
 #endif
+
+#if defined(USE_SPLITTER_ENDSTOPS)
+// only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
+#define SPLITTER_SCL        PB10    // Z-Axis STEP
+#define SPLITTER_SDA        PB11    // Z-Axis ENABLE
+#endif
+
+#define DUET_SIG_FED_PIN    -1
+#define DUET_SIG_SEL_PIN    -1
 
 #define DEBUG_OFF_PIN       -1      // not needed on TWI display
 

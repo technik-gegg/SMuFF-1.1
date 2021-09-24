@@ -24,8 +24,8 @@
 extern void __debugS(const char* fmt, ...);
 
 #define MAX_SERIAL      4
-#define MAX_TX_BUFFER   256
-#define MAX_RX_BUFFER   256
+#define MAX_TX_BUFFER   16
+#define MAX_RX_BUFFER   16
 
 #define SERIAL0_TX      0
 #define SERIAL0_RX      1

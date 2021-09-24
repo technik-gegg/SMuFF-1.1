@@ -11,12 +11,9 @@ If you like this project and find it useful, please consider donating.
 
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
 
-+ the [SKR mini V1.1](https://www.aliexpress.com/item/33030594091.html?spm=a2g0o.productlist.0.0.e3fe7d4de7t12F&algo_pvid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3&algo_expid=ffbbb716-871c-4ebd-95eb-b68c9e99cea3-2&btsid=b2bcac4f-54c8-4542-9243-e4c24264a3cf&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_53)
-+ the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)
++ the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3) **recommended**
 + the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)
 + the [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r).
-+ the [TwoTrees SKR mini E3-DIP V1.3](https://www.aliexpress.com/item/1005001639215401.html) which is a clone of the SKR E3-DIP.
-+ the [TwoTrees SKR mini E3 V2.1](https://www.aliexpress.com/item/1005001820623768.html) which is a clone of the SKR E3 V2.0.
 
 The SKR mini series boards are very small and yet more powerful because of the 32-Bit STM micro controller unit.
 
@@ -45,6 +42,18 @@ For more information about building the SMuFF and some more detailed stuff, head
 ---
 
 ## Recent changes
+
+**2.40** - code reorganization and bug fixing
+
++ removed old boards, such as ESP32, SKR Mini, FYSETC AIO II, mainly because they're discontinued and just mess up the project.
+*Because of this change the version number is now 2.4*
++ removed code for ESP32 entirely. As long as the ESP32 has such a deficit on I/O pins, it's not feasible as a SMuFF controller.
++ split up **Pins.h** to disentangle the confusing code for display pin definitions. Now each display type has it's own *DSP_xxx.h* header file and the initialization takes place in the according *Display/xxx.h* file instead of *SMuFF.cpp* and *SMuFF.h*.
++ reorganized code in order to reduce memory footprint and allow compiling for NeoPixels unconditionally. Due to usage of the PortExpander (PCF857X), which only purpose was to extend the amount of I/O ports on the ESP32, the memory footprint exploded. It's corrected now and the memory (RAM) footprint is slightly around 35% instead of 86%!
++ corrected pinout for standard RepRap display and FYSETC 12864 Minipanel on E3 V2.0 board.
++ improved drawing speed on the DIY OLED display for E3 V2.0 board.
+
+**2.34 - 2.39** - skipped versions
 
 **2.33** - bug fixing for DDE option
 

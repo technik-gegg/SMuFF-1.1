@@ -18,9 +18,6 @@
  */
 #pragma once
 
-#if defined(__ESP32__)
-#include <pgmspace.h>
-#endif
 #include <Arduino.h>
 #include "Config.h"
 #include "Strings.h"
@@ -72,9 +69,6 @@
 extern USBMassStorage MassStorage;
 extern USBCompositeSerial CompositeSerial;
 
-#elif defined(__ESP32__)
-#include <WiFi.h>
-#include <BluetoothSerial.h>
 #endif
 
 #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO) || defined(USE_SW_TWI)
@@ -226,7 +220,7 @@ typedef struct
   float revolverClose = 0;
   bool useSplitter = false;
   float splitterDist = 0;
-  uint8_t feedLoadState[MAX_TOOLS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  uint8_t feedLoadState[MAX_TOOLS];
   bool useDDE = false;
   float ddeDist = 0;
   bool purgeDDE = false;
@@ -234,70 +228,13 @@ typedef struct
   char deviceName[MAX_BUTTON_LEN] = {0};
 } SMuFFConfig;
 
-#if defined(__BRD_I3_MINI)
-extern U8G2_ST7565_64128N_F_4W_HW_SPI display;
-#elif defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
-extern "C" uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
-#if defined(USE_TWI_DISPLAY)
-  #if defined(USE_SW_TWI)
-  extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
-  #else
-  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
-  #endif
-#elif defined(USE_LEONERD_DISPLAY)
-  #if defined(USE_SW_TWI)
-  extern SMUFF_SH1106_128X64_NONAME_F_SW_I2C display;
-  #else
-  extern U8G2_SH1106_128X64_NONAME_F_HW_I2C display;
-  #endif
-#elif defined(USE_ANET_DISPLAY)
-extern U8G2_ST7920_128X64_F_2ND_HW_SPI display;
-// extern U8G2_ST7920_128X64_F_SW_SPI display;
-#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
-#if defined(__BRD_SKR_MINI)
-extern U8G2_ST7567_JLX12864_F_2ND_4W_HW_SPI display;
-#else
-extern U8G2_ST7567_JLX12864_F_4W_HW_SPI display;
-#endif
-#elif defined(USE_CREALITY_DISPLAY)
-#if defined(CREALITY_HW_SPI)
-extern U8G2_ST7920_128X64_F_HW_SPI display;
-#else
-extern U8G2_ST7920_128X64_F_SW_SPI display;
-#endif
-#else
-extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
-#endif
-#elif defined(__BRD_ESP32)
-#if defined(USE_TWI_DISPLAY)
-  #if defined(USE_SW_TWI)
-  extern U8G2_SSD1306_128X64_NONAME_F_SW_I2C display;
-  #else
-  extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
-  #endif
-#elif defined(USE_LEONERD_DISPLAY)
-  #if defined(USE_SW_TWI)
-  extern U8G2_SSD1106_128X64_NONAME_F_SW_I2C display;
-  #else
-  extern U8G2_SSD1106_128X64_NONAME_F_HW_I2C display;
-  #endif
-#else
-extern U8G2_ST7567_ENH_DG128064_F_4W_HW_SPI display;
-#endif
-extern HardwareSerial Serial3;
-#elif defined(__BRD_FYSETC_AIOII)
-extern U8G2_UC1701_MINI12864_F_4W_HW_SPI display;
-#endif
+extern dspDriver display;
 
 #ifdef __STM32F1__
 extern void playTone(int8_t pin, int16_t frequency, int16_t duration);
 extern void muteTone(int8_t pin);
 #define _tone(freq, duration) playTone(BEEPER_PIN, freq, duration)
 #define _noTone() muteTone(BEEPER_PIN)
-#elif defined(__ESP32__)
-#include "Tone32.h"
-#define _tone(freq, duration) tone(BEEPER_PIN, freq, duration, BEEPER_CHANNEL)
-#define _noTone() noTone(BEEPER_PIN, BEEPER_CHANNEL)
 #else
 #define _tone(freq, duration) tone(BEEPER_PIN, freq, duration)
 #define _noTone() noTone(BEEPER_PIN)
@@ -419,9 +356,7 @@ extern void setupTimers();
 extern void setupSteppers();
 extern void setupTMCDrivers();
 extern void setupServos();
-extern void setupHeaterBed();
 extern void setupFan();
-extern void setupPortExpander();
 extern void setupEStopMux();
 extern void setupRelay();
 extern void setupI2C();
@@ -577,6 +512,7 @@ extern void terminalDrawFrame(bool clear = false);
 extern void terminalDrawSeparator(uint8_t y, uint8_t x, uint8_t color);
 extern uint8_t terminalSendLines(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine);
 extern uint8_t terminalSendButtons(uint8_t y, uint8_t x, const char* str, bool isCenter, uint8_t isInvert, bool clearLine);
+extern void enumI2cDevices(uint8_t bus);
 
 extern void printEndstopState(int8_t serial);
 extern void printAcceleration(int8_t serial);
@@ -655,8 +591,8 @@ extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool 
 
 extern void listTextFile(const char* filename PROGMEM, int8_t serial);
 extern void listHelpFile(const char* filename PROGMEM, int8_t serial);
-extern const char *loadMenu(const char* filename PROGMEM, uint8_t ordinals[]);
-extern const char *loadOptions(const char* filename PROGMEM);
+extern const char *loadMenu(const char* filename PROGMEM, uint8_t ordinals[], size_t maxLen);
+extern const char *loadOptions(const char* filename PROGMEM, size_t maxLen);
 extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* ext, uint16_t maxLen);
 
 extern void sendTMCStatus(uint8_t axis, int8_t port);
