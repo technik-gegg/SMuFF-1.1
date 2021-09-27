@@ -59,80 +59,73 @@
 #define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PC14    // Z-PROBE.1  (Wiper Servo)
 #define SERVO2_PIN          PA1     // Z-PROBE.3  (Lid Servo)
-#define SERVO3_PIN          PC12    // PWR-DET    (Cutter Servo)
+#define SERVO3_PIN          PC12    // PT-DET     (Cutter Servo)
 
 #define FAN_PIN             PC6     // FAN0
 
-#define SW_SERIAL_TX_PIN    -1      //
-#define SW_SERIAL_RX_PIN    -1      //
-
-#define NEOPIXEL_TOOL_PIN   PA8       // for tools (NEOPIXEL)
-//#define NEOPIXEL_TOOL_PIN   PA9       // alternative for tools (EXT1.8); Important: only usable with TWI / LEONERD display
-//#define NEOPIXEL_TOOL_PIN   PB15      // alternative for tools (EXT1.3); Important: not! usable with TWI / LEONERD display
+#define NEOPIXEL_TOOL_PIN   PA8     // for tools (NEOPIXEL)
+//#define NEOPIXEL_TOOL_PIN   PA9     // alternative for tools (EXT1.8); Important: _only_ usable with TWI / LEONERD display
+//#define NEOPIXEL_TOOL_PIN   PB15    // alternative for tools (EXT1.3); Important: not! usable with TWI / LEONERD display
 #define COLOR_ORDER         GRB
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
 #define SDCS_PIN            -1      // use default
-#define DEBUG_PIN           PC3     // TB0 (using this header will lead to to sine wave on the output - see schematic)
+#define DEBUG_PIN           -1      // PC3 - TB0 (using this header will lead to a sine wave on the output if freq. succseeds 100Hz  - see schematic)
 
 #define USB_CONNECT_PIN     PA14    // SWCLK
 #define SD_DETECT_PIN       PC4
 
-// Moved display pins configuration into separate header files
-#if defined(USE_CREALITY_DISPLAY)
-#include "DSP_Creality.h"
-#include "../Display/Creality.h"
-#elif defined(USE_TWI_DISPLAY)
-#include "DSP_TWILeonerd.h"
-#include "../Display/TWI.h"
-#elif defined(USE_LEONERD_DISPLAY)
-#include "DSP_TWILeonerd.h"
-#include "../Display/Leonerd.h"
-#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
-#include "DSP_Minipanel.h"
-#include "../Display/Minipanel.h"
-#else
-#include "DSP_Default.h"
-#include "../Display/Default.h"
-#endif
-
 #if defined(USE_SPLITTER_ENDSTOPS)
-// only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
-#define SPLITTER_SCL        PB10    // Z-Axis STEP
-#define SPLITTER_SDA        PB11    // Z-Axis ENABLE
+// using the same pins as for TWI displays (SW-I2C)
+#define SPLITTER_SCL        PA15    // EXP1.9
+#define SPLITTER_SDA        PB15    // EXP1.3
 #endif
 
-#define DUET_SIG_FED_PIN    -1
-#define DUET_SIG_SEL_PIN    -1
+#define DUET_SIG_FED_PIN    PC3      // THB (thermistor output pins will work fine up to 100Hz - see schematic)
+#define DUET_SIG_SEL_PIN    PA0      // TH0
 
-#define DEBUG_OFF_PIN       -1      // not needed on TWI display
+#define DEBUG_OFF_PIN       -1
+
+#define STALL_X_PIN         PA13    // SWDIO (cannot be used with FYSETC Minipanel 12864)
+#define STALL_Y_PIN         -1
+#define STALL_Z_PIN         -1
+
+// the following pins cannot be used directly from the according headers/terminals, since those are signals
+// used to drive the Mosfets for heaters/fan. If you need one of those signals, you have to wire it up on the 
+// according driver input pin of U8 (see schematic).
+#define SPARE1              PC8     // HE0
+#define SPARE2              PC9     // BED
+#define SPARE3              PC7     // FAN1
+
+
+// -----------------------------------------------------
+// Serial Ports section
+// -----------------------------------------------------
+#define SW_SERIAL_TX_PIN    -1
+#define SW_SERIAL_RX_PIN    -1
 
 #define TMC_HW_SERIAL       1
 #define TMC_SERIAL          Serial4
 
-//#define TMC_SERIAL_RX_PIN   PC11    // UART - SERIAL4 RX
-//#define TMC_SERIAL_TX_PIN   PC10    // UART - SERIAL4 TX
-
-#define STALL_X_PIN         PA13    // SWDIO
-#define STALL_Y_PIN         -1      //
-#define STALL_Z_PIN         PC7     // FAN1
-
 // SERIAL1 - Cannot be used for serial comm.
 #define CAN_USE_SERIAL1     false
-
 #define TX1_PIN             PA9     // EXP1.8 - ENCODER1_PIN
 #define RX1_PIN             PA10    // EXP1.6 - ENCODER2_PIN
 
 // SERIAL2 - Can be used for serial comm.
 #define CAN_USE_SERIAL2     true
-
 #define TX2_PIN             PA2     // TX on TFT header
 #define RX2_PIN             PA3     // RX on TFT header
 
-// SERIAL3 - Cannot be used for serial comm. on E3 but can on E3-DIP
+// SERIAL3 - Cannot be used for serial comm.
 #define CAN_USE_SERIAL3     false
-
 #define TX3_PIN             PB10    // Y-Axis STEP
 #define RX3_PIN             PB11    // Y-Axis ENABLE
+
+
+// -----------------------------------------------------
+// Display section
+// -----------------------------------------------------
+#include "../Display/Displays.h"

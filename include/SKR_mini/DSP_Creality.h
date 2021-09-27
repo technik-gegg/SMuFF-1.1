@@ -17,25 +17,24 @@
  *
  */
 /*
- * Pins configuration file for TWI/I2C and Leonerd Display
+ * Pins configuration file for Creality E3/CR10 Display
  */
 #pragma once
 
-#define DSP_SCL             PB6     // EXP1.9
-#define DSP_SDA             PB7     // EXP1.3
+#if !defined(CREALITY_HW_SPI)
+#pragma message "Invalid configuration on this board"
+#else
+#pragma message "Compiling for Creality E3/CR10 Display HW SPI"
 
-#define DSP_CS_PIN          -1
-#define DSP_DC_PIN          -1
+#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
+#define DSP_CS_PIN          PB7     // EXP1.5
+#define DSP_DC_PIN          PC15    // EXP1.4 
 #define DSP_RESET_PIN       -1
 
-#if !defined(USE_LEONERD_DISPLAY)
-#pragma message "Compiling for TWI/I2C Display"
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
-#else
-#pragma message "Compiling for Leonerd Display"
-#endif 
+#define ENCODER1_PIN        PD2     // EXP2.8
+#define ENCODER2_PIN        PB8     // EXP2.6
+#define ENCODER_BUTTON_PIN  PC11    // EXP1.9
 
-#define BEEPER_PIN          PA15    // EXP1.10
+#endif
 
+#define BEEPER_PIN          PC10    // EXP1.10

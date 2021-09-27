@@ -487,6 +487,7 @@ void sendTMCStatus(uint8_t axis, int8_t port) {
     return;
   }
 
+#ifdef HAS_TMC_SUPPORT
   steppers[axis].setEnabled(true);
   const char *ot_stat = P_No;
 
@@ -525,6 +526,7 @@ void sendTMCStatus(uint8_t axis, int8_t port) {
   if(axis == REVOLVER)
     steppers[axis].setEnabled(false);
   #endif
+#endif
 }
 
 void resetDisplay() {
@@ -2259,6 +2261,7 @@ int8_t getToolSelected() {
 }
 
 void printDriverMode(int8_t serial) {
+#ifdef HAS_TMC_SUPPORT
   char tmp[128];
 
   sprintf_P(tmp, P_TMC_StatusAll,
@@ -2269,9 +2272,11 @@ void printDriverMode(int8_t serial) {
             drivers[FEEDER] == nullptr ? P_Unknown : drivers[FEEDER]->stealth() ? P_Stealth
                                                                                 : P_Spread);
   printResponse(tmp, serial);
+#endif
 }
 
 void printDriverRms(int8_t serial) {
+#ifdef HAS_TMC_SUPPORT
   char tmp[128];
 
   sprintf_P(tmp, P_TMC_StatusAll,
@@ -2279,9 +2284,11 @@ void printDriverRms(int8_t serial) {
             drivers[REVOLVER] == nullptr ? P_Unknown : (String(drivers[REVOLVER]->rms_current()) + String(P_MilliAmp)).c_str(),
             drivers[FEEDER] == nullptr ? P_Unknown : (String(drivers[FEEDER]->rms_current()) + String(P_MilliAmp)).c_str());
   printResponse(tmp, serial);
+#endif
 }
 
 void printDriverMS(int8_t serial) {
+#ifdef HAS_TMC_SUPPORT
   char tmp[128];
 
   sprintf_P(tmp, P_TMC_StatusAll,
@@ -2289,15 +2296,18 @@ void printDriverMS(int8_t serial) {
             drivers[REVOLVER] == nullptr ? P_Unknown : String(drivers[REVOLVER]->microsteps()).c_str(),
             drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->microsteps()).c_str());
   printResponse(tmp, serial);
+#endif
 }
 
 void printDriverStallThrs(int8_t serial) {
+#ifdef HAS_TMC_SUPPORT
   char tmp[128];
   sprintf_P(tmp, P_TMC_StatusAll,
             drivers[SELECTOR] == nullptr ? P_Unknown : String(drivers[SELECTOR]->SGTHRS()).c_str(),
             drivers[REVOLVER] == nullptr ? P_Unknown : String(drivers[REVOLVER]->SGTHRS()).c_str(),
             drivers[FEEDER] == nullptr ? P_Unknown : String(drivers[FEEDER]->SGTHRS()).c_str());
   printResponse(tmp, serial);
+#endif
 }
 
 void printEndstopState(int8_t serial) {
@@ -2439,11 +2449,11 @@ void startupBeep() {
 }
 
 /*
-  Prepares a tune sequence from string to an array of notes to be played in background.
+  Prepares a tune sequence from string to an array of notes to be played.
   The format is: F{frequency} D{duration} [P{pause}].F{frequency}D{duration}[P{pause}]. ...
   Example: "F440D120P80." plays an A (440Hz) with a duration of 120mS and pauses 80mS
            after the tone has played.
-           The '.' at the end of a tone is needed to play that tone and must not be omitted.
+           The '.' at the end of a tone is mandatory and must not be omitted.
 */
 void prepareSequence(const char *seq, bool autoPlay) {
 #if !defined(USE_LEONERD_DISPLAY)

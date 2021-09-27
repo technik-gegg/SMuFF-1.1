@@ -1415,6 +1415,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, cstepdown) == 0)           { if (axis != -1 && param >= 0 && param <= 15) setTMCCSDown(axis, param); else { rangeError(serial, 0, 15); stat = false; } }
       else if (strcmp(cmd, toff) == 0)                { if (axis != -1 && param >= 0 && param <= 15) setTMCTOff(axis, param);   else { rangeError(serial, 0, 15); stat = false; } }
       else if (strcmp(cmd, pfactor) == 0)             { if (index != -1) { smuffConfig.purges[index] = (uint16_t) param; } else stat = false; }
+      else if (strcmp(cmd, dbgFreq) == 0)             { if (param > 0 && param <= 20000) smuffConfig.dbgFreq = (uint16_t)param; else stat = false; }
       #if defined(MULTISERVO)
       else if (strcmp(cmd, servoOutput) == 0)         { if (index >= 0 && index < 16) { servoMapping[index] = (uint8_t) param; } else stat = false; }
       else if (strcmp(cmd, servoClosed) == 0)         { if (index >= 0 && index < 16) { servoPosClosed[index] = (uint8_t) param; } else stat = false; }

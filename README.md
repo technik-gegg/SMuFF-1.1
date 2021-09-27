@@ -43,6 +43,14 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.41** - some fine tuning on recent changes
+
++ added **DebugFreq** setting to **SMUFF.json** which allows to set the frequency (in Hz) applied to the hardware debug pin for testing purposes. This value can be changed during runtime via M205 GCode as well.
++ defined Duet3D signal pins (*DUET_SIG_FED_PIN* and *DUET_SIG_SEL_PIN*) to be on thermistor pins (THB and TH0). Because of the R/C connected to those pins, signals are limited to a max. switching frequency of **100Hz**, which is sufficient for this purpose.
++ removed redundancy in display includes throughout all the Pins.h files. These are now located once in *Display/Display.h*.
++ corrected some pin defintions in all Pins.h files.
++ revived the SKR Mini V1.1 board (because it's still available and in use).
+
 **2.40** - code reorganization and bug fixing
 
 + removed old boards, such as ESP32, SKR Mini, FYSETC AIO II, mainly because they're discontinued and just mess up the project.

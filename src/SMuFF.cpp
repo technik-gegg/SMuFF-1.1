@@ -19,10 +19,17 @@
 #include "SMuFF.h"
 #include "InputDialogs.h"
 
+#if !defined(USE_DUET3D)
 Stream                    *debugSerial = &Serial2;        // send debug output to...
-//Stream                    *debugSerial = &Serial1;      // alternative serial port for debug
 Stream                    *logSerial = &Serial;           // send logs to USB by default
 Stream                    *terminalSerial = &Serial2;     // send terminal emulation output to ...
+#else
+// Duet3D uses Serial 1 for communication, Serial 3 for PanelDue (optional)
+// in this case, all debug outputs are sent to USB serial
+Stream                    *debugSerial = &Serial;         // send debug output to USB
+Stream                    *logSerial = &Serial;           // send logs to USB by default
+Stream                    *terminalSerial = &Serial;      // send terminal emulation output to USB
+#endif
 
 #if defined(USE_SW_SERIAL)
 SoftwareSerial            swSer0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);  // mainly for testing purpose
@@ -252,8 +259,8 @@ void isrGPTimerHandler() {
   noInterrupts();
   timerRunning = true;
   tickCounter++; // increment tick counter
-  if (tickCounter % 20 == 0)
-  { // each millisecond...
+  if (tickCounter % 20 == 0) {
+    // each millisecond...
     // decrement all milliseconds counters for periodic functions and
     // set a flag when the timeout has been reached
     for (uint8_t i = 0; i < LAST_INTERVAL; i++) {
@@ -268,12 +275,17 @@ void isrGPTimerHandler() {
       #if !defined(USE_LEONERD_DISPLAY)
       encoder.service();    // service the rotary encoder
       #endif
-      #ifdef FLIPDBG
-      FLIPDBG               // flips the debug pin polarity which is supposed to generate a 500Hz signal for debug purposes
-      #endif
     }
     isrFanTimerHandler();   // call the fan interrupt routines also every 50uS
   }
+  #ifdef FLIPDBG
+  uint16_t dbgCnt = (uint16_t)((float)(1/0.00005)/(smuffConfig.dbgFreq*2));
+  if (initDone && tickCounter % dbgCnt == 0) {
+    FLIPDBG               // flips the debug pin polarity which is supposed to generate 
+                          // a periodical signal (default: 500 Hz) for debug purposes
+  }
+  #endif
+
   timerRunning = false;
   interrupts();
 }
@@ -367,8 +379,10 @@ void setup() {
   setupFan();
   setupI2C();
   getStoredData();          // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
+  #if defined(USE_SPLITTER_ENDSTOPS)
   setupEStopMux();
   __debugS(PSTR("[ after setupEStopMux ]"));
+  #endif
   uint32_t now = millis();
   readSequences();          // read sound files from SD-Card sounds folder
   __debugS(PSTR("[ after readSequences ] (loading took %ld ms)"), millis()-now);

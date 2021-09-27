@@ -202,6 +202,7 @@ bool readMainConfig()
       smuffConfig.ddeDist =                     jsonDoc[ddeDist];
       smuffConfig.purgeDDE =                    jsonDoc[purgeDDE];
       smuffConfig.traceUSBTraffic =             jsonDoc[traceUsb];
+      smuffConfig.dbgFreq =                     jsonDoc[dbgFreq] | 500;
 
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -673,6 +674,7 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[traceUsb]             = smuffConfig.traceUSBTraffic;
   jsonDoc[devName]              = smuffConfig.deviceName;
   jsonDoc[cutterTop]            = smuffConfig.cutterOnTop;
+  jsonDoc[dbgFreq]              = smuffConfig.dbgFreq;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }

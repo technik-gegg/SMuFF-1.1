@@ -127,11 +127,12 @@ void initHwDebug() {
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN != -1
   pinMode(DEBUG_PIN, OUTPUT);
   digitalWrite(DEBUG_PIN, HIGH);
-  __debugS(PSTR("[ initHwDebug: Pin initialized ]"));
+  __debugS(PSTR("[ initHwDebug: Pin initialized, frequency is %dHz ]"), smuffConfig.dbgFreq);
 #endif
 }
 
 void setupDuetSignals() {
+#if defined(USE_DUET3D)
 #if defined(DUET_SIG_FED_PIN) && DUET_SIG_FED_PIN != -1
   pinMode(DUET_SIG_FED_PIN, OUTPUT);
   digitalWrite(DUET_SIG_FED_PIN, LOW);
@@ -141,6 +142,7 @@ void setupDuetSignals() {
   pinMode(DUET_SIG_SEL_PIN, OUTPUT);
   digitalWrite(DUET_SIG_SEL_PIN, LOW);
   __debugS(PSTR("[ setupDuetSignals: Selector pin initialized ]"));
+#endif
 #endif
 }
 
@@ -152,6 +154,7 @@ void setupDuetLaserSensor() {
 }
 
 void setupSerial() {
+  const char* initMsg = "[ setupSerial: SERIAL%d initialized with %ld baud ]";
   // special case:
   // if the baudrate is set to 0, the board is running out of memory
   if (smuffConfig.serialBaudrates[0] != 0)
@@ -169,6 +172,7 @@ void setupSerial() {
       Serial.begin(smuffConfig.serialBaudrates[0]);
 #endif
     }
+    __debugS(PSTR(initMsg), 0, smuffConfig.serialBaudrates[0]);
   }
   else
   {
@@ -184,34 +188,38 @@ void setupSerial() {
     delay(150);
     Serial1.begin(smuffConfig.serialBaudrates[1]);
     delay(250);
-    //__debugS(PSTR("[ setupSerial: init SERIAL1 DONE ]"));
   }
+  if (CAN_USE_SERIAL1)
+      __debugS(PSTR(initMsg), 1, smuffConfig.serialBaudrates[1]);
+
   if (CAN_USE_SERIAL2 && smuffConfig.serialBaudrates[2] != 115200 && smuffConfig.serialBaudrates[2] >= 4800 && smuffConfig.serialBaudrates[2] <= 230400) {
     Serial2.end();
     delay(150);
     Serial2.begin(smuffConfig.serialBaudrates[2]);
     delay(250);
-    //__debugS(PSTR("[ setupSerial: init SERIAL2 DONE ]"));
   }
+  if (CAN_USE_SERIAL2)
+    __debugS(PSTR(initMsg), 2, smuffConfig.serialBaudrates[2]);
+
   if (CAN_USE_SERIAL3 && smuffConfig.serialBaudrates[3] != 115200 && smuffConfig.serialBaudrates[3] >= 4800 && smuffConfig.serialBaudrates[3] <= 230400) {
     Serial3.end();
     delay(150);
     Serial3.begin(smuffConfig.serialBaudrates[3]);
     delay(250);
-    //__debugS(PSTR("[ setupSerial: init SERIAL3 DONE ]"));
   }
-  //__debugS(PSTR("[ setupSerial: DONE"));
+  if (CAN_USE_SERIAL3)
+    __debugS(PSTR(initMsg), 3, smuffConfig.serialBaudrates[3]);
 }
 
 void setupSwSerial0() {
 #if defined(USE_SW_SERIAL)
   swSer0.begin(TMC_BAUDRATE);
+  __debugS(PSTR("[ setupSwSerial0: Software SERIAL initialized with %ld baud ]"), TMC_BAUDRATE);
 #endif
 }
 
 void setupRelay() {
-  if (RELAY_PIN != -1)
-  {
+  if (RELAY_PIN != -1) {
     pinMode(RELAY_PIN, OUTPUT);
     // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
     // switch on the external stepper by default. Otherwise, use the interal stepper.
@@ -224,6 +232,9 @@ void setupRelay() {
       switchFeederStepper(INTERNAL);
     #endif
   }
+  else {
+      __debugS(PSTR("[ setupRelay: Relay pin undefined ]"));
+  }
 }
 
 void setupServos() {
@@ -233,11 +244,7 @@ void setupServos() {
     servoWiper.setMaxCycles(smuffConfig.servoCycles1);
     servoWiper.setPulseWidthMinMax(smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
     servoWiper.setTickRes(SERVO_RESOLUTION);
-#if defined(__STM32F1__)
     servoWiper.attach(SERVO1_PIN, true, SERVO_WIPER);
-#else
-    servoWiper.attach(SERVO1_PIN, true, SERVO_WIPER);
-#endif
     uint8_t resetPos = 90, param;
     // try to find out the default reset position of the wiper servo from
     // within the wipe sequence
@@ -246,6 +253,7 @@ void setupServos() {
     }
     setServoPos(SERVO_WIPER, resetPos);
     disableServo(SERVO_WIPER);
+    __debugS(PSTR("[ setupServos: Wiper servo initialized ]"));
   }
 
 #if !defined(MULTISERVO)
@@ -256,6 +264,7 @@ void setupServos() {
     servoLid.setTickRes(SERVO_RESOLUTION);
     servoLid.attach(SERVO2_PIN, true, SERVO_LID);
     setServoLid(SERVO_OPEN);
+    __debugS(PSTR("[ setupServos: Lid servo initialized ]"));
   }
   // setup the Filament-Cutter servo if defined
   if (SERVO3_PIN != -1) {
@@ -265,6 +274,7 @@ void setupServos() {
 
     servoCutter.attach(SERVO3_PIN, true, SERVO_CUTTER);
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
+    __debugS(PSTR("[ setupServos: Cutter servo initialized ]"));
   }
 #else
   servoPwm.begin();
@@ -275,6 +285,7 @@ void setupServos() {
     delay(400);
     setServoPos(i + 10, servoPosClosed[i] - SERVO_CLOSED_OFS);
   }
+  __debugS(PSTR("[ setupServos: Multiservo initialized ]"));
 #endif
 }
 

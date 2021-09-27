@@ -21,8 +21,8 @@
  */
 #pragma once
 
-#define DSP_SCL             PB6     // EXP1.9
-#define DSP_SDA             PB7     // EXP1.3
+#define DSP_SCL             PB6     // EXP1.8
+#define DSP_SDA             PB7     // EXP1.5
 
 #define DSP_CS_PIN          -1
 #define DSP_DC_PIN          -1
@@ -30,12 +30,12 @@
 
 #if !defined(USE_LEONERD_DISPLAY)
 #pragma message "Compiling for TWI/I2C Display"
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
-#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
+#define ENCODER1_PIN        PC14    // EXP1.3
+#define ENCODER2_PIN        PC15    // EXP1.4
+#define ENCODER_BUTTON_PIN  PC11    // EXP1.9
 #else
 #pragma message "Compiling for Leonerd Display"
 #endif 
 
-#define BEEPER_PIN          PA15    // EXP1.10
+#define BEEPER_PIN          PC10    // EXP1.10
 

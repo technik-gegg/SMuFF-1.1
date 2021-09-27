@@ -117,65 +117,58 @@
 #define SD_DETECT_PIN       PC4
 #define USE_TERMINAL_MENUS  1
 
-// Moved display pins configuration into separate header files
-#if defined(USE_CREALITY_DISPLAY)
-#include "DSP_Creality.h"
-#include "../Display/Creality.h"
-#elif defined(USE_TWI_DISPLAY)
-#include "DSP_TWILeonerd.h"
-#include "../Display/TWI.h"
-#elif defined(USE_LEONERD_DISPLAY)
-#include "DSP_TWILeonerd.h"
-#include "../Display/Leonerd.h"
-#elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
-#include "DSP_Minipanel.h"
-#include "../Display/Minipanel.h"
-#else
-#include "DSP_Default.h"
-#include "../Display/Default.h"
-#endif
-
 #if defined(USE_SPLITTER_ENDSTOPS)
 // only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
-#define SPLITTER_SCL          PB10 // Z-Axis STEP
-#define SPLITTER_SDA          PB11 // Z-Axis ENABLE
+#define SPLITTER_SCL        PB10        // Z-Axis STEP
+#define SPLITTER_SDA        PB11        // Z-Axis ENABLE
 #endif
 
-#define DUET_SIG_FED_PIN     PB2    // Z-Axis DIR
-#define DUET_SIG_SEL_PIN     PC12   // Z-Axis MS3
+// moved to thermistor pins in V2.41
+#define DUET_SIG_FED_PIN    PC3         // THB (thermistor output pins will work fine up to 100Hz - see schematic)
+#define DUET_SIG_SEL_PIN    PA0         // TH0
 
-#define DEBUG_OFF_PIN       -1      // not needed on TWI display
+#define DEBUG_OFF_PIN       -1
 
-#define X_SERIAL_TX_PIN PC10 // XUART - UART4 TX
-#define Y_SERIAL_TX_PIN PC11 // YUART - UART4 RX
-#define Z_SERIAL_TX_PIN PD2  // EUART - UART5 RX
-//#define E_SERIAL_TX_PIN PC12 // ZUART - UART5 TX (not used anyways)
+#define STALL_X_PIN         PA13        // SWDIO (cannot be used with FYSETC Minipanel 12864)
+#define STALL_Y_PIN         -1          //
+#define STALL_Z_PIN         PA14        // SWCLK
 
-#define MS3_X PC10 // the MS3 pin (if needed for the stepper driver)
-#define MS3_Y PC11 // is connected to the MCU and thus
+#define MS3_X               PC10        // the MS3 pin (if needed for the stepper driver)
+#define MS3_Y               PC11        // is connected to the MCU and thus
 #if !defined(SMUFF_V6S)
-#define MS3_Z PD2  // must be controlled via software on this controller board
+#define MS3_Z               PD2         // must be controlled via software on this controller board
 #else
-#define MS3_Z -1    // used for Cutter servo
+#define MS3_Z               -1          // used for Cutter servo
 #endif
 
-#define STALL_X_PIN PA13 // SWDIO
-#define STALL_Y_PIN -1   //
-#define STALL_Z_PIN PA14 // SWCLK
+// the following pins cannot be used directly from the according headers/terminals, since those are signals
+// used to drive the Mosfets for heaters. If you need one of those signals, you have to wire it up on the 
+// according driver input pin of U5 (see schematic).
+#define SPARE1              PC8     // HE0
+#define SPARE2              PC9     // BED
+
+// -----------------------------------------------------
+// Serial Ports section
+// -----------------------------------------------------
+#define SW_SERIAL_TX_PIN    -1
+#define SW_SERIAL_RX_PIN    -1
+
+#define X_SERIAL_TX_PIN     PC10    // XUART - UART4 TX
+#define Y_SERIAL_TX_PIN     PC11    // YUART - UART4 RX
+#define Z_SERIAL_TX_PIN     PD2     // EUART - UART5 RX
+//#define E_SERIAL_TX_PIN     PC12    // ZUART - UART5 TX (not used anyways)
 
 // SERIAL1 - Cannot be used for serial comm.
-#define CAN_USE_SERIAL1 false // used for encoder on EXP1
-
-#define TX1_PIN PA9  // EXP1.8 - ENCODER1_PIN
-#define RX1_PIN PA10 // EXP1.6 - ENCODER2_PIN
+#define CAN_USE_SERIAL1     false   // used for encoder on EXP1
+#define TX1_PIN             PA9     // EXP1.8 - ENCODER1_PIN
+#define RX1_PIN             PA10    // EXP1.6 - ENCODER2_PIN
 
 // SERIAL2 - Can be used for serial comm.
-#define CAN_USE_SERIAL2 true // TFT header
+#define CAN_USE_SERIAL2     true // TFT header
+#define TX2_PIN             PA2 // TX on TFT header
+#define RX2_PIN             PA3 // RX on TFT header
 
-#define TX2_PIN PA2 // TX on TFT header
-#define RX2_PIN PA3 // RX on TFT header
-
-// SERIAL3 - Cannot be used for serial comm. on E3 but can on E3-DIP
+// SERIAL3 - Cannot be used for serial comm.
 #if !defined(USE_SPLITTER_ENDSTOPS)
     #if defined(USE_DDE)
     #define CAN_USE_SERIAL3 false   // Serial3 cannot be used when using DDE
@@ -183,11 +176,13 @@
     #define CAN_USE_SERIAL3 true    // if no Z-Axis driver is being used
     #endif
 #else
-#define CAN_USE_SERIAL3 false   // Serial3 cannot be used when Splitter with endstops is being used
+#define CAN_USE_SERIAL3     false   // Serial3 cannot be used when Splitter with endstops is being used
 #endif
+#define TX3_PIN             PB10    // Z-Axis STEP
+#define RX3_PIN             PB11    // Z-Axis ENABLE
 
-#define TX3_PIN PB10 // Z-Axis STEP
-#define RX3_PIN PB11 // Z-Axis ENABLE
 
-//#define MOTOR_IN1_PIN       PC2     // E0-STOP (experimental)
-//#define MOTOR_IN2_PIN       PC0     // Y-STOP  (experimental)
+// -----------------------------------------------------
+// Display section
+// -----------------------------------------------------
+#include "../Display/Displays.h"

@@ -58,7 +58,7 @@
 #define CRGB uint32_t
 #endif
 
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) || defined(__STM32F4__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
 #include <USBComposite.h>
@@ -226,6 +226,7 @@ typedef struct
   bool purgeDDE = false;
   bool traceUSBTraffic = false;
   char deviceName[MAX_BUTTON_LEN] = {0};
+  uint16_t dbgFreq = 500;
 } SMuFFConfig;
 
 extern dspDriver display;
