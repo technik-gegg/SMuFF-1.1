@@ -66,7 +66,6 @@
 #define NEOPIXEL_TOOL_PIN   PA8     // for tools (NEOPIXEL)
 //#define NEOPIXEL_TOOL_PIN   PA9     // alternative for tools (EXT1.8); Important: _only_ usable with TWI / LEONERD display
 //#define NEOPIXEL_TOOL_PIN   PB15    // alternative for tools (EXT1.3); Important: not! usable with TWI / LEONERD display
-#define COLOR_ORDER         GRB
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
@@ -124,6 +123,12 @@
 #define TX3_PIN             PB10    // Y-Axis STEP
 #define RX3_PIN             PB11    // Y-Axis ENABLE
 
+#if !defined(__LIBMAPLE__)
+#define SPI3_SCLK           PB3
+#define SPI3_MISO           PB4
+#define SPI3_MOSI           PB5
+#define SPI3_CS             PA15
+#endif
 
 // -----------------------------------------------------
 // Display section

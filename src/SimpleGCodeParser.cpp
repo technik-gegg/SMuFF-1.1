@@ -185,7 +185,7 @@ bool parse_T(const String& buf, int8_t serial) {
     sendToolResponse(serial);
     return stat;
   }
-  if(toUpperCase(buf[0])=='M') {
+  if(toupper(buf[0])=='M') {
     maintainTool();
     return true;
   }

@@ -38,5 +38,5 @@
 #define NUM_LEDS            3       // number of Neopixel LEDS
 #define BRIGHTNESS          127
 #define LED_TYPE            WS2812B
-#define COLOR_ORDER         GRB
+#define COLOR_ORDER         RGB
 #endif

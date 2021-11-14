@@ -18,9 +18,9 @@
  */
 #include "SMuFF.h"
 
-#if defined(__STM32F1__)
-#include <../stm32f1/include/series/nvic.h>
-#define PRODUCT_ID 0x29 // for CompositeSerial
+
+#if defined(__STM32F1__) || defined(__STM32F4__)
+#define PRODUCT_ID 0x29     // for CompositeSerial
 #endif
 
 #if defined(USE_COMPOSITE_SERIAL)
@@ -36,7 +36,7 @@ bool readSDCard(uint8_t *readbuff, uint32_t startSector, uint16_t numSectors) {
 #endif
 
 void initUSB() {
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) || defined(__STM32F4__)
   if (USB_CONNECT_PIN != -1)
   {
     pinMode(USB_CONNECT_PIN, OUTPUT);
@@ -291,7 +291,7 @@ void setupServos() {
 
 void setupFan() {
   if (FAN_PIN != -1) {
-    #ifdef __STM32F1__
+    #if defined(__STM32F1__) || defined(__STM32F4__)
     fan.attach(FAN_PIN, 0);
     fan.setTickRes(FAN_RESOLUTION);
     fan.setPulseWidthMax((uint16_t(((float)1/FAN_FREQUENCY)*1000000L)));
@@ -301,7 +301,7 @@ void setupFan() {
     #endif
     if (smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100)
     {
-      #if defined(__STM32F1__)
+      #if defined(__STM32F1__) || defined(__STM32F4__)
       fan.setFanSpeed(smuffConfig.fanSpeed);
       #else
       analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
@@ -674,7 +674,7 @@ void setupTMCDrivers()
 
 void setupTimers()
 {
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) || defined(__STM32F4__)
   // *****
   // Attn:
   //    Steppers use:       TIMER2 CH1 (may corrupt TH0 readings)
@@ -691,16 +691,19 @@ void setupTimers()
   //          communication interrupts/breaks. Read the STM32F1 MCU spec. and check
   //          the libmaple library settings before you do so.
   // *****
-  stepperTimer.setupTimer(Timer::TIMER2, Timer::CH1, STEPPER_PSC, 1); // prescaler set to STEPPER_PSC, timer will be calculated as needed
-  gpTimer.setupTimer(Timer::TIMER8, Timer::CH1, 8, 0);                // prescaler set to 9 MHz, timer will be set to 50uS
-  servoTimer.setupTimer(Timer::TIMER5, Timer::CH1, 8, 0);             // prescaler set to 9 MHz
+  stepperTimer.setupTimer(ZTimer::_TIMER2, ZTimer::CH1, STEPPER_PSC, 1); // prescaler set to STEPPER_PSC, timer will be calculated as needed
+  gpTimer.setupTimer(ZTimer::_TIMER8, ZTimer::CH1, 8, 0);                // prescaler set to 9 MHz, timer will be set to 50uS
+  servoTimer.setupTimer(ZTimer::_TIMER5, ZTimer::CH1, 8, 0);             // prescaler set to 9 MHz
 #if !defined(USE_LEONERD_DISPLAY)
-  setToneTimerChannel(Timer::TIMER5, Timer::CH3); // force TIMER5 / CH3 on STM32F1x for tone library
+  setToneTimerChannel(ZTimer::_TIMER5, ZTimer::CH3); // force TIMER5 / CH3 on STM32F1x for tone library
 #endif
+  #if defined(__LIBMAPLE__)
   nvic_irq_set_priority(NVIC_TIMER8_CC, 1);
   nvic_irq_set_priority(NVIC_TIMER2, 1);
   nvic_irq_set_priority(NVIC_TIMER4, 10);
   nvic_irq_set_priority(NVIC_TIMER5, 0);
+  #else
+  #endif
 
 #endif
 
@@ -708,7 +711,7 @@ void setupTimers()
   gpTimer.setupHook(isrGPTimerHandler);           // setup the ISR for rotary encoder, fan and general timers
   servoTimer.setupHook(isrServoTimerHandler);     // setup the ISR for servos
 
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) || defined(__STM32F4__)
   gpTimer.setNextInterruptInterval(450);        // run general purpose (gp)timer on 50uS (STM32)
   servoTimer.setNextInterruptInterval(378);     // run servo timer on 42uS (STM32)
 #endif

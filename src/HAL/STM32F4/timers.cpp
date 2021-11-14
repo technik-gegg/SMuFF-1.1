@@ -17,15 +17,14 @@
  *
  */
 
-#if defined(__STM32F1__)
+#if defined(__STM32F4__)
 
 /*
- * STM32F1 HAL timers handling
+ * STM32F4 HAL timers handling
  */
 #include <Arduino.h>
 #include "timers.h"
 
-#if defined(__LIBMAPLE__)
 static struct {
   HardwareTimer timer;
   void (* serviceFunPtr)(void);
@@ -49,31 +48,6 @@ static struct {
       .serviceFunPtr = nullptr }
   #endif
 };
-#else
-static struct {
-  HardwareTimer timer;
-  void (* serviceFunPtr)(void);
-  } timers[] = {
-    { .timer = HardwareTimer(TIM1),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(TIM2),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(TIM3),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(TIM4),
-      .serviceFunPtr = nullptr },
-  #ifdef STM32_HIGH_DENSITY
-    { .timer = HardwareTimer(TIM5),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(TIM6),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(TIM7),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(TIM8),
-      .serviceFunPtr = nullptr }
-  #endif
-};
-#endif
 
 void timerISRService(ZTimer::timerNum_t t) {
   if (timers[t].serviceFunPtr != nullptr)
@@ -128,20 +102,12 @@ void ZTimer::setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t presc
     // since these timers don't have a compare mode, we're using
     // the compare value as a period (in uS)
     hwTimer->setPrescaleFactor(prescaler);
-    #if defined(__LIBMAPLE__)
     hwTimer->setPeriod(compare);
-    #else
-    //hwTimer->setPWM(channel, _pin, _frequency, _dutyCycle);
-    #endif
   }
   else {
     hwTimer->setMode(channel, TIMER_OUTPUT_COMPARE);
     hwTimer->setPrescaleFactor(prescaler);
-    #if defined(__LIBMAPLE__)
     hwTimer->setCompare(channel, compare);
-    #else
-    hwTimer->setCaptureCompare(channel, compare);
-    #endif
   }
   hwTimer->attachInterrupt(channel, ((void (*[])(void)) { &ISR1, &ISR2, &ISR3, &ISR4,
 #ifdef STM32_HIGH_DENSITY
@@ -156,7 +122,7 @@ void ZTimer::setupHook(void (*function)(void)) {
     timers[_timer].serviceFunPtr = function;
 }
 
-void ZTimer::setNextInterruptInterval(timerVal_t interval) {
+void Timer::setNextInterruptInterval(timerVal_t interval) {
   if (_timer == UNDEFINED)
     return;
 
@@ -188,4 +154,4 @@ void ZTimer::stop() {
     timers[_timer].timer.pause();
 }
 
-#endif // __STM32F1__
+#endif // __STM32F4__

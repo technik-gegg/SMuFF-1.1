@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#if defined(__STM32F1__)
+#if defined(__STM32F4__)
 
 #include "SMuFF.h"
 
@@ -25,7 +25,7 @@
   TwoWire I2CBus(1);
   TwoWire I2CBus2(2);
   #else
-  TwoWire I2CBus;
+  TwoWire I2CBus();
     #if defined(USE_SPLITTER_ENDSTOPS)
     TwoWire I2CBus2(SPLITTER_SCL, SPLITTER_SDA);
     #endif
@@ -67,5 +67,4 @@
     return 1;
   }
 #endif
-
 #endif

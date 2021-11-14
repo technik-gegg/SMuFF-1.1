@@ -31,12 +31,12 @@
 #define DSP_RESET_PIN       -1
 
 #if !defined(USE_LEONERD_DISPLAY)
-#pragma message "Compiling for TWI/I2C Display"
+//#pragma message "Compiling for TWI/I2C Display"
 #define ENCODER1_PIN        PA9     // EXP1.8
 #define ENCODER2_PIN        PA10    // EXP1.6
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
 #else
-#pragma message "Compiling for Leonerd Display"
+//#pragma message "Compiling for Leonerd Display"
 #endif 
 
 #define BEEPER_PIN          PB5     // EXP1.10

@@ -244,6 +244,11 @@ void setBacklightIndex(int color)
 #endif
 }
 
+void setContrast(int contrast)
+{
+  display.setContrast((uint8_t)contrast);
+}
+
 void setToolColorIndex(int color)
 {
 #if defined(USE_FASTLED_TOOLS)

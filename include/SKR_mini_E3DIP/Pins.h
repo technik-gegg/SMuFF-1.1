@@ -181,6 +181,12 @@
 #define TX3_PIN             PB10    // Z-Axis STEP
 #define RX3_PIN             PB11    // Z-Axis ENABLE
 
+#if !defined(__LIBMAPLE__)
+#define SPI3_SCLK           PB3
+#define SPI3_MISO           PB4
+#define SPI3_MOSI           PB5
+#define SPI3_CS             PA15
+#endif
 
 // -----------------------------------------------------
 // Display section

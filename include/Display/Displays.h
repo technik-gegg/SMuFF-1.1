@@ -10,7 +10,11 @@
 #include "../Display/Leonerd.h"
 #elif defined(USE_MINI12864_PANEL_V21) || defined(USE_MINI12864_PANEL_V20)
 #include "DSP_Minipanel.h"
+#if defined(__BRD_SKR_MINI)
+#include "../Display/Minipanel_SPI2.h"
+#else
 #include "../Display/Minipanel.h"
+#endif
 #else
 #include "DSP_Default.h"
 #if defined(__BRD_SKR_MINI)

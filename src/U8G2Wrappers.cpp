@@ -87,9 +87,14 @@ extern "C"
         return stat;
     }
 
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__STM32F4__)
 #if !defined(USE_TWI_DISPLAY) && !defined(USE_LEONERD_DISPLAY) && !defined(__BRD_FYSETC_AIOII)
+#if defined(__LIBMAPLE__)
 SPIClass SPI_3(3);
+#else
+SPIClass SPI_3(SPI3_MOSI, SPI3_MISO, SPI3_SCLK, SPI3_CS);
+#endif
+
     /* =========================================
 ATTENTION:
 The following section does a rewrite of the U8G2 library function

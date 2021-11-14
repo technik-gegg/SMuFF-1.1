@@ -20,7 +20,7 @@
  * Pins configuration file for FYSETC Mini12864 Panel V2.0 and 2.1
  */
 #pragma once
-//#pragma message "Compiling for FYSETC Mini12864 Panel V2.0 and 2.1"
+#pragma message "Compiling for FYSETC Mini12864 Panel V2.0 and 2.1"
 
 #define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
 #define DSP_CS_PIN          PB9     // EXP1.5 (DOGLCD_CS)

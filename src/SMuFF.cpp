@@ -43,10 +43,10 @@ bool                      testMode = false;
 
 dspDriver                 display = INIT_DSP();           // initialize display driver (see macro in according Display_xxx.h)
 ZStepper                  steppers[NUM_STEPPERS];
-Timer                     stepperTimer;
-Timer                     gpTimer;
-Timer                     fastLEDTimer;
-Timer                     servoTimer;
+ZTimer                    stepperTimer;
+ZTimer                    gpTimer;
+ZTimer                    fastLEDTimer;
+ZTimer                    servoTimer;
 ZServo                    servoWiper;
 ZServo                    servoLid;
 ZServo                    servoCutter;
@@ -59,7 +59,7 @@ LeoNerdEncoder            encoder(I2C_ENCODER_ADDRESS, -1);
 ClickEncoder              encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
 #endif
 
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) || defined(__STM32F4__)
 #if defined(USE_COMPOSITE_SERIAL)
 USBMassStorage            MassStorage;
 USBCompositeSerial        CompositeSerial;
@@ -67,12 +67,23 @@ USBCompositeSerial        CompositeSerial;
 #if defined(USE_SPLITTER_ENDSTOPS)
 ZEStopMux                 splitterMux;
 #endif
-volatile uint32_t         *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
-volatile uint32_t         *stepper_reg_Y = &((PIN_MAP[Y_STEP_PIN].gpio_device)->regs->BSRR);
-volatile uint32_t         *stepper_reg_Z = &((PIN_MAP[Z_STEP_PIN].gpio_device)->regs->BSRR);
-uint32_t                  pinMask_X = BIT(PIN_MAP[X_STEP_PIN].gpio_bit);
-uint32_t                  pinMask_Y = BIT(PIN_MAP[Y_STEP_PIN].gpio_bit);
-uint32_t                  pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit);
+#if defined(__LIBMAPLE__)
+  #if defined(__STM32F1__)
+  volatile uint32_t         *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
+  volatile uint32_t         *stepper_reg_Y = &((PIN_MAP[Y_STEP_PIN].gpio_device)->regs->BSRR);
+  volatile uint32_t         *stepper_reg_Z = &((PIN_MAP[Z_STEP_PIN].gpio_device)->regs->BSRR);
+  uint32_t                  pinMask_X = BIT(PIN_MAP[X_STEP_PIN].gpio_bit);
+  uint32_t                  pinMask_Y = BIT(PIN_MAP[Y_STEP_PIN].gpio_bit);
+  uint32_t                  pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit);
+  #else
+  volatile uint32_t         *stepper_reg_X = &(digitalPinToPort(X_STEP_PIN)->regs->BSRR);
+  volatile uint32_t         *stepper_reg_Y = &(digitalPinToPort(Y_STEP_PIN)->regs->BSRR);
+  volatile uint32_t         *stepper_reg_Z = &(digitalPinToPort(Z_STEP_PIN)->regs->BSRR);
+  uint32_t                  pinMask_X = digitalPinToBitMask(X_STEP_PIN);
+  uint32_t                  pinMask_Y = digitalPinToBitMask(Y_STEP_PIN);
+  uint32_t                  pinMask_Z = digitalPinToBitMask(Z_STEP_PIN);
+  #endif
+#endif
 #endif
 
 #ifdef HAS_TMC_SUPPORT
@@ -138,7 +149,7 @@ IntervalHandler intervalHandlers[] = {
 
 
 void overrideStepX() {
-#ifdef __STM32F1__
+#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
   *stepper_reg_X = pinMask_X;
   if (smuffConfig.stepDelay[SELECTOR] > 0)
     delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
@@ -152,7 +163,7 @@ void overrideStepX() {
 }
 
 void overrideStepY() {
-#ifdef __STM32F1__
+#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
   *stepper_reg_Y = pinMask_Y;
   if (smuffConfig.stepDelay[REVOLVER] > 0)
     delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
@@ -166,7 +177,7 @@ void overrideStepY() {
 }
 
 void overrideStepZ() {
-#ifdef __STM32F1__
+#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
   *stepper_reg_Z = pinMask_Z;
   if (smuffConfig.stepDelay[FEEDER] > 0)
     delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
@@ -316,7 +327,11 @@ void setup() {
   // On the FYSETC AIOII it's because of the display DSP_DC_PIN/DOG_A0 signal (PA15 / JTDI).
   // On the SKR MINI E3-DIP it's because of the buzzer signal (PA15 / JTDI).
   // On the SKR MINI E3 V2.0 it's because of the SCL signal (PA15 / JTDI).
+  #if defined(__LIBMAPLE__)
   disableDebugPorts();
+  #else
+  pinF1_DisconnectDebug(PA_15); // disable Serial wire JTAG configuration
+  #endif
   __debugS(PSTR("[ debug ports disabled ]"));
   #if defined(__BRD_FYSETC_AIOII) && !defined(USE_TWI_DISPLAY) && defined(STM32_REMAP_SPI)
     afio_remap(AFIO_REMAP_SPI1); // remap SPI3 to SPI1 if a "normal" display is being used
@@ -355,6 +370,7 @@ void setup() {
     readRevolverMapping();  // read REVOLVERMAPS.json from SD-Card
     #endif
   }
+  setContrast(smuffConfig.lcdContrast); // reset contrast after reading config
   __debugS(PSTR("[ after readConfig ]"));
   testFastLED(false);       // run a test sequence on backlight FastLEDs
   testFastLED(true);        // run a test sequence on tools FastLEDs
@@ -808,7 +824,12 @@ void setPwrSave(int8_t state) {
   if (!isPwrSave) {
     pwrSaveTime = millis();
     #if defined(USE_FASTLED_BACKLIGHT)
-    setBacklightIndex(smuffConfig.backlightColor);       // turn back on the backlight
+    setBacklightIndex(smuffConfig.backlightColor);    // turn back on backlight
+    #endif
+  }
+  else {
+    #if defined(USE_FASTLED_BACKLIGHT)
+    setBacklightIndex(0);                             // turn off backlight
     #endif
   }
 }
@@ -1074,7 +1095,7 @@ void handleUpload(const char* buffer, size_t len, Stream* serial) {
     return;
   //sendXoff(serial);
   upload.write(buffer, len);
-  upload.flush();
+  //upload.flush();
   //sendXon(serial);
   uploadLen -= len;
   uploadStart = millis();

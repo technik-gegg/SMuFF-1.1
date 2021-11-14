@@ -46,6 +46,10 @@ extern SdFat SD;
 extern uint32_t lastEvent;
 extern int8_t currentSerial;
 
+#if defined(__STM32F1__) || defined(__STM32F4__)
+extern void nvic_sys_reset();
+#endif
+
 char firmware[30];
 bool gotFirmware = false;
 int32_t uploadLen = 0;
@@ -322,7 +326,7 @@ bool M42(const char *msg, String buf, int8_t serial)
       {
         if (param >= 0 && param <= 255)
         {
-          #ifdef __STM32F1__
+          #if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
           pwmWrite(pin, param);
           #else
           analogWrite(pin, param);
@@ -370,7 +374,7 @@ bool M106(const char *msg, String buf, int8_t serial)
     freq = 0;
   }
   //__debugS(PSTR("Fan speed: %d%%"), param);
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__STM32F4__)
   // set the frequency if applied
   if(freq > 0 && freq <= 500) {
     uint16_t max = (uint16_t)(uint32_t(((float)1/freq)*1000000L));
@@ -386,7 +390,7 @@ bool M106(const char *msg, String buf, int8_t serial)
 bool M107(const char *msg, String buf, int8_t serial)
 {
   printResponse(msg, serial);
-  #ifdef __STM32F1__
+  #if defined(__STM32F1__) || defined(__STM32F4__)
   fan.setFanSpeed(0);
   #else
   analogWrite(FAN_PIN, 0);
@@ -2148,7 +2152,7 @@ bool M999(const char *msg, String buf, int8_t serial)
   steppers[REVOLVER].setEnabled(false);
   steppers[FEEDER].setEnabled(false);
   delay(500);
-  #if __STM32F1__
+  #if defined(__STM32F1__) || defined(__STM32F4__)
   nvic_sys_reset();
   #endif
   return true;

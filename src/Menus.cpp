@@ -1352,7 +1352,7 @@ void showDisplayMenu(char* menuTitle) {
   uint8_t current_selection = 0;
   char* title;
   char _menu[180];
-  int iVal;
+  int iVal, oldVal;
   bool bVal;
 
   while(!stopMenu) {
@@ -1380,8 +1380,11 @@ void showDisplayMenu(char* menuTitle) {
 
         case 3: // LCD Contrast
             iVal = smuffConfig.lcdContrast;
-            if(showInputDialog(title, P_InValue, &iVal, MIN_CONTRAST, MAX_CONTRAST))
+            oldVal = iVal;
+            if(showInputDialog(title, P_InValue, &iVal, MIN_CONTRAST, MAX_CONTRAST, setContrast))
               smuffConfig.lcdContrast = (uint8_t)iVal;
+            else
+              setContrast(oldVal);
             break;
 
         case 4: // Encoder Ticks
@@ -1545,8 +1548,6 @@ void showSettingsMenu(char* menuTitle) {
 void setLiveFanSpeed(int val) {
   #if defined (__STM32F1__)
   fan.setFanSpeed(val);
-  #elif defined (__ESP32__)
-  ledcWrite(FAN_PIN, map(val, 0, 100, 0, 255));
   #else
   analogWrite(FAN_PIN, map(val, 0, 100, 0, 255));
   #endif
@@ -1721,7 +1722,7 @@ void showOptionsMenu(char* menuTitle) {
 
 void showPurgeMenu(char* menuTitle) {
   bool stopMenu = false;
-  uint32 startTime = millis();
+  uint32_t startTime = millis();
   uint8_t current_selection = 0;
   float fVal;
   int iVal;

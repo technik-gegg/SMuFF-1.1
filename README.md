@@ -11,6 +11,7 @@ If you like this project and find it useful, please consider donating.
 
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
 
++ the [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)
 + the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3) **recommended**
 + the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)
 + the [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r).
@@ -43,10 +44,17 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.42** - some minor bug fixes/changes
+
++ made contrast setting a live function (contrast of the display will change as you rotate the knob, which makes it easier to set up).
++ corrected contrast setting after reading configuration on startup.
++ changed backlight color order on *FYSETC Minipanel* from GRB to RGB.
++ added SKR E3 RRF board to the collection. **This is experimental only and will not compile due to the lack of support of STM32F4 in some libraries. Do not use!**
+
 **2.41** - some fine tuning on recent changes
 
 + added **DebugFreq** setting to **SMUFF.json** which allows to set the frequency (in Hz) applied to the hardware debug pin for testing purposes. This value can be changed during runtime via M205 GCode as well.
-+ defined Duet3D signal pins (*DUET_SIG_FED_PIN* and *DUET_SIG_SEL_PIN*) to be on thermistor pins (THB and TH0). Because of the R/C connected to those pins, signals are limited to a max. switching frequency of **100Hz**, which is sufficient for this purpose.
++ defined Duet3D signal pins (*DUET_SIG_FED_PIN* and *DUET_SIG_SEL_PIN*) to be on thermistor pins (THB and TH0). Because of the R/C filter on those pins signals are limited to a max. switching frequency of **100Hz**, which is sufficient for this purpose.
 + removed redundancy in display includes throughout all the Pins.h files. These are now located once in *Display/Display.h*.
 + corrected some pin defintions in all Pins.h files.
 + revived the SKR Mini V1.1 board (because it's still available and in use).

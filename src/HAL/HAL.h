@@ -21,7 +21,9 @@
 #if defined(__STM32F1__)
   #include "STM32F1/i2c.h"
   #include "STM32F1/timers.h"
-
+#elif defined(__STM32F4__)
+  #include "STM32F4/i2c.h"
+  #include "STM32F4/timers.h"
 #elif defined(__ESP32__)
   #include "ESP32/i2c.h"
   #include "ESP32/timers.h"

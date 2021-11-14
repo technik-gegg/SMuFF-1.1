@@ -17,22 +17,20 @@
  *
  */
 /*
- * Pins configuration file for FYSETC Mini12864 Panel V2.0 and 2.1
+ * Pins configuration file for "standard" 1701 RRF Display
  */
 #pragma once
-//#pragma message "Compiling for FYSETC Mini12864 Panel V2.0 and 2.1"
+#pragma message "Compiling for Standard RRF Display"
 
+// SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
 #define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 (DOGLCD_CS)
-#define DSP_DC_PIN          PA15    // EXP1.9 (DOGLCD_A0)
-#define DSP_RESET_PIN       PA13    // SWDIO --- IMPORTANT: This display needs a RESET signal!
+#define DSP_CS_PIN          PB9     // EXP1.5 = LCD_PINS_RS = ST9720 CS
+#define DSP_DC_PIN          PA15    // EXP1.9
+#define DSP_RESET_PIN       -1
+//#define DSP_RESET_PIN       PB15    // EXP1.3
 
-#define ENCODER1_PIN        PA9
-#define ENCODER2_PIN        PA10
-#define ENCODER_BUTTON_PIN  PB8
+#define ENCODER1_PIN        PA9     // EXP1.8
+#define ENCODER2_PIN        PA10    // EXP1.6
+#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
 
 #define BEEPER_PIN          PB5     // EXP1.10
-
-#if defined(USE_MINI12864_PANEL_V21)
-#define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
-#endif

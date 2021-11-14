@@ -22,18 +22,18 @@
 
 typedef uint64_t timerVal_t;
 
-class Timer {
+class ZTimer {
   public:
     typedef enum {
       UNDEFINED = -1,
-      TIMER1 = 0,
-      TIMER2 = 1,
-      TIMER3 = 2,
-      TIMER4 = 3,
+      _TIMER1 = 0,
+      _TIMER2 = 1,
+      _TIMER3 = 2,
+      _TIMER4 = 3,
       MAX_TIMERS
     } timerNum_t;
 
-    Timer() { _timer = UNDEFINED; };
+    ZTimer() { _timer = UNDEFINED; };
 
     void setupTimer(timerNum_t timer, uint16_t prescaler, timerVal_t compare=1);
     void setupHook(void (*function)(void));

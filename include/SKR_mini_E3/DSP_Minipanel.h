@@ -36,7 +36,4 @@
 
 #if defined(USE_MINI12864_PANEL_V21)
 #define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
-#define NUM_LEDS            3       // number of Neopixel LEDS
-#define BRIGHTNESS          127
-#define LED_TYPE            WS2812B
 #endif

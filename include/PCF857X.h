@@ -38,6 +38,8 @@
 /* Retro-compatibility with arduino 0023 and previous version */
 #if defined(__STM32F1__)
 #include "HAL/STM32F1/i2c.h"
+#elif defined(__STM32F4__)
+#include "HAL/STM32F4/i2c.h"
 #endif
 #if ARDUINO >= 100
 #include "Arduino.h"

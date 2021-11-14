@@ -25,7 +25,7 @@ class StrPrint : Print {
 private:
     String data;
 public:
-    virtual size_t write(uint8 ch) {
+    virtual size_t write(uint8_t ch) {
         data += (char)ch;
         return 1;
     };
@@ -33,7 +33,7 @@ public:
         data += str;
         return strlen(str);
     };
-    virtual size_t write(const void *buf, uint32 len) {
+    virtual size_t write(const void *buf, uint32_t len) {
         char tmp[len];
         memcpy(tmp, buf, len);
         tmp[len] = 0;

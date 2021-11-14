@@ -17,7 +17,7 @@
  *
  */
 
-#ifdef __ESP32__
+#if defined(__ESP32__)
 
 /*
  * ESP32 HAL timers handling
@@ -43,7 +43,7 @@ static struct {
       .serviceFunPtr = nullptr }
   };
 
-void timerISRService(Timer::timerNum_t t) {
+void timerISRService(ZTimer::timerNum_t t) {
   if (timers[t].serviceFunPtr == nullptr)
     return;
 
@@ -53,23 +53,23 @@ void timerISRService(Timer::timerNum_t t) {
 }
 
 void IRAM_ATTR ISR1() {
-  timerISRService(Timer::TIMER1);
+  timerISRService(ZTimer::_TIMER1);
 }
 
 void IRAM_ATTR ISR2() {
-  timerISRService(Timer::TIMER2);
+  timerISRService(ZTimer::_TIMER2);
 }
 
 void IRAM_ATTR ISR3() {
-  timerISRService(Timer::TIMER3);
+  timerISRService(ZTimer::_TIMER3);
 }
 
 void IRAM_ATTR ISR4() {
-  timerISRService(Timer::TIMER4);
+  timerISRService(ZTimer::_TIMER4);
 }
 
-void Timer::setupTimer(timerNum_t timer, uint16_t prescaler, timerVal_t compare) {
-  if (timer < TIMER1 || timer >= MAX_TIMERS)
+void ZTimer::setupTimer(timerNum_t timer, uint16_t prescaler, timerVal_t compare) {
+  if (timer < _TIMER1 || timer >= MAX_TIMERS)
     return;
 
   _timer = timer;
@@ -81,32 +81,32 @@ void Timer::setupTimer(timerNum_t timer, uint16_t prescaler, timerVal_t compare)
   interrupts();
 }
 
-void Timer::setupHook(void (*function)(void)) {
+void ZTimer::setupHook(void (*function)(void)) {
   if (_timer != UNDEFINED)
     timers[_timer].serviceFunPtr = function;
 }
 
-void Timer::setNextInterruptInterval(timerVal_t interval) {
+void ZTimer::setNextInterruptInterval(timerVal_t interval) {
   stop();
   setOverflow(interval);
   start();
 }
 
-timerVal_t Timer::getOverflow() {
+timerVal_t ZTimer::getOverflow() {
   return (_timer != UNDEFINED) ? timerAlarmReadMicros(timers[_timer].timer) : 0;
 }
 
-void Timer::setOverflow(timerVal_t value) {
+void ZTimer::setOverflow(timerVal_t value) {
   if (_timer != UNDEFINED)
     timerAlarmWrite(timers[_timer].timer, value, true);
 }
 
-void Timer::start() {
+void ZTimer::start() {
   if (_timer != UNDEFINED)
     timerAlarmEnable(timers[_timer].timer);
 }
 
-void Timer::stop() {
+void ZTimer::stop() {
   if (_timer != UNDEFINED)
     timerAlarmDisable(timers[_timer].timer);
 }

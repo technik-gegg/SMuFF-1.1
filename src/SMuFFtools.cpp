@@ -2390,7 +2390,7 @@ void printOffsets(int8_t serial) {
   printResponse(tmp, serial);
 }
 
-#ifdef __STM32F1__
+#if defined(__STM32F1__) || defined(__STM32F4__)
 /*
   Simple wrapper for tone()
 */
@@ -3410,7 +3410,7 @@ uint8_t scanI2CDevices(uint8_t *devices, uint8_t maxDevices)
   uint8_t cnt = 0;
   I2CBus.begin();
   memset(devices, 0, maxDevices);
-  for (uint8 address = 1; address < 127 && cnt <= maxDevices; address++)
+  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++)
   {
     I2CBus.beginTransmission(address);
     uint8_t stat = I2CBus.endTransmission();
@@ -3431,7 +3431,7 @@ uint8_t scanI2C2Devices(uint8_t *devices, uint8_t maxDevices)
   uint8_t cnt = 0;
   I2CBus2.begin();
   memset(devices, 0, maxDevices);
-  for (uint8 address = 1; address < 127 && cnt <= maxDevices; address++)
+  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++)
   {
     I2CBus2.beginTransmission(address);
     uint8_t stat = I2CBus2.endTransmission();

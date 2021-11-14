@@ -31,6 +31,10 @@
 #include "iostream/iostream.h"
 #include "iostream/fstream.h"
 #include <SPI.h>
+#if !defined(__LIBMAPLE__)
+#define USE_STM32_DMA 0
+#undef SD_USE_CUSTOM_SPI
+#endif
 #include "SdFat.h"
 #include "U8g2lib.h"
 #include "DataStore.h"
@@ -58,47 +62,62 @@
 #define CRGB uint32_t
 #endif
 
-#if defined(__STM32F1__) || defined(__STM32F4__)
+#if defined(__STM32F1__)
+#if defined(__LIBMAPLE__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
 #include <USBComposite.h>
-
-#undef sprintf_P
-#define sprintf_P(s, f, ...) sprintf(s, f, ##__VA_ARGS__)
-#define vsnprintf_P vsnprintf
+#else
+#include <wiring.h>
+#endif
+#if defined(__LIBMAPLE__)
 extern USBMassStorage MassStorage;
 extern USBCompositeSerial CompositeSerial;
+#endif
+#elif defined(__STM32F4__)
+#include <wirish.h>
+#include <libmaple/gpio.h>
+#ifndef _BV
+#define _BV(bit) (1 << (bit))
+#endif
+#endif
 
+#if defined(__STM32F1__) || defined(__STM32F4__)
+  #if defined(__LIBMAPLE__)
+  #undef sprintf_P
+  #define sprintf_P(s, f, ...) sprintf(s, f, ##__VA_ARGS__)
+  #define vsnprintf_P vsnprintf
+  #endif
 #endif
 
 #if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO) || defined(USE_SW_TWI)
 #define USE_I2C
 #endif
 
-#define FEEDER_SIGNAL 1
-#define SELECTOR_SIGNAL 2
-#define REVOLVER_SIGNAL 3
-#define LED_SIGNAL 4
+#define FEEDER_SIGNAL           1
+#define SELECTOR_SIGNAL         2
+#define REVOLVER_SIGNAL         3
+#define LED_SIGNAL              4
 
 #define SPL_NOT_LOADED          0
 #define SPL_LOADED_TO_SPLITTER  1
 #define SPL_LOADED_TO_NOZZLE    2
 
-#define INTERNAL 1
-#define EXTERNAL 0
+#define INTERNAL                1
+#define EXTERNAL                0
 
-#define MAX_SEQUENCE 60
-#define MAX_TUNE1 60
-#define MAX_TUNE2 40
-#define MAX_TUNE3 20
+#define MAX_SEQUENCE            60
+#define MAX_TUNE1               60
+#define MAX_TUNE2               40
+#define MAX_TUNE3               20
 
-#define SERVO_OPEN 0
-#define SERVO_CLOSED 1
+#define SERVO_OPEN              0
+#define SERVO_CLOSED            1
 
-#define LAST_INTERVAL 9
+#define LAST_INTERVAL           9
 
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
-// used for internal hardware debugging only - will produce a 500Hz signal on the output pin
+// used for internal hardware debugging only - will produce by default a 500Hz signal on the output pin
 #define FLIPDBG        \
   if (DEBUG_PIN != -1) \
     digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
@@ -106,249 +125,249 @@ extern USBCompositeSerial CompositeSerial;
 
 #define ArraySize(arr) (sizeof(arr) / sizeof(arr[0]))
 
-typedef enum
-{
+typedef enum {
   ABSOLUTE,
   RELATIVE
 } PositionMode;
 
-typedef struct
-{
-  unsigned long serialBaudrates[4] = {57600, 57600, 57600, 57600};
-  uint8_t toolCount = 5;
-  float bowdenLength = 400.0f;
-  float selectorDistance = 23.0f;
-  uint8_t i2cAddress = 0x58;
-  uint8_t lcdContrast = DSP_CONTRAST;
-  uint8_t menuAutoClose = 20;
-  uint8_t fanSpeed = 0;
-  uint16_t powerSaveTimeout = 300;
-  bool sendActionCmds = false;
-  bool prusaMMU2 = true;
-  char unloadCommand[MAX_UNLOAD_COMMAND] = {0};
-  uint16_t servoMinPwm = 800;
-  uint16_t servoMaxPwm = 2400;
-  char wipeSequence[MAX_WIPE_SEQUENCE] = {0};
-  uint8_t backlightColor = 0x4; // Cyan by default
-  uint8_t hasPanelDue = 0;      // Serial Port for PanelDue (0=None)
-  uint8_t duet3Dport = 0;       // Serial Port for Duet3D (0=none)
-  bool encoderTickSound = false;
-  bool sendPeriodicalStats = true;
-  char lButtonDown[MAX_BUTTON_LEN] = {0};
-  char lButtonHold[MAX_BUTTON_LEN] = {0};
-  char rButtonDown[MAX_BUTTON_LEN] = {0};
-  char rButtonHold[MAX_BUTTON_LEN] = {0};
-  bool speedsInMMS = true;
-  bool runoutDetection = false;
-  bool useCutter = false;
-  bool usePurge = false;
-  uint16_t cutterOpen = 90;
-  uint16_t cutterClose = 50;
-  float cutterLength = 0;
-  bool cutterOnTop = false;
+typedef struct {
+  uint16_t  period;
+  uint16_t  val;
+  void      (*func)();
+} IntervalHandler;
+
+// SMuFF runtime configuration storage
+typedef struct {
+  unsigned long serialBaudrates[4]                    = { 57600, 57600, 57600, 57600 };
+  uint8_t       toolCount                             = 5;
+  float         bowdenLength                          = 400.0f;
+  float         selectorDistance                      = 23.0f;
+  uint8_t       i2cAddress                            = 0x58;
+  uint8_t       lcdContrast                           = DSP_CONTRAST;
+  uint8_t       menuAutoClose                         = 20;
+  uint8_t       fanSpeed                              = 0;
+  uint16_t      powerSaveTimeout                      = 300;
+  bool          sendActionCmds                        = false;
+  bool          prusaMMU2                             = true;
+  char          unloadCommand[MAX_UNLOAD_COMMAND]     = { 0 };
+  uint16_t      servoMinPwm                           = 800;
+  uint16_t      servoMaxPwm                           = 2400;
+  char          wipeSequence[MAX_WIPE_SEQUENCE]       = { 0 };
+  uint8_t       backlightColor                        = 0x4;      // Cyan by default
+  uint8_t       hasPanelDue                           = 0;        // Serial Port for PanelDue (0=None)
+  uint8_t       duet3Dport                            = 0;        // Serial Port for Duet3D (0=none)
+  bool          encoderTickSound                      = false;
+  bool          sendPeriodicalStats                   = true;
+  char          lButtonDown[MAX_BUTTON_LEN]           = { 0 };
+  char          lButtonHold[MAX_BUTTON_LEN]           = { 0 };
+  char          rButtonDown[MAX_BUTTON_LEN]           = { 0 };
+  char          rButtonHold[MAX_BUTTON_LEN]           = { 0 };
+  bool          speedsInMMS                           = true;
+  bool          runoutDetection                       = false;
+  bool          useCutter                             = false;
+  bool          usePurge                              = false;
+  uint16_t      cutterOpen                            = 90;
+  uint16_t      cutterClose                           = 50;
+  float         cutterLength                          = 0;
+  bool          cutterOnTop                           = false;
 
   // ALL STEPPERS
-  uint16_t stepsPerMM[NUM_STEPPERS+1] = {80, 0, 410};
-  long maxSteps[NUM_STEPPERS+1] = {68000, 9600, 0};
-  uint16_t maxSpeed[NUM_STEPPERS+1] = {10, 10, 10};
-  uint16_t accelSpeed[NUM_STEPPERS+1] = {10, 10, 10};
-  bool invertDir[NUM_STEPPERS+1] = {false, false, false};
-  uint8_t endstopTrg[NUM_STEPPERS + 1] = {HIGH, HIGH, HIGH, LOW};
-  uint8_t stepDelay[NUM_STEPPERS+1] = {3, 3, 3};
-  uint8_t accelDist[NUM_STEPPERS+1] = {21, 5, 5};
-  int8_t ms3config[NUM_STEPPERS+1] = {-1, -1, -1};
-  float speedAdjust[NUM_STEPPERS+1] = {1, 1, 1};
+  uint16_t      stepsPerMM[NUM_STEPPERS+1]            = { 80, 0, 410 };
+  long          maxSteps[NUM_STEPPERS+1]              = { 68000, 9600, 0 };
+  uint16_t      maxSpeed[NUM_STEPPERS+1]              = { 10, 10, 10 };
+  uint16_t      accelSpeed[NUM_STEPPERS+1]            = { 10, 10, 10 };
+  bool          invertDir[NUM_STEPPERS+1]             = { false, false, false };
+  uint8_t       endstopTrg[NUM_STEPPERS + 1]          = { HIGH, HIGH, HIGH, LOW };
+  uint8_t       stepDelay[NUM_STEPPERS+1]             = { 3, 3, 3 };
+  uint8_t       accelDist[NUM_STEPPERS+1]             = { 21, 5, 5 };
+  int8_t        ms3config[NUM_STEPPERS+1]             = { -1, -1, -1 };
+  float         speedAdjust[NUM_STEPPERS+1]           = { 1, 1, 1 };
   // TMC drivers via UART or SPI
-  uint16_t stepperPower[NUM_STEPPERS + 1] = {700, 700, 700, 700};
-  uint8_t stepperMode[NUM_STEPPERS + 1] = {0, 0, 0, 0};                 // 0 = NONE, 1 = UART, 2 = SPI
-  bool stepperStealth[NUM_STEPPERS + 1] = {false, false, false, false}; // true = StealthChop, false = SpreadCycle mode (for Stall Detection)
-  float stepperRSense[NUM_STEPPERS + 1] = {0.11, 0.11, 0.11, 0.11};
-  uint16_t stepperMicrosteps[NUM_STEPPERS + 1] = {16, 16, 16, 16};
-  int8_t stepperStall[NUM_STEPPERS + 1] = {0, 0, 0, 0};
-  int8_t stepperCSmin[NUM_STEPPERS + 1] = {0, 0, 0, 0};
-  int8_t stepperCSmax[NUM_STEPPERS + 1] = {0, 0, 0, 0};
-  int8_t stepperCSdown[NUM_STEPPERS + 1] = {0, 0, 0, 0};
-  int8_t stepperAddr[NUM_STEPPERS + 1] = {0, 0, 0, 0};
-  int8_t stepperToff[NUM_STEPPERS + 1] = {-1, -1, -1, -1};
-  bool stepperStopOnStall[NUM_STEPPERS + 1] = {false, false, false, false};
-  int8_t stepperMaxStallCnt[NUM_STEPPERS + 1] = {5, 5, 5, 5};
+  uint16_t      stepperPower[NUM_STEPPERS + 1]        = { 700, 700, 700, 700 };
+  uint8_t       stepperMode[NUM_STEPPERS + 1]         = { 0, 0, 0, 0 };                   // 0 = NONE, 1 = UART, 2 = SPI
+  bool          stepperStealth[NUM_STEPPERS + 1]      = { false, false, false, false };   // true = StealthChop, false = SpreadCycle mode (for Stall Detection)
+  float         stepperRSense[NUM_STEPPERS + 1]       = { 0.11, 0.11, 0.11, 0.11 };
+  uint16_t      stepperMicrosteps[NUM_STEPPERS + 1]   = { 16, 16, 16, 16 };
+  int8_t        stepperStall[NUM_STEPPERS + 1]        = { 0, 0, 0, 0 };
+  int8_t        stepperCSmin[NUM_STEPPERS + 1]        = { 0, 0, 0, 0 };
+  int8_t        stepperCSmax[NUM_STEPPERS + 1]        = { 0, 0, 0, 0 };
+  int8_t        stepperCSdown[NUM_STEPPERS + 1]       = { 0, 0, 0, 0 };
+  int8_t        stepperAddr[NUM_STEPPERS + 1]         = { 0, 0, 0, 0 };
+  int8_t        stepperToff[NUM_STEPPERS + 1]         = { -1, -1, -1, -1 };
+  bool          stepperStopOnStall[NUM_STEPPERS + 1]  = { false, false, false, false};
+  int8_t        stepperMaxStallCnt[NUM_STEPPERS + 1]  = { 5, 5, 5, 5 };
   // REVOLVER specific settings
-  uint16_t firstRevolverOffset = FIRST_REVOLVER_OFFSET;
-  uint16_t revolverSpacing = REVOLVER_SPACING;
-  long stepsPerRevolution = 9600;
-  bool resetBeforeFeed = true;
-  bool homeAfterFeed = true;
-  bool wiggleRevolver = false;
-  bool revolverIsServo = false;
-  uint8_t revolverOffPos = 0;
-  uint8_t revolverOnPos = 90;
-  uint8_t servoCycles1 = 0;
-  uint8_t servoCycles2 = 0;
+  uint16_t      firstRevolverOffset                   = FIRST_REVOLVER_OFFSET;
+  uint16_t      revolverSpacing                       = REVOLVER_SPACING;
+  long          stepsPerRevolution                    = 9600;
+  bool          resetBeforeFeed                       = true;
+  bool          homeAfterFeed                         = true;
+  bool          wiggleRevolver                        = false;
+  bool          revolverIsServo                       = false;
+  uint8_t       revolverOffPos                        = 0;
+  uint8_t       revolverOnPos                         = 90;
+  uint8_t       servoCycles1                          = 0;
+  uint8_t       servoCycles2                          = 0;
   // SELECTOR specific settings
-  float firstToolOffset = FIRST_TOOL_OFFSET;
-  float toolSpacing = TOOL_SPACING;
+  float         firstToolOffset                       = FIRST_TOOL_OFFSET;
+  float         toolSpacing                           = TOOL_SPACING;
   // FEEDER specific settings
-  bool extControlFeeder = false;
-  uint16_t insertSpeed = 1000;
-  uint8_t feedChunks = 20;
-  bool enableChunks = false;
-  float insertLength = 5.0;
-  float unloadRetract = -20.0f;
-  float unloadPushback = 5.0f;
-  float pushbackDelay = 1.5f;
-  float reinforceLength = 3.0f;
-  bool isSharedStepper = false;
-  bool externalStepper = false;
-  bool useDuetLaser = false;
-  uint16_t purgeSpeed = 5000;
-  float purgeLength = 0;
-  bool useEndstop2 = false;
+  bool          extControlFeeder                      = false;
+  uint16_t      insertSpeed                           = 1000;
+  uint8_t       feedChunks                            = 20;
+  bool          enableChunks                          = false;
+  float         insertLength                          = 5.0;
+  float         unloadRetract                         = -20.0f;
+  float         unloadPushback                        = 5.0f;
+  float         pushbackDelay                         = 1.5f;
+  float         reinforceLength                       = 3.0f;
+  bool          isSharedStepper                       = false;
+  bool          externalStepper                       = false;
+  bool          useDuetLaser                          = false;
+  uint16_t      purgeSpeed                            = 5000;
+  float         purgeLength                           = 0;
+  bool          useEndstop2                           = false;
 
-  uint16_t motorOnDelay = 30;
-  char materials[MAX_TOOLS][MAX_MATERIAL_LEN+1];
-  char materialNames[MAX_TOOLS][MAX_MATERIAL_NAME_LEN+1];
-  uint32_t materialColors[MAX_TOOLS];
-  uint16_t purges[MAX_TOOLS];
-  bool wipeBeforeUnload = false;
-  uint8_t toolColor = 5;
-  bool useIdleAnimation = false;
-  uint8_t animationBPM = 6;
-  uint8_t statusBPM = 20;
-  bool invertRelay = false;
-  bool menuOnTerminal = false;
-  bool webInterface = false;
-  float revolverClose = 0;
-  bool useSplitter = false;
-  float splitterDist = 0;
-  uint8_t feedLoadState[MAX_TOOLS];
-  bool useDDE = false;
-  float ddeDist = 0;
-  bool purgeDDE = false;
-  bool traceUSBTraffic = false;
-  char deviceName[MAX_BUTTON_LEN] = {0};
-  uint16_t dbgFreq = 500;
+  char          materials[MAX_TOOLS][MAX_MATERIAL_LEN+1];
+  char          materialNames[MAX_TOOLS][MAX_MATERIAL_NAME_LEN+1];
+  uint32_t      materialColors[MAX_TOOLS];
+  uint16_t      purges[MAX_TOOLS];
+  bool          wipeBeforeUnload                      = false;
+  uint8_t       toolColor                             = 5;
+  bool          useIdleAnimation                      = false;
+  uint8_t       animationBPM                          = 6;
+  uint8_t       statusBPM                             = 20;
+  bool          invertRelay                           = false;
+  bool          menuOnTerminal                        = false;
+  bool          webInterface                          = false;
+  float         revolverClose                         = 0;
+  bool          useSplitter                           = false;
+  float         splitterDist                          = 0;
+  uint8_t       feedLoadState[MAX_TOOLS];
+  bool          useDDE                                = false;
+  float         ddeDist                               = 0;
+  bool          purgeDDE                              = false;
+  bool          traceUSBTraffic                       = false;
+  char          deviceName[MAX_BUTTON_LEN]            = {0};
+  uint16_t      dbgFreq                               = 500;
 } SMuFFConfig;
 
-extern dspDriver display;
+extern SMuFFConfig              smuffConfig;
+extern dspDriver                display;
+extern GCodeFunctions           gCodeFuncsM[];
+extern GCodeFunctions           gCodeFuncsG[];
 
-#ifdef __STM32F1__
-extern void playTone(int8_t pin, int16_t frequency, int16_t duration);
-extern void muteTone(int8_t pin);
-#define _tone(freq, duration) playTone(BEEPER_PIN, freq, duration)
-#define _noTone() muteTone(BEEPER_PIN)
-#else
-#define _tone(freq, duration) tone(BEEPER_PIN, freq, duration)
-#define _noTone() noTone(BEEPER_PIN)
-#endif
-
-extern ZStepper steppers[];
-extern Timer stepperTimer;
-extern Timer gpTimer;
-extern Timer fastLEDTimer;
-extern Timer servoTimer;
-extern ZServo servoWiper;
-extern ZServo servoLid;
-extern ZServo servoCutter;
-extern ZFan fan;
-extern ZEStopMux splitterMux;
+extern ZStepper                 steppers[];
+extern ZTimer                   stepperTimer;
+extern ZTimer                   gpTimer;
+extern ZTimer                   fastLEDTimer;
+extern ZTimer                   servoTimer;
+extern ZServo                   servoWiper;
+extern ZServo                   servoLid;
+extern ZServo                   servoCutter;
+extern ZFan                     fan;
+extern ZEStopMux                splitterMux;
 
 #if defined(USE_LEONERD_DISPLAY)
-extern LeoNerdEncoder encoder;
+extern LeoNerdEncoder           encoder;
 #else
-extern ClickEncoder encoder;
+extern ClickEncoder             encoder;
 #endif
 #if defined(USE_FASTLED_BACKLIGHT)
-extern CLEDController* cBackLight;
-extern CRGB leds[];
+extern CLEDController*          cBackLight;
+extern CRGB                     leds[];
 #endif
 #if defined(USE_FASTLED_TOOLS)
-extern CLEDController* cTools;
-extern CRGB ledsTool[];
+extern CLEDController*          cTools;
+extern CRGB                     ledsTool[];
 #else
 #endif
 #if defined(MULTISERVO)
-extern Adafruit_PWMServoDriver servoPwm;
-extern int8_t servoMapping[];
+extern Adafruit_PWMServoDriver  servoPwm;
+extern int8_t                   servoMapping[];
 #endif
-extern uint8_t servoPosClosed[];
-extern float stepperPosClosed[];
+extern uint8_t                  servoPosClosed[];
+extern float                    stepperPosClosed[];
 
-extern SMuFFConfig smuffConfig;
-extern GCodeFunctions gCodeFuncsM[];
-extern GCodeFunctions gCodeFuncsG[];
 
-typedef struct
-{
-  uint16_t period;
-  uint16_t val;
-  void (*func)();
-} IntervalHandler;
+extern const char               brand[];
+extern uint8_t                  swapTools[];
+extern volatile byte            nextStepperFlag;
+extern volatile byte            remainingSteppersFlag;
+extern volatile unsigned long   lastEncoderButtonTime;
+extern int8_t                   toolSelected;
+extern PositionMode             positionMode;
+extern String                   serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
+extern char                     tuneStartup[];
+extern char                     tuneUser[];
+extern char                     tuneBeep[];
+extern char                     tuneLongBeep[];
+extern char                     tuneEncoder[];
+extern bool                     displayingUserMessage;
+extern uint16_t                 userMessageTime;
+extern bool                     testMode;
+extern bool                     feederJammed;
+extern volatile bool            parserBusy;
+extern volatile bool            isPwrSave;
+extern volatile bool            actionOk;
+extern volatile bool            sendingResponse;
+extern volatile bool            showMenu;
+extern bool                     maintainingMode;
+extern volatile double          lastDuetPos;
+extern DuetLaserSensor          duetLS;
+extern String                   wirelessHostname;
+extern volatile bool            initDone;
+extern volatile bool            leoNerdBlinkGreen;
+extern volatile bool            leoNerdBlinkRed;
+extern bool                     forceStopMenu;
+extern uint16_t                 sequence[][3];
+extern bool                     timerRunning;
+extern uint8_t                  remoteKey;
+extern bool                     settingsChanged;
+extern Stream                   *logSerial;
+extern Stream                   *debugSerial;
+extern Stream                   *terminalSerial;
+extern bool                     isWarning;
+extern bool                     lidOpen;
+extern uint16_t                 mmsMin, mmsMax;
+extern uint16_t                 speedIncrement;
+extern volatile uint8_t         fastLedHue;
+extern volatile bool            fastLedStatus;
+extern volatile bool            fastLedRefresh;
+extern volatile uint8_t         lastFastLedStatus;
+extern volatile bool            fastLedFadeFlag;
+extern volatile bool            isIdle;
+extern bool                     tmcWarning;
+extern bool                     isTestrun;
+extern bool                     isTestPending;
+extern char                     testToRun[];
+extern bool                     isUsingTmc;
+extern volatile bool            sdRemoved;
+extern char                     firmware[];
+extern bool                     gotFirmware;
+extern int32_t                  uploadLen;
+extern SdFile                   upload;
+extern bool                     isUpload;
+extern bool                     splitterEndstopChanged;
+extern bool                     asyncDDE;
+extern bool                     refreshingDisplay;
 
-extern const char brand[];
-extern uint8_t swapTools[];
-extern volatile byte nextStepperFlag;
-extern volatile byte remainingSteppersFlag;
-extern volatile unsigned long lastEncoderButtonTime;
-extern int8_t toolSelected;
-extern PositionMode positionMode;
-extern String serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
-extern char tuneStartup[];
-extern char tuneUser[];
-extern char tuneBeep[];
-extern char tuneLongBeep[];
-extern char tuneEncoder[];
-extern bool displayingUserMessage;
-extern uint16_t userMessageTime;
-extern bool testMode;
-extern bool feederJammed;
-extern volatile bool parserBusy;
-extern volatile bool isPwrSave;
-extern volatile bool actionOk;
-extern volatile bool sendingResponse;
-extern volatile bool showMenu;
-extern bool maintainingMode;
-extern volatile double lastDuetPos;
-extern DuetLaserSensor duetLS;
-extern String wirelessHostname;
-extern volatile bool initDone;
-extern volatile bool leoNerdBlinkGreen;
-extern volatile bool leoNerdBlinkRed;
-extern bool forceStopMenu;
-extern uint16_t sequence[][3];
-extern bool timerRunning;
-extern uint8_t remoteKey;
-extern bool settingsChanged;
-extern Stream *logSerial;
-extern Stream *debugSerial;
-extern Stream *terminalSerial;
-extern bool isWarning;
-extern bool lidOpen;
-extern uint16_t mmsMin, mmsMax;
-extern uint16_t speedIncrement;
-extern volatile uint8_t fastLedHue;
-extern volatile bool fastLedStatus;
-extern volatile bool fastLedRefresh;
-extern volatile uint8_t lastFastLedStatus;
-extern volatile bool fastLedFadeFlag;
-extern volatile bool isIdle;
-extern bool tmcWarning;
-extern bool isTestrun;
-extern bool isTestPending;
-extern char testToRun[];
-extern bool isUsingTmc;
-extern volatile bool sdRemoved;
-extern char firmware[];
-extern bool gotFirmware;
-extern int32_t uploadLen;
-extern SdFile upload;
-extern bool isUpload;
-extern bool splitterEndstopChanged;
-extern bool asyncDDE;
-extern bool refreshingDisplay;
 
 #ifdef HAS_TMC_SUPPORT
-extern TMC2209Stepper *drivers[];
+extern TMC2209Stepper           *drivers[];
 #endif
+
+
+#if defined(__STM32F1__) || defined(__STM32F4__)
+extern void                     playTone(int8_t pin, int16_t frequency, int16_t duration);
+extern void                     muteTone(int8_t pin);
+#define _tone(freq, duration)   playTone(BEEPER_PIN, freq, duration)
+#define _noTone()               muteTone(BEEPER_PIN)
+#else
+#define _tone(freq, duration)   tone(BEEPER_PIN, freq, duration)
+#define _noTone()               noTone(BEEPER_PIN)
+#endif
+
 
 extern void setupSerial();
 extern void setupSwSerial0();
@@ -563,6 +582,7 @@ extern void purgeFilament();
 extern void showLed(uint8_t mode, uint8_t count);
 extern void setBacklightIndex(int color);
 extern void setToolColorIndex(int color);
+extern void setContrast(int contrast);
 extern void setFastLED(uint8_t index, CRGB color);
 extern void setFastLEDIndex(uint8_t index, uint8_t color);
 extern void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag = true);

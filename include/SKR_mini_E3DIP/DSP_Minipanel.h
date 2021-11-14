@@ -35,8 +35,4 @@
 
 #if defined(USE_MINI12864_PANEL_V21)
 #define NEOPIXEL_PIN        PB7     // for display backlight
-#define NUM_LEDS            3       // number of Neopixel LEDS
-#define BRIGHTNESS          127
-#define LED_TYPE            WS2812B
-#define COLOR_ORDER         GRB
 #endif

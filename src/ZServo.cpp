@@ -51,9 +51,14 @@ void ZServo::attach(int8_t pin, bool useTimer, int8_t servoIndex) {
 
 void ZServo::attach(int8_t pin) {
   _pin = pin;
-#ifdef __STM32F1__
-  _pinReg = &((PIN_MAP[_pin].gpio_device)->regs->BSRR);
-  _pinMask = BIT(PIN_MAP[_pin].gpio_bit);
+#if defined(__LIBMAPLE__)
+  #if defined(__STM32F1__)
+    _pinReg = &((PIN_MAP[_pin].gpio_device)->regs->BSRR);
+    _pinMask = BIT(PIN_MAP[_pin].gpio_bit);
+  #elif defined(__STM32F4__)
+    _pinReg = &(digitalPinToPort(_pin)->regs->BSRR);
+    _pinMask = digitalPinToBitMask(_pin);
+  #endif
 #endif
   enable();
   digitalWrite(_pin, 0);
@@ -207,7 +212,7 @@ void ZServo::setServo() {
 void ZServo::setServoPin(int8_t state) {
   if(state == _pinState)
     return;
-#ifdef __STM32F1__
+#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
   *_pinReg = ((state) ? _pinMask : _pinMask << 16); // using the faster digital I/O on STM32
 #else
   digitalWrite(_pin, state);

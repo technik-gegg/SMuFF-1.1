@@ -17,22 +17,27 @@
  *
  */
 /*
- * Pins configuration file for FYSETC Mini12864 Panel V2.0 and 2.1
+ * Pins configuration file for TWI/I2C and Leonerd Display
  */
 #pragma once
-//#pragma message "Compiling for FYSETC Mini12864 Panel V2.0 and 2.1"
 
-#define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 (DOGLCD_CS)
-#define DSP_DC_PIN          PA15    // EXP1.9 (DOGLCD_A0)
-#define DSP_RESET_PIN       PA13    // SWDIO --- IMPORTANT: This display needs a RESET signal!
+#define USE_SW_TWI          1       //  only software I2C/TWI is available due to pins PB6/PB7 are not routed to EXP1
 
-#define ENCODER1_PIN        PA9
-#define ENCODER2_PIN        PA10
-#define ENCODER_BUTTON_PIN  PB8
+#define DSP_SCL             PA15    // EXP1.9
+#define DSP_SDA             PB15    // EXP1.3
+
+#define DSP_CS_PIN          -1
+#define DSP_DC_PIN          -1
+#define DSP_RESET_PIN       -1
+
+#if !defined(USE_LEONERD_DISPLAY)
+#pragma message "Compiling for TWI/I2C Display"
+#define ENCODER1_PIN        PA9     // EXP1.8
+#define ENCODER2_PIN        PA10    // EXP1.6
+#define ENCODER_BUTTON_PIN  PB8     // EXP1.4
+#else
+#pragma message "Compiling for Leonerd Display"
+#endif 
 
 #define BEEPER_PIN          PB5     // EXP1.10
 
-#if defined(USE_MINI12864_PANEL_V21)
-#define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
-#endif

@@ -58,7 +58,7 @@ ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNo
   pinsActive = active;
   enableSound = false;
 
-#if defined (__STM32F1__)
+#if defined(__LIBMAPLE__) && (defined (__STM32F1__) || defined(__STM32F4__))
   WiringPinMode configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT_PULLDOWN;
 #else
   uint8_t configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT;
