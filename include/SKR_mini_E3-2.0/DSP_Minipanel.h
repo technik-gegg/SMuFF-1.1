@@ -34,5 +34,5 @@
 #define BEEPER_PIN          PB5     // EXP1.10
 
 #if defined(USE_MINI12864_PANEL_V21)
-#define NEOPIXEL_PIN        PA14    // for display backlight (SWCLK)
+#define NEOPIXEL_PIN        PB15    // for display backlight (SWCLK)
 #endif
