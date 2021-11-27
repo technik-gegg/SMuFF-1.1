@@ -23,8 +23,8 @@
 //#pragma message "Compiling for FYSETC Mini12864 Panel V2.0 and 2.1"
 
 #define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER
-#define DSP_CS_PIN          PB9     // EXP1.5 (DOGLCD_CS)
-#define DSP_DC_PIN          PA15    // EXP1.9 (DOGLCD_A0)
+#define DSP_CS_PIN          PB9     // EXP1.9 (DOGLCD_CS)
+#define DSP_DC_PIN          PA15    // EXP1.5 (DOGLCD_A0)
 #define DSP_RESET_PIN       PA13    // SWDIO --- IMPORTANT: This display needs a RESET signal!
 
 #define ENCODER1_PIN        PA9     // EXP1.8
