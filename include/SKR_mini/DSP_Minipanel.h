@@ -27,16 +27,12 @@
 #define DSP_DC_PIN          PC12    // EXP1.7 (DOGLCD_A0)
 #define DSP_RESET_PIN       PC13    // EXP1.6
 
-#define ENCODER1_PIN        PD2     // EXP2.8
-#define ENCODER2_PIN        PB8     // EXP2.6
+#define ENCODER1_PIN        PB8     // EXP2.6
+#define ENCODER2_PIN        PD2     // EXP2.8
 #define ENCODER_BUTTON_PIN  PC11    // EXP1.9
 
 #define BEEPER_PIN          PC10    // EXP1.10
 
 #if defined(USE_MINI12864_PANEL_V21)
 #define NEOPIXEL_PIN        PB7     // EXP1.5 (for display backlight)
-#define NUM_LEDS            3       // number of Neopixel LEDS
-#define BRIGHTNESS          127
-#define LED_TYPE            WS2812B
-#define COLOR_ORDER         RGB
 #endif
