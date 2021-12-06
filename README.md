@@ -44,6 +44,11 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.43** - added new STLs
+
++ added new STL files for the small servo carrier. Please read [the instructions posted here](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.ssx9ayceh6f4).
++ updated version number to make the version check in WebInterface happy again.
+
 **2.42** - some minor bug fixes/changes
 
 + made contrast setting a live function (contrast of the display will change as you rotate the knob, which makes it easier to set up).
