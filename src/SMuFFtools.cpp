@@ -62,7 +62,7 @@ char PROGMEM    tuneEncoder[MAX_TUNE3] = {"F1440D3."};
 void setupDisplay() {
   // The next code line (display.setI2CAddress) changes the address for your TWI_DISPLAY if it's
   // configured differently.
-  // Usually, thoses displays are pre-configured at I2C address 0x78, which equals to 0x3c
+  // Usually, those displays are pre-configured at I2C address 0x78, which equals to 0x3c
   // from the software side because of the 7-Bit address mode.
   // If it's configured at 0x7a, you need to change the I2C_DISPLAY_ADDRESS in Config.h to 0x3d.
   #if I2C_DISPLAY_ADDRESS != 0x3C
@@ -978,9 +978,12 @@ void positionRevolver() {
     if(newPos > 0) {
       steppers[REVOLVER].setEnabled(true);   // turn on the Lid stepper
       prepSteppingRelMillimeter(REVOLVER, newPos, true); // go to position, don't mind the endstop
-      //__debugS(PSTR("Position Revolver, pos=%f"), newPos);
+      //__debugS(PSTR("V6S: Position Revolver, pos=%f"), newPos);
       remainingSteppersFlag |= _BV(REVOLVER);
       runAndWait(REVOLVER);
+    }
+    else {
+      //__debugS(PSTR("V6S: Skipping, because position for Revolver=%f"), stepperPosClosed[toolSelected]);
     }
   #else
   long pos = steppers[REVOLVER].getStepPosition();
@@ -1018,7 +1021,7 @@ void positionRevolver() {
   #if defined(SMUFF_V6S)
   if(toolSelected != -1)
     lidOpen = false;
-  steppers[REVOLVER].setEnabled(false);   // turn off the Lid stepper
+    steppers[REVOLVER].setEnabled(false);   // turn off the Lid stepper
   #endif
   //__debugS(PSTR("PositionRevolver: pos: %d"), steppers[REVOLVER].getStepPosition());
 }
@@ -2398,8 +2401,12 @@ void playTone(int8_t pin, int16_t freq, int16_t duration) {
 #if defined(USE_LEONERD_DISPLAY)
   encoder.playFrequency(freq, duration);
 #else
+  #if defined(__STM32F1__)
   if (pin != -1)
     tone(pin, freq, duration);
+  #else
+    // no tone library yet
+  #endif
 #endif
 }
 
@@ -2591,23 +2598,49 @@ void getStoredData() {
 }
 
 void setSignalPort(uint8_t port, bool state) {
+
+#if defined(USE_DUET3D)
   // used for Duet3D Controller boards to signal progress of loading / unloading
+  const char *_sig        = "DUET_SIG_%s_PIN %s";
+  const char *_high       = "HIGH";
+  const char *_low        = "LOW";
+  const char *_pin        = (port == FEEDER_SIGNAL) ? "FED" : "SEL";
+  const char *_notset     = "not set!";
+  const char *_undefined  = "undefined!";
+
   if(port == FEEDER_SIGNAL) {
     #if defined(DUET_SIG_FED_PIN)
     if(DUET_SIG_FED_PIN != -1) {
-      digitalWrite(DUET_SIG_FED_PIN, state);
-      //__debugS(PSTR("Duet Feeder Signal %s"), state ? "HIGH" : "LOW");
+      digitalWrite(DUET_SIG_FED_PIN, (smuffConfig.invertDuet ? !state : state));
+      uint8_t pinState = digitalRead(DUET_SIG_FED_PIN);
+      __debugS(PSTR(_sig), _pin, pinState ? _high : _low);
     }
+    else
+    __debugS(PSTR(_sig), _pin, _notset);
+    #else
+    __debugS(PSTR(_sig), _pin, _undefined);
     #endif
   }
+  /*
+    SELECTOR_SIGNAL is not being used anymore but it's in here because
+    of backwards compatibility to older versions (SMUFF-Ifc).
+  */
   if(port == SELECTOR_SIGNAL) {
     #if defined(DUET_SIG_SEL_PIN)
     if(DUET_SIG_SEL_PIN != -1) {
-      digitalWrite(DUET_SIG_SEL_PIN, state);
-      //__debugS(PSTR("Duet Selector Signal %s"), state ? "HIGH" : "LOW");
+      digitalWrite(DUET_SIG_SEL_PIN, (smuffConfig.invertDuet ? !state : state));
+      uint8_t pinState = digitalRead(DUET_SIG_SEL_PIN);
+      __debugS(PSTR(_sig), _pin, pinState ? _high : _low);
     }
+    else
+    __debugS(PSTR(_sig), _pin, _notset);
+    #else
+    __debugS(PSTR(_sig), _pin, _undefined);
     #endif
   }
+#else
+  __debugS(PSTR("USE_DUET3D flag not set, skipping."));
+#endif
 }
 
 void signalDuetBusy() {
@@ -2617,7 +2650,6 @@ void signalDuetBusy() {
 void signalDuetReady() {
   setSignalPort(FEEDER_SIGNAL, false);
 }
-
 
 bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char *files) {
   char fname[40];

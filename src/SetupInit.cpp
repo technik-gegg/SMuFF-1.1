@@ -135,12 +135,12 @@ void setupDuetSignals() {
 #if defined(USE_DUET3D)
 #if defined(DUET_SIG_FED_PIN) && DUET_SIG_FED_PIN != -1
   pinMode(DUET_SIG_FED_PIN, OUTPUT);
-  digitalWrite(DUET_SIG_FED_PIN, LOW);
+  digitalWrite(DUET_SIG_FED_PIN, (smuffConfig.invertDuet ? HIGH : LOW));
   __debugS(PSTR("[ setupDuetSignals: Feeder pin initialized ]"));
 #endif
 #if defined(DUET_SIG_SEL_PIN) && DUET_SIG_SEL_PIN != -1
   pinMode(DUET_SIG_SEL_PIN, OUTPUT);
-  digitalWrite(DUET_SIG_SEL_PIN, LOW);
+  digitalWrite(DUET_SIG_SEL_PIN, (smuffConfig.invertDuet ? HIGH : LOW));
   __debugS(PSTR("[ setupDuetSignals: Selector pin initialized ]"));
 #endif
 #endif

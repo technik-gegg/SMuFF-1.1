@@ -194,7 +194,8 @@ void setupOptionsMenu(char* menu, size_t maxBuffer) {
     #endif
     String(smuffConfig.ddeDist).c_str(),
     smuffConfig.purgeDDE ? P_Yes : P_No,
-    smuffConfig.cutterOnTop ? P_Yes : P_No
+    smuffConfig.cutterOnTop ? P_Yes : P_No,
+    smuffConfig.invertDuet ? P_Yes : P_No
   );
 }
 
@@ -1561,7 +1562,7 @@ void showOptionsMenu(char* menuTitle) {
   float fVal;
   bool bVal;
   char *title;
-  char _menu[350];
+  char _menu[380];
 
   while(!stopMenu) {
     setupOptionsMenu(_menu, ArraySize(_menu)-1);
@@ -1712,6 +1713,13 @@ void showOptionsMenu(char* menuTitle) {
             bVal = smuffConfig.cutterOnTop;
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.cutterOnTop = bVal;
+            }
+            break;
+
+        case 21: // Invert Duet Signals
+            bVal = smuffConfig.invertDuet;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.invertDuet = bVal;
             }
             break;
       }

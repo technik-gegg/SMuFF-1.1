@@ -32,9 +32,15 @@
 // REVOLVER (Y)
 #define STEP_HIGH_Y         digitalWrite(Y_STEP_PIN, HIGH);
 #define STEP_LOW_Y          digitalWrite(Y_STEP_PIN, LOW);
+#if defined(SWAP_Y_STEPPER) // flag swaps driver Y and E
+#define Y_STEP_PIN          PB3
+#define Y_DIR_PIN           PB4
+#define Y_ENABLE_PIN        PD2
+#else
 #define Y_STEP_PIN          PB10
 #define Y_DIR_PIN           PB2
 #define Y_ENABLE_PIN        PB11
+#endif
 #define Y_END_PIN           PC1     // Y-STOP
 // FEEDER (Z)
 #define STEP_HIGH_Z         digitalWrite(Z_STEP_PIN, HIGH);
@@ -49,9 +55,15 @@
 // (E) - Not used yet, just in case
 #define STEP_HIGH_E         digitalWrite(E_STEP_PIN, HIGH);
 #define STEP_LOW_E          digitalWrite(E_STEP_PIN, LOW);
+#if defined(SWAP_Y_STEPPER) // flag swaps driver Y and E
+#define E_STEP_PIN          PB10
+#define E_DIR_PIN           PB2
+#define E_ENABLE_PIN        PB11
+#else
 #define E_STEP_PIN          PB3
 #define E_DIR_PIN           PB4
 #define E_ENABLE_PIN        PD2
+#endif
 #define E_END_PIN           PC15    // E0-STOP
 
 #define RELAY_PIN           PC13    // PS-ON (Relay for stepper motor switching)

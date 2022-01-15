@@ -44,6 +44,16 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**2.44** - Addition for alternative RRF boards
+
++ added inverting option for the *Busy* signal that goes to a endstop of a RepRap Firmware board (other than the Duet3D). This was needed since some of the alternatives might not be able to trigger upon the original signal. To use this option, you'll also need to copy the updated **options.mnu** file to the *menus* folder of your SMuFFs SD-Card.
+Basic instructions for setting up a RRF (Duet3D) board can be found [here](https://sites.google.com/view/the-smuff/how-to/tutorials/configure-the-duet3d?authuser=0).
++ removed old code that might have disturbed Duet3D signals.
++ fixed a typo in the folder name which caused the E3 V1.2 version not being able to build correctly.
++ reorganized *Build Environments* in platformio.ini. This change allows you to pick some of the build options quickly. In the *Project Tasks* you'll now find different environments named after the controller board (i.e. **SKR_E3_12** for the SKR E3 Version 1.2) and three with the same name plus an extension named either **DDE**, **DUET** or **DDE+DUET**. The one without an extension is the "basic" version (no DDE, no Duet3D). **DDE** builds the firmware for the DDE option, **DUET** for the Duet3D (a.k.a. RRF) and **DDE+DUET** for a combination of both of the previously mentioned options. Thus, you don't have to mess with these settings in the [options] / [extruder] section anymore (the latter section has become obsolete now).
+Keep in mind that you still have to set the correct **display** option before you build the firmware, in case you're using something else than the DIY display.
++ added **M118** GCode to enable you to send text (GCode) from the SMuFF/WI console to a specific serial port. Parameters are the same as for Duet3D/RRF fimrware, whereas **P**x defines the serial port, and **S**"..." defines the message to send. Please update you *help* folder with the latest files.
+
 **2.43** - added new STLs
 
 + added new STL files for the small servo carrier. Please read [the instructions posted here](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.ssx9ayceh6f4).
@@ -54,7 +64,7 @@ For more information about building the SMuFF and some more detailed stuff, head
 + made contrast setting a live function (contrast of the display will change as you rotate the knob, which makes it easier to set up).
 + corrected contrast setting after reading configuration on startup.
 + changed backlight color order on *FYSETC Minipanel* from GRB to RGB.
-+ added SKR E3 RRF board to the collection. **This is experimental only and will not compile due to the lack of support of STM32F4 in some libraries. Do not use!**
++ added SKR E3 RRF board to the collection. **This is experimental only and will not compile due to the lack of support for STM32F4 in some libraries. Do not use!**
 
 **2.41** - some fine tuning on recent changes
 

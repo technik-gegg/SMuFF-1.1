@@ -81,7 +81,11 @@ private:
   void    setServoPin(int8_t state);
   int8_t            _pin;
 #if defined(__STM32F1__) || defined(__STM32F4__)
-  volatile uint32_t*_pinReg;
+  #if defined(__STM32F4__)
+  volatile uint32*  _pinReg;
+  #else
+  volatile uint32_t* _pinReg;
+  #endif
   uint32_t          _pinMask;
 #endif
   int8_t            _pinState;

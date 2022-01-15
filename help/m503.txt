@@ -1,6 +1,14 @@
 M503 [ Sn [W]]
 -----------
-Sn 		the category to show (1=Basic, 2=Stepper steeings, 3=TMC settings, 4=Servo settings, 5=Material settings)
+Sn 		the category to show, i.e.: 
+            1 = Basic settings
+            2 = Stepper settings
+            3 = TMC settings
+            4 = Servo settings
+            5 = Material settings
+            6 = Tool swaps
+            7 = Servo mappings (V6S only)
+            8 = Feed states (Splitter only)
 W 		create output for WebInterface
 
 Without S parameter all data will be shown (does not apply for WebInterface)

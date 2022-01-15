@@ -104,6 +104,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {114, M114},
     {115, M115},
     {117, M117},
+    {118, M118},
     {119, M119},
     {122, M122},
     {145, M145},
@@ -491,6 +492,49 @@ bool M117(const char *msg, String buf, int8_t serial)
     beep(1);
     drawUserMessage(umsg);
     return true;
+  }
+  return false;
+}
+
+bool M118(const char *msg, String buf, int8_t serial)
+{
+  char _msg[80];
+  bool state = false;
+
+  printResponse(msg, serial);
+  if ((param = getParam(buf, P_Param)) != -1)
+  {
+      if (getParamString(buf, S_Param, _msg, ArraySize(_msg)))
+      {
+        switch (param) {
+          case 0:
+            Serial.println(_msg);
+            state = true;
+            break;
+          case 1:
+            if (CAN_USE_SERIAL1) {
+              Serial1.println(_msg);
+              state = true;
+            }
+            break;
+          case 2:
+            if (CAN_USE_SERIAL2) {
+              Serial2.println(_msg);
+              state = true;
+            }
+            break;
+          case 3:
+            if (CAN_USE_SERIAL3) {
+              Serial3.println(_msg);
+              state = true;
+            }
+            break;
+        }
+        if(!state) {
+          __debugS(PSTR("Serial port P%d can't be used."), param);
+        }
+        return state;
+      }
   }
   return false;
 }
@@ -1027,7 +1071,7 @@ bool M145(const char *msg, String buf, int8_t serial)
     tool = (uint8_t)param;
     if (tool >= 0 && tool <= smuffConfig.toolCount)
     {
-      if (getParamString(buf, P_Param, color, sizeof(color)))
+      if (getParamString(buf, P_Param, color, ArraySize(color)))
       {
         strncpy(smuffConfig.materialNames[tool], color, ArraySize(smuffConfig.materialNames[tool]));
         return true;
@@ -1374,6 +1418,8 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, useSplitter) == 0)         { smuffConfig.useSplitter = (param > 0); }
       else if (strcmp(cmd, purgeDDE) == 0)            { smuffConfig.purgeDDE = (param > 0); }
       else if (strcmp(cmd, cutterTop) == 0)           { smuffConfig.cutterOnTop = (param > 0); }
+      else if (strcmp(cmd, invertDuet) == 0)          { smuffConfig.invertDuet = (param > 0); }
+      else if (strcmp(cmd, traceUsb) == 0)            { smuffConfig.traceUSBTraffic = (param > 0); }
 
       else if (strcmp(cmd, purgeSpeed) == 0)          { smuffConfig.purgeSpeed = (uint16_t)param; }
       else if (strcmp(cmd, servoOffPos) == 0)         { if(index == 99) setServoPos(SERVO_LID, (uint8_t) param); else smuffConfig.revolverOffPos = (uint8_t)param; }

@@ -131,3 +131,4 @@ extern char* traceUsb;
 extern char* devName;
 extern char* cutterTop;
 extern char* dbgFreq;
+extern char* invertDuet;

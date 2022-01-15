@@ -75,10 +75,10 @@ ZEStopMux                 splitterMux;
   uint32_t                  pinMask_X = BIT(PIN_MAP[X_STEP_PIN].gpio_bit);
   uint32_t                  pinMask_Y = BIT(PIN_MAP[Y_STEP_PIN].gpio_bit);
   uint32_t                  pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit);
-  #else
-  volatile uint32_t         *stepper_reg_X = &(digitalPinToPort(X_STEP_PIN)->regs->BSRR);
-  volatile uint32_t         *stepper_reg_Y = &(digitalPinToPort(Y_STEP_PIN)->regs->BSRR);
-  volatile uint32_t         *stepper_reg_Z = &(digitalPinToPort(Z_STEP_PIN)->regs->BSRR);
+  #else 
+  volatile uint32           *stepper_reg_X = &(digitalPinToPort(X_STEP_PIN)->regs->BSRR);
+  volatile uint32           *stepper_reg_Y = &(digitalPinToPort(Y_STEP_PIN)->regs->BSRR);
+  volatile uint32           *stepper_reg_Z = &(digitalPinToPort(Z_STEP_PIN)->regs->BSRR);
   uint32_t                  pinMask_X = digitalPinToBitMask(X_STEP_PIN);
   uint32_t                  pinMask_Y = digitalPinToBitMask(Y_STEP_PIN);
   uint32_t                  pinMask_Z = digitalPinToBitMask(Z_STEP_PIN);
@@ -685,12 +685,6 @@ void loop() {
   if (state != lastZEndstopState) {
     refreshStatus(true, false);
     lastZEndstopState = state;
-    // for Duet3D only
-    setSignalPort(FEEDER_SIGNAL, state);
-    delay(20);
-    setSignalPort(FEEDER_SIGNAL, !state);
-    delay(20);
-    setSignalPort(FEEDER_SIGNAL, state);
   }
   if(checkUserMessage()) {
     pwrSaveTime = millis();
@@ -956,7 +950,7 @@ void filterSerialInput(String &buffer, char in) {
   // special function for Duet3D: if "\n" is transmitted (two characters)
   // then threat that as a line-feed eventually. Otherwise if it's a "\\"
   // store that as a single "\" in the buffer or if it's a "\s" ignore that
-  // control string (used in earlier versions of the Duet3D in conjunction to SMuFF-Ifc).
+  // control string (used in earlier versions of the Duet3D in conjunction with SMuFF-Ifc).
   if (in == '\\') {
     if (isCtlKey) {
       isCtlKey = false;
@@ -1168,8 +1162,10 @@ void serialEvent() {  // USB-Serial port
     if(isUpload)
       handleUpload(tmp, got, &Serial);
     else {
+      #if !defined(USE_DUET3D)
       if(smuffConfig.traceUSBTraffic)
         __debugS(PSTR("Recv(0): %s"), tmp);
+      #endif
       handleSerial(tmp, got, serialBuffer0, 0);
     }
   }
@@ -1194,8 +1190,13 @@ void serialEvent2() {
   if(got > 0) {
     if(isUpload)
       handleUpload(tmp, got, &Serial2);
-    else
+    else {
+      #if defined(USE_DUET3D)
+      if(smuffConfig.traceUSBTraffic)
+        __debugS(PSTR("Recv(2): %s"), tmp);
+      #endif
       handleSerial(tmp, got, serialBuffer2, 2);
+    }
   }
 }
 

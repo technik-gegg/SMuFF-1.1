@@ -11,6 +11,7 @@ Available M Commands
   M114	-	Report current positions
   M115	-	Report version
   M117	-	Display message
+  M118	- Send message to serial port
   M119	-	Report endstop status
   M122	-	Report TMC driver status
   M145	-	Set Material color/purge factor

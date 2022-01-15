@@ -250,6 +250,7 @@ typedef struct {
   bool          traceUSBTraffic                       = false;
   char          deviceName[MAX_BUTTON_LEN]            = {0};
   uint16_t      dbgFreq                               = 500;
+  bool          invertDuet                            = false;
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;

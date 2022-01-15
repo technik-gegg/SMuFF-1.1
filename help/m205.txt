@@ -25,6 +25,7 @@ HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
 IdleAnim            	S 0|1
 InvDir              	S 0|1    X | Y | Z
+InvDuet              	S 0|1
 InsLen              	S n.n
 LBtnDown            	S "..."
 LBtnHold            	S "..."
@@ -71,6 +72,7 @@ TMode               	S 0|1    X | Y | Z
 TOff                	S n      X | Y | Z
 ToolColor           	S 0..15
 Tools               	S n
+TraceUSB              	S 0|1
 UnldRetract         	S n
 UsePurge            	S 0|1
 UseServo            	S 0|1

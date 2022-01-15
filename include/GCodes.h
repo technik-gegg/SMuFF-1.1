@@ -42,6 +42,7 @@ extern bool M111(const char* msg, String buf, int8_t serial);
 extern bool M114(const char* msg, String buf, int8_t serial);
 extern bool M115(const char* msg, String buf, int8_t serial);
 extern bool M117(const char* msg, String buf, int8_t serial);
+extern bool M118(const char* msg, String buf, int8_t serial);
 extern bool M119(const char* msg, String buf, int8_t serial);
 extern bool M122(const char* msg, String buf, int8_t serial);
 extern bool M145(const char* msg, String buf, int8_t serial);

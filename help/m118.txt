@@ -1,0 +1,4 @@
+M118 Pn S"..."
+----------
+Pn 		the port number to send the message to (0=USB, 1=Serial1, 2=Serial2, 3=Serial3)
+S"..." 	the message to send to the port

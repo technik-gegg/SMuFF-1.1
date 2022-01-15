@@ -22,7 +22,7 @@
 
 typedef uint16_t timerVal_t;
 
-class STimer {
+class ZTimer {
   public:
     typedef enum {
       UNDEFINED = -1,
@@ -44,7 +44,7 @@ class STimer {
       CH4 = 4
     } timerChannel_t;
 
-    STimer() { _timer = UNDEFINED; };
+    ZTimer() { _timer = UNDEFINED; };
 
     void setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare = 1);
     void setNextInterruptInterval(timerVal_t interval);

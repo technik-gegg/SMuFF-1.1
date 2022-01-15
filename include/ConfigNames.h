@@ -137,5 +137,5 @@ const char* traceUsb PROGMEM           = "TraceUSB";
 const char* devName PROGMEM            = "Device";
 const char* cutterTop PROGMEM          = "CutterTop";
 const char* dbgFreq PROGMEM            = "DebugFreq";
-
+const char* invertDuet PROGMEM         = "InvDuet";
 

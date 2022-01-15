@@ -122,7 +122,7 @@ void ZTimer::setupHook(void (*function)(void)) {
     timers[_timer].serviceFunPtr = function;
 }
 
-void Timer::setNextInterruptInterval(timerVal_t interval) {
+void ZTimer::setNextInterruptInterval(timerVal_t interval) {
   if (_timer == UNDEFINED)
     return;
 
