@@ -4,7 +4,9 @@
 .lib
 *.workspace
 *SMuFF.code-workspace
-.vscode
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/settings.json
 *.bak
 *-Gerber.zip
 *-BOM.zip
