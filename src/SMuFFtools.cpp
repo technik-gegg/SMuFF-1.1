@@ -3166,7 +3166,7 @@ void listTextFile(const char *filename PROGMEM, int8_t serial)
 
   if (file.open(filename, O_READ))
   {
-    while (file.fgets(line, sizeof(line) - 1, delimiter) > 0)
+    while (file.fgets(line, ArraySize(line) - 1, delimiter) > 0)
     {
       printResponse(line, serial);
     }
@@ -3187,7 +3187,7 @@ void listTextFile(const char *filename PROGMEM, int8_t serial)
  * @param ordinals  the menu entry ordinals
  * @returns the contents of that file
  */
-const char *loadMenu(const char *filename PROGMEM, uint8_t ordinals[], size_t maxLen)
+const char *loadMenu(const char *filename PROGMEM, int ordinals[], size_t maxLen)
 {
   SdFile file;
   static char __menu[700];

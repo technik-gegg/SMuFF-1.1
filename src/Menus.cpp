@@ -31,7 +31,7 @@ char            duePort[10];
 char            driverMode[10];
 char            ms3State[10];
 
-uint8_t        menuOrdinals[MAX_MENU_ORDINALS];
+int             menuOrdinals[MAX_MENU_ORDINALS];
 
 #define CHECK_MENU      1
 

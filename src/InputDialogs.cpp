@@ -334,7 +334,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, S
   char* options[16];
 
   debounceButton();
-  uint8_t lineCnt = splitStringLines(options, (int)(sizeof(options) / sizeof(options[0])), list.c_str());
+  uint8_t lineCnt = splitStringLines(options, (int)ArraySize(options), list.c_str());
 
   if(lineCnt==0)
     return false;

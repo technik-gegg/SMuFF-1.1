@@ -1347,7 +1347,7 @@ bool M205(const char *msg, String buf, int8_t serial)
   char tmp[50];
   char strpar[40] = {0};
   //__debugS(PSTR("Got paramsS: %s [%s]"), paramS ? "Yes" : "No", strpar);
-  if (getParamString(buf, P_Param, cmd, sizeof(cmd)))
+  if (getParamString(buf, P_Param, cmd, ArraySize(cmd)))
   {
     int8_t axis = -1;
     int8_t stallPin = -1;
@@ -1355,13 +1355,13 @@ bool M205(const char *msg, String buf, int8_t serial)
     if (hasParam(buf, Y_Param)) { axis = REVOLVER; stallPin = STALL_Y_PIN; }
     if (hasParam(buf, Z_Param)) { axis = FEEDER;   stallPin = STALL_Z_PIN; }
     int   index = getParam(buf, I_Param);
-    bool  paramS = getParamString(buf, S_Param, strpar, sizeof(strpar));
+    bool  paramS = getParamString(buf, S_Param, strpar, ArraySize(strpar));
     float fParam = getParamF(buf, S_Param);
     param = getParam(buf, S_Param);
 
     //__debugS("%d | %f | %s", param, fParam, paramS ? strpar : "");
     if(paramS) {
-      if (strcmp(cmd, wipeSequence) == 0)           { strncpy(smuffConfig.wipeSequence, strpar, sizeof(smuffConfig.wipeSequence)); }
+      if (strcmp(cmd, wipeSequence) == 0)           { strncpy(smuffConfig.wipeSequence, strpar, ArraySize(smuffConfig.wipeSequence)); }
       else if (strcmp(cmd, material) == 0)          { if (index != -1) strncpy(smuffConfig.materials[index], strpar, MAX_MATERIAL_LEN); else stat = false; }
       else if (strcmp(cmd, color) == 0)             { if (index != -1) strncpy(smuffConfig.materialNames[index], strpar, MAX_MATERIAL_NAME_LEN); else stat = false; }
       else if (strcmp(cmd, lBtnDown) == 0)          { strncpy(smuffConfig.lButtonDown, strpar, MAX_BUTTON_LEN); }
@@ -2209,7 +2209,7 @@ bool M2000(const char *msg, String buf, int8_t serial)
   char s[80];
   char tmp[128];
   printResponse(msg, serial);
-  getParamString(buf, S_Param, tmp, sizeof(tmp));
+  getParamString(buf, S_Param, tmp, ArraySize(tmp));
   if (strlen(tmp) > 0)
   {
     printResponseP(PSTR("B"), serial);

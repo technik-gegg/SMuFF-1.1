@@ -613,7 +613,7 @@ extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool 
 
 extern void listTextFile(const char* filename PROGMEM, int8_t serial);
 extern void listHelpFile(const char* filename PROGMEM, int8_t serial);
-extern const char *loadMenu(const char* filename PROGMEM, uint8_t ordinals[], size_t maxLen);
+extern const char *loadMenu(const char* filename PROGMEM, int ordinals[], size_t maxLen);
 extern const char *loadOptions(const char* filename PROGMEM, size_t maxLen);
 extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* ext, uint16_t maxLen);
 
