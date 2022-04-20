@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,9 @@
 // SELECTOR (X)
 #define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
 #define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
+#if defined(__STM32F4XX)
+#define X_STEP_PIN_NAME     PD_5
+#endif
 #define X_STEP_PIN          PD5
 #define X_DIR_PIN           PD4
 #define X_ENABLE_PIN        PD7
@@ -32,6 +35,9 @@
 // REVOLVER (Y)
 #define STEP_HIGH_Y         digitalWrite(Y_STEP_PIN, HIGH);
 #define STEP_LOW_Y          digitalWrite(Y_STEP_PIN, LOW);
+#if defined(__STM32F4XX)
+#define Y_STEP_PIN_NAME     PD_0
+#endif
 #define Y_STEP_PIN          PD0
 #define Y_DIR_PIN           PA15
 #define Y_ENABLE_PIN        PD3
@@ -39,6 +45,9 @@
 // FEEDER (Z)
 #define STEP_HIGH_Z         digitalWrite(Z_STEP_PIN, HIGH);
 #define STEP_LOW_Z          digitalWrite(Z_STEP_PIN, LOW);
+#if defined(__STM32F4XX)
+#define Z_STEP_PIN_NAME     PC_6
+#endif
 #define Z_STEP_PIN          PC6
 #define Z_DIR_PIN           PC7
 #define Z_ENABLE_PIN        PD14
@@ -68,11 +77,14 @@
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
-#define SDCS_PIN            -1      // use default
-#define DEBUG_PIN           -1      // PC3 - TB0 (using this header will lead to a sine wave on the output if freq. succseeds 100Hz  - see schematic)
+#define SDCS_PIN            0       // use default
+#define DEBUG_PIN           0       // PC3 - TB0 (using this header will lead to a sine wave on the output if freq. succseeds 100Hz  - see schematic)
 
-#define USB_CONNECT_PIN     PA14    // ?
+#define USB_CONNECT_PIN     0       // ?
 #define SD_DETECT_PIN       PC4
+#if !defined(USE_SERIAL_DISPLAY)
+#define USE_TERMINAL_MENUS  1
+#endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // using the same pins as for TWI displays (SW-I2C)
@@ -83,11 +95,11 @@
 #define DUET_SIG_FED_PIN    PA1      // THB (thermistor output pins will work fine up to 100Hz - see schematic)
 #define DUET_SIG_SEL_PIN    PA0      // TH0
 
-#define DEBUG_OFF_PIN       -1
+#define DEBUG_OFF_PIN       0
 
-#define STALL_X_PIN         -1
-#define STALL_Y_PIN         -1
-#define STALL_Z_PIN         -1
+#define STALL_X_PIN         0
+#define STALL_Y_PIN         0
+#define STALL_Z_PIN         0
 
 // the following pins cannot be used directly from the according headers/terminals, since those are signals
 // used to drive the Mosfets for heaters/fan. If you need one of those signals, you have to wire it up on the 
@@ -100,8 +112,8 @@
 // -----------------------------------------------------
 // Serial Ports section
 // -----------------------------------------------------
-#define SW_SERIAL_TX_PIN    -1
-#define SW_SERIAL_RX_PIN    -1
+#define SW_SERIAL_TX_PIN    0
+#define SW_SERIAL_RX_PIN    0
 
 #define X_SERIAL_TX_PIN     PD6     // XUART
 #define Y_SERIAL_TX_PIN     PD1     // YUART

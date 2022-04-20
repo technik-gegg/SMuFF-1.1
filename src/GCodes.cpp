@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,15 +21,14 @@
  * Module for handling all the G-Codes supported
  */
 
-#include <Arduino.h>
 #include "SMuFF.h"
 #include "GCodes.h"
 #include "ConfigNamesExt.h"
 #include "StrPrint.h"
 
-void setTMCStall(int8_t axis, int8_t stallPin, int param, int cool, int trigg);
+void setTMCStall(int8_t axis, pin_t stallPin, int param, int cool, int trigg);
 void setTMCMaxStall(int8_t axis, int param);
-void setTMCTmode(int8_t axis, int8_t stallPin, int param);
+void setTMCTmode(int8_t axis, pin_t stallPin, int param);
 void setTMCMicrosteps(int8_t axis, int param);
 void setTMCPower(int8_t axis, int param, int8_t irun, int8_t ihold);
 void setTMCCSMin(int8_t axis, int param);
@@ -42,18 +41,16 @@ void rangeError(int8_t serial, int min, int max);
 void rangeError(int8_t serial, long min, long max);
 void rangeError(int8_t serial, float min, float max);
 
-extern SdFat SD;
 extern uint32_t lastEvent;
-extern int8_t currentSerial;
 
-#if defined(__STM32F1__) || defined(__STM32F4__)
-extern void nvic_sys_reset();
+#if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+extern void HAL_NVIC_SystemReset();
 #endif
 
 char firmware[30];
 bool gotFirmware = false;
 int32_t uploadLen = 0;
-SdFile upload;
+_File upload;
 
 
 const char *S_Param = (char *)"S";
@@ -90,6 +87,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {220, dummy},
     {221, dummy},
 
+    {2,  M2},
     {17, M17},
     {18, M18},
     {20, M20},
@@ -157,9 +155,20 @@ bool dummy(const char *msg, String buf, int8_t serial)
   if (!smuffConfig.prusaMMU2)
   {
     uint16_t code = buf.toInt();
-    __debugS(PSTR("Ignored M-Code: M%d"), code);
+    __debugS(I, PSTR("Ignored M-Code: M%d"), code);
   }
   return true;
+}
+
+/*
+  Deviating from the GCode standard, this method resets the parser busy flag
+*/
+bool M2(const char *msg, String buf, int8_t serial)
+{
+  bool stat = true;
+  printResponse(msg, serial);
+  setParserReady();
+  return stat;
 }
 
 /*
@@ -220,6 +229,7 @@ bool M20(const char *msg, String buf, int8_t serial)
   char tmp[80];
   char fmt[20];
   bool lsInString = false;
+  File root;
 
   if(!getParamString(buf, L_Param, tmp, ArraySize(tmp))) {
     if(!getParamString(buf, S_Param, tmp, ArraySize(tmp))) {
@@ -262,15 +272,23 @@ bool M20(const char *msg, String buf, int8_t serial)
     if(f.indexOf("S") > -1)  flags |= LS_SIZE;
     if(f.indexOf("R") > -1)  flags |= LS_R;
     if(lsInString) {
+      #if defined(USE_SDFAT)
       SD.ls((Print*)strOut, tmp, flags);
+      #else
+      root.ls(flags, 2, (Print*)strOut);
+      #endif
       String json = "/* Testscripts */[\"" + ((StrPrint*)strOut)->get();
       json.replace("\r\n", "\",\"");
       json += "\"]";
-      //__debugS(PSTR("LS in String: %s"), json.c_str());
+      //__debugS(I, PSTR("LS in String: %s"), json.c_str());
       out->println(json.c_str());
     }
     else {
+      #if defined(USE_SDFAT)
       SD.ls(out, tmp, flags);
+      #else
+      root.ls(flags, 2, out);
+      #endif
     }
   }
   else
@@ -289,7 +307,7 @@ bool M42(const char *msg, String buf, int8_t serial)
   int8_t mode;
   char tmp[128];
   printResponse(msg, serial);
-  //__debugS(PSTR("M42->%s"), buf);
+  //__debugS(I, PSTR("M42->%s"), buf);
 
   if ((pin = getParam(buf, P_Param)) != -1)
   {
@@ -327,11 +345,7 @@ bool M42(const char *msg, String buf, int8_t serial)
       {
         if (param >= 0 && param <= 255)
         {
-          #if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
-          pwmWrite(pin, param);
-          #else
           analogWrite(pin, param);
-          #endif
         }
       }
       if (mode != 1)
@@ -374,27 +388,27 @@ bool M106(const char *msg, String buf, int8_t serial)
   {
     freq = 0;
   }
-  //__debugS(PSTR("Fan speed: %d%%"), param);
-#if defined(__STM32F1__) || defined(__STM32F4__)
-  // set the frequency if applied
-  if(freq > 0 && freq <= 500) {
-    uint16_t max = (uint16_t)(uint32_t(((float)1/freq)*1000000L));
-    fan.setPulseWidthMax(max);
-  }
-  fan.setFanSpeed(param);
-#else
-  analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
-#endif
+  //__debugS(I, PSTR("Fan speed: %d%%"), param);
+  #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+    // set the frequency if applied
+    if(freq > 0 && freq <= 500) {
+      uint16_t max = (uint16_t)(uint32_t(((float)1/freq)*1000000L));
+      fan.setPulseWidthMax(max);
+    }
+    fan.setFanSpeed(param);
+  #else
+    analogWrite(FAN_PIN, map(param, 0, 100, 0, 255));
+  #endif
   return true;
 }
 
 bool M107(const char *msg, String buf, int8_t serial)
 {
   printResponse(msg, serial);
-  #if defined(__STM32F1__) || defined(__STM32F4__)
-  fan.setFanSpeed(0);
+  #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+    fan.setFanSpeed(0);
   #else
-  analogWrite(FAN_PIN, 0);
+    analogWrite(FAN_PIN, 0);
   #endif
   return true;
 }
@@ -411,10 +425,28 @@ bool M110(const char *msg, String buf, int8_t serial)
 
 bool M111(const char *msg, String buf, int8_t serial)
 {
-  if ((param = getParam(buf, S_Param)) != -1)
-  {
-    testMode = param == 1;
-  }
+  char tmp[80];
+  printResponse(msg, serial);
+
+  #if defined(DEBUG)
+    if ((param = getParam(buf, S_Param)) != -1) {
+      if(param >= 0 && param <= 63)
+        smuffConfig.dbgLevel = (uint8_t)param;
+    }
+    if(hasParam(buf, W_Param))
+      sprintf_P(tmp, "/* Debug */\n{\"Level\": %d }\n", smuffConfig.dbgLevel);
+    else
+      sprintf_P(tmp, "Debug Level %d: Debug=%s, Warning=%s, Info=%s, Special=%s, Development=%s\n", 
+        smuffConfig.dbgLevel, 
+        smuffConfig.dbgLevel & D ? P_Yes : P_No, 
+        smuffConfig.dbgLevel & W ? P_Yes : P_No, 
+        smuffConfig.dbgLevel & I ? P_Yes : P_No, 
+        smuffConfig.dbgLevel & SP ? P_Yes : P_No,
+        smuffConfig.dbgLevel & DEV ? P_Yes : P_No);
+    printResponse(tmp, serial);
+  #else
+    printResponse("DEBUG flag not set while compiling, debug messages have been turned off.\n", serial);
+  #endif
   return true;
 }
 
@@ -469,6 +501,8 @@ bool M115(const char *msg, String buf, int8_t serial)
   #if defined(CREALITY_HW_SPI)
     strcat(options, " HW-SPI");
   #endif
+#elif defined(USE_SERIAL_DISPLAY)
+  strcat(options, "SERIAL");
 #else
   strcat(options, "REPRAP");
 #endif
@@ -531,7 +565,7 @@ bool M118(const char *msg, String buf, int8_t serial)
             break;
         }
         if(!state) {
-          __debugS(PSTR("Serial port P%d can't be used."), param);
+          __debugS(I, PSTR("Serial port P%d can't be used."), param);
         }
         return state;
       }
@@ -1115,7 +1149,7 @@ bool M150(const char *msg, String buf, int8_t serial)
   #if !defined(NEOPIXEL_PIN)
     return false;
   #else
-  if (NEOPIXEL_PIN == -1)
+  if (NEOPIXEL_PIN <= 0)
     return false;
   #endif
 
@@ -1162,8 +1196,11 @@ bool M150(const char *msg, String buf, int8_t serial)
   {
     if (index == -1 || index > NUM_LEDS)
       return false;
-    CRGB color = CRGB(red, green, blue);
-    setFastLED(index, color);
+    #if !defined(USES_ADAFRUIT_NPX)
+      setFastLED(index, CRGB(red, green, blue));
+    #else
+      setFastLED(index, ColorRGB(red, green, blue));
+    #endif
   }
   return true;
 #else
@@ -1346,22 +1383,22 @@ bool M205(const char *msg, String buf, int8_t serial)
   char cmd[80];
   char tmp[50];
   char strpar[40] = {0};
-  //__debugS(PSTR("Got paramsS: %s [%s]"), paramS ? "Yes" : "No", strpar);
-  if (getParamString(buf, P_Param, cmd, sizeof(cmd)))
+  //__debugS(I, PSTR("Got paramsS: %s [%s]"), paramS ? "Yes" : "No", strpar);
+  if (getParamString(buf, P_Param, cmd, ArraySize(cmd)))
   {
     int8_t axis = -1;
-    int8_t stallPin = -1;
+    pin_t stallPin = 0;
     if (hasParam(buf, X_Param)) { axis = SELECTOR; stallPin = STALL_X_PIN; }
     if (hasParam(buf, Y_Param)) { axis = REVOLVER; stallPin = STALL_Y_PIN; }
     if (hasParam(buf, Z_Param)) { axis = FEEDER;   stallPin = STALL_Z_PIN; }
     int   index = getParam(buf, I_Param);
-    bool  paramS = getParamString(buf, S_Param, strpar, sizeof(strpar));
+    bool  paramS = getParamString(buf, S_Param, strpar, ArraySize(strpar));
     float fParam = getParamF(buf, S_Param);
     param = getParam(buf, S_Param);
 
     //__debugS("%d | %f | %s", param, fParam, paramS ? strpar : "");
     if(paramS) {
-      if (strcmp(cmd, wipeSequence) == 0)           { strncpy(smuffConfig.wipeSequence, strpar, sizeof(smuffConfig.wipeSequence)); }
+      if (strcmp(cmd, wipeSequence) == 0)           { strncpy(smuffConfig.wipeSequence, strpar, ArraySize(smuffConfig.wipeSequence)); }
       else if (strcmp(cmd, material) == 0)          { if (index != -1) strncpy(smuffConfig.materials[index], strpar, MAX_MATERIAL_LEN); else stat = false; }
       else if (strcmp(cmd, color) == 0)             { if (index != -1) strncpy(smuffConfig.materialNames[index], strpar, MAX_MATERIAL_NAME_LEN); else stat = false; }
       else if (strcmp(cmd, lBtnDown) == 0)          { strncpy(smuffConfig.lButtonDown, strpar, MAX_BUTTON_LEN); }
@@ -1419,6 +1456,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, purgeDDE) == 0)            { smuffConfig.purgeDDE = (param > 0); }
       else if (strcmp(cmd, cutterTop) == 0)           { smuffConfig.cutterOnTop = (param > 0); }
       else if (strcmp(cmd, invertDuet) == 0)          { smuffConfig.invertDuet = (param > 0); }
+      else if (strcmp(cmd, useDuet) == 0)             { smuffConfig.useDuet = (param > 0); }
       else if (strcmp(cmd, traceUsb) == 0)            { smuffConfig.traceUSBTraffic = (param > 0); }
 
       else if (strcmp(cmd, purgeSpeed) == 0)          { smuffConfig.purgeSpeed = (uint16_t)param; }
@@ -1432,12 +1470,13 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, feedChunks) == 0)          { smuffConfig.feedChunks = (uint8_t)param; }
       else if (strcmp(cmd, servoMinPwm) == 0)         { smuffConfig.servoMinPwm = (uint16_t)param; for(int8_t i=0; i< 3; i++) setServoMinPwm(i, smuffConfig.servoMinPwm); }
       else if (strcmp(cmd, servoMaxPwm) == 0)         { smuffConfig.servoMaxPwm = (uint16_t)param; for(int8_t i=0; i< 3; i++) setServoMaxPwm(i, smuffConfig.servoMaxPwm); }
-      else if (strcmp(cmd, servo1Cycles) == 0)        { smuffConfig.servoCycles1 = (uint8_t)param; servoWiper.setMaxCycles(smuffConfig.servoCycles1); }
-      else if (strcmp(cmd, servo2Cycles) == 0)        { smuffConfig.servoCycles2 = (uint8_t)param; servoLid.setMaxCycles(smuffConfig.servoCycles2); }
+      else if (strcmp(cmd, servo1Cycles) == 0)        { smuffConfig.servoCycles1 = (uint8_t)param; setServoMaxCycles(SERVO_WIPER, smuffConfig.servoCycles1); }
+      else if (strcmp(cmd, servo2Cycles) == 0)        { smuffConfig.servoCycles2 = (uint8_t)param; setServoMaxCycles(SERVO_LID, smuffConfig.servoCycles2); }
       else if (strcmp(cmd, cutterOpen) == 0)          { smuffConfig.cutterOpen = (uint8_t)param; }
       else if (strcmp(cmd, cutterClose) == 0)         { smuffConfig.cutterClose = (uint8_t)param; }
       else if (strcmp(cmd, insertSpeed) == 0)         { smuffConfig.insertSpeed = (uint16_t)param; }
 
+      else if (strcmp(cmd, dbgLvl) == 0)              { if (param >= 0 && param <= 15) smuffConfig.dbgLevel = (uint8_t)param; else stat = false; }
       else if (strcmp(cmd, backlightColor) == 0)      { if (param >= 0 && param <= 15) { smuffConfig.backlightColor = (uint8_t)param; setBacklightIndex(smuffConfig.backlightColor); } else stat = false; }
       else if (strcmp(cmd, toolColor) == 0)           { if (param >= 0 && param <= 15) { smuffConfig.toolColor = (uint8_t)param; setToolColorIndex(smuffConfig.toolColor); } else stat = false; }
       else if (strcmp(cmd, animBpm) == 0)             { if (param > 0 && param <= 255) { smuffConfig.animationBPM = (uint8_t)param; lastEvent = millis() - smuffConfig.powerSaveTimeout*1500; isIdle = true; } else stat = false; }
@@ -1465,7 +1504,7 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, cstepdown) == 0)           { if (axis != -1 && param >= 0 && param <= 15) setTMCCSDown(axis, param); else { rangeError(serial, 0, 15); stat = false; } }
       else if (strcmp(cmd, toff) == 0)                { if (axis != -1 && param >= 0 && param <= 15) setTMCTOff(axis, param);   else { rangeError(serial, 0, 15); stat = false; } }
       else if (strcmp(cmd, pfactor) == 0)             { if (index != -1) { smuffConfig.purges[index] = (uint16_t) param; } else stat = false; }
-      else if (strcmp(cmd, dbgFreq) == 0)             { if (param > 0 && param <= 20000) smuffConfig.dbgFreq = (uint16_t)param; else stat = false; }
+      else if (strcmp(cmd, dbgFreq) == 0)             { if (param > 0 && param <= 20000) { smuffConfig.dbgFreq = (uint16_t)param; calcHwDebugCounter(); } else stat = false; }
       #if defined(MULTISERVO)
       else if (strcmp(cmd, servoOutput) == 0)         { if (index >= 0 && index < 16) { servoMapping[index] = (uint8_t) param; } else stat = false; }
       else if (strcmp(cmd, servoClosed) == 0)         { if (index >= 0 && index < 16) { servoPosClosed[index] = (uint8_t) param; } else stat = false; }
@@ -1490,7 +1529,7 @@ bool M205(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-void setTMCStall(int8_t axis, int8_t stallPin, int param, int cool, int trigg) {
+void setTMCStall(int8_t axis, pin_t stallPin, int param, int cool, int trigg) {
   smuffConfig.stepperStall[axis] = (int8_t)param;
   steppers[axis].setEnabled(true);
   #ifdef HAS_TMC_SUPPORT
@@ -1501,11 +1540,11 @@ void setTMCStall(int8_t axis, int8_t stallPin, int param, int cool, int trigg) {
       drivers[axis]->TCOOLTHRS(cool);
     if (trigg != -1)
       steppers[axis].setStallThreshold(trigg);
-    if (stallPin != -1)
+    if (stallPin != 0)
       attachInterrupt(digitalPinToInterrupt(stallPin), (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
   }
   else {
-    if (stallPin != -1)
+    if (stallPin != 0)
       detachInterrupt(stallPin);
   }
     #if defined(SMUFF_V6S)
@@ -1519,20 +1558,20 @@ void setTMCMaxStall(int8_t axis, int param) {
   steppers[axis].setStallThreshold(smuffConfig.stepperMaxStallCnt[axis]);
 }
 
-void setTMCTmode(int8_t axis, int8_t stallPin, int param) {
+void setTMCTmode(int8_t axis, pin_t stallPin, int param) {
   smuffConfig.stepperStealth[axis] = (param == 0);
   #ifdef HAS_TMC_SUPPORT
   steppers[axis].setEnabled(true);
   if (drivers[axis] != nullptr) {
     uint8_t toff = smuffConfig.stepperToff[axis] == -1 ? (param == 0) ? 3 : 4 : smuffConfig.stepperToff[axis];
     setDriverSpreadCycle(drivers[axis], (param > 0), smuffConfig.stepperStall[axis], smuffConfig.stepperCSmin[axis], smuffConfig.stepperCSmax[axis], smuffConfig.stepperCSdown[axis], toff);
-    if (param == 0 && (stallPin != -1))
+    if (param == 0 && (stallPin != 0))
       attachInterrupt(digitalPinToInterrupt(stallPin), (axis == 0 ? isrStallDetectedX : axis == 1 ? isrStallDetectedY : isrStallDetectedZ), FALLING);
-    else if (param == 1 && stallPin != -1)
+    else if (param == 1 && stallPin != 0)
       detachInterrupt(stallPin);
   }
   else {
-    if (stallPin != -1)
+    if (stallPin != 0)
       detachInterrupt(stallPin);
   }
     #if defined(SMUFF_V6S)
@@ -1740,6 +1779,10 @@ bool M300(const char *msg, String buf, int8_t serial)
 {
   bool stat = true;
   printResponse(msg, serial);
+
+  if(BEEPER_PIN <= 0)
+    return stat;
+
   char sequence[300];
   char tuneData[150];
   char filename[80];
@@ -1836,7 +1879,7 @@ bool M502(const char *msg, String buf, int8_t serial)
 }
 
 Print* getSerialInstance(int8_t serial) {
-  Print *_print = &Serial;
+  Print* _print = &Serial;
   switch (serial)
   {
     case 0:
@@ -1908,7 +1951,7 @@ bool M503(const char *msg, String buf, int8_t serial)
 
 bool writeToCfgFile(const char* buf, const char* filename) {
 
-  __debugS(PSTR("Attempt to write '%s'"), filename);
+  __debugS(I, PSTR("Attempt to write '%s'"), filename);
   return true;
 }
 
@@ -1918,12 +1961,12 @@ bool M504(const char *msg, String buf, int8_t serial)
   char target[40];
   printResponse(msg, serial);
   if (!getParamString(buf, P_Param, target, ArraySize(target))) {
-    __debugS(PSTR("No target applied"));
+    __debugS(I, PSTR("No target applied"));
     return false;
   }
-  //__debugS(PSTR("buf: %s"), buf.c_str());
+  //__debugS(I, PSTR("buf: %s"), buf.c_str());
   if (getParamString(buf, S_Param, cfg, ArraySize(cfg))) {
-    //__debugS(PSTR("cfg: %s"), cfg);
+    //__debugS(I, PSTR("cfg: %s"), cfg);
     if(strcmp(target, "Swaps") == 0) {
       if(deserializeSwapTools(cfg)) {
         saveStore();
@@ -1931,12 +1974,12 @@ bool M504(const char *msg, String buf, int8_t serial)
       }
     }
     else {
-      __debugS(PSTR("Unknown target '%s'"), target);
+      __debugS(I, PSTR("Unknown target '%s'"), target);
       return false;
     }
   }
   else {
-    __debugS(PSTR("No data applied"));
+    __debugS(I, PSTR("No data applied"));
   }
   return false;
 }
@@ -2077,21 +2120,21 @@ bool M701(const char *msg, String buf, int8_t serial)
   else if (tool >= 0 && tool <= MAX_TOOLS) {
     if(hasParam(buf, S_Param) && smuffConfig.useSplitter) {
       if(smuffConfig.feedLoadState[tool] == SPL_NOT_LOADED) {
-        //__debugS(PSTR("Not loaded. Doing nothing"));
+        //__debugS(I, PSTR("Not loaded. Doing nothing"));
         stat = true;
       }
       if(smuffConfig.feedLoadState[tool] > SPL_NOT_LOADED) {
-        //__debugS(PSTR("Unloading from Splitter"));
+        //__debugS(I, PSTR("Unloading from Splitter"));
         stat = unloadFromSplitter(false);
       }
     }
     else {
-      //__debugS(PSTR("Unloading from Nozzle"));
+      //__debugS(I, PSTR("Unloading from Nozzle"));
       stat = unloadFilament();
     }
   }
   else {
-    __debugS(PSTR("No tool selected"));
+    __debugS(I, PSTR("No tool selected"));
   }
   return stat;
 }
@@ -2172,13 +2215,17 @@ bool M997(const char *msg, String buf, int8_t serial)
     SD.remove(firmware);
     if(hasParam(buf, L_Param)) {
       if(initSD()) {
-        if(!upload.open(firmware, O_WRITE | O_CREAT)) {
-          __debugS(PSTR("Can't open file '%s' for downloading"), firmware);
+        #if defined (USE_SDFAT)
+        if(!(upload.open(firmware, FILE_WRITE))) {
+        #else
+        if(!(upload = SD.open(firmware, FILE_WRITE))) {
+        #endif
+          __debugS(I, PSTR("Can't open file '%s' for downloading"), firmware);
           return false;
         }
       }
       else {
-        __debugS(PSTR("Can't init SD-Card for file '%s'"), firmware);
+        __debugS(I, PSTR("Can't init SD-Card for file '%s'"), firmware);
         return false;
       }
       uploadLen = getParamL(buf, L_Param);
@@ -2198,8 +2245,8 @@ bool M999(const char *msg, String buf, int8_t serial)
   steppers[REVOLVER].setEnabled(false);
   steppers[FEEDER].setEnabled(false);
   delay(500);
-  #if defined(__STM32F1__) || defined(__STM32F4__)
-  nvic_sys_reset();
+  #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+  HAL_NVIC_SystemReset();
   #endif
   return true;
 }
@@ -2209,7 +2256,7 @@ bool M2000(const char *msg, String buf, int8_t serial)
   char s[80];
   char tmp[128];
   printResponse(msg, serial);
-  getParamString(buf, S_Param, tmp, sizeof(tmp));
+  getParamString(buf, S_Param, tmp, ArraySize(tmp));
   if (strlen(tmp) > 0)
   {
     printResponseP(PSTR("B"), serial);
@@ -2351,7 +2398,7 @@ uint16_t handleFeedSpeed(String buf, uint8_t axis)
       if (faccel >= 65535)
         faccel = 65535;
       steppers[axis].setAcceleration((uint16_t)faccel);
-      //__debugS(PSTR("faccel ticks now = %u"), steppers[axis].getAcceleration());
+      //__debugS(I, PSTR("faccel ticks now = %u"), steppers[axis].getAcceleration());
     }
     return fspeed;
   }
@@ -2374,14 +2421,17 @@ bool G1(const char *msg, String buf, int8_t serial)
   float paramF;
   long paramL;
   uint16_t speed;
-  const char P_DIinfo[] PROGMEM = { "[G1] Moving %c: %2.f %s with speed %ld %s" };
+  char pfBuf[40];
+  const char P_DIinfo[] PROGMEM = { "[G1] Moving %c: %s %s with speed %ld %s" };
 
   if (hasParam(buf, X_Param))
   {
     paramF = getParamF(buf, X_Param);
     paramL = isMill ? round(paramF * steppers[SELECTOR].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, SELECTOR);
-    __debugS(P_DIinfo, 'X', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
+    dtostrf(paramF, 5, 2, pfBuf);
+    __debugS(D, P_DIinfo, 'X', pfBuf, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
+    steppers[SELECTOR].setAllowAccel(true);
     steppers[SELECTOR].setEnabled(true);
     prepStepping(SELECTOR, paramL, false, true);
     toolSelected = -1;
@@ -2391,7 +2441,9 @@ bool G1(const char *msg, String buf, int8_t serial)
     paramF = getParamF(buf, Y_Param);
     paramL = isMill ? round(paramF * steppers[REVOLVER].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, REVOLVER);
-    __debugS(P_DIinfo, 'Y', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
+    dtostrf(paramF, 5, 2, pfBuf);
+    __debugS(D, P_DIinfo, 'Y', pfBuf, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
+    steppers[REVOLVER].setAllowAccel(true);
     steppers[REVOLVER].setEnabled(true);
     prepStepping(REVOLVER, paramL, false, true);
   }
@@ -2400,7 +2452,9 @@ bool G1(const char *msg, String buf, int8_t serial)
     paramF = getParamF(buf, Z_Param);
     paramL = isMill ? round(paramF * steppers[FEEDER].getStepsPerMM()) : round(paramF);
     speed = handleFeedSpeed(buf, FEEDER);
-    __debugS(P_DIinfo, 'Z', paramF, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
+    dtostrf(paramF, 5, 2, pfBuf);
+    __debugS(D, P_DIinfo, 'Z', pfBuf, isMill ? "mm" : "steps", speed, smuffConfig.speedsInMMS ? "mm/s" : "ticks");
+    steppers[FEEDER].setAllowAccel(true);
     steppers[FEEDER].setEnabled(true);
     prepStepping(FEEDER, paramL, false, true);
   }
@@ -2408,23 +2462,23 @@ bool G1(const char *msg, String buf, int8_t serial)
   runAndWait(-1);
 
   // for testing only: check if stall was detected
-  __debugS(PSTR("[G1] Move took: %d ms"), millis() - start);
+  __debugS(I, PSTR("[G1] Move took: %d ms"), millis() - start);
 #ifdef HAS_TMC_SUPPORT
-  const char P_StallRes[] PROGMEM = {"[G1] StallResult %c: %d  Stalled: %s"};
+  const char P_StallRes[] PROGMEM = {"[G1] Stall Result %c: %d  Stalled: %s"};
   if (hasParam(buf, X_Param) && drivers[SELECTOR] != nullptr && !drivers[SELECTOR]->spread_en())
   {
     uint16_t sr = drivers[SELECTOR]->SG_RESULT();
-    __debugS(P_StallRes, 'X', sr, steppers[SELECTOR].getStallDetected() ? P_Yes : P_No);
+    __debugS(DEV, P_StallRes, 'X', sr, steppers[SELECTOR].getStallDetected() ? P_Yes : P_No);
   }
   if (hasParam(buf, Y_Param) && drivers[REVOLVER] != nullptr && !drivers[REVOLVER]->spread_en())
   {
     uint16_t sr = drivers[REVOLVER]->SG_RESULT();
-    __debugS(P_StallRes, 'Y', sr, steppers[REVOLVER].getStallDetected() ? P_Yes : P_No);
+    __debugS(DEV, P_StallRes, 'Y', sr, steppers[REVOLVER].getStallDetected() ? P_Yes : P_No);
   }
   if (hasParam(buf, Z_Param) && drivers[FEEDER] != nullptr && !drivers[FEEDER]->spread_en())
   {
     uint16_t sr = drivers[FEEDER]->SG_RESULT();
-    __debugS(P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
+    __debugS(DEV, P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
   }
 #endif
   // set all speeds back to the configured values

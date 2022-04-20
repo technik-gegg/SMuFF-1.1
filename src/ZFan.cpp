@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,17 @@
 
 static ZFan* fanInstances[MAX_FANS];
 
-void ZFan::attach(int8_t pin) {
+void ZFan::attach(pin_t pin) {
   _pin = pin;
-  pinMode(_pin, OUTPUT);
-  digitalWrite(_pin, 0);
+  if(_pin != 0) {
+    pinMode(_pin, OUTPUT);
+    digitalWrite(_pin, 0);
+  }
 }
 
 void ZFan::detach() {
-  digitalWrite(_pin, 0);
+  if(_pin != 0)
+    digitalWrite(_pin, 0);
   fanInstances[_fanIndex] = nullptr;
   _pin = 0;
 }
@@ -61,7 +64,8 @@ void ZFan::setFan() {
 }
 
 void ZFan::setFanPin(uint8_t state) {
-  digitalWrite(_pin, state);
+  if(_pin != 0)
+    digitalWrite(_pin, state);
 }
 
 void isrFanTimerHandler() {

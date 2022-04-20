@@ -1,4 +1,5 @@
 Available M Commands
+  M2	-	Resets the "Parser Busy" flag
   M17	-	Switch feeder stepper control (Relay)
   M18,M84 -	Motors off
   M20	-	List SD-Card

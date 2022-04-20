@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 #include "ConfigNamesExt.h"
 
 DataStore dataStore;
-extern SdFat SD;
 extern uint8_t  swapTools[];
 
 void saveStore() {
@@ -51,34 +50,34 @@ void saveStore() {
   }
 
   if(initSD(false)) {
-    Print* cfg = openCfgFileWrite(DATASTORE_FILE);
+    _File* cfg = openCfgFileWrite(DATASTORE_FILE);
     if(cfg != nullptr) {
       serializeJsonPretty(jsonDoc, *cfg);
       closeCfgFile();
     }
     else {
-      __debugS(PSTR("ERROR: Failed to open/create %s"), DATASTORE_FILE);
+      __debugS(W, PSTR("ERROR: Failed to open/create %s"), DATASTORE_FILE);
     }
   }
   else {
-    __debugS(PSTR("ERROR: %s not updated. Can't init SD-Card!"), DATASTORE_FILE);
+    __debugS(W, PSTR("ERROR: %s not updated. Can't init SD-Card!"), DATASTORE_FILE);
   }
 }
 
 void recoverStore() {
   StaticJsonDocument<512> jsonDoc;
   if (initSD(false)) {
-    SdFile cfg;
-    if (!cfg.open(DATASTORE_FILE)){
-      __debugS(PSTR("Data store file '%s' not found!\n"), DATASTORE_FILE);
+    _File cfg;
+    if(!__fopen(cfg, DATASTORE_FILE, FILE_READ)) {
+      __debugS(W, PSTR("Data store file '%s' not found!\n"), DATASTORE_FILE);
     }
     else {
       auto error = deserializeJson(jsonDoc, cfg);
       if (error) {
-        __debugS(PSTR("Data store file possibly corrupted or too large!\n"));
+        __debugS(W, PSTR("Data store file possibly corrupted or too large!\n"));
       }
       else {
-        //__debugS(PSTR("Data store recovered\n"));
+        //__debugS(I, PSTR("Data store recovered\n"));
         dataStore.stepperPos[SELECTOR]  = jsonDoc[positions][selector];
         dataStore.stepperPos[REVOLVER]  = jsonDoc[positions][revolver];
         dataStore.stepperPos[FEEDER]    = jsonDoc[positions][feeder];
@@ -107,9 +106,9 @@ bool readTune(const char* filename, char* buffer, size_t bufLen) {
 
   sprintf_P(fname, PSTR("sounds/%s"), filename);
   if (initSD(false)) {
-    SdFile tune;
-    if (!tune.open(fname)) {
-      __debugS(PSTR("Tune file '%s' not found!\n"), fname);
+    _File tune;
+    if(!__fopen(tune, fname, FILE_READ)) {
+      __debugS(W, PSTR("Tune file '%s' not found!\n"), fname);
     }
     else {
       memset(buffer, 0, bufLen);

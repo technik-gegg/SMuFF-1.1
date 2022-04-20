@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,9 @@
 // SELECTOR (X)
 #define STEP_HIGH_X     digitalWrite(X_STEP_PIN, HIGH);
 #define STEP_LOW_X      digitalWrite(X_STEP_PIN, LOW);
+#if defined(__STM32F1XX)
+#define X_STEP_PIN_NAME PC_6
+#endif
 #define X_STEP_PIN      PC6
 #define X_DIR_PIN       PB15
 #define X_ENABLE_PIN    PC7
@@ -32,6 +35,9 @@
 // REVOLVER (Y)
 #define STEP_HIGH_Y     digitalWrite(Y_STEP_PIN, HIGH);
 #define STEP_LOW_Y      digitalWrite(Y_STEP_PIN, LOW);
+#if defined(__STM32F1XX)
+#define Y_STEP_PIN_NAME PB_13
+#endif
 #define Y_STEP_PIN      PB13
 #define Y_DIR_PIN       PB12
 #define Y_ENABLE_PIN    PB14
@@ -45,6 +51,9 @@
 // so don't get confused by the pin names
 #define STEP_HIGH_Z     digitalWrite(Z_STEP_PIN, HIGH);
 #define STEP_LOW_Z      digitalWrite(Z_STEP_PIN, LOW);
+#if defined(__STM32F1XX)
+#define Z_STEP_PIN_NAME PB_0
+#endif
 #define Z_STEP_PIN      PB0
 #define Z_DIR_PIN       PC5
 #define Z_ENABLE_PIN    PB1
@@ -53,13 +62,13 @@
 #define Z_END_DUET_PIN  Z_END2_PIN
 
 // SPI for stepper drivers
-#define ST_MISO_PIN PB4 // MISO3
-#define ST_MOSI_PIN PB5 // MOSI3
-#define ST_SCLK_PIN PB3 // SCK3
-#define X_CS_PIN PC10   // doubles as XUART when used in serial mode
-#define Y_CS_PIN PC11   // doubles as YUART when used in serial mode
-#define Z_CS_PIN PC12   // doubles as ZUART when used in serial mode
-#define E_CS_PIN PD2    // doubles as EUART when used in serial mode
+#define ST_MISO_PIN     PB4 // MISO3
+#define ST_MOSI_PIN     PB5 // MOSI3
+#define ST_SCLK_PIN     PB3 // SCK3
+#define X_CS_PIN        PC10   // doubles as XUART when used in serial mode
+#define Y_CS_PIN        PC11   // doubles as YUART when used in serial mode
+#define Z_CS_PIN        PC12   // doubles as ZUART when used in serial mode
+#define E_CS_PIN        PD2    // doubles as EUART when used in serial mode
 
 
 #if defined(RELAY_ON_PROBE)
@@ -71,51 +80,59 @@
 
 
 #if !defined(SMUFF_V5)
-#if defined(SMUFF_V6S)  // V6S uses linear stepper for lid; servo signals move to Z-Driver socket
-#define SERVO_OPEN_DRAIN 0
-#define SERVO1_PIN PC5  // Z-DIR (Wiper Servo)
-#define SERVO2_PIN -1   // not used because of the linear stepper
-#define SERVO3_PIN PD2  // Z-MS3 (Cutter Servo)
-#else
-#define SERVO_OPEN_DRAIN 0
-#define SERVO1_PIN PC2 // E0-STOP (Wiper Servo)
-#define SERVO2_PIN PA1 // SERVO (Lid Servo)
-#define SERVO3_PIN -1  // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
-#endif
-#else
-#if !defined(USE_DDE)
-    #define SERVO_OPEN_DRAIN 0
-    #define SERVO1_PIN PB13 // Y STEP pin (Wiper Servo) used because of 5V tolerance
-    #define SERVO2_PIN PB12 // Y DIR pin (Lid Servo)
-    #define SERVO3_PIN PB14 // Y EN pin (Cutter Servo)
-#else
-    // relocate servo pins to Z-Axis driver socket because Y-Axis is being used for Shared Stepper.
-    // Please notice: If USE_DDE is set, Serial3 can't be used anymore for serial communication
-    #define SERVO1_PIN PB10 // Z-STEP (Wiper Servo)
-    #define SERVO2_PIN PB2  // Z-DIR  (Lid-Servo)
-    #define SERVO3_PIN PB11 // Z-EN   (Cutter Servo)
-#endif
+    #if defined(SMUFF_V6S)  // V6S uses linear stepper for lid; servo signals move to Z-Driver socket
+        #define SERVO_OPEN_DRAIN    0
+        #define SERVO1_PIN          PC5  // Z-DIR (Wiper Servo)
+        #define SERVO2_PIN          0    // not used because of the linear stepper
+        #define SERVO3_PIN          PD2  // Z-MS3 (Cutter Servo)
+    #else
+        #define SERVO_OPEN_DRAIN    0
+        #define SERVO1_PIN          PC2 // E0-STOP (Wiper Servo)
+        #define SERVO2_PIN          PA1 // SERVO (Lid Servo)
+        #define SERVO3_PIN          0   // SERVO (Cutter Servo)-- can use only one servo; pick either WIPER or CUTTER
+    #endif
+    #else
+    #if !defined(USE_DDE)
+        #define SERVO_OPEN_DRAIN    0
+        #define SERVO1_PIN          PB13 // Y STEP pin (Wiper Servo) used because of 5V tolerance
+        #define SERVO2_PIN          PB12 // Y DIR pin (Lid Servo)
+        #define SERVO3_PIN          PB14 // Y EN pin (Cutter Servo)
+    #else
+        // relocate servo pins to Z-Axis driver socket because Y-Axis is being used for Shared Stepper.
+        // Please notice: If USE_DDE is set, Serial3 can't be used anymore for serial communication
+        #define SERVO1_PIN          PB10 // Z-STEP (Wiper Servo)
+        #define SERVO2_PIN          PB2  // Z-DIR  (Lid-Servo)
+        #define SERVO3_PIN          PB11 // Z-EN   (Cutter Servo)
+    #endif
 #endif
 
 #define FAN_PIN PA8         // FAN0
-
-#if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-#include "FastLED.h"
-//_DEFPIN_ARM(PC7, 7, C);             // needed to compensate "Invalid pin specified"
-// while compiling if NEOXPIXEL_PIN is in use
-#endif
 
 #define NEOPIXEL_TOOL_PIN   PA1         // SERVOS (NeoPixel for tools)
 #define BRIGHTNESS_TOOL     127
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
-#define SDCS_PIN            -1          // use default
-#define DEBUG_PIN           -1
+#define SDCS_PIN            0           // use default
+
+#if defined(RELAY_ON_PROBE)
+    #if defined(__STM32F1XX)
+    #define DEBUG_PIN_NAME      PA_0
+    #endif
+    #define DEBUG_PIN           PA0         // TH0 //-1
+#else
+    #if defined(__STM32F1XX)
+    #define DEBUG_PIN_NAME      PC_14
+    #endif
+    #define DEBUG_PIN           PC14        // PROBE
+#endif
 
 #define USB_CONNECT_PIN     PC13
 #define SD_DETECT_PIN       PC4
-#define USE_TERMINAL_MENUS  1
+
+#if !defined(USE_SERIAL_DISPLAY)
+    #define USE_TERMINAL_MENUS  1
+#endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined
@@ -127,10 +144,10 @@
 #define DUET_SIG_FED_PIN    PC3         // THB (thermistor output pins will work fine up to 100Hz - see schematic)
 #define DUET_SIG_SEL_PIN    PA0         // TH0
 
-#define DEBUG_OFF_PIN       -1
+#define DEBUG_OFF_PIN       0
 
 #define STALL_X_PIN         PA13        // SWDIO (cannot be used with FYSETC Minipanel 12864)
-#define STALL_Y_PIN         -1          //
+#define STALL_Y_PIN         0           //
 #define STALL_Z_PIN         PA14        // SWCLK
 
 #define MS3_X               PC10        // the MS3 pin (if needed for the stepper driver)
@@ -138,7 +155,7 @@
 #if !defined(SMUFF_V6S)
 #define MS3_Z               PD2         // must be controlled via software on this controller board
 #else
-#define MS3_Z               -1          // used for Cutter servo
+#define MS3_Z               0           // used for Cutter servo
 #endif
 
 // the following pins cannot be used directly from the according headers/terminals, since those are signals
@@ -150,8 +167,8 @@
 // -----------------------------------------------------
 // Serial Ports section
 // -----------------------------------------------------
-#define SW_SERIAL_TX_PIN    -1
-#define SW_SERIAL_RX_PIN    -1
+#define SW_SERIAL_TX_PIN    0
+#define SW_SERIAL_RX_PIN    0
 
 #define X_SERIAL_TX_PIN     PC10    // XUART - UART4 TX
 #define Y_SERIAL_TX_PIN     PC11    // YUART - UART4 RX
@@ -159,7 +176,11 @@
 //#define E_SERIAL_TX_PIN     PC12    // ZUART - UART5 TX (not used anyways)
 
 // SERIAL1 - Cannot be used for serial comm.
-#define CAN_USE_SERIAL1     false   // used for encoder on EXP1
+#if defined(USE_SERIAL_DISPLAY)
+#define CAN_USE_SERIAL1     true
+#else
+#define CAN_USE_SERIAL1     false
+#endif
 #define TX1_PIN             PA9     // EXP1.8 - ENCODER1_PIN
 #define RX1_PIN             PA10    // EXP1.6 - ENCODER2_PIN
 

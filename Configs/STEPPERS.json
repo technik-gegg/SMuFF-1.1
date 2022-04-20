@@ -8,7 +8,7 @@
     "MaxSpeed": 1000,
     "InvDir": false,
     "EStopTrg": 1,
-    "StepDly": 2,
+    "StepDly": 5,
     "MS3": 0
    },
   "Revolver": {
@@ -22,7 +22,7 @@
     "HomeAfterFd": true,
     "InvDir": false,
     "EStopTrg": 1,
-    "StepDly": 0,
+    "StepDly": 5,
     "Wiggle": false,
     "UseServo": true,
     "ServoOpen": 35,
@@ -45,7 +45,7 @@
     "InvDir": true,
     "EStopTrg": 1,
     "EStopTest": 0,
-    "StepDly": 0,
+    "StepDly": 5,
     "UseChunks": false,
     "Chunks": 20,
     "InsLen": 15,

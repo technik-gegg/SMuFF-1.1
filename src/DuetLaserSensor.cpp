@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 #include "DuetLaserSensor.h"
 
-extern void __debugS(const char* fmt, ...);
+#include "Debug.h"
 
 /* ==============================================================================================================================
     Duet3D laser Sensor Protocol (according to the Duet3D Wiki)
@@ -37,7 +37,7 @@ extern void __debugS(const char* fmt, ...);
     v2 Shutter word	        P110 0011 ssss ssss	    ssssssss = shutter
  ============================================================================================================================== */
 
-void DuetLaserSensor::attach(int8_t pin, bool v1) {
+void DuetLaserSensor::attach(pin_t pin, bool v1) {
     _pin = pin;
     _isV1 = v1;
     pinMode(_pin, INPUT);
@@ -77,7 +77,7 @@ void DuetLaserSensor::reset() {
     After the last stuffing bit, the line returns to 0 until the next start bit.
 */
 void DuetLaserSensor::service() {
-    if(_pin == -1)
+    if(_pin == 0)
         return;
 
     volatile uint8_t _b = digitalRead(_pin);

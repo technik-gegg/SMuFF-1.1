@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,19 @@
  */
 #pragma once
 
-#define VERSION_STRING    "V2.44"
+#include "Pins.h"                       // path is defined in build environment of platformio.ini (-I)
+
+#if !defined(STM32_CORE_VERSION)
+typedef uint8_t     pin_t;
+#else
+typedef uint32_t    pin_t;
+#endif
+
+#define VERSION_STRING    "V3.00"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2022-01-15"
+#define VERSION_DATE      "2022-02-22"
+#define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
@@ -35,6 +44,9 @@
 #define USERBEEP_FILE     "UBEEP.DAT"
 #define ENCBEEP_FILE      "EBEEP.DAT"
 #define ENCBEEPLEO_FILE   "EBEEP_LEONERD.DAT"
+#if USDB_VID==0x1EAF
+    #define USB_MANUFACTURER_STRING "LeafLabs Maple (SMuFF)"
+#endif
 
 #define MAX_MATERIAL_LEN        5                   // max. length of materials
 #define MAX_MATERIAL_NAME_LEN   10                  // max. length of material names
@@ -70,12 +82,13 @@
 #define SERVO_CUTTER        2
 
 #define SERVO_CLOSED_OFS    35          // for Multiservo
-#define SERVO_RESOLUTION    42          // servo ISR service routine called every SERVO_RESOLUTION uS
 
-#define FAN_RESOLUTION      50          // fan ISR service routine called every FAN_RESOLUTION uS
-                                        // basically same as SERVO_RESOLUTION
+#define GPTIMER_RESOLUTION  20                          // general purpose timer ISR called every n uS
+#define SERVO_RESOLUTION    GPTIMER_RESOLUTION          // servo ISR service interval same as GP-Timer
+#define FAN_RESOLUTION      GPTIMER_RESOLUTION          // fan ISR service interval same as GP-Timer
+                                        
 #define FAN_FREQUENCY       100         // fan frequency in Hz
-#define FAN_BLIP_TIMEOUT    1000        // fan blip timeout in millis (0 to turn bliping off)
+#define FAN_BLIP_TIMEOUT    1000        // fan blip timeout in millis (0 to turn blipping off)
 
 #define FEED_ERROR_RETRIES  4
 
@@ -93,8 +106,18 @@
 #define REMOTE_PF3          11
 #define REMOTE_PF4          12
 
-#if defined(__STM32F1__)
-#define STEPPER_PSC         3           // 24MHz on STM32 (72MHz MCU)
+#if defined(__STM32F1XX)
+#define STEPPER_PSC         3           // 24MHz on STM32F1 (72MHz MCU/SysClock)
+#define GP_PSC              72          // 1MHz 
+#define SERVO_PSC           72          // 1MHz
+#elif defined(__STM32F4XX)
+#define STEPPER_PSC         7           // 24MHz on STM32F4 (168MHz MCU/SysClock)
+#define GP_PSC              168         // 1MHz 
+#define SERVO_PSC           168         // 1MHz
+#elif defined(__STM32G0XX)
+#define STEPPER_PSC         3           // 21.3MHz on STM32G0 (64MHz MCU/SysClock)
+#define GP_PSC              64          // 1MHz 
+#define SERVO_PSC           64          // 1MHz
 #else
 #define STEPPER_PSC         2           // 8MHz on AVR (16MHz MCU)
 #endif
@@ -105,8 +128,6 @@
 #define INC_MMS             5           // speed increment for mm/s
 #define INC_TICKS           50          // speed increment for ticks
 #define MAX_MENU_ORDINALS   40
-
-#include "Pins.h"                       // path is defined in build environment of platformio.ini (-I)
 
 #define FIRST_TOOL_OFFSET       1.2     // value in millimeter
 #define TOOL_SPACING            21.0    // value im millimeter
@@ -131,16 +152,6 @@
 #define LED_MAGENTA_COLOR       5
 #define LED_YELLOW_COLOR        6
 #define LED_WHITE_COLOR         7
-
-#define BASE_FONT               u8g2_font_6x12_t_symbols
-#define BASE_FONT_BIG           u8g2_font_7x14_tr
-#define SMALL_FONT              u8g2_font_6x10_tr
-#define STATUS_FONT             BASE_FONT_BIG
-#define LOGO_FONT               BASE_FONT
-#define ICONIC_FONT             u8g2_font_open_iconic_check_2x_t
-#define ICONIC_FONT2            u8g2_font_open_iconic_embedded_2x_t
-#define ICONIC_FONT3            u8g2_font_open_iconic_other_2x_t
-#define TOOL_FONT               u8g2_font_logisoso22_tr
 
 #define FASTLED_STAT_NONE       0
 #define FASTLED_STAT_MARQUEE    1

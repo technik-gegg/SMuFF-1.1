@@ -3,19 +3,25 @@ Menu Auto Close	%d|2
 Fan Speed	%d|3
 Prusa MMU2 Emul.	%s|4
 Send Status Info	%s|5
-Use Laser Sensor	%s|6
-PanelDue Port	%s|7
-Speeds in mm/s	%s|8
-Servo Min. PWM	%d|9
-Servo Max. PWM	%d|10
-Use Cutter	%s|11
-Cutter Open	%d|12
-Cutter Close	%d|13
-Invert Relay	%s|14
-Use Splitter	%s|15
-Splitter Dist.	%s|16
-Use DDE	%s|17
-DDE Dist.	%s|18
-Purge DDE	%s|19
+Speeds in mm/s	%s|6
+Invert Relay	%s|7
+Sync. Steppers	%s|8
+-
+Use Duet/RRF	%s|10
+Invert Busy Signal	%s|11
+PanelDue Port	%s|12
+-
+Servo Min. PWM	%d|14
+Servo Max. PWM	%d|15
+-
+Use Cutter	%s|17
+Cutter Open	%d|18
+Cutter Close	%d|19
 Cutter on Top	%s|20
-Invert Duet Signal	%s|21
+-
+Use Splitter	%s|22
+Splitter Dist.	%s|23
+-
+Use DDE	%s|25
+DDE Dist.	%s|26
+Purge DDE	%s|27

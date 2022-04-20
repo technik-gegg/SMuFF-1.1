@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ bool ZEStopMux::setTool(int8_t tool) {
     _i2cBusInst->write(SET_TOOL);
     _i2cBusInst->write(tool);
     uint8_t stat = _i2cBusInst->endTransmission();
-    //__debugS(PSTR("Set Tool stat %d "), stat);
+    //__debugS(D, PSTR("Set Tool stat %d "), stat);
     return true;
 }
 
@@ -76,7 +76,7 @@ bool ZEStopMux::reset() {
     _i2cBusInst->beginTransmission(_address);
     _i2cBusInst->write(RESET_MUX);
     uint8_t stat = _i2cBusInst->endTransmission();
-    //__debugS(PSTR("Reset stat %d "), stat);
+    //__debugS(D, PSTR("Reset stat %d "), stat);
     return true;
 }
 
@@ -92,12 +92,12 @@ int8_t ZEStopMux::getTool() {
     _i2cBusInst->beginTransmission(_address);
     _i2cBusInst->write(GET_TOOL);
     uint8_t stat = _i2cBusInst->endTransmission();
-    //__debugS(PSTR("Get Tool stat %d "), stat);
+    //__debugS(D, PSTR("Get Tool stat %d "), stat);
 
-    _i2cBusInst->requestFrom(_address, 1);
+    _i2cBusInst->requestFrom(_address, (uint8_t)1);
     if(_i2cBusInst->available()) {
         tool = (int8_t)_i2cBusInst->read();
-        __debugS(PSTR("Got: %d"), tool);
+        __debugS(I, PSTR("Got: %d"), tool);
     }
     return (int8_t)tool;
 }
@@ -114,12 +114,12 @@ int8_t ZEStopMux::getVersion() {
     _i2cBusInst->beginTransmission(_address);
     _i2cBusInst->write(GET_VERSION);
     uint8_t stat = _i2cBusInst->endTransmission();
-    //__debugS(PSTR("Get Version stat %d "), stat);
+    //__debugS(D, PSTR("Get Version stat %d "), stat);
 
-    _i2cBusInst->requestFrom(_address, 1);
+    _i2cBusInst->requestFrom(_address, (uint8_t)1);
     if(_i2cBusInst->available()) {
         version = (int8_t)_i2cBusInst->read();
-        __debugS(PSTR("Got: %d"), version);
+        __debugS(I, PSTR("Got: %d"), version);
     }
     return version;
 }
@@ -136,12 +136,12 @@ int8_t ZEStopMux::getMaxPins() {
     _i2cBusInst->beginTransmission(_address);
     _i2cBusInst->write(GET_MAXPINS);
     uint8_t stat = _i2cBusInst->endTransmission();
-    //__debugS(PSTR("Get Pins stat %d "), stat);
+    //__debugS(D, PSTR("Get Pins stat %d "), stat);
 
-    _i2cBusInst->requestFrom(_address, 1);
+    _i2cBusInst->requestFrom(_address, (uint8_t)1);
     if(_i2cBusInst->available()) {
         maxPins = (int8_t)_i2cBusInst->read();
-        __debugS(PSTR("Got: %d"), maxPins);
+        __debugS(I, PSTR("Got: %d"), maxPins);
     }
     return maxPins;
 }

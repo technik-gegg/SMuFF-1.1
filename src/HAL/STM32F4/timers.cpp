@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2021 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  *
  */
 
-#if defined(__STM32F4__)
+#if defined(__STM32F4XX)
 
 /*
  * STM32F4 HAL timers handling
@@ -26,132 +26,145 @@
 #include "timers.h"
 
 static struct {
-  HardwareTimer timer;
-  void (* serviceFunPtr)(void);
+  HardwareTimer*  timer;
+  TIM_TypeDef*    instance;
+  IRQn_Type       irqN;
+  void            (*serviceOVFunPtr)(void);
   } timers[] = {
-    { .timer = HardwareTimer(1),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(2),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(3),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(4),
-      .serviceFunPtr = nullptr },
-  #ifdef STM32_HIGH_DENSITY
-    { .timer = HardwareTimer(5),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(6),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(7),
-      .serviceFunPtr = nullptr },
-    { .timer = HardwareTimer(8),
-      .serviceFunPtr = nullptr }
-  #endif
+    { .timer = nullptr,
+      .instance = TIM1,
+      .irqN = TIM1_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM2,
+      .irqN = TIM2_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM3,
+      .irqN = TIM3_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM4,
+      .irqN = TIM4_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM5,
+      .irqN = TIM5_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM6,
+      .irqN = TIM6_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM7,
+      .irqN = TIM7_IRQn,
+      .serviceOVFunPtr = nullptr },
+    { .timer = nullptr,
+      .instance = TIM8,
+      .irqN = TIM8_IRQn,
+      .serviceOVFunPtr = nullptr }
 };
 
-void timerISRService(ZTimer::timerNum_t t) {
-  if (timers[t].serviceFunPtr != nullptr)
-    timers[t].serviceFunPtr();
+bool ZTimer::isValid() {
+   return _timer != UNDEFINED && timers[_timer].timer != nullptr;
 }
 
-void ISR1() {
-  timerISRService(ZTimer::_TIMER1);
-}
-
-void ISR2() {
-  timerISRService(ZTimer::_TIMER2);
-}
-
-void ISR3() {
-  timerISRService(ZTimer::_TIMER3);
-}
-
-void ISR4() {
-  timerISRService(ZTimer::_TIMER4);
-}
-
-#ifdef STM32_HIGH_DENSITY
-void ISR5() {
-  timerISRService(ZTimer::_TIMER5);
-}
-
-void ISR6() {
-  timerISRService(ZTimer::_TIMER6);
-}
-
-void ISR7() {
-  timerISRService(ZTimer::_TIMER7);
-}
-
-void ISR8() {
-  timerISRService(ZTimer::_TIMER8);
-}
-#endif
-
-void ZTimer::setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare) {
+void ZTimer::setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare, void(*serviceFunPtr)()) {
   if (timer < _TIMER1 || timer >= MAX_TIMERS)
     return;
 
   _timer = timer;
   _channel = channel;
 
-  HardwareTimer * hwTimer = &timers[_timer].timer;
+  timers[_timer].timer = new HardwareTimer(timers[_timer].instance);
+  HardwareTimer* hwTimer = timers[_timer].timer;
   hwTimer->pause();
-  noInterrupts();
-  if (_timer == _TIMER6 || _timer == _TIMER7) {
-    // since these timers don't have a compare mode, we're using
-    // the compare value as a period (in uS)
-    hwTimer->setPrescaleFactor(prescaler);
-    hwTimer->setPeriod(compare);
-  }
-  else {
-    hwTimer->setMode(channel, TIMER_OUTPUT_COMPARE);
-    hwTimer->setPrescaleFactor(prescaler);
-    hwTimer->setCompare(channel, compare);
-  }
-  hwTimer->attachInterrupt(channel, ((void (*[])(void)) { &ISR1, &ISR2, &ISR3, &ISR4,
-#ifdef STM32_HIGH_DENSITY
-    &ISR5, &ISR6, &ISR7, &ISR8,
-#endif
-    })[_timer]);
-  interrupts();
+  hwTimer->setMode(_channel, TIMER_DISABLED);
+  hwTimer->setPrescaleFactor(prescaler);
+  hwTimer->setOverflow(compare);
+  hwTimer->setPreloadEnable(false);
+  if(serviceFunPtr != nullptr)
+    hwTimer->attachInterrupt(serviceFunPtr);
 }
 
-void ZTimer::setupHook(void (*function)(void)) {
-  if (_timer != UNDEFINED)
-    timers[_timer].serviceFunPtr = function;
+void ZTimer::setupOVHook(void (*function)(void)) {
+  if (isValid())
+    timers[_timer].serviceOVFunPtr = function;
 }
 
-void ZTimer::setNextInterruptInterval(timerVal_t interval) {
-  if (_timer == UNDEFINED)
+void ZTimer::setNextInterruptInterval(timerVal_t interval, bool onChannel) {
+  if (!isValid())
     return;
 
-  stop();
-  setOverflow(interval);
-  timers[_timer].timer.setCount(0);
-  start();
+  if(onChannel)
+    stopChannel();
+  else
+    stop();
+  if(interval != 0) {
+    setOverflow(interval);
+    start();
+  }
+}
+
+timerVal_t ZTimer::getCompare() {
+  return (isValid()) ? timers[_timer].timer->getCaptureCompare(_channel) : 0;
+}
+
+void ZTimer::setCompare(timerVal_t value) {
+  if (isValid())
+    timers[_timer].timer->setCaptureCompare(_channel, value);
 }
 
 timerVal_t ZTimer::getOverflow() {
-  return (_timer != UNDEFINED) ? timers[_timer].timer.getOverflow() : 0;
+  return (isValid()) ? timers[_timer].timer->getOverflow() : 0;
 }
 
 void ZTimer::setOverflow(timerVal_t value) {
-  if (_timer != UNDEFINED)
-    timers[_timer].timer.setOverflow(value);
+  if (isValid()) {
+    timers[_timer].timer->setOverflow(value);
+    timers[_timer].timer->setCount(0);
+  }
 }
 
 void ZTimer::start() {
-  if (_timer != UNDEFINED) {
-    HardwareTimer * hwTimer = &timers[_timer].timer;
-    hwTimer->refresh();
-    hwTimer->resume();
+  if (isValid()) {
+    timers[_timer].timer->refresh();
+    timers[_timer].timer->resume();
+  }
+}
+
+void ZTimer::startChannel() {
+  if (isValid()) {
+    timers[_timer].timer->refresh();
+    timers[_timer].timer->resumeChannel(_channel);
   }
 }
 
 void ZTimer::stop() {
-  if (_timer != UNDEFINED)
-    timers[_timer].timer.pause();
+  if (isValid())
+    timers[_timer].timer->pause();
 }
 
-#endif // __STM32F4__
+void ZTimer::stopChannel() {
+  if (isValid())
+    timers[_timer].timer->pauseChannel(_channel);
+}
+
+uint32_t ZTimer::getClockFrequency() {
+  return (isValid()) ? timers[_timer].timer->getTimerClkFreq() : 0;
+}
+
+uint32_t ZTimer::getPrescaler() {
+  return (isValid()) ? timers[_timer].timer->getPrescaleFactor() : 0;
+}
+
+void ZTimer::setPriority(uint32_t preempt, uint32_t sub) {
+  if (isValid())
+    HAL_NVIC_SetPriority(timers[_timer].irqN, preempt, sub);
+}
+
+void ZTimer::setPreload(bool preload) {
+  if (isValid())
+    timers[_timer].timer->setPreloadEnable(preload);
+}
+#endif

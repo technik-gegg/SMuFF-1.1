@@ -43,5 +43,7 @@
  "DDEDist": 100.0,
  "PurgeDDE": false,
  "TraceUSB": false,
- "CutterTop": false
+ "CutterTop": false,
+ "UseDuet": false,
+ "SyncSteppers": true
 }

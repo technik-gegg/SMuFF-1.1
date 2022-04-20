@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,74 +19,100 @@
 #pragma once
 
 #include <Arduino.h>
+#include "avr/dtostrf.h"
 #include "Config.h"
 #include "Strings.h"
 #include "GCodes.h"
+
+#if !defined(USE_SERIAL_DISPLAY)
+#include <U8g2lib.h>
 #include "Menus.h"
+#include "InputDialogs.h"
+#endif
+
 #if defined(USE_LEONERD_DISPLAY)
 #include "LeoNerdEncoder.h"
 #else
 #include "ClickEncoder.h"
 #endif
-#include "iostream/iostream.h"
-#include "iostream/fstream.h"
+
 #include <SPI.h>
-#if !defined(__LIBMAPLE__)
-#define USE_STM32_DMA 0
-#undef SD_USE_CUSTOM_SPI
+
+#if defined(USE_SDFAT)
+#include <SdFat.h>
+#define _File SdFile
+extern SdFat SD;
+#else
+#include "STM32SD.h"
+#define _File File
 #endif
-#include "SdFat.h"
-#include "U8g2lib.h"
+
 #include "DataStore.h"
+
+
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-#define FASTLED_ALLOW_INTERRUPTS 0
-//#define FASTLED_INTERRUPT_RETRY_COUNT 1
-#include "FastLED.h"
+  #if defined(USES_ADAFRUIT_NPX)
+    #include <Adafruit_NeoPixel.h>
+    #include "lib8tion/lib8tion.h"
+  #else
+    #define FASTLED_ALLOW_INTERRUPTS      0
+    #define FASTLED_INTERRUPT_RETRY_COUNT 1
+    #define FASTLED_USE_PROGMEM           0
+    //#define FASTLED_FORCE_SOFTWARE_PINS   1
+    #include <FastLED.h>
+  #endif
 #endif
 #include "HAL/HAL.h"
 #include "ZStepperLib.h"
+
+#if defined(USE_ZSERVO)
 #include "ZServo.h"
-#include "ZPortExpander.h"
+#else
+#include "Servo.h"
+#endif
+
 #include "ZFan.h"
 #include "ZEStopMux.h"
 #include "DuetLaserSensor.h"
+
 #if defined(HAS_TMC_SUPPORT)
 #include <TMCStepper.h>
-#include "SoftwareSerial.h"
 #endif
+
+#undef TIMER_SERIAL
+#if defined(__STM32F1XX) || defined(_STM32F4XX)
+  #define TIMER_SERIAL TIM5
+#elif defined(__STM32G0XX)
+  #define TIMER_SERIAL TIM17
+#endif
+#include <SoftwareSerial.h>
+
 #if defined(MULTISERVO)
 #include <Adafruit_PWMServoDriver.h>
 #endif
 
+#include "Debug.h"
+
 #if !defined(USE_FASTLED_BACKLIGHT) && !defined(USE_FASTLED_TOOLS)
-#define CRGB uint32_t
-#endif
-
-#if defined(__STM32F1__)
-#if defined(__LIBMAPLE__)
-#include <wirish.h>
-#include <libmaple/gpio.h>
-#include <USBComposite.h>
+  #define CRGB uint32_t
 #else
-#include <wiring.h>
-#endif
-#if defined(__LIBMAPLE__)
-extern USBMassStorage MassStorage;
-extern USBCompositeSerial CompositeSerial;
-#endif
-#elif defined(__STM32F4__)
-#include <wirish.h>
-#include <libmaple/gpio.h>
-#ifndef _BV
-#define _BV(bit) (1 << (bit))
-#endif
+  #if defined(USES_ADAFRUIT_NPX)
+    #define CRGB uint32_t
+  #endif
 #endif
 
-#if defined(__STM32F1__) || defined(__STM32F4__)
+#if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+  #include <wiring.h>
+  #include "pinconfig.h"
+  
+  #ifndef _BV
+    #define _BV(bit) (1 << (bit))
+  #endif
+
   #if defined(__LIBMAPLE__)
-  #undef sprintf_P
-  #define sprintf_P(s, f, ...) sprintf(s, f, ##__VA_ARGS__)
-  #define vsnprintf_P vsnprintf
+    #undef sprintf_P
+    #define sprintf_P(s, f, ...) sprintf(s, f, ##__VA_ARGS__)
+    #define vsnprintf_P vsnprintf
   #endif
 #endif
 
@@ -114,16 +140,34 @@ extern USBCompositeSerial CompositeSerial;
 #define SERVO_OPEN              0
 #define SERVO_CLOSED            1
 
-#define LAST_INTERVAL           9
 
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
 // used for internal hardware debugging only - will produce by default a 500Hz signal on the output pin
-#define FLIPDBG        \
-  if (DEBUG_PIN != -1) \
-    digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN));
+  #if defined(DEBUG_PIN_NAME)
+    #define FLIPDBG        \
+      if (DEBUG_PIN > 0) { \
+        digitalToggleFast(DEBUG_PIN_NAME); \
+      }
+  #else
+    #define FLIPDBG        \
+      if (DEBUG_PIN > 0) { \
+        digitalWrite(DEBUG_PIN, !digitalRead(DEBUG_PIN)); \
+      }
+  #endif
 #endif
 
 #define ArraySize(arr) (sizeof(arr) / sizeof(arr[0]))
+
+#if defined(USE_SDFAT)
+#include <SdFat.h>
+#define _File SdFile
+#define __fopen(file_handle, file_name, file_mode) file_handle.open(file_name, file_mode)
+extern SdFat SD;
+#else
+#include "STM32SD.h"
+#define _File File
+#define __fopen(file_handle, file_name, file_mode) (file_handle = SD.open(file_name, file_mode))
+#endif
 
 typedef enum {
   ABSOLUTE,
@@ -223,7 +267,7 @@ typedef struct {
   float         reinforceLength                       = 3.0f;
   bool          isSharedStepper                       = false;
   bool          externalStepper                       = false;
-  bool          useDuetLaser                          = false;
+  bool          useDuet                               = false;
   uint16_t      purgeSpeed                            = 5000;
   float         purgeLength                           = 0;
   bool          useEndstop2                           = false;
@@ -251,6 +295,8 @@ typedef struct {
   char          deviceName[MAX_BUTTON_LEN]            = {0};
   uint16_t      dbgFreq                               = 500;
   bool          invertDuet                            = false;
+  bool          allowSyncSteppers                     = true;
+  uint8_t       dbgLevel                              = W|I|SP;
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;
@@ -261,11 +307,16 @@ extern GCodeFunctions           gCodeFuncsG[];
 extern ZStepper                 steppers[];
 extern ZTimer                   stepperTimer;
 extern ZTimer                   gpTimer;
-extern ZTimer                   fastLEDTimer;
 extern ZTimer                   servoTimer;
+#if defined(USE_ZSERVO)
 extern ZServo                   servoWiper;
 extern ZServo                   servoLid;
 extern ZServo                   servoCutter;
+#else
+extern Servo                    servoWiper;
+extern Servo                    servoLid;
+extern Servo                    servoCutter;
+#endif
 extern ZFan                     fan;
 extern ZEStopMux                splitterMux;
 
@@ -274,15 +325,25 @@ extern LeoNerdEncoder           encoder;
 #else
 extern ClickEncoder             encoder;
 #endif
+
 #if defined(USE_FASTLED_BACKLIGHT)
-extern CLEDController*          cBackLight;
-extern CRGB                     leds[];
+  #if !defined(USES_ADAFRUIT_NPX)
+    extern CLEDController*       cBackLight;
+    extern CRGB                  leds[];
+  #else
+    extern Adafruit_NeoPixel*    cBackLight;
+  #endif
 #endif
+
 #if defined(USE_FASTLED_TOOLS)
-extern CLEDController*          cTools;
-extern CRGB                     ledsTool[];
-#else
+  #if !defined(USES_ADAFRUIT_NPX)
+    extern CLEDController*       cTools;
+    extern CRGB                  ledsTool[];
+  #else
+    extern Adafruit_NeoPixel*   cTools;
+  #endif
 #endif
+
 #if defined(MULTISERVO)
 extern Adafruit_PWMServoDriver  servoPwm;
 extern int8_t                   servoMapping[];
@@ -297,6 +358,7 @@ extern volatile byte            nextStepperFlag;
 extern volatile byte            remainingSteppersFlag;
 extern volatile unsigned long   lastEncoderButtonTime;
 extern int8_t                   toolSelected;
+extern int8_t                   currentSerial;
 extern PositionMode             positionMode;
 extern String                   serialBuffer0, serialBuffer2, serialBuffer9, traceSerial2;
 extern char                     tuneStartup[];
@@ -306,7 +368,6 @@ extern char                     tuneLongBeep[];
 extern char                     tuneEncoder[];
 extern bool                     displayingUserMessage;
 extern uint16_t                 userMessageTime;
-extern bool                     testMode;
 extern bool                     feederJammed;
 extern volatile bool            parserBusy;
 extern volatile bool            isPwrSave;
@@ -315,14 +376,12 @@ extern volatile bool            sendingResponse;
 extern volatile bool            showMenu;
 extern bool                     maintainingMode;
 extern volatile double          lastDuetPos;
-extern DuetLaserSensor          duetLS;
 extern String                   wirelessHostname;
 extern volatile bool            initDone;
 extern volatile bool            leoNerdBlinkGreen;
 extern volatile bool            leoNerdBlinkRed;
 extern bool                     forceStopMenu;
 extern uint16_t                 sequence[][3];
-extern bool                     timerRunning;
 extern uint8_t                  remoteKey;
 extern bool                     settingsChanged;
 extern Stream                   *logSerial;
@@ -336,7 +395,6 @@ extern volatile uint8_t         fastLedHue;
 extern volatile bool            fastLedStatus;
 extern volatile bool            fastLedRefresh;
 extern volatile uint8_t         lastFastLedStatus;
-extern volatile bool            fastLedFadeFlag;
 extern volatile bool            isIdle;
 extern bool                     tmcWarning;
 extern bool                     isTestrun;
@@ -347,11 +405,12 @@ extern volatile bool            sdRemoved;
 extern char                     firmware[];
 extern bool                     gotFirmware;
 extern int32_t                  uploadLen;
-extern SdFile                   upload;
-extern bool                     isUpload;
+extern _File                    upload;
+extern volatile bool            isUpload;
 extern bool                     splitterEndstopChanged;
 extern bool                     asyncDDE;
-extern bool                     refreshingDisplay;
+extern volatile bool            refreshingDisplay;
+extern volatile uint16_t        flipDbgCnt;
 
 
 #ifdef HAS_TMC_SUPPORT
@@ -359,9 +418,9 @@ extern TMC2209Stepper           *drivers[];
 #endif
 
 
-#if defined(__STM32F1__) || defined(__STM32F4__)
-extern void                     playTone(int8_t pin, int16_t frequency, int16_t duration);
-extern void                     muteTone(int8_t pin);
+#if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+extern void                     playTone(pin_t pin, int16_t frequency, int16_t duration);
+extern void                     muteTone(pin_t pin);
 #define _tone(freq, duration)   playTone(BEEPER_PIN, freq, duration)
 #define _noTone()               muteTone(BEEPER_PIN)
 #else
@@ -369,11 +428,11 @@ extern void                     muteTone(int8_t pin);
 #define _noTone()               noTone(BEEPER_PIN)
 #endif
 
-
 extern void setupSerial();
 extern void setupSwSerial0();
 extern void setupDisplay();
 extern void setupTimers();
+extern void runTimers();
 extern void setupSteppers();
 extern void setupTMCDrivers();
 extern void setupServos();
@@ -381,7 +440,6 @@ extern void setupFan();
 extern void setupEStopMux();
 extern void setupRelay();
 extern void setupI2C();
-extern void setupDeviceName();
 extern void setupSerialBT();
 extern void setupBuzzer();
 extern void setupEncoder();
@@ -402,12 +460,14 @@ extern void drawSDStatus(int8_t stat);
 extern void drawFeed(bool updateBuffer = true);
 extern void drawSDRemoved(bool removed);
 extern void resetDisplay();
+extern void setDisplayPowerSave(bool state);
 extern bool selectorEndstop();
 extern bool revolverEndstop();
 extern bool feederEndstop(int8_t index = 1);
 extern bool showFeederLoadedMessage();
 extern bool showFeederLoadMessage();
 extern bool showFeederFailedMessage(int8_t state);
+extern bool showFeederBlockedMessage();
 extern uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons);
 extern bool moveHome(int8_t index, bool showMessage = true, bool checkFeeder = true);
 extern bool loadFilament(bool showMessage = true);
@@ -441,7 +501,15 @@ extern void setSignalPort(uint8_t port, bool state);
 extern void signalNoTool();
 extern void signalDuetBusy();
 extern void signalDuetReady();
+#if defined(USE_ZSERVO)
 extern ZServo* getServoInstance(int8_t servoNum);
+#else
+extern Servo* getServoInstance(int8_t servoNum);
+#endif
+extern void attachServo(int8_t servoNum, pin_t pin);
+extern void detachServo(int8_t servoNum);
+extern void setServoMaxCycles(int8_t servoNum, uint8_t cycles);
+extern bool isServoPulseComplete(int8_t servoNum);
 extern bool setServoPos(int8_t servoNum, uint8_t degree);
 extern bool setServoMS(int8_t servoNum, uint16_t microseconds);
 extern void setServoLid(uint8_t pos);
@@ -449,33 +517,34 @@ extern void setServoMinPwm(int8_t servoNum, uint16_t pwm);
 extern void setServoMaxPwm(int8_t servoNum, uint16_t pwm);
 extern void disableServo(int8_t servoNum);
 extern void enableServo(int8_t servoNum);
+extern void setServoTickResolution(int8_t servoNum);
 extern void getStoredData();
 extern bool readTune(const char *filename, char* buffer, size_t length);
 extern void readSequences();
+extern bool readDebugLevel();
 extern bool readConfig();
 extern bool readTmcConfig();
 extern bool readMaterials();
 extern bool readServoMapping();
 extern bool readRevolverMapping();
-extern bool writeConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
-extern bool writeMainConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
-extern bool writeSteppersConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
-extern bool writeTmcConfig(Print *dumpTo = nullptr, bool useWebInterface = false);
-extern bool writeServoMapping(Print *dumpTo = nullptr, bool useWebInterface = false);
-extern bool writeMaterials(Print *dumpTo = nullptr, bool useWebInterface = false);
-extern bool writeSwapTools(Print *dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeConfig(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeMainConfig(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeSteppersConfig(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeTmcConfig(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeServoMapping(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeMaterials(Print* dumpTo = nullptr, bool useWebInterface = false);
+extern bool writeSwapTools(Print* dumpTo = nullptr, bool useWebInterface = false);
 extern bool writeRevolverMapping(Print* dumpTo = nullptr, bool useWebInterface = false);
 extern bool writefeedLoadState(Print* dumpTo = nullptr, bool useWebInterface = false);
 extern bool deserializeSwapTools(const char* cfg);
 extern bool saveConfig(String& buffer);
 extern bool serializeTMCStats(Print* out, uint8_t axis, int8_t version, bool isStealth, uint16_t powerCfg, uint16_t powerRms, uint16_t microsteps, bool ms1, bool ms2, const char* uart, const char* diag, const char* ola, const char* olb, const char* s2ga, const char* s2gb, const char* ot_stat);
-extern Print* openCfgFileWrite(const char* filename);
+extern _File* openCfgFileWrite(const char* filename);
 extern void closeCfgFile();
 extern bool checkAutoClose();
 extern void resetAutoClose();
 extern bool checkUserMessage();
 extern void setPwrSave(int8_t state);
-extern void __debugS(const char *fmt, ...);
 extern void __log(const char *fmt, ...);
 extern void __terminal(const char *fmt, ...);
 extern void setAbortRequested(bool state);
@@ -495,25 +564,29 @@ extern void drawTestrunMessage(unsigned long loop, char *msg);
 extern bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char *files);
 extern void testRun(const char *fname);
 extern void moveFeeder(float distanceMM);
-extern void overrideStepX();
-extern void overrideStepY();
-extern void overrideStepZ();
+extern void overrideStepX(pin_t pin);
+extern void overrideStepY(pin_t pin);
+extern void overrideStepZ(pin_t pin);
 extern void endstopEventY();
 extern void endstopEventZ();
 extern void endstopEventZ2();
+extern void isrEndstopX();
+extern void isrEndstopY();
+extern void isrEndstopZ();
+extern void isrEndstopZ2();
 extern bool checkDuetEndstop();
 extern bool checkSplitterEndstop();
 extern void readSplitterEndstops();
 extern void isrSplitterEndstops();
 extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);
-extern void isrStepperHandler();
+extern void isrStepperTimerHandler();
 extern void isrGPTimerHandler();
 extern void isrFastLEDTimerHandler();
 extern void isrServoTimerHandler();
 extern void isrStallDetectedX();
 extern void isrStallDetectedY();
 extern void isrStallDetectedZ();
-extern void refreshStatus(bool withLogo, bool feedOnly);
+extern void refreshStatus(bool feedOnly = false);
 extern void every10ms();
 extern void every20ms();
 extern void every50ms();
@@ -599,7 +672,6 @@ extern void setFastLEDToolsWarning();
 extern void setFastLEDToolsOk();
 extern void refreshFastLED();
 
-extern void showDuetLS();
 extern void switchFeederStepper(uint8_t stepper);
 extern void removeFirmwareBin();
 extern void showMemInfo(int8_t serial);
@@ -613,7 +685,7 @@ extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool 
 
 extern void listTextFile(const char* filename PROGMEM, int8_t serial);
 extern void listHelpFile(const char* filename PROGMEM, int8_t serial);
-extern const char *loadMenu(const char* filename PROGMEM, uint8_t ordinals[], size_t maxLen);
+extern const char *loadMenu(const char* filename PROGMEM, int ordinals[], size_t maxLen);
 extern const char *loadOptions(const char* filename PROGMEM, size_t maxLen);
 extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* ext, uint16_t maxLen);
 
@@ -625,3 +697,18 @@ extern void resetUpload();
 
 extern bool loadToSplitter(bool showMessage);
 extern bool unloadFromSplitter(bool showMessage);
+
+extern void calcHwDebugCounter();
+
+extern void showToolLeds();
+extern void showBacklightLeds();
+#if defined(USES_ADAFRUIT_NPX)
+  #if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
+    extern uint32_t ColorRGB(uint8_t r, uint8_t g, uint8_t b);
+    extern void ColorToRGB(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b);
+    extern void nscale8(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t scale);
+    extern void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy);
+    extern void assHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb);
+  #endif
+#endif 
+

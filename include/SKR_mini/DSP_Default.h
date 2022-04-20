@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  * Pins configuration file for "standard" 1701 RRF Display
  */
 #pragma once
-#pragma message "Compiling for Standard RRF Display"
+//#pragma message "Compiling for Standard RRF Display"
 
 #define DSP_DATA_PIN        -1      // USE MOSI
 #define DSP_CS_PIN          PB7     // EXP1.5 = LCD_PINS_RS = ST9720 CS

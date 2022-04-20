@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2021 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,11 +74,9 @@ void ZTimer::setupTimer(timerNum_t timer, uint16_t prescaler, timerVal_t compare
 
   _timer = timer;
 
-  noInterrupts();
   hw_timer_t* hwTimer = timers[_timer].timer = timerBegin(_timer, prescaler, true);
   timerAttachInterrupt(hwTimer, ((void (*[])(void)) { &ISR1, &ISR2, &ISR3, &ISR4 })[_timer], true);
   timerAlarmWrite(hwTimer, compare, true);
-  interrupts();
 }
 
 void ZTimer::setupHook(void (*function)(void)) {

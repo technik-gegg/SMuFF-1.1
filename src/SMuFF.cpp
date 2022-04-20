@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,73 +17,50 @@
  *
  */
 #include "SMuFF.h"
-#include "InputDialogs.h"
 
-#if !defined(USE_DUET3D)
 Stream                    *debugSerial = &Serial2;        // send debug output to...
 Stream                    *logSerial = &Serial;           // send logs to USB by default
 Stream                    *terminalSerial = &Serial2;     // send terminal emulation output to ...
-#else
-// Duet3D uses Serial 1 for communication, Serial 3 for PanelDue (optional)
-// in this case, all debug outputs are sent to USB serial
-Stream                    *debugSerial = &Serial;         // send debug output to USB
-Stream                    *logSerial = &Serial;           // send logs to USB by default
-Stream                    *terminalSerial = &Serial;      // send terminal emulation output to USB
-#endif
 
-#if defined(USE_SW_SERIAL)
-SoftwareSerial            swSer0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);  // mainly for testing purpose
-#endif
-
-#ifdef DEBUG
-bool                      testMode = true;
-#else
-bool                      testMode = false;
+#if defined(USE_SW_SERIAL0)
+SoftwareSerial            swSerial0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);  // mainly for testing purpose
 #endif
 
 dspDriver                 display = INIT_DSP();           // initialize display driver (see macro in according Display_xxx.h)
 ZStepper                  steppers[NUM_STEPPERS];
 ZTimer                    stepperTimer;
 ZTimer                    gpTimer;
-ZTimer                    fastLEDTimer;
+#if defined(USE_ZSERVO)
 ZTimer                    servoTimer;
 ZServo                    servoWiper;
 ZServo                    servoLid;
 ZServo                    servoCutter;
+#else
+Servo                     servoWiper;
+Servo                     servoLid;
+Servo                     servoCutter;
+#endif
 ZFan                      fan;
-DuetLaserSensor           duetLS;
+
+#if defined(__STM32G0XX)
+HardwareSerial            Serial4(RX4_PIN, TX4_PIN);
+#endif
+
 
 #if defined(USE_LEONERD_DISPLAY)
-LeoNerdEncoder            encoder(I2C_ENCODER_ADDRESS, -1);
+LeoNerdEncoder            encoder(I2C_ENCODER_ADDRESS);
 #else
-ClickEncoder              encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
-#endif
-
-#if defined(__STM32F1__) || defined(__STM32F4__)
-#if defined(USE_COMPOSITE_SERIAL)
-USBMassStorage            MassStorage;
-USBCompositeSerial        CompositeSerial;
-#endif
-#if defined(USE_SPLITTER_ENDSTOPS)
-ZEStopMux                 splitterMux;
-#endif
-#if defined(__LIBMAPLE__)
-  #if defined(__STM32F1__)
-  volatile uint32_t         *stepper_reg_X = &((PIN_MAP[X_STEP_PIN].gpio_device)->regs->BSRR);
-  volatile uint32_t         *stepper_reg_Y = &((PIN_MAP[Y_STEP_PIN].gpio_device)->regs->BSRR);
-  volatile uint32_t         *stepper_reg_Z = &((PIN_MAP[Z_STEP_PIN].gpio_device)->regs->BSRR);
-  uint32_t                  pinMask_X = BIT(PIN_MAP[X_STEP_PIN].gpio_bit);
-  uint32_t                  pinMask_Y = BIT(PIN_MAP[Y_STEP_PIN].gpio_bit);
-  uint32_t                  pinMask_Z = BIT(PIN_MAP[Z_STEP_PIN].gpio_bit);
+  #if !defined(USE_SERIAL_DISPLAY)
+  ClickEncoder            encoder(ENCODER1_PIN, ENCODER2_PIN, ENCODER_BUTTON_PIN, 4);
   #else 
-  volatile uint32           *stepper_reg_X = &(digitalPinToPort(X_STEP_PIN)->regs->BSRR);
-  volatile uint32           *stepper_reg_Y = &(digitalPinToPort(Y_STEP_PIN)->regs->BSRR);
-  volatile uint32           *stepper_reg_Z = &(digitalPinToPort(Z_STEP_PIN)->regs->BSRR);
-  uint32_t                  pinMask_X = digitalPinToBitMask(X_STEP_PIN);
-  uint32_t                  pinMask_Y = digitalPinToBitMask(Y_STEP_PIN);
-  uint32_t                  pinMask_Z = digitalPinToBitMask(Z_STEP_PIN);
+  ClickEncoder            encoder(0, 0, 0, 0);
   #endif
 #endif
+
+#if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+  #if defined(USE_SPLITTER_ENDSTOPS)
+  ZEStopMux               splitterMux;
+  #endif
 #endif
 
 #ifdef HAS_TMC_SUPPORT
@@ -103,7 +80,6 @@ String                    serialBuffer0, serialBuffer1, serialBuffer2, serialBuf
 volatile byte             nextStepperFlag = 0;
 volatile byte             remainingSteppersFlag = 0;
 int8_t                    toolSelections[MAX_TOOLS];
-volatile uint8_t          fastLedHue = 0;
 uint8_t                   remoteKey = REMOTE_NONE;
 volatile uint16_t         bracketCnt = 0;
 volatile uint16_t         jsonPtr = 0;
@@ -114,12 +90,10 @@ uint16_t                  speedIncrement = 5; // increment for speeds in menus
 uint32_t                  pwrSaveTime;
 uint32_t                  uploadStart = 0;
 uint32_t                  lastEvent = 0;
-static volatile unsigned  generalCounter = 0;
+volatile uint16_t         gpTimer1ms = 0;
 static volatile unsigned  tickCounter = 0;
 static volatile unsigned  fastLEDTickCounter = 0;
 volatile unsigned long    lastEncoderButtonTime = 0;
-bool                      timerRunning = false;
-bool                      fastLEDTimerRunning = false;
 volatile bool             sdRemoved = false;
 volatile bool             initDone = false;   // enables sending periodical status information to serial ports
 volatile bool             isPwrSave = false;
@@ -132,62 +106,116 @@ bool                      isQuote = false;
 bool                      isFuncKey = false;
 bool                      isCtlKey = false;
 bool                      ignoreQuotes = false;
-bool                      isUpload = false;
+volatile bool             isUpload = false;
 bool                      isReceiving = false;
+volatile bool             refreshingDisplay = false;
+volatile uint16_t         flipDbgCnt;
+volatile uint32_t         __systick = 0;        // for benchmarking only
 
-IntervalHandler intervalHandlers[] = {
-    {  10,   10, every10ms}, 
-    {  20,   20, every20ms}, 
-    {  50,   50, every50ms}, 
-    { 100,  100, every100ms}, 
-    { 250,  250, every250ms}, 
-    { 500,  500, every500ms}, 
-    {1000, 1000, every1s}, 
-    {2000, 2000, every2s}, 
-    {5000, 5000, every5s}
+volatile IntervalHandler intervalHandlers[] = {
+    {  10, 0, every10ms}, 
+    {  20, 0, every20ms}, 
+    {  50, 0, every50ms}, 
+    { 100, 0, every100ms}, 
+    { 250, 0, every250ms}, 
+    { 500, 0, every500ms}, 
+    {1000, 0, every1s}, 
+    {2000, 0, every2s}, 
+    {5000, 0, every5s}
 };
 
+// forward declarations of some locally used functions
+void startStepperInterval();
+void fncKey1();
+void fncKey2();
+void fncKey3();
+void fncKey4();
+void loopEx();
 
-void overrideStepX() {
-#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
-  *stepper_reg_X = pinMask_X;
-  if (smuffConfig.stepDelay[SELECTOR] > 0)
-    delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
-  *stepper_reg_X = pinMask_X << 16;
-#else
-  STEP_HIGH_X
-  if (smuffConfig.stepDelay[SELECTOR] > 0)
-    delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
-  STEP_LOW_X
-#endif
+//=====================================================================================================
+// Benchmarking helper functions
+//=====================================================================================================
+#if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+void HAL_SYSTICK_Callback(void) {
+  __systick++;    // 1000 Hz frequency
+  // decrement all milliseconds counters for periodic functions and
+  // set a flag when the timeout has been reached
+  for (uint8_t i = 0; i < ArraySize(intervalHandlers); i++) {
+    intervalHandlers[i].val--;
+    if (intervalHandlers[i].val <= 0) {
+      intervalMask |= _BV(i);
+      intervalHandlers[i].val = intervalHandlers[i].period;
+    }
+  }
 }
 
-void overrideStepY() {
-#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
-  *stepper_reg_Y = pinMask_Y;
-  if (smuffConfig.stepDelay[REVOLVER] > 0)
-    delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
-  *stepper_reg_Y = pinMask_Y << 16;
-#else
-  STEP_HIGH_Y
-  if (smuffConfig.stepDelay[REVOLVER] > 0)
-    delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
-  STEP_LOW_Y
-#endif
+#define DELAY_LOOP(STPR)  for(int i=0; i < smuffConfig.stepDelay[STPR]; i++) asm("NOP");
+
+volatile uint32_t        *stepper_reg_X = &(digitalPinToPort(X_STEP_PIN)->BSRR);
+volatile uint32_t        *stepper_reg_Y = &(digitalPinToPort(Y_STEP_PIN)->BSRR);
+volatile uint32_t        *stepper_reg_Z = &(digitalPinToPort(Z_STEP_PIN)->BSRR);
+// preset of set/reset values to make the interrupt routine faster
+uint32_t                  pinMask_Xs = digitalPinToBitMask(X_STEP_PIN);
+uint32_t                  pinMask_Ys = digitalPinToBitMask(Y_STEP_PIN);
+uint32_t                  pinMask_Zs = digitalPinToBitMask(Z_STEP_PIN);
+uint32_t                  pinMask_Xr = digitalPinToBitMask(X_STEP_PIN) << 16;
+uint32_t                  pinMask_Yr = digitalPinToBitMask(Y_STEP_PIN) << 16;
+uint32_t                  pinMask_Zr = digitalPinToBitMask(Z_STEP_PIN) << 16;
+
+volatile uint32_t         *debugPin = &(digitalPinToPort(DEBUG_PIN)->BSRR);
+uint32_t                  pinMask_Debug = digitalPinToBitMask(DEBUG_PIN);
+bool                      debugToggle = false;
+
+void fastFlipDbg() {
+  *debugPin = (debugToggle) ? pinMask_Debug : pinMask_Debug << 16;
+  debugToggle = !debugToggle;
 }
 
-void overrideStepZ() {
-#if defined(__LIBMAPLE__) && (defined(__STM32F1__) || defined(__STM32F4__))
-  *stepper_reg_Z = pinMask_Z;
-  if (smuffConfig.stepDelay[FEEDER] > 0)
-    delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
-  *stepper_reg_Z = pinMask_Z << 16;
-#else
-  STEP_HIGH_Z
-  if (smuffConfig.stepDelay[FEEDER] > 0)
-    delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
-  STEP_LOW_Z
 #endif
+
+//=====================================================================================================
+// Override functions called by ZStepper library
+//=====================================================================================================
+
+void overrideStepX(pin_t pin) {
+  #if defined(X_STEP_PIN_NAME)
+    *stepper_reg_X = pinMask_Xs;
+    DELAY_LOOP(SELECTOR)
+    *stepper_reg_X = pinMask_Xr;
+  #else
+    STEP_HIGH_X
+    delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
+    STEP_LOW_X
+  #endif
+}
+
+void overrideStepY(pin_t pin) {
+  #if defined(Y_STEP_PIN_NAME)
+    *stepper_reg_Y = pinMask_Ys;
+    DELAY_LOOP(REVOLVER)
+    *stepper_reg_Y = pinMask_Yr;
+  #else
+    STEP_HIGH_Y
+    delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
+    STEP_LOW_Y
+  #endif
+}
+
+void overrideStepZ(pin_t pin) {
+  #if defined(Z_STEP_PIN_NAME)
+    *stepper_reg_Z = pinMask_Zs;
+    DELAY_LOOP(FEEDER)
+    *stepper_reg_Z = pinMask_Zr;
+  #else
+    STEP_HIGH_Z
+    delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
+    STEP_LOW_Z
+  #endif
+}
+
+
+void endstopEventX() {
+  // add your code here it you want to hook into the endstop event for the Selector
 }
 
 void endstopEventY() {
@@ -202,286 +230,220 @@ void endstopEventZ2() {
   // add your code here it you want to hook into the 2nd endstop event for the Feeder
 }
 
-/*
-  Interrupt handler for StallGuard on TMC2209 (X-Axis/Selector)
- */
-void isrStallDetectedX() {
-  steppers[SELECTOR].stallDetected();
-}
+
+//=====================================================================================================
+// ISR handler functions
+//=====================================================================================================
 
 /*
-  Interrupt handler for StallGuard on TMC2209 (Y-Axis/Revolver)
+  Interrupt handler for Endstops
  */
-void isrStallDetectedY() {
-  steppers[REVOLVER].stallDetected();
+void isrEndstopX() {
+  int hit = (int)digitalRead(steppers[SELECTOR].getEndstopPin(1))==steppers[SELECTOR].getEndstopState(1);
+  steppers[SELECTOR].setEndstopHit(hit, 1);
+  steppers[SELECTOR].adjustPositionOnEndstop(1);
+  if(hit)
+    endstopEventX();
+  __debugS(DEV, PSTR("X Hit"));
+}
+
+void isrEndstopY() {
+  int hit = (int)digitalRead(steppers[REVOLVER].getEndstopPin(1))==steppers[REVOLVER].getEndstopState(1);
+  steppers[REVOLVER].setEndstopHit(hit, 1);
+  steppers[REVOLVER].adjustPositionOnEndstop(1);
+  if(hit)
+    endstopEventY();
+  __debugS(DEV, PSTR("Y Hit"));
+}
+
+void isrEndstopZ() {
+  int hit = (int)digitalRead(steppers[FEEDER].getEndstopPin(1))==steppers[FEEDER].getEndstopState(1);
+  steppers[FEEDER].setEndstopHit(hit, 1);
+  steppers[FEEDER].adjustPositionOnEndstop(1);
+  if(hit)
+    endstopEventZ();
+  __debugS(DEV, PSTR("Z Hit"));
+}
+
+void isrEndstopZ2() {
+  int hit = (int)digitalRead(steppers[FEEDER].getEndstopPin(2))==steppers[FEEDER].getEndstopState(2);
+  steppers[FEEDER].setEndstopHit(hit, 2);
+  steppers[FEEDER].adjustPositionOnEndstop(2);
+  if(hit)
+    endstopEventZ2();
 }
 
 /*
-  Interrupt handler for StallGuard on TMC2209 (Z-Axis/Feeder)
+  Interrupt handler for StallGuard on TMC2209
  */
-void isrStallDetectedZ() {
-  steppers[FEEDER].stallDetected();
-}
+void isrStallDetectedX() { steppers[SELECTOR].stallDetected(); }
+void isrStallDetectedY() { steppers[REVOLVER].stallDetected(); }
+void isrStallDetectedZ() { steppers[FEEDER].stallDetected(); }
 
-bool checkDuetEndstop() {
-  if (smuffConfig.useDuetLaser) {
-    return duetLS.getSwitch();
-  }
-  return false;
-}
 
+/*
+  Interrupt handler for FastLED
+*/
 void isrFastLEDTimerHandler() {
   #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
   if(!initDone || isUpload)
     return;
   fastLEDTickCounter++;
-  if(fastLEDTickCounter % 3 == 0) {   // every 60ms
-    fastLedHue++;                     // used for some color changing/fading effects
+  bool slowDown = fastLEDTickCounter % 25 != 0;
+  if(fastLEDTickCounter % 3 == 0) {         // about every 60ms
+    fastLedHue++;                           // used for some color changing/fading effects
   }
-  if(fastLEDTickCounter % 5 == 0) {  // about every 100ms
+  else if(fastLEDTickCounter % 5 == 0) {    // about every 100ms
     if(fastLedStatus > FASTLED_STAT_NONE) {
       setFastLEDStatus();
     }
     else {
       setFastLEDTools();
     }
-    if(servoLid.isPulseComplete())  // refresh FastLED only if the pulse cycle of the Lid servo is completed
-      refreshFastLED();             // otherwise it'll interrput the servo ISR and make it jitter
+    if(fastLedStatus == FASTLED_STAT_NONE) {     // slow down refresh if LED animation isn't being used
+      if(!smuffConfig.useIdleAnimation && slowDown)    // about every 500ms
+        return;
+    }
+    if(isServoPulseComplete(SERVO_LID))   // refresh FastLED only if the pulse cycle of the Lid servo is completed
+      refreshFastLED();                   // otherwise it'll interrupt the servo ISR and make it jitter
   }
-  #endif
-}
-
-void isrServoTimerHandler() {
-  #if !defined(MULTISERVO)
-  noInterrupts();
-  // call the servos interrupt routines frequently
-  isrServoHandler();
-  interrupts();
   #endif
 }
 
 /*
-  Handles the general purpose timer interrupt.
-  Fires every 50uS and thus increments the general counter
+  Interrupt handler for the general purpose timer
+  Fires every GPTIMER_RESOLUTION uS and thus increments the general counter
   every millisecond.
-  Also serves as a handler dispatcher for servos / encoder.
+  Serves also as a handler/dispatcher for periodicals / encoder / fan.
 */
 void isrGPTimerHandler() {
-  noInterrupts();
-  timerRunning = true;
+
+  #if defined(USE_ZSERVO)  
+  isrServoHandler();        // call servo handler
+  #endif
   tickCounter++; // increment tick counter
-  if (tickCounter % 20 == 0) {
+  if (tickCounter % gpTimer1ms == 0) {
     // each millisecond...
-    // decrement all milliseconds counters for periodic functions and
-    // set a flag when the timeout has been reached
-    for (uint8_t i = 0; i < LAST_INTERVAL; i++) {
-      intervalHandlers[i].val--;
-      if (intervalHandlers[i].val <= 0) {
-        intervalMask |= _BV(i);
-        intervalHandlers[i].val = intervalHandlers[i].period;
-      }
-    }
-    generalCounter++;
     if (initDone) {
-      #if !defined(USE_LEONERD_DISPLAY)
-      encoder.service();    // service the rotary encoder
+      #if !defined(USE_LEONERD_DISPLAY) && !defined(USE_SERIAL_DISPLAY)
+      encoder.service();      // service the rotary encoder
       #endif
+      isrFanTimerHandler();   // call the fan interrupt routines also every GPTIMER_RESOLUTION uS
     }
-    isrFanTimerHandler();   // call the fan interrupt routines also every 50uS
   }
   #ifdef FLIPDBG
-  uint16_t dbgCnt = (uint16_t)((float)(1/0.00005)/(smuffConfig.dbgFreq*2));
-  if (initDone && tickCounter % dbgCnt == 0) {
+  if (initDone && (tickCounter % flipDbgCnt == 0)) {
     FLIPDBG               // flips the debug pin polarity which is supposed to generate 
                           // a periodical signal (default: 500 Hz) for debug purposes
+                          // frequency can be modified in smuffConfig.dbgFreq
   }
   #endif
-
-  timerRunning = false;
-  interrupts();
 }
 
-void setup() {
-  serialBuffer0.reserve(30); // initialize serial comm. buffers
-  serialBuffer1.reserve(30);
-  serialBuffer2.reserve(30);
-  serialBuffer3.reserve(30);
+void isrSdCardDetected() {
+  sdRemoved = digitalRead(SD_DETECT_PIN) == HIGH;
+}
 
-// Setup a fixed baudrate until the config file was read.
-// This baudrate is the default setting on the ESP32 while
-// booting up, so exceptions thrown can be shown in terminal app
-#if !defined(USE_COMPOSITE_SERIAL)
-  Serial.begin(115200);
-#endif
-  if (CAN_USE_SERIAL1)
-    Serial1.begin(115200);
-  if (CAN_USE_SERIAL2)
-    Serial2.begin(115200);
-  if (CAN_USE_SERIAL3)
-    Serial3.begin(115200);
 
-  __debugS(PSTR("[ setup start ]"));
+//=====================================================================================================
+// ISR handler and helper functions needed for ZStepper library
+//=====================================================================================================
 
-#if defined(__BRD_FYSETC_AIOII) || defined(__BRD_SKR_MINI_E3DIP) || defined(__BRD_SKR_MINI) || defined(__BRD_SKR_MINI_E3)
-  // Disable JTAG for these boards!
-  // On the FYSETC AIOII it's because of the display DSP_DC_PIN/DOG_A0 signal (PA15 / JTDI).
-  // On the SKR MINI E3-DIP it's because of the buzzer signal (PA15 / JTDI).
-  // On the SKR MINI E3 V2.0 it's because of the SCL signal (PA15 / JTDI).
-  #if defined(__LIBMAPLE__)
-  disableDebugPorts();
-  #else
-  pinF1_DisconnectDebug(PA_15); // disable Serial wire JTAG configuration
-  #endif
-  __debugS(PSTR("[ debug ports disabled ]"));
-  #if defined(__BRD_FYSETC_AIOII) && !defined(USE_TWI_DISPLAY) && defined(STM32_REMAP_SPI)
-    afio_remap(AFIO_REMAP_SPI1); // remap SPI3 to SPI1 if a "normal" display is being used
-    __debugS(PSTR("[ SPI3 remapped to SPI1 ]"));
-  #endif
-#endif
+void isrStepperTimerHandler() {
 
-  initUSB();                // init the USB serial so it's being recognized by the Windows-PC
-#if defined(USE_COMPOSITE_SERIAL)
-  CompositeSerial.begin(115200);
-#endif
-  initFastLED();            // init FastLED if configured
-  initHwDebug();            // init hardware debugging
+  // fastFlipDbg();         // for debugging only
+  stepperTimer.stop();
+  timerVal_t tmp = stepperTimer.getOverflow();
 
-#if defined(USE_I2C)
-  // don't scan I2C if no I2C devices are being used; Scan will take ages
-  enumI2cDevices(1);
-  __debugS(PSTR("[ after enumI2cDevices (I2C1) ]"));
-#endif
-#if defined(USE_SPLITTER_ENDSTOPS)
-  enumI2cDevices(2);
-  __debugS(PSTR("[ after enumI2cDevices (I2C2) ]"));
-#endif
-//#endif
-  setupDisplay();           // setup display first in order to show error messages if neccessary
-  __debugS(PSTR("[ after setupDisplay ]"));
-  setupEncoder();           // setup encoder - only relevant on LeoNerd display
-  __debugS(PSTR("[ after setupEncoder ]"));
-  __debugS(PSTR("[ getting configs... ]"));
-  if (readConfig())
-  {                         // read SMUFF.json from SD-Card
-    readTmcConfig();        // read TMCDRVR.json from SD-Card
-    readServoMapping();     // read SERVOMAP.json from SD-Card
-    readMaterials();        // read MATERIALS.json from SD-Card
-    #if defined(SMUFF_V6S)
-    readRevolverMapping();  // read REVOLVERMAPS.json from SD-Card
-    #endif
+  register uint8_t mask;
+  for (uint8_t i=0; i < NUM_STEPPERS; i++) {
+    if (remainingSteppersFlag == 0)
+      break;
+    mask = _BV(i);
+    if (!(mask & remainingSteppersFlag))  // current stepper doesn't need movement, continue with next one
+      continue;
+
+    if (!(mask & nextStepperFlag)) {
+      // current stepper is not marked as the next one to move, adjust duration for next turn
+      steppers[i].subtractDuration(tmp);
+      continue;
+    }
+
+    if(steppers[i].handleISR()) {
+      remainingSteppersFlag &= ~mask;     // mark current stepper as finished if handleISR returned true
+      // __debugS(D, PSTR("[%s] done"), steppers[i].getDescriptor());
+    }
   }
-  setContrast(smuffConfig.lcdContrast); // reset contrast after reading config
-  __debugS(PSTR("[ after readConfig ]"));
-  testFastLED(false);       // run a test sequence on backlight FastLEDs
-  testFastLED(true);        // run a test sequence on tools FastLEDs
-  setupSerial();            // setup all serial ports
-  __debugS(PSTR("[ after setupSerial ]"));
-  setupSteppers();
-  __debugS(PSTR("[ after setupSteppers ]"));
-  setupTimers();
-  __debugS(PSTR("[ after setupTimers ]"));
-  setupServos();
-  __debugS(PSTR("[ after setupServos ]"));
-  setupRelay();
-  __debugS(PSTR("[ after setupRelay ]"));
-#ifdef HAS_TMC_SUPPORT
-  setupTMCDrivers();        // setup TMC drivers if any are used
-  __debugS(PSTR("[ after setupTMCdrivers ]"));
-#endif
-  setupSwSerial0();         // used only for testing purposes
-  setupBacklight();
-  setupDuetSignals();       // setup Duet3D signal pins
-  setupDuetLaserSensor();   // setup other peripherials
-  setupFan();
-  setupI2C();
-  getStoredData();          // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
-  #if defined(USE_SPLITTER_ENDSTOPS)
-  setupEStopMux();
-  __debugS(PSTR("[ after setupEStopMux ]"));
-  #endif
-  uint32_t now = millis();
-  readSequences();          // read sound files from SD-Card sounds folder
-  __debugS(PSTR("[ after readSequences ] (loading took %ld ms)"), millis()-now);
-
-  if (smuffConfig.homeAfterFeed)
-    moveHome(REVOLVER, false, false);
-  else
-    resetRevolver();
-  //__debugS(PSTR("[ DONE reset Revolver ]"));
-
-  sendStartResponse(0);     // send "start<CR><LF>" to USB serial interface
-  if (CAN_USE_SERIAL1)
-    sendStartResponse(1);   // send "start<CR><LF>" to all serial interfaces allowed to use
-  if (CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)
-    sendStartResponse(2);
-  if (CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)
-    sendStartResponse(3);
-
-  removeFirmwareBin();      // deletes the firmware.bin file to prevent re-flashing on each boot
-  refreshStatus(true, false);
-  
-  #if defined(__BRD_SKR_MINI_E3)  // applies only to E3 V1.2 and 2.0 with integrated stepper drivers
-  if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
-    __debugS(PSTR("\nWARNING: Your controller is equipped with onboard TMC stepper drivers"));
-    __debugS(PSTR("but at least one of them is not being initialized for UART mode and"));
-    __debugS(PSTR("thus, your stepper motor may overheat!"));
-    __debugS(PSTR("Please check and change your configuration accordingly!"));
-  }
-  #endif
-  __debugS(PSTR("[ startup tune ]"));
-  startupBeep();              // signal startup has finished
-  pwrSaveTime = millis();     // init value for LCD screen timeout
-  __debugS(PSTR("[ setup end ]"));
-  initDone = true;            // mark init done; enable periodically sending status, if configured
+  // fastFlipDbg();       // for debugging only
+  startStepperInterval();
 }
 
 void startStepperInterval() {
-  timerVal_t minDuration = 65535;
+  timerVal_t minDuration = 0xFFFF;
+
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
-    if ((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() < minDuration)
-      minDuration = steppers[i].getDuration();
+    // find shortest duration (overflow value) of all steppers in action
+    if ((_BV(i) & remainingSteppersFlag)) {
+      if(steppers[i].getInterruptFactor() == 0)
+        steppers[i].isLTDuration(&minDuration);
+    }
   }
 
   nextStepperFlag = 0;
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
-    if ((_BV(i) & remainingSteppersFlag) && steppers[i].getDuration() == minDuration)
+    // mark stepper with lowest duration to move next (pseudo sync)
+    if ((_BV(i) & remainingSteppersFlag) && (steppers[i].isDuration(minDuration) || steppers[i].checkInterrupt()))
       nextStepperFlag |= _BV(i);
   }
 
-  if (remainingSteppersFlag == 0) {
+  if (remainingSteppersFlag == 0) { // no more stepper movements pending, stop timer
+    // stop stepper timer
     stepperTimer.stop();
-    stepperTimer.setOverflow(65535);
+    stepperTimer.setOverflow(0x10000);
   }
   else {
+    // stepper movements still pending, set new stepper timer overflow value
     stepperTimer.setNextInterruptInterval(minDuration);
   }
 }
 
-void isrStepperHandler() {
-  stepperTimer.stop();
-  timerVal_t tmp = stepperTimer.getOverflow();
-  stepperTimer.setOverflow(65535);
+void calcSyncMovementFactor() {
 
+  if(!smuffConfig.allowSyncSteppers)
+    return;
+  
+  long maxTotal = 0;
+  uint8_t maxIdx = 0;
+
+  // find largest pending movement (most total steps)
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if (!(_BV(i) & remainingSteppersFlag))
       continue;
-
-    if (!(nextStepperFlag & _BV(i))) {
-      steppers[i].setDuration(steppers[i].getDuration() - tmp);
-      continue;
-    }
-
-    steppers[i].handleISR();
-    if (steppers[i].getMovementDone()) {
-      remainingSteppersFlag &= ~_BV(i);
+    long ts = steppers[i].getTotalSteps();
+    if(ts > maxTotal) {
+      maxTotal = ts;
+      maxIdx  = i;
     }
   }
-  startStepperInterval();
+
+  // find all smaller movements and set the factor proportionally, i.e.
+  // slow down movement so all steppers start and stop in sync
+  for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
+    if (!(_BV(i) & remainingSteppersFlag))
+      continue;
+    long ts = steppers[i].getTotalSteps();
+    if(i != maxIdx) {
+      steppers[i].setInterruptFactor(maxTotal/ts);
+      __debugS(D, PSTR("IntrFactor: %d [%s]"), steppers[i].getInterruptFactor(), steppers[i].getDescriptor());
+    }
+  }
 }
 
 void runNoWait(int8_t index) {
   if (index != -1)
     remainingSteppersFlag |= _BV(index);
+  else 
+    calcSyncMovementFactor();     // calculate movement factor if more than one stepper has to move
   startStepperInterval();
 }
 
@@ -510,30 +472,173 @@ void runAndWait(int8_t index) {
   }
 }
 
-bool refreshingDisplay = false;
+//=====================================================================================================
+// SETUP
+//=====================================================================================================
 
-void refreshStatus(bool withLogo, bool feedOnly) {
-  if(refreshingDisplay)
-    return;
-  if (initDone && !isPwrSave && !showMenu && !displayingUserMessage && !isTestrun && !isUpload) {
-    refreshingDisplay = true;
-    if (feedOnly) {
-      drawFeed();
-    }
-    else {
-      display.clearBuffer();
-      drawStatus();
-      display.updateDisplay();
-      // note to myself: if it's hanging here, there's something wrong with Timer 4 CH1 (STM32)
-    }
-    refreshingDisplay = false;
+void setup() {
+
+  const char* after = PSTR("[ \033[36m=== %-30s o.k. ===\033[0m ]");
+
+  serialBuffer0.reserve(30);  // initialize serial buffers
+  serialBuffer1.reserve(30);
+  serialBuffer2.reserve(30);
+  serialBuffer3.reserve(30);
+  readDebugLevel();           // read Debug Level settings from SD-Card
+
+  // Setup a fixed baudrate until the config file was read.
+  // This baudrate is the default setting on the ESP32 while
+  // booting up, so exceptions thrown can be shown in terminal app
+  Serial.begin(115200);
+  if (CAN_USE_SERIAL1) Serial1.begin(115200);
+  if (CAN_USE_SERIAL2) Serial2.begin(115200);
+  if (CAN_USE_SERIAL3) Serial3.begin(115200);
+
+  __debugS(SP, PSTR("[\033[35m setup start \033[0m]"));
+  
+  // ------------------------------------------------------------------------------------------------------
+  // Disable JTAG/SWI on these boards:
+  //  On the SKR E3-DIP it's because of the buzzer signal (PA15 / JTDI).
+  //  On the SKR E3 V2.0 it's because of the SCL signal (PA15 / JTDI).
+  // ------------------------------------------------------------------------------------------------------
+  // IMPORTANT: If debug ports are disabled, flashing the firmware / bootloader using ST-Link will fail!
+  //            Hence, if you need to flash the MCU using ST-Link at some point, better comment out
+  //            -D DISABLE_DEBUG_PORT in platformio.ini for that particular board.
+  // ------------------------------------------------------------------------------------------------------
+  #if defined(DISABLE_DEBUG_PORT)
+    pin_DisconnectDebug(PA_15);   // disable Serial wire JTAG configuration (STM32F1 only)
+    __debugS(D, PSTR("[\tdebug ports disabled ]"));
+  #endif
+  #if defined(STM32_REMAP_SPI)
+    afio_remap(AFIO_REMAP_SPI1); // remap SPI3 to SPI1 if a "normal" display is being used
+    __debugS(D, PSTR("[\tSPI3 remapped to SPI1 ]"));
+  #endif
+
+  initUSB();                // init the USB serial so it's being recognized by the Windows-PC
+  initFastLED();            // init FastLED if configured
+
+  #if defined(USE_I2C)
+    // don't scan I2C if no I2C devices are being used; Scan will take ages
+    enumI2cDevices(1);
+    __debugS(D, after, "enumerating I2C Devices on bus 1");
+  #endif
+  #if defined(USE_SPLITTER_ENDSTOPS)
+    enumI2cDevices(2);
+    __debugS(D, after, "enumerating I2C Devices on bus 2");
+  #endif
+
+  setupDisplay();                                     // setup display first in order to show error messages if neccessary
+  __debugS(SP, after, "setup Display");
+  #if !defined(USE_SERIAL_DISPLAY)
+    delay(250);
+    setupEncoder();                                   // setup encoder
+    __debugS(SP, after, "setup Encoder");
+  #endif
+
+  __debugS(DEV, PSTR("[\treading Configs... ]"));
+  if (readConfig()) {                                 // read SMUFF.json from SD-Card
+    readTmcConfig();                                  // read TMCDRVR.json from SD-Card
+    readServoMapping();                               // read SERVOMAP.json from SD-Card
+    readMaterials();                                  // read MATERIALS.json from SD-Card
+    #if defined(SMUFF_V6S)
+      readRevolverMapping();                          // read REVOLVERMAPS.json from SD-Card
+    #endif
   }
+  __debugS(SP, after, "read Config");
+  setContrast(smuffConfig.lcdContrast);               // reset display contrast after reading config
+  initHwDebug();                                      // init hardware debugging
+
+  setupSerial();                                      // setup all serial ports
+  __debugS(SP, after, "setup Serial");
+
+  if(smuffConfig.useDuet) {
+    // Duet3D uses Serial 1 for communication, Serial 3 for PanelDue (optional)
+    // in this case, all debug outputs are sent to USB serial
+    debugSerial = &Serial;                            // send debug output to USB
+    terminalSerial = &Serial;                         // send terminal emulation output to USB
+    __debugS(SP, PSTR("[\tdebug & terminal serials swapped for Duet3D/RRF]"));
+  }
+  setupTimers();                                      // setup all timers
+  __debugS(SP, after, "setup Timers");
+  setupSteppers();                                    // setup all steppers
+  __debugS(SP, after, "setup Steppers");
+  setupServos();                                      // setup all servos
+  __debugS(SP, after, "setup Servos");
+  setupRelay();                                       // setup relay board
+  __debugS(SP, after, "setup Relay");
+  #ifdef HAS_TMC_SUPPORT
+    setupTMCDrivers();                                  // setup TMC drivers if any are used
+    __debugS(SP, after, "setup TMC drivers");
+  #endif
+  testFastLED(false);                                 // run a test sequence on backlight FastLEDs
+  testFastLED(true);                                  // run a test sequence on tools FastLEDs
+
+  setupSwSerial0();                                   // used only for testing purposes
+  setupBacklight();                                   // setup display backlight
+  setupDuetSignals();                                 // setup Duet3D signal pins
+  setupFan();                                         // setup internal cooling fan
+  setupI2C();                                         // setup I2C/TWI devices
+  __debugS(SP, after, "setup Misc.");
+  getStoredData();                                    // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
+  
+  #if defined(USE_SPLITTER_ENDSTOPS)
+    setupEStopMux();                                  // setup enstops multiplexer if configured
+    __debugS(SP, after, "setup EStop Mux");
+  #endif
+  uint32_t now = millis();
+  readSequences();                                    // read sound files from SD-Card sounds folder
+  __debugS(D, PSTR("[\tloading sequences took %ld ms ]"), millis()-now);
+  __debugS(SP, after, "read Sequences");
+
+  if (smuffConfig.homeAfterFeed)
+    moveHome(REVOLVER, false, false);                 // home Revolver / Lid-Servo
+  else
+    resetRevolver();
+
+  removeFirmwareBin();                                // deletes the firmware.bin file to prevent re-flashing on each boot
+  __debugS(SP, after, "remove firmware.bin");
+
+  #if defined(SD_DETECT_PIN)                          // setup SD-Detect ISR
+    if(SD_DETECT_PIN > 0) {
+      attachInterrupt(digitalPinToInterrupt(SD_DETECT_PIN), isrSdCardDetected, CHANGE);
+      __debugS(D, PSTR("[\tSD-Card detect interrupt attached ]"));
+    }
+  #endif
+
+  #if defined(__BRD_SKR_MINI_E3)                      // applies only to E3 V1.2 and 2.0 / 3.0 with integrated stepper drivers
+    if(drivers[SELECTOR] == nullptr || drivers[FEEDER] == nullptr) {
+      __debugS(W, PSTR("\nWARNING: Your controller is equipped with onboard TMC stepper drivers"));
+      __debugS(W, PSTR("but at least one of them has not being initialized for UART mode"));
+      __debugS(W, PSTR("and thus, your stepper motor may overheat!"));
+      __debugS(W, PSTR("Please check and change your configuration accordingly!"));
+    }
+  #endif
+  
+  __debugS(D, PSTR("[ startup tune ]"));
+  startupBeep();                                        // signal startup has finished
+  __debugS(SP, PSTR("[\033[35m setup end \033[0m]"));
+
+  for (uint8_t i = 0; i < (uint8_t)ArraySize(intervalHandlers); i++) // init interval handler values
+    intervalHandlers[i].val = intervalHandlers[i].period;
+  gpTimer1ms = (uint16_t)(1000/GPTIMER_RESOLUTION);
+
+  sendStartResponse(0);                                 // send "start<CR><LF>" to USB serial interface
+  if (CAN_USE_SERIAL1)
+    sendStartResponse(1);                               // send "start<CR><LF>" to all serial interfaces allowed to use
+  if (CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)
+    sendStartResponse(2);
+  if (CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)
+    sendStartResponse(3);
+
+  pwrSaveTime = millis();                               // init value for LCD screen timeout
+  initDone = true;                                      // mark init done; enable periodically sending status, if configured
+  refreshStatus();
 }
 
 #ifdef HAS_TMC_SUPPORT
 void reportTMC(uint8_t axis, const char *PROGMEM msg) {
   // for now, only debug message (main screen will show "!" next to "TMC")
-  __debugS(PSTR("Driver %c: reports '%s'"), axis==FEEDER2 ? 'E' : 'X' + axis, msg);
+  __debugS(W, PSTR("Driver %c: reports '%s'"), axis==FEEDER2 ? 'E' : 'X' + axis, msg);
 }
 
 void monitorTMC(uint8_t axis) {
@@ -575,80 +680,37 @@ void monitorTMC(uint8_t axis) {
 }
 #endif
 
-/*
-* For testing only
-*/
-void loopEx() {
+//=====================================================================================================
+// LOOP and other functions
+//=====================================================================================================
 
-#if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
-  /*
-  if(interval1s) {
-    #if defined(USE_SW_SERIAL)
-    // for testing SoftwareSerial
-    swSer0.write('*');
-    swSer0.write('T');
-    swSer0.write('G');
-    #endif
-    interval1s = false;
-  }
-  */
-#endif
-
-}
-
-void fncKey1() {
-  if (strlen(smuffConfig.lButtonDown) > 0) {
-    parseGcode(String(smuffConfig.lButtonDown), -1);
-  }
-}
-
-void fncKey2() {
-  if (strlen(smuffConfig.lButtonHold) > 0) {
-    parseGcode(String(smuffConfig.lButtonHold), -1);
-  }
-}
-
-void fncKey3() {
-  if (strlen(smuffConfig.rButtonDown) > 0) {
-    parseGcode(String(smuffConfig.rButtonDown), -1);
-  }
-}
-
-void fncKey4() {
-  if (strlen(smuffConfig.rButtonHold) > 0) {
-    parseGcode(String(smuffConfig.rButtonHold), -1);
-  }
-  else {
-    // open / close LID servo by default
-    if (lidOpen)
-      setServoLid(SERVO_CLOSED);
-    else
-      setServoLid(SERVO_OPEN);
-  }
-}
+static bool sdRemovalSet = false;
+static bool firstLoop = false;
 
 void loop() {
+
+  // if(!firstLoop) {     // for extended debugging only
+  //   __debugS(D, PSTR("[ Looping... ]"));
+  //   firstLoop = true;
+  // }
 
   // Call periodical functions as the timeout has triggered.
   // Add your specific code there, if you need to have something
   // managed periodically.
   // The main loop is the better choice for dispatching, since it'll
   // allow uninterrupted serial I/O.
-  for (uint8_t i = 0; i < LAST_INTERVAL; i++) {
+  for (uint8_t i = 0; i < (uint8_t)ArraySize(intervalHandlers); i++) {
     if (_BV(i) & intervalMask) {
-      intervalHandlers[i].func();
+      if(intervalHandlers[i].func != nullptr)
+        intervalHandlers[i].func();
       intervalMask &= ~_BV(i);
     }
   }
 
-#if defined(USE_COMPOSITE_SERIAL)
-  MassStorage.loop();
-#endif
-
 #if defined(SD_DETECT_PIN)
   // message the user if the SD-Card gets removed
-  if (digitalRead(SD_DETECT_PIN) == HIGH) {
-    if (!sdRemoved) {
+  if (sdRemoved) {
+    if (!sdRemovalSet) {
       userBeep();
       leoNerdBlinkRed = true;
       setFastLEDStatus(FASTLED_STAT_ERROR);
@@ -657,8 +719,8 @@ void loop() {
       }
     }
     isIdle = false;
-    sdRemoved = true;
-    if((generalCounter % 500) == 0) {
+    sdRemovalSet = true;
+    if((__systick % 500) == 0) {
       char tmp[50];
       sprintf_P(tmp, P_SDCardRemoved);
       drawUserMessage(tmp);
@@ -667,31 +729,32 @@ void loop() {
   }
   else
   {
-    if (sdRemoved) {
+    if (sdRemovalSet) {
       if (initSD(false)) {
-        sdRemoved = false;
+        sdRemovalSet = false;
         leoNerdBlinkRed = false;
         setFastLEDStatus(FASTLED_STAT_NONE);
         lastEvent = millis();
-        refreshStatus(true, false);
+        refreshStatus();
       }
     }
-    else
-      sdRemoved = false;
   }
 #endif
 
   bool state = feederEndstop();
   if (state != lastZEndstopState) {
-    refreshStatus(true, false);
+    refreshStatus();
     lastZEndstopState = state;
   }
-  if(checkUserMessage()) {
-    pwrSaveTime = millis();
-  }
+  #if !defined(USE_SERIAL_DISPLAY)
+    if(checkUserMessage()) {
+      pwrSaveTime = millis();
+    }
+  #endif
 
-  isIdle = ((millis() - lastEvent) / 1000 >= (unsigned long)smuffConfig.powerSaveTimeout);
+  isIdle = ((uint16_t)((millis() - lastEvent) / 1000) >= smuffConfig.powerSaveTimeout);
 
+  #if !defined(USE_SERIAL_DISPLAY)
   int16_t turn;
   uint8_t button;
   bool isHeld, isClicked;
@@ -699,25 +762,25 @@ void loop() {
   if (!showMenu) {
     switch (remoteKey)
     {
-    case REMOTE_HOME:
-      remoteKey = REMOTE_NONE;
-      break;
-    case REMOTE_PF1:
-      fncKey1();
-      remoteKey = REMOTE_NONE;
-      break;
-    case REMOTE_PF2:
-      fncKey2();
-      remoteKey = REMOTE_NONE;
-      break;
-    case REMOTE_PF3:
-      fncKey3();
-      remoteKey = REMOTE_NONE;
-      break;
-    case REMOTE_PF4:
-      fncKey4();
-      remoteKey = REMOTE_NONE;
-      break;
+      case REMOTE_HOME:
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF1:
+        fncKey1();
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF2:
+        fncKey2();
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF3:
+        fncKey3();
+        remoteKey = REMOTE_NONE;
+        break;
+      case REMOTE_PF4:
+        fncKey4();
+        remoteKey = REMOTE_NONE;
+        break;
     }
 
     getInput(&turn, &button, &isHeld, &isClicked);
@@ -731,11 +794,13 @@ void loop() {
       lastEvent = millis();
       isIdle = false;
     }
+    #endif
+    
     if(!isIdle) {
       if(lastFastLedStatus != FASTLED_STAT_NONE) {
         setFastLEDStatus(FASTLED_STAT_NONE);
         #if defined(USE_FASTLED_BACKLIGHT)
-        setBacklightIndex(smuffConfig.backlightColor);       // turn back on the backlight
+        setBacklightIndex(smuffConfig.backlightColor);       // turn the backlight back on
         #endif
       }
     }
@@ -743,11 +808,12 @@ void loop() {
       if(smuffConfig.useIdleAnimation && lastFastLedStatus != FASTLED_STAT_MARQUEE) {
         setFastLEDStatus(FASTLED_STAT_MARQUEE);
         #if defined(USE_FASTLED_BACKLIGHT)
-        setBacklightIndex(0);       // turn off the backlight
+        setBacklightIndex(0);                               // turn the backlight off
         #endif
       }
     }
 
+    #if !defined(USE_SERIAL_DISPLAY)
     if ((button == MainButton && isClicked) || (button == WheelButton && isHeld)) {
       showMenu = true;
       char title[] = {"Settings"};
@@ -791,9 +857,10 @@ void loop() {
     }
   }
 
-  if ((millis() - pwrSaveTime) / 1000 >= (unsigned long)smuffConfig.powerSaveTimeout && !isPwrSave) {
+  if ((millis() - pwrSaveTime) / 1000 >= smuffConfig.powerSaveTimeout && !isPwrSave) {
     setPwrSave(1);
   }
+  #endif
 
 #ifdef HAS_TMC_SUPPORT
   monitorTMC(SELECTOR);
@@ -807,16 +874,64 @@ void loop() {
     testRun(testToRun);
     showMenu = false;
   }
-  // For testing purpose only
+  
   loopEx();
 }
 
+/*
+* For testing only
+*/
+void loopEx() {
+
+#if defined(__BRD_SKR_MINI_E3) || defined(__BRD_SKR_MINI_E3DIP)
+  #if defined(USE_SW_SERIAL0)         // for testing SoftwareSerial only
+    if((__systick % 2000) == 0) {     // every two seconds send string "*TG" to SW-Serial
+      swSerial0.println("*TG");
+    }
+  #endif
+  
+#endif
+
+}
+
+void fncKey1() {
+  if (strlen(smuffConfig.lButtonDown) > 0) {
+    parseGcode(String(smuffConfig.lButtonDown), -1);
+  }
+}
+
+void fncKey2() {
+  if (strlen(smuffConfig.lButtonHold) > 0) {
+    parseGcode(String(smuffConfig.lButtonHold), -1);
+  }
+}
+
+void fncKey3() {
+  if (strlen(smuffConfig.rButtonDown) > 0) {
+    parseGcode(String(smuffConfig.rButtonDown), -1);
+  }
+}
+
+void fncKey4() {
+  if (strlen(smuffConfig.rButtonHold) > 0) {
+    parseGcode(String(smuffConfig.rButtonHold), -1);
+  }
+  else {
+    // open / close LID servo by default
+    if (lidOpen)
+      setServoLid(SERVO_CLOSED);
+    else
+      setServoLid(SERVO_OPEN);
+  }
+}
+
 void setPwrSave(int8_t state) {
-  display.setPowerSave(state);
+  setDisplayPowerSave(state);
 
   isPwrSave = state == 1;
   if (!isPwrSave) {
     pwrSaveTime = millis();
+    refreshStatus();
     #if defined(USE_FASTLED_BACKLIGHT)
     setBacklightIndex(smuffConfig.backlightColor);    // turn back on backlight
     #endif
@@ -829,13 +944,15 @@ void setPwrSave(int8_t state) {
 }
 
 bool checkUserMessage() {
-  bool isClicked;
-
-  isClicked = getEncoderButton(true);
-  if (displayingUserMessage && (isClicked || (millis() - userMessageTime > USER_MESSAGE_RESET * 1000))) {
-    displayingUserMessage = false;
-  }
-  return displayingUserMessage;
+  #if !defined(USE_SERIAL_DISPLAY)
+    bool isClicked = getEncoderButton(true);
+    if (displayingUserMessage && (isClicked || (millis() - userMessageTime > USER_MESSAGE_RESET * 1000))) {
+      displayingUserMessage = false;
+    }
+    return displayingUserMessage;
+  #else
+    return false;
+  #endif
 }
 
 void checkSerialPending() {
@@ -887,7 +1004,7 @@ void filterSerialInput(String &buffer, char in) {
     return;
   }
   if (isFuncKey) {
-    //__debugS(PSTR("%02x"), in);
+    //__debugS(D, PSTR("%02x"), in);
     if (in == 'P') { // second escape char 'P' - swallow that, set ignore quotes
       ignoreQuotes = true;
       isFuncKey = false;
@@ -989,7 +1106,7 @@ void filterSerialInput(String &buffer, char in) {
           buffer += in;
       }
       else {
-        __debugS(PSTR("Buffer exceeded 4096 bytes!"));
+        __debugS(W, PSTR("Buffer exceeded 4096 bytes!"));
       }
       break;
   }
@@ -1044,7 +1161,7 @@ bool isJsonData(char in, uint8_t port) {
   }
   if (bracketCnt > 0) {
     jsonPtr++;
-    //__debugS(PSTR("JSON nesting level: %d"), bracketCnt);
+    //__debugS(D, PSTR("JSON nesting level: %d"), bracketCnt);
   }
 
   if (jsonPtr > 0) {
@@ -1079,7 +1196,7 @@ void resetUpload() {
 void handleUpload(const char* buffer, size_t len, Stream* serial) {
   if(uploadStart > 0 && millis()-uploadStart > 10000) {
     resetUpload();
-    __debugS(PSTR("Upload aborted because of timeout"), firmware);
+    __debugS(W, PSTR("Upload aborted because of timeout"), firmware);
     return;
   }
   if (isPwrSave)
@@ -1096,8 +1213,7 @@ void handleUpload(const char* buffer, size_t len, Stream* serial) {
 
   if(uploadLen <= 0) {
     resetUpload();
-    __debugS(PSTR("Upload of '%s' finished"), firmware);
-    return;
+    __debugS(I, PSTR("Upload of '%s' finished"), firmware);
   }
 }
 
@@ -1107,7 +1223,7 @@ void handleSerial(const char* in, size_t len, String& buffer, uint8_t port) {
     if (in[i] == 0x03) {
       isTestrun = false;
       resetSerialBuffer(port);
-      //__debugS(PSTR("Ctrl-C received from port %d"), port);
+      //__debugS(D, PSTR("Ctrl-C received from port %d"), port);
       return;
     }
     // do not proceed any further if a test is running
@@ -1116,7 +1232,7 @@ void handleSerial(const char* in, size_t len, String& buffer, uint8_t port) {
     // parse for JSON data coming from Duet3D
     if(port == 1 || port == 3) {
       if(isJsonData(in[i], port)) {
-        __debugS(PSTR("JSON data received on port %d"), port);
+        __debugS(D, PSTR("JSON data received on port %d"), port);
         continue;
       }
     }
@@ -1144,35 +1260,33 @@ size_t readSerialToBuffer(Stream* serial, char* buffer, size_t maxLen) {
   size_t got = 0;
   int avail = serial->available();
   if(avail != -1) {
-    noInterrupts();
     size_t len = avail;
     if((size_t)avail > maxLen)
       len = maxLen;
     got = serial->readBytes(buffer, len);
-    interrupts();
   }
   return got;
 }
 
 void serialEvent() {  // USB-Serial port
-  char tmp[128];
+  char tmp[256];
   memset(tmp, 0, ArraySize(tmp));
   size_t got = readSerialToBuffer(&Serial, tmp, ArraySize(tmp)-1);
   if(got > 0) {
     if(isUpload)
       handleUpload(tmp, got, &Serial);
     else {
-      #if !defined(USE_DUET3D)
-      if(smuffConfig.traceUSBTraffic)
-        __debugS(PSTR("Recv(0): %s"), tmp);
-      #endif
+      if(smuffConfig.useDuet) {
+        if(smuffConfig.traceUSBTraffic)
+          __debugS(I, PSTR("Recv(0): %s"), tmp);
+      }
       handleSerial(tmp, got, serialBuffer0, 0);
     }
   }
 }
 
 void serialEvent1() {
-  char tmp[128];
+  char tmp[256];
   memset(tmp, 0, ArraySize(tmp));
   size_t got = readSerialToBuffer(&Serial1, tmp, ArraySize(tmp)-1);
   if(got > 0) {
@@ -1184,24 +1298,24 @@ void serialEvent1() {
 }
 
 void serialEvent2() {
-  char tmp[128];
+  char tmp[256];
   memset(tmp, 0, ArraySize(tmp));
   size_t got = readSerialToBuffer(&Serial2, tmp, ArraySize(tmp)-1);
   if(got > 0) {
     if(isUpload)
       handleUpload(tmp, got, &Serial2);
     else {
-      #if defined(USE_DUET3D)
-      if(smuffConfig.traceUSBTraffic)
-        __debugS(PSTR("Recv(2): %s"), tmp);
-      #endif
+      if(smuffConfig.useDuet) {
+        if(smuffConfig.traceUSBTraffic)
+          __debugS(I, PSTR("Recv(2): %s"), tmp);
+        }
       handleSerial(tmp, got, serialBuffer2, 2);
     }
   }
 }
 
 void serialEvent3() {
-  char tmp[128];
+  char tmp[256];
   memset(tmp, 0, ArraySize(tmp));
   size_t got = readSerialToBuffer(&Serial3, tmp, ArraySize(tmp)-1);
   if(got > 0) {

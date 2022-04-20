@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2021 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,13 @@
 
 #include <stdint.h>
 
-typedef uint16_t timerVal_t;
+typedef uint32_t timerVal_t;
+
+#if !defined(STM32_CORE_VERSION)
+typedef uint8_t     pin_t;
+#else
+typedef uint32_t    pin_t;
+#endif
 
 class ZTimer {
   public:
@@ -46,15 +52,32 @@ class ZTimer {
 
     ZTimer() { _timer = UNDEFINED; };
 
-    void setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare = 1);
-    void setNextInterruptInterval(timerVal_t interval);
-    void setupHook(void (*function)(void));
+    void setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare = 1, void (* serviceFunPtr)() = nullptr);
+    void setNextInterruptInterval(timerVal_t interval, bool onChannel = false);
+    void setupOVHook(void (*function)(void));
+    timerVal_t getCompare();
     timerVal_t getOverflow();
+    void setCompare(timerVal_t value);
     void setOverflow(timerVal_t value);
     void start();
     void stop();
+    void startChannel();
+    void stopChannel();
+    timerVal_t getClockFrequency();
+    timerVal_t getPrescaler();
+    void setPriority(uint32_t preempt, uint32_t sub);
+    void setupPWM(pin_t pin, uint32_t frequency, uint32_t dutycycle) {
+      _pin        = pin;
+      _frequency  = frequency;
+      _dutycycle  = dutycycle;
+    };
+    void setPreload(bool preload);
+    bool isValid();
 
   private:
-    timerNum_t _timer;
-    timerChannel_t _channel;
+    timerNum_t      _timer;
+    timerChannel_t  _channel;
+    pin_t           _pin = 0;
+    uint32_t        _frequency = 0;
+    uint32_t        _dutycycle = 0;
 };

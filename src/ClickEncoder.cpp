@@ -11,7 +11,7 @@
 
 #include "ClickEncoder.h"
 
-extern void __debugS(const char* fmt, ...);
+#include "Debug.h"
 
 // ----------------------------------------------------------------------------
 // Button configuration (values for 1ms timer service calls)
@@ -44,7 +44,7 @@ extern void __debugS(const char* fmt, ...);
 //uint32 lastBtnState = LOW;  // for testing only
 // ----------------------------------------------------------------------------
 
-ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active) {
+ClickEncoder::ClickEncoder(pin_t A, pin_t B, pin_t BTN, uint8_t stepsPerNotch, bool active) {
   doubleClickEnabled = true;
   accelerationEnabled = true;
   delta = 0;
@@ -58,21 +58,19 @@ ClickEncoder::ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNo
   pinsActive = active;
   enableSound = false;
 
-#if defined(__LIBMAPLE__) && (defined (__STM32F1__) || defined(__STM32F4__))
-  WiringPinMode configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT_PULLDOWN;
-#else
   uint8_t configType = (pinsActive == LOW) ? INPUT_PULLUP : INPUT;
-#endif
-  pinMode(pinA, configType);
-  pinMode(pinB, configType);
-  pinMode(pinBTN, configType);
+  if(pinA != 0 && pinB != 0 && pinBTN != 0) {
+    pinMode(pinA, configType);
+    pinMode(pinB, configType);
+    pinMode(pinBTN, configType);
 
-  if (digitalRead(pinA) == pinsActive) {
-    last = 3;
-  }
+    if (digitalRead(pinA) == pinsActive) {
+      last = 3;
+    }
 
-  if (digitalRead(pinB) == pinsActive) {
-    last ^=1;
+    if (digitalRead(pinB) == pinsActive) {
+      last ^=1;
+    }
   }
 }
 
@@ -83,6 +81,9 @@ void ClickEncoder::service(void) {
   bool moved = false;
   unsigned long now = millis();
 
+  if(pinA == 0 && pinB == pinA)
+    return;
+  
   if (accelerationEnabled) { // decelerate every tick
     acceleration -= ENC_ACCEL_DEC;
     if (acceleration & 0x8000) { // handle overflow of MSB is set
@@ -141,7 +142,7 @@ void ClickEncoder::service(void) {
   uint32 btnState = digitalRead(pinBTN);
   if(btnState != lastBtnState) {
     lastBtnState = btnState;
-    __debugS(PSTR("Button state change"));
+    __debugS(I, PSTR("Button state change"));
   }
   */
   if (pinBTN > 0 // check button only, if a pin has been provided

@@ -1,3 +1,11 @@
 M111 Sn
 ------------
-Sn		Switch Debug on (1) / off (0)
+Sn		Change debug level to n: 
+		  0 = NONE
+		  1 = DEBUG
+		  2 = WARNING
+		  4 = INFO
+		  6 = WARNING & INFO (default)
+		  7 = DEBUG & WARNING & INFO
+		  8 = SPECIAL
+		 15 = ALL

@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 
 #if !defined(CREALITY_HW_SPI)
-#pragma message "Compiling for Creality E3/CR10 Display SW SPI"
+//#pragma message "Compiling for Creality E3/CR10 Display SW SPI"
 
 #define DSP_DATA_PIN        PB15    // EXP1.3 = LCD_PINS_EN = ST9720 DAT
 #define DSP_CS_PIN          PB8     // EXP1.4 = LCD_PINS_RS = ST9720 CS
@@ -35,7 +35,7 @@
 #define ENCODER_BUTTON_PIN  PA15    // EXP1.9
 
 #else
-#pragma message "Compiling for Creality E3/CR10 Display HW SPI"
+//#pragma message "Compiling for Creality E3/CR10 Display HW SPI"
 
     // SPECIAL CONFIGURATION, WORKS ONLY WITH CUSTOM MADE CABLE!
 #define DSP_DATA_PIN        -1      // USE MOSI ON SPI1 HEADER

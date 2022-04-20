@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,11 +79,11 @@ void getEncoderButton(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClic
       *button = MainButton;
       *isClicked = second == Clicked;
       if(second == LongClicked) {
-        encoder.setLED(LED_GREEN, true);
-        encoder.setLED(LED_RED, true);
+        encoder.setLED(LN_LED_GREEN, true);
+        encoder.setLED(LN_LED_RED, true);
         delay(300);
-        encoder.setLED(LED_GREEN, false);
-        encoder.setLED(LED_RED, false);
+        encoder.setLED(LN_LED_GREEN, false);
+        encoder.setLED(LN_LED_RED, false);
         remoteKey = REMOTE_HOME;
       }
       return;
@@ -118,19 +118,19 @@ void getEncoderButton(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClic
 
 void getInput(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked, bool checkSerial) {
   #if defined(USE_LEONERD_DISPLAY)
-  encoder.loop();
+    encoder.loop();
   #endif
-  #if defined(__STM32F1__)
-  if(checkSerial)
-    checkSerialPending();
+  #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+    if(checkSerial)
+      checkSerialPending();
   #endif
   getEncoderButton(turn, button, isHeld, isClicked);
   if(*isClicked || *isHeld || *turn != 0) {
     if(smuffConfig.encoderTickSound)
       encoderBeep(1);
     #if defined(USE_LEONERD_DISPLAY)
-      encoder.setLED(LED_RED, false);
-      encoder.setLED(LED_GREEN, false);
+      encoder.setLED(LN_LED_RED, false);
+      encoder.setLED(LN_LED_GREEN, false);
     #endif
   }
 }
@@ -225,7 +225,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, i
       }
     }
   }
-  //__debugS(PSTR("Stopped %d"),stat);
+  //__debugS(I, PSTR("Stopped %d"),stat);
   encoder.setAccelerationEnabled(false);
   settingsChanged = settingsChanged | stat;
   return stat;
@@ -277,7 +277,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, uint16_t* v
       }
     }
   }
-  //__debugS(PSTR("Stopped %d"),stat);
+  //__debugS(I, PSTR("Stopped %d"),stat);
   encoder.setAccelerationEnabled(false);
   settingsChanged = settingsChanged | stat;
   return stat;
@@ -334,7 +334,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, S
   char* options[16];
 
   debounceButton();
-  uint8_t lineCnt = splitStringLines(options, (int)(sizeof(options) / sizeof(options[0])), list.c_str());
+  uint8_t lineCnt = splitStringLines(options, ArraySize(options), list.c_str());
 
   if(lineCnt==0)
     return false;
@@ -346,7 +346,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, int* val, S
     for(uint8_t i=0; i< lineCnt; i++) {
       if(String(options[i]) == String(*val)) {
           opt = i;
-          //__debugS(PSTR("Current selection: %s"), options[i]);
+          //__debugS(I, PSTR("Current selection: %s"), options[i]);
       }
     }
   }
@@ -400,7 +400,7 @@ bool showInputDialog(const char* title, const char* PROGMEM message, unsigned lo
   for(uint8_t i=0; i< lineCnt; i++) {
     if(String(options[i]) == String(*val)) {
         opt = i;
-        //__debugS(PSTR("Current selection: %s"), options[i]);
+        //__debugS(I, PSTR("Current selection: %s"), options[i]);
     }
   }
   drawValue(title, message, String(options[opt]));

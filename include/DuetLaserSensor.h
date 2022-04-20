@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,10 +51,10 @@
 
 class DuetLaserSensor {
 public:
-  DuetLaserSensor() { _pin = -1; };
-  DuetLaserSensor(int8_t pin, bool v1 = false) { attach(pin, v1); }
+  DuetLaserSensor() { _pin = 0; };
+  DuetLaserSensor(pin_t pin, bool v1 = false) { attach(pin, v1); }
 
-  void attach(int8_t pin, bool v1 = false);
+  void attach(pin_t pin, bool v1 = false);
   void reset();
   void resetPosition();
   void service();
@@ -77,7 +77,7 @@ public:
   void      resetBits() { _bits = ""; _stuff = ""; }
 
 private:
-  int8_t    _pin = -1;
+  pin_t     _pin = 0;
   bool      _switch;
   bool      _isV1;
   bool      _hasMoved;

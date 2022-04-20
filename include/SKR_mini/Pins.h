@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,9 @@
 // SELECTOR (X)
 #define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
 #define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
+#if defined(__STM32F1XX)
+#define X_STEP_PIN_NAME     PC_6
+#endif
 #define X_STEP_PIN          PC6
 #define X_DIR_PIN           PC7
 #define X_ENABLE_PIN        PB15
@@ -32,6 +35,9 @@
 // REVOLVER (Y)
 #define STEP_HIGH_Y         digitalWrite(Y_STEP_PIN, HIGH);
 #define STEP_LOW_Y          digitalWrite(Y_STEP_PIN, LOW);
+#if defined(__STM32F1XX)
+#define Y_STEP_PIN_NAME     PB_13
+#endif
 #define Y_STEP_PIN          PB13
 #define Y_DIR_PIN           PB14
 #define Y_ENABLE_PIN        PB12
@@ -41,6 +47,9 @@
 // so don't get confused by the pin names
 #define STEP_HIGH_Z         digitalWrite(Z_STEP_PIN, HIGH);
 #define STEP_LOW_Z          digitalWrite(Z_STEP_PIN, LOW);
+#if defined(__STM32F1XX)
+#define Z_STEP_PIN_NAME     PC_5
+#endif
 #define Z_STEP_PIN          PC5
 #define Z_DIR_PIN           PB0
 #define Z_ENABLE_PIN        PC4
@@ -54,7 +63,7 @@
 #define SERVO_OPEN_DRAIN    0       // change this to 1 if you have pullups attached to your servo signal pins
 #define SERVO1_PIN          PA1     // Endstop Y+ (Wiper Servo)
 #define SERVO2_PIN          PC3     // Endstop Z+ (Lid Servo)
-#define SERVO3_PIN          -1      // Endstop Z+ (Cutter Servo) -- can use only one servo; pick either WIPER or CUTTER
+#define SERVO3_PIN          0       // Endstop Z+ (Cutter Servo) -- can use only one servo; pick either WIPER or CUTTER
 #else
 #define SERVO_OPEN_DRAIN    0
 #define SERVO1_PIN          PB13    // Y STEP pin   (Wiper Servo)
@@ -69,11 +78,14 @@
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
 
-#define SDCS_PIN            -1      // use default
+#define SDCS_PIN            0       // use default
 #define DEBUG_PIN           PA1     // Endstop Y+
 
-#define USB_CONNECT_PIN     -1      // not avail
+#define USB_CONNECT_PIN     0       // not avail
 #define SD_DETECT_PIN       PA3
+#if !defined(USE_SERIAL_DISPLAY)
+#define USE_TERMINAL_MENUS  1
+#endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // using the same pins as for TWI displays (HW-I2C)
@@ -84,13 +96,13 @@
 #define DUET_SIG_FED_PIN    PB1      // THB (thermistor output pins will work fine up to 100Hz - see schematic)
 #define DUET_SIG_SEL_PIN    PA0      // TH0
 
-#define DEBUG_OFF_PIN       -1
+#define DEBUG_OFF_PIN       0
 
 #undef HAS_TMC_SUPPORT              // not supported by the board design but can be wired manually if needed
                                     // in order not to waste serial ports, software serial is recommended in such case
-#define STALL_X_PIN         -1      // not used since stepper driver DIAG pins are not wired on this board
-#define STALL_Y_PIN         -1
-#define STALL_Z_PIN         -1
+#define STALL_X_PIN         0       // not used since stepper driver DIAG pins are not wired on this board
+#define STALL_Y_PIN         0
+#define STALL_Z_PIN         0
 
 // the following pins cannot be used directly from the according headers/terminals, since those are signals
 // used to drive the Mosfets for heaters/fan. If you need one of those signals, you have to wire it up on the 
@@ -102,8 +114,8 @@
 // -----------------------------------------------------
 // Serial Ports section
 // -----------------------------------------------------
-#define SW_SERIAL_TX_PIN    -1
-#define SW_SERIAL_RX_PIN    -1
+#define SW_SERIAL_TX_PIN    0
+#define SW_SERIAL_RX_PIN    0
 
 // SERIAL1 - Can be used for serial comm.
 #define CAN_USE_SERIAL1     true

@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,13 +21,9 @@
 #include <stdlib.h>
 #include <Arduino.h>
 #include "Config.h"
-#if defined(__STM32F1__)
-#include "HAL/STM32F1/i2c.h"
-#elif defined(__STM32F4__)
-#include "HAL/STM32F4/i2c.h"
-#endif
+#include "HAL/commonI2C.h"
 
-extern void __debugS(const char* fmt, ...);
+#include "Debug.h"
 
 #define GET_TOOL        0
 #define SET_TOOL        1

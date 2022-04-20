@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,18 +25,28 @@
 #include "ConfigNames.h"
 #include <ArduinoJson.h>
 
+#if defined(USE_SDFAT)
 SdFat SD;
+#endif
 
 const size_t capacity = 2000;
 const size_t scapacity = 1300;
+static bool sdInit = false;
 
 bool initSD(bool showStatus) {
-  #if !defined(USE_COMPOSITE_SERIAL)
   bool sdStat;
-  if(SDCS_PIN != -1)
-    sdStat = SD.begin(SDCS_PIN, SD_SCK_MHZ(4));
+  if(sdInit)
+    return true;
+  if(SDCS_PIN > 0) {
+    #if defined(USE_SDFAT)
+      sdStat = SD.begin(SDCS_PIN, SD_SCK_MHZ(4));
+    #else
+      sdStat = SD.begin(SDCS_PIN);
+    #endif
+  }
   else
     sdStat = SD.begin();
+  __debugS(DEV, PSTR("[\tinitSD: SD-Card initialized ]"));
 
   if (!sdStat) {
     if(showStatus) {
@@ -45,45 +55,50 @@ bool initSD(bool showStatus) {
     }
     return false;
   }
-  #endif
+  sdInit = true;
   return true;
 }
 
 void showDeserializeFailed(DeserializationError error, const char* PROGMEM errMsg) {
-  __debugS(PSTR("deserializeJson() failed with code %s"), error.c_str());
+  __debugS(W, PSTR("deserializeJson() failed with code %s"), error.c_str());
   longBeep(2);
   showDialog(P_TitleConfigError, errMsg, P_ConfigFail2, P_OkButtonOnly);
 }
 
-void showOpenFailed(SdFile* file, const char* cfgFile) {
-  __debugS(PSTR("Opening file '%s' failed: handle = %s"), cfgFile, !file ? "FALSE" : "TRUE");
+void showOpenFailed(_File* file, const char* cfgFile) {
+  __debugS(W, PSTR("Opening file '%s' failed: handle = %s"), cfgFile, !file ? "FALSE" : "TRUE");
   longBeep(2);
   drawSDStatus(SD_ERR_NOCONFIG);
   delay(5000);
 }
 
-bool checkFileSize(SdFile* file, size_t cap, const char* PROGMEM errMsg) {
-  if(file != nullptr && file->fileSize() > cap) {
+bool checkFileSize(_File* file, size_t cap, const char* PROGMEM errMsg) {
+  if(file != nullptr && file->size() > cap) {
     longBeep(2);
     showDialog(P_TitleConfigError, errMsg, P_ConfigFail3, P_OkButtonOnly);
     file->close();
     return false;
   }
-  //__debugS(PSTR("config file '%s' open"), CONFIG_FILE);
+  //__debugS(D, PSTR("config file '%s' open"), CONFIG_FILE);
   return true;
 }
 
-SdFile cfgOut;
-Print* openCfgFileWrite(const char* filename) {
+_File cfgOut;
+_File* openCfgFileWrite(const char* filename) {
+  #if defined(USE_SDFAT)
   if(cfgOut.open(filename, O_WRITE | O_CREAT)) {
     return &cfgOut;
   }
+  #else
+  if(cfgOut = SD.open(filename, FA_WRITE | FA_CREATE_ALWAYS)) {
+    return &cfgOut;
+  }
+  #endif
   return nullptr;
 }
 
 void closeCfgFile() {
-  if(cfgOut.isOpen())
-    cfgOut.close();
+  cfgOut.close();
 }
 
 uint8_t toolsMinMax(uint8_t toolCnt) {
@@ -109,10 +124,10 @@ bool readMainConfig()
 {
   if(!initSD())
     return false;
-  //__debugS(PSTR("Trying to open config file '%s'"), CONFIG_FILE);
+  //__debugS(D, PSTR("Trying to open config file '%s'"), CONFIG_FILE);
 
-  SdFile cfg;
-  if(!cfg.open(CONFIG_FILE)) {
+  _File cfg;
+  if(!__fopen(cfg, CONFIG_FILE, FILE_READ)) {
     showOpenFailed(&cfg, CONFIG_FILE);
     return false;
   }
@@ -124,7 +139,7 @@ bool readMainConfig()
 
     DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    //__debugS(PSTR("[ readMainConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
+    //__debugS(D, PSTR("[ readMainConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
     cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail1);
@@ -204,7 +219,9 @@ bool readMainConfig()
       smuffConfig.traceUSBTraffic =             jsonDoc[traceUsb];
       smuffConfig.dbgFreq =                     jsonDoc[dbgFreq] | 500;
       smuffConfig.invertDuet =                  jsonDoc[invertDuet];
-
+      smuffConfig.useDuet =                     jsonDoc[useDuet] | false;
+      smuffConfig.allowSyncSteppers =           jsonDoc[syncSteppers] | true;
+      
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
         speedIncrement = INC_MMS;
@@ -213,7 +230,7 @@ bool readMainConfig()
         mmsMax = MAX_TICKS;
         speedIncrement = INC_TICKS;
       }
-      __debugS(PSTR("[\treadMainConfig:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
+      __debugS(D, PSTR("[\treadMainConfig:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
     }
   }
@@ -222,10 +239,10 @@ bool readMainConfig()
 
 bool readSteppersConfig()
 {
-  //__debugS(PSTR("Trying to open steppers config file '%s'"), STEPPERS_FILE);
+  //__debugS(D, PSTR("Trying to open steppers config file '%s'"), STEPPERS_FILE);
 
-  SdFile cfg;
-  if(!cfg.open(STEPPERS_FILE)) {
+  _File cfg;
+  if(!__fopen(cfg, STEPPERS_FILE, FILE_READ)) {
     showOpenFailed(&cfg, STEPPERS_FILE);
     return false;
   }
@@ -237,7 +254,7 @@ bool readSteppersConfig()
 
     DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    //__debugS(PSTR("[ readSteppersConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
+    //__debugS(D, PSTR("[ readSteppersConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
     cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail8);
@@ -304,22 +321,50 @@ bool readSteppersConfig()
       smuffConfig.enableChunks =                jsonDoc[feeder][enableChunks];
       smuffConfig.feedChunks =                  jsonDoc[feeder][feedChunks] | 20;
       smuffConfig.insertLength =                jsonDoc[feeder][insertLength] | 5;
-      smuffConfig.useDuetLaser =                jsonDoc[feeder][duetLaser];
       smuffConfig.isSharedStepper =             jsonDoc[feeder][sharedStepper];
       smuffConfig.ms3config[FEEDER] =           jsonDoc[feeder][ms3Config];
       smuffConfig.purgeLength =                 jsonDoc[feeder][purgeLength];
       smuffConfig.wipeBeforeUnload =            jsonDoc[feeder][autoWipe];
 
-      __debugS(PSTR("[\treadSteppersConfig:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
+      __debugS(D, PSTR("[\treadSteppersConfig:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
     }
   }
   return true;
 }
 
-bool readConfig() {
+bool readDebugLevel() {
   if(!initSD())
     return false;
+  _File cfg;
+  if(!__fopen(cfg, DEBUG_FILE, FILE_READ)) {
+    showOpenFailed(&cfg, DEBUG_FILE);
+    return false;
+  }
+  else {
+    char tmp[80];
+    cfg.read(tmp, ArraySize(tmp));
+    cfg.close();
+    int dbgLevel = atoi(tmp);
+    if(dbgLevel >= 0 && dbgLevel <= 127) {
+      smuffConfig.dbgLevel = (uint8_t)dbgLevel;
+      return true;
+    }
+    return false;
+  }
+}
+
+bool writeDebugLevel() {
+  _File* cfg = openCfgFileWrite(DEBUG_FILE);
+  if(cfg != nullptr) {
+    cfg->println(smuffConfig.dbgLevel);
+    closeCfgFile();
+    return true;
+  }
+  return false;
+}
+
+bool readConfig() {
 
   if(readMainConfig()) {
     if(readSteppersConfig())
@@ -335,9 +380,9 @@ bool readTmcConfig()
 {
   if(!initSD())
     return false;
-  //__debugS(PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
-  SdFile cfg;
-  if(!cfg.open(TMC_CONFIG_FILE)) {
+  //__debugS(D, PSTR("Trying to open TMC config file '%s'"), TMC_CONFIG_FILE);
+  _File cfg;
+  if(!__fopen(cfg, TMC_CONFIG_FILE, FILE_READ)) {
     showOpenFailed(&cfg, TMC_CONFIG_FILE);
     return false;
   }
@@ -349,7 +394,7 @@ bool readTmcConfig()
 
     DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
-    //__debugS(PSTR("[ readTmcConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
+    //__debugS(D, PSTR("[ readTmcConfig: after deserialize... (%lu bytes) ]"), jsonDoc.memoryUsage());
     cfg.close();
     if (error)
       showDeserializeFailed(error, P_ConfigFail6);
@@ -420,7 +465,7 @@ bool readTmcConfig()
       smuffConfig.stepperStopOnStall[FEEDER2]=  jsonDoc[feeder2][stopOnStall];
       smuffConfig.stepperMaxStallCnt[FEEDER2]=  jsonDoc[feeder2][maxStallCount];
 
-      __debugS(PSTR("[\treadTmcConfig:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
+      __debugS(D, PSTR("[\treadTmcConfig:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
     }
   }
@@ -434,9 +479,9 @@ bool readServoMapping() {
 
   if(!initSD())
     return false;
-  //__debugS(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
-  SdFile cfg;
-  if(!cfg.open(SERVOMAP_FILE)) {
+  //__debugS(D, PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
+  _File cfg;
+  if(!__fopen(cfg, SERVOMAP_FILE, FILE_READ)) {
     showOpenFailed(&cfg, SERVOMAP_FILE);
     return false;
   }
@@ -476,7 +521,7 @@ bool readServoMapping() {
       servoMapping[16] = jsonDoc[wiper][servoOutput];
       #endif
 
-      __debugS(PSTR("[\treadServoMapping:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
+      __debugS(D, PSTR("[\treadServoMapping:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
     }
   }
@@ -490,9 +535,9 @@ bool readRevolverMapping() {
 
   if(!initSD())
     return false;
-  //__debugS(PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
-  SdFile cfg;
-  if(!cfg.open(STEPPERMAP_FILE)) {
+  //__debugS(D, PSTR("Trying to open Servo Mapping file '%s'"), SERVOMAP_FILE);
+  _File cfg;
+  if(!__fopen(cfg, STEPPERMAP_FILE, FILE_READ)) {
     showOpenFailed(&cfg, STEPPERMAP_FILE);
     return false;
   }
@@ -518,7 +563,7 @@ bool readRevolverMapping() {
         else
           stepperPosClosed[i] = (float)jsonDoc[item];
       }
-      __debugS(PSTR("[\treadRevolverMapping:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
+      __debugS(D, PSTR("[\treadRevolverMapping:\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
     }
   }
@@ -532,9 +577,9 @@ bool readMaterials() {
 
   if(!initSD())
     return false;
-  //__debugS(PSTR("Trying to open TMC config file '%s'"), MATERIALS_FILE);
-  SdFile cfg;
-  if(!cfg.open(MATERIALS_FILE)) {
+  //__debugS(D, PSTR("Trying to open TMC config file '%s'"), MATERIALS_FILE);
+  _File cfg;
+  if(!__fopen(cfg, MATERIALS_FILE, FILE_READ)) {
     showOpenFailed(&cfg, MATERIALS_FILE);
     return false;
   }
@@ -563,7 +608,7 @@ bool readMaterials() {
         else {
           strncpy(smuffConfig.materialNames[i], pItem, MAX_MATERIAL_NAME_LEN);
         }
-        //__debugS(PSTR("[\treadMaterials: '%s' named '%s']"), item, smuffConfig.materialNames[i]);
+        //__debugS(D, PSTR("[\treadMaterials: '%s' named '%s']"), item, smuffConfig.materialNames[i]);
         uint16_t len = jsonDoc[item][pfactor];
         if(len > 0) {
           smuffConfig.purges[i] = len;
@@ -576,17 +621,17 @@ bool readMaterials() {
           long color;
           if(sscanf(cval,"%lx", &color) > 0) {
             smuffConfig.materialColors[i] = (uint32_t)color;
-            //__debugS(PSTR("[\treadMaterials: '%s' is color #%lX ]"), item, color);
+            //__debugS(D, PSTR("[\treadMaterials: '%s' is color #%lX ]"), item, color);
           }
         }
         const char* mat = jsonDoc[item][material];
         if(mat != nullptr) {
-          //__debugS(PSTR("[\treadMaterials: '%s' is '%s']"), item, mat);
+          //__debugS(D, PSTR("[\treadMaterials: '%s' is '%s']"), item, mat);
           strncpy(smuffConfig.materials[i], mat, MAX_MATERIAL_LEN);
         }
       }
 
-      __debugS(PSTR("[\treadMaterials:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
+      __debugS(D, PSTR("[\treadMaterials:\t\tDONE (%lu bytes) ]"), jsonDoc.memoryUsage());
       jsonDoc.clear();
     }
   }
@@ -598,7 +643,7 @@ bool dumpConfig(Print* dumpTo, bool useWebInterface, const char* filename, Dynam
     return false;
   bool hasFile = false;
   if(dumpTo == nullptr && filename != nullptr) {
-    dumpTo = openCfgFileWrite(filename);
+    dumpTo = (Print*)openCfgFileWrite(filename);
     hasFile = true;
   }
   if(dumpTo != nullptr) {
@@ -610,9 +655,9 @@ bool dumpConfig(Print* dumpTo, bool useWebInterface, const char* filename, Dynam
       serializeJsonPretty(jsonDoc, *dumpTo);
     if(hasFile)
       closeCfgFile();
-    //__debugS(PSTR("Serializing '%s' done"), filename);
+    //__debugS(D, PSTR("Serializing '%s' done"), filename);
     return true;
-  }
+  } 
   return false;
 }
 
@@ -677,6 +722,8 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[cutterTop]            = smuffConfig.cutterOnTop;
   jsonDoc[dbgFreq]              = smuffConfig.dbgFreq;
   jsonDoc[invertDuet]           = smuffConfig.invertDuet;
+  jsonDoc[useDuet]              = smuffConfig.useDuet;
+  jsonDoc[syncSteppers]         = smuffConfig.allowSyncSteppers;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }
@@ -740,7 +787,6 @@ bool writeSteppersConfig(Print* dumpTo, bool useWebInterface) {
   node[enableChunks]          = smuffConfig.enableChunks;
   node[feedChunks]            = smuffConfig.feedChunks;
   node[insertLength]          = smuffConfig.insertLength;
-  node[duetLaser]             = smuffConfig.useDuetLaser;
   node[sharedStepper]         = smuffConfig.isSharedStepper;
   node[ms3Config]             = smuffConfig.ms3config[FEEDER];
   node[purgeSpeed]            = smuffConfig.purgeSpeed;
@@ -752,10 +798,11 @@ bool writeSteppersConfig(Print* dumpTo, bool useWebInterface) {
 }
 
 /*
-  Write main a& steppers config combined
+  Write main & steppers config combined
 */
 bool writeConfig(Print* dumpTo, bool useWebInterface) {
 
+  writeDebugLevel();
   if(writeMainConfig(dumpTo, useWebInterface)) {
     if(writeSteppersConfig(dumpTo, useWebInterface))
       return true;
@@ -947,7 +994,7 @@ bool deserializeSwapTools(const char* cfg) {
     DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
     if (error) {
-      __debugS(PSTR("deserializeJson() failed with code %s (Input: >%s<)"), error.c_str(), cfg);
+      __debugS(W, PSTR("deserializeJson() failed with code %s (Input: >%s<)"), error.c_str(), cfg);
       return false;
     }
     else {
@@ -955,7 +1002,7 @@ bool deserializeSwapTools(const char* cfg) {
       for(uint8_t i=0; i < MAX_TOOLS; i++) {
         sprintf_P(tmp, P_Tool, i);
         swapTools[i] = jsonDoc[tmp];
-        //__debugS(PSTR("T%d = %d"), i, swapTools[i]);
+        //__debugS(D, PSTR("T%d = %d"), i, swapTools[i]);
       }
     }
     return true;
@@ -1015,15 +1062,15 @@ bool saveConfig(String& buffer) {
   if(cfgType.equals("S5")) {
     filename = MATERIALS_FILE;
   }
-  //__debugS(PSTR("Processing config '%s' Data: \n%s"), filename, buffer.substring(epos+2).c_str());
+  //__debugS(D, PSTR("Processing config '%s' Data: \n%s"), filename, buffer.substring(epos+2).c_str());
   DynamicJsonDocument jsonDoc(capacity);       // use memory from heap to deserialize
   DeserializationError error = deserializeJson(jsonDoc, buffer.substring(epos+2));
   if (error) {
-    __debugS(PSTR("deserializeJson() failed with code %s"), error.c_str());
+    __debugS(W, PSTR("deserializeJson() failed with code %s"), error.c_str());
     return false;
   }
   else {
-    Print* dumpTo = openCfgFileWrite(filename);
+    _File* dumpTo = openCfgFileWrite(filename);
     serializeJsonPretty(jsonDoc, *dumpTo);
     closeCfgFile();
   }

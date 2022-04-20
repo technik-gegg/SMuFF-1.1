@@ -1,7 +1,11 @@
 // Moved display pins configuration into separate header files
 #if defined(USE_CREALITY_DISPLAY)
 #include "DSP_Creality.h"
+#if defined(__BRD_SKR_MINI)
+#include "../Display/Creality_SPI2.h"
+#else
 #include "../Display/Creality.h"
+#endif
 #elif defined(USE_TWI_DISPLAY)
 #include "DSP_TWILeonerd.h"
 #include "../Display/TWI.h"
@@ -15,6 +19,9 @@
 #else
 #include "../Display/Minipanel.h"
 #endif
+#elif defined(USE_SERIAL_DISPLAY)
+#include "DSP_Serial.h"
+#include "../Display/SerialDisplay.h"
 #else
 #include "DSP_Default.h"
 #if defined(__BRD_SKR_MINI)

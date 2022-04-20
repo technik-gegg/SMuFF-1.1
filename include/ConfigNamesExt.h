@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ extern char* pushbackDelay;
 extern char* enableChunks;
 extern char* feedChunks;
 extern char* insertLength;
-extern char* duetLaser;
+extern char* useDuet;
 extern char* sharedStepper;
 extern char* wiggle;
 extern char* useServo;
@@ -132,3 +132,5 @@ extern char* devName;
 extern char* cutterTop;
 extern char* dbgFreq;
 extern char* invertDuet;
+extern char* syncSteppers;
+extern char* dbgLvl;

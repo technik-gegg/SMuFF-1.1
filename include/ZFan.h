@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #define MAX_FANS                2
 #define FAN_DUTY_CYCLE          10000    // fan cycle in uS (100Hz by default)
 
-extern void __debugS(const char* fmt, ...);
+#include "Debug.h"
 
 void isrFanTimerHandler();
 
@@ -33,8 +33,8 @@ class ZFan {
 public:
   ZFan() { _pin = 0; };
 
-  void    attach(int8_t pin);
-  void    attach(int8_t pin, int8_t fanIndex) { attach(pin); setIndex(fanIndex); }
+  void    attach(pin_t pin);
+  void    attach(pin_t pin, int8_t fanIndex) { attach(pin); setIndex(fanIndex); }
   void    setIndex(int8_t fanIndex);
   void    detach();
   void    setFanSpeed(uint8_t speed);
@@ -49,14 +49,14 @@ public:
   uint16_t getBlipTimeout() { return (uint16_t)_blipTimeout / 1000; }
 
 private:
-  int8_t   _pin;
-  int8_t   _fanIndex;
-  int8_t   _speed;
-  uint16_t _minSpeed = 0;
-  uint16_t _maxSpeed = FAN_DUTY_CYCLE;
-  uint16_t _tickCnt;
-  uint16_t _pulseLen;
-  uint8_t  _tickRes = 1;
-  uint32_t _blipTime;
-  uint32_t _blipTimeout = 0;
+  pin_t     _pin;
+  int8_t    _fanIndex;
+  int8_t    _speed;
+  uint16_t  _minSpeed = 0;
+  uint16_t  _maxSpeed = FAN_DUTY_CYCLE;
+  uint16_t  _tickCnt;
+  uint16_t  _pulseLen;
+  uint8_t   _tickRes = 1;
+  uint32_t  _blipTime;
+  uint32_t  _blipTimeout = 0;
 };

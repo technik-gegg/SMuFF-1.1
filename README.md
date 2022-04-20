@@ -11,29 +11,34 @@ If you like this project and find it useful, please consider donating.
 
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
 
-+ the [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)
-+ the [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3) **recommended**
-+ the [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)
-+ the [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r).
+| Board |  |
+|------------|-----|
+| Bigtreetech [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)||
+| Bigtreetech [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)|**recommended**|
+| Bigtreetech [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)||
+| Bigtreetech [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4) | **recommended**|
+| Bigtreetech [SKR mini E3 V3.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-for-ender-3) |**recommended** |
+| Bigtreetech [SKR mini E3 RRF V1.1](https://www.biqu.equipment/products/bigtreetech-e3-rrf-v1-1-mainboard-3d-printer-part-integrated-esp8266-wi-fi-module-for-ender3)| *not released yet*|
 
-The SKR mini series boards are very small and yet more powerful because of the 32-Bit STM micro controller unit.
+The Bigtreetech SKR mini series boards are very small and yet  powerful because of the 32-Bit STM Micro Controller Unit.
 
-Of course, this firmware can be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. It's recommended using a 32 bit controller board instead.
-Make sure your board of choice has least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are (at least):
+Of course, this firmware can be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. I recommend using a 32 bit controller board instead.
+Make sure your board of choice has at least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are (at least):
 
-+ two stepper motor driver (sockets)
++ two stepper motor drivers (sockets)
 + two endstop connectors
 + one servo connector
 + an onboard SD-Card
++ one spare serial port (USB or TTL)
 + a 128 x 64 pixel display (connector)
 + a rotary encoder (connector)
 
 Simply create a new build environment in your **platformio.ini** and adopt the settings according to your controllers hardware in your custom **pins.h** file.
 
-The configuration files **\*.json** have to be copied into the root folder of your SD-Card for the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the menus, save them and reboot.
+The configuration files **\*.json** have to be copied into the root folder of your SD-Card for the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the built-in menus or the [WebInterface](https://github.com/technik-gegg/SMuFF-WI), save them and reboot.
 
-From version 1.6 on, I've added the option to run GCode scripts for automated testing of your hardware.
-In the **test** folder you'll find some sample scripts. Copy those over to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly until you hit the encoder button.
+I've added the option to run GCode scripts for automated testing of your hardware.
+In the **test** folder you'll find some sample scripts. Copy those over to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly until you stop it.
 Each test result will be displayed on the LCD and also sent to the log serial port (USB - if not defined otherwise).
 
 For more information about building the SMuFF and some more detailed stuff, head over to my official [SMuFF homepage](https://sites.google.com/view/the-smuff/) or to my [Discord server](https://discord.com/invite/BzZ3rBf).
@@ -43,6 +48,31 @@ For more information about building the SMuFF and some more detailed stuff, head
 ---
 
 ## Recent changes
+
+**3.00** - Moving from Maple to Arduino Core STM32 framework  
+
++ ported firmware from **Maple** to new **Arduino Core STM32** (stm32duino) framework in order to make boards with different MCUs available. This version is still compatible with the predecessor SKR controller boards, such as the SKR Mini/E3-DIP/V1.2/V2.0.
++ added **debug.txt** to define the amount of debug messages being spit out without re-compiling the firmware. Also added the option of changing the debug level through GCode, which is **M111**. See *M111?* for details.
++ compiling the firmware without the **-D DEBUG** option will now reduce the memory footprint drastically. Although, removing debug messages completely will make your first setup much harder, so handle with care.
++ updated help files in *help* folder.
++ reduced the number of build environments in *platformio.ini*. Please note that **USE_DUET3D** has become obsolete and is now a runtime option. However, the **USE_DDE** flag still is the same and hence it's got its own build environment (*\*___DDE*).
++ added build options summary when compiling. This makes checking the build options you've set a breeze:
+![The SMuFF](images/FW3.0-Build.jpg)
++ removed Servo-Timer. Servos are now served through the *General Purpose Timer*, which makes the servo timing more percise and thus the servos less jittery.
++ added flag **MIMIC_LIBMAPLE_USB_ID** in order to keep the USB ID compatible for use with my [OctoPrint plugin](https://github.com/technik-gegg/OctoPrint-Smuff). This setting is default for the "old" SKR E3 controller boards but not for newer boards.
++ added flag **SWAP_SERVOS** which will assign the Lid and the Cutter servos to the BL-Touch header for SKR E3 V1.2 / V2.0 / V3.0 (it swaps Wiper and Cutter servo signal pins).
++ added new build environment for **SKR E3 V3.0** controller board. This board has been fully tested and is ready to use.
++ added new build environment for **SKR E3 RRF** controller board. **Not tested yet!**
++ added **SyncSteppers** flag in SMUFF.json, which, if turned on, synchronizes movement of two or more steppers, so that they start and finish at the same time. Set by default.
++ eliminated code for *ZPortExpander* completely.
++ restructured **Options** menu on the display. Copy the new *options.mnu* file to the SMuFFs SD-Card (folder menus).
++ added **USE_SERIAL_DISPLAY** option for future use. ***Please be aware:** By setting this flag, no display code will be compiled into the firmware and hence the only way to control it is by using the WebInterface.*
++ added **USE_FAST_SW_SPI** build option for Creality  displays (or compatibles such as the BTT TFT). This allows you to simply connect the display through EXP1/EXP3 with the applied 10 pin cable, and still get a decent speed and responsiveness on the display.
++ added a couple of new STL files for Inlet-Guides and new SKR housing. Inlet-Guides are now available for 5 and 7 materials (thanks to maker **Defenc**). For a different amount of materials on the Inlet-Guides, please download the according [STEP file from Thangs](https://thangs.com/mythangs/file/55305).
++ fixed bug which caused the SMuFF to hang after showing the main menu.
++ refactored some code from **SMuFFtools.cpp** into *DisplayTools.cpp*, *SoundTools.cpp* *ServoTools.cpp* and *TerminalTools.cpp* for better maintainability.
+
+---
 
 **2.44** - Addition for alternative RRF boards
 

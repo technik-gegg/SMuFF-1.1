@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ const char* pushbackDelay PROGMEM      = "PushbackDly";
 const char* enableChunks PROGMEM       = "UseChunks";
 const char* feedChunks PROGMEM         = "Chunks";
 const char* insertLength PROGMEM       = "InsLen";
-const char* duetLaser PROGMEM          = "DuetLaser";
+const char* useDuet PROGMEM            = "UseDuet";
 const char* sharedStepper PROGMEM      = "SharedStepper";
 const char* wiggle PROGMEM             = "Wiggle";
 const char* useServo PROGMEM           = "UseServo";
@@ -138,4 +138,6 @@ const char* devName PROGMEM            = "Device";
 const char* cutterTop PROGMEM          = "CutterTop";
 const char* dbgFreq PROGMEM            = "DebugFreq";
 const char* invertDuet PROGMEM         = "InvDuet";
+const char* syncSteppers PROGMEM       = "SyncSteppers";
+const char* dbgLvl PROGMEM             = "DbgLevel";
 

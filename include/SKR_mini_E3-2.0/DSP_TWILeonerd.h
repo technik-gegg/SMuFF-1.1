@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019 Technik Gegg
+ * Copyright (C) 2019-2022 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  */
 #pragma once
 
-#define USE_SW_TWI          1       //  only software I2C/TWI is available due to pins PB6/PB7 are not routed to EXP1
-
 #define DSP_SCL             PA15    // EXP1.9
 #define DSP_SDA             PB15    // EXP1.3
 
@@ -32,8 +30,8 @@
 
 #if !defined(USE_LEONERD_DISPLAY)
 //#pragma message "Compiling for TWI/I2C Display"
-#define ENCODER1_PIN        PA9     // EXP1.8
-#define ENCODER2_PIN        PA10    // EXP1.6
+#define ENCODER1_PIN        PB9     // EXP1.5
+#define ENCODER2_PIN        PB15    // EXP1.3
 #define ENCODER_BUTTON_PIN  PB8     // EXP1.4
 #else
 //#pragma message "Compiling for Leonerd Display"

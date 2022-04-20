@@ -14,6 +14,7 @@
 
 #include <stdint.h>
 #include "Arduino.h"
+#include "Config.h"
 #include "ButtonState.h"
 
 // ----------------------------------------------------------------------------
@@ -40,9 +41,9 @@ class ClickEncoder
 public:
 
 private:
-  uint8_t pinA;
-  uint8_t pinB;
-  uint8_t pinBTN;
+  pin_t pinA;
+  pin_t pinB;
+  pin_t pinBTN;
   bool pinsActive;
   volatile int16_t delta = 0;
   volatile int16_t last = 0;
@@ -64,7 +65,7 @@ private:
 #endif
 
 public:
-  ClickEncoder(uint8_t A, uint8_t B, uint8_t BTN, uint8_t stepsPerNotch, bool active = false);
+  ClickEncoder(pin_t A, pin_t B, pin_t BTN, uint8_t stepsPerNotch, bool active = false);
 
   void service(void);
   int16_t getValue(void);
