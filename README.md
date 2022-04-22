@@ -43,7 +43,7 @@ Each test result will be displayed on the LCD and also sent to the log serial po
 
 For more information about building the SMuFF and some more detailed stuff, head over to my official [SMuFF homepage](https://sites.google.com/view/the-smuff/) or to my [Discord server](https://discord.com/invite/BzZ3rBf).
 
-[![Open in VS-Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/technik-gegg/SMuFF-1.1/tree/SMuFF-2.0-(Experimental))
+[![Open in VS-Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/technik-gegg/SMuFF-1.1/tree/SMuFF-3.0)
 
 ---
 
