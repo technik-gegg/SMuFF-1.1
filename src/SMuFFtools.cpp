@@ -2470,7 +2470,7 @@ void prepareSequence(const char *seq, bool autoPlay) {
   if (seq == nullptr || *seq == 0)
     return;
 
-  uint16_t f = 0, d = 0, p = 0;
+  int f = 0, d = 0, p = 0;
   uint8_t n = 0;
   while (*seq) {
     if (*seq == '"' || *seq == ' ' || *seq=='\r' || *seq=='\n' || *seq=='\t') // skip quotes, spaces and newlines
