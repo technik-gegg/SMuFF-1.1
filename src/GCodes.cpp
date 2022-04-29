@@ -107,6 +107,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {122, M122},
     {145, M145},
     {150, M150},
+    {155, M155},
     {201, M201},
     {202, M202},
     {203, M203},
@@ -1206,6 +1207,16 @@ bool M150(const char *msg, String buf, int8_t serial)
 #else
   return false;
 #endif
+}
+
+bool M155(const char *msg, String buf, int8_t serial)
+{
+  bool stat = true;
+  printResponse(msg, serial);
+  if ((param = getParam(buf, S_Param)) != -1) {
+    smuffConfig.sendPeriodicalStats = param > 0;
+  }
+  return stat;
 }
 
 bool M201(const char *msg, String buf, int8_t serial)

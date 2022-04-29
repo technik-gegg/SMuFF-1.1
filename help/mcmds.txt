@@ -1,10 +1,10 @@
 Available M Commands
-  M2	-	Resets the "Parser Busy" flag
-  M17	-	Switch feeder stepper control (Relay)
+  M2		-	Resets the "Parser Busy" flag
+  M17		-	Switch feeder stepper control (Relay)
   M18,M84 -	Motors off
-  M20	-	List SD-Card
-  M42	-	Set pin state
-  M98	-	Execute test run
+  M20		-	List SD-Card
+  M42		-	Set pin state
+  M98		-	Execute test run
   M100	-	Show memory info
   M106	-	Fan on
   M107	-	Fan off
@@ -17,6 +17,7 @@ Available M Commands
   M122	-	Report TMC driver status
   M145	-	Set Material color/purge factor
   M150	-	Set FastLED color
+  M155	-	Turn Periodical Status on/off
   M201	-	Set max. acceleration
   M202	-	Set speed adjustment factor (for speeds in mm/s)
   M203	-	Set max. feedrate

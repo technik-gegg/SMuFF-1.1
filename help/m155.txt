@@ -1,0 +1,3 @@
+M155	Switch Periodical Status
+---------------------
+Sn 		Send periodical status on (n: 1) or off (n: 0)

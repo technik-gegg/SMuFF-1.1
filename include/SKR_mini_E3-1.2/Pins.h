@@ -66,9 +66,15 @@
 #define RELAY_PIN           PC14    // PROBE (Relay for stepper motor switching)
 
 #define SERVO_OPEN_DRAIN    0
+#if !defined(SWAP_SERVOS)           // We can use only one servo beside the LID, either WIPER or CUTTER
 #define SERVO1_PIN          PC12    // PT-DET (Wiper Servo)
 #define SERVO2_PIN          PA1     // SERVO (LID Servo)
-#define SERVO3_PIN          0      // SERVO (Cutter Servo) -- can use only one servo; pick either WIPER or CUTTER
+#define SERVO3_PIN          0       // (No Cutter Servo)
+#else
+#define SERVO1_PIN          0       // (No Wiper Servo)
+#define SERVO2_PIN          PA1     // SERVO (LID Servo)
+#define SERVO3_PIN          PC12    // PT-DET (Cutter Servo)
+#endif
 
 #define FAN_PIN             PA8     // FAN0
 
