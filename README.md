@@ -15,7 +15,6 @@ To use this firmware, you have to [compile it](https://sites.google.com/view/the
 |------------|-----|
 | Bigtreetech [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)||
 | Bigtreetech [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)|**recommended**|
-| Bigtreetech [SKR mini E3 V1.2](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-control-board-32-bit-integrated-tmc2209-uart-for-ender-4)||
 | Bigtreetech [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4) | **recommended**|
 | Bigtreetech [SKR mini E3 V3.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-for-ender-3) |**recommended** |
 | Bigtreetech [SKR mini E3 RRF V1.1](https://www.biqu.equipment/products/bigtreetech-e3-rrf-v1-1-mainboard-3d-printer-part-integrated-esp8266-wi-fi-module-for-ender3)| *not released yet*|
@@ -49,9 +48,34 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**3.10** - Some minor changes / bug fixes
+
++ **removed SKR E3 V1.2** from the list of supported devices because this board isn't optimal for the SMuFF V6. Consider moving to E3 V2.0 or better E3 V3.0.
++ changed some default settings in *SMUFF.json* which fits better for V6 default configuration.
++ switched from FastLED to AdafruitNeoPixel library throughout for all boards.
++ fixed bug where DDE extruder wasn't reading out the endstop while retracting.
++ fixed bug with NeoPixel refresh.
++ added dedicated timer for NeoPixel refresh because the existing solution interfered with servos and steppers.
++ (re-) added timer for servos because the existing solution interfered with the stepper timer.
++ changed timer priorities and intervals to get rid of servo jitter.
++ changed priority on timers, so the stepper timer (and thus the stepper movement) is a bit more agile now.
++ added GCode command **M155** for fast switching of *sending periodical status messages*.
++ GCode **M205 help file** updated.
++ cleaned up *platformio.ini* by extending environments in *__DDE.
++ added GCode command **M562** to reset a *Feeder Jam* remotly.
++ added more status/error responses in order to make the Klipper module run smooth
++ added feeder states (SPL in periodical states) for all variants. This value is now (lower nibble: Splitter, upper nibble: non-Splitter):
+  + 0x00 means *not loaded*
+  + 0x01 means *loaded to Splitter*
+  + 0x02 means *loaded to Nozzle*
+  + 0x10 means *loaded to Selector*
+  + 0x20 means *loaded to Nozzle*
+  + 0x40 means *loaded to DDE*
++ added "JAMMED" state on display when feeder is being jammed
+
 **3.00** - Moving from Maple to Arduino Core STM32 framework  
 
-+ ported firmware from **Maple** to new **Arduino Core STM32** (stm32duino) framework in order to make boards with different MCUs available. This version is still compatible with the predecessor SKR controller boards, such as the SKR Mini/E3-DIP/V1.2/V2.0.
++ ported firmware from **Maple** to new **Arduino Core STM32** (stm32duino) framework in order to make boards with different MCUs available. This version is still compatible with the predecessor SKR controller boards, such as the SKR Mini/E3-DIP/V2.0.
 + added **debug.txt** to define the amount of debug messages being spit out without re-compiling the firmware. Also added the option of changing the debug level through GCode, which is **M111**. See *M111?* for details.
 + compiling the firmware without the **-D DEBUG** option will now reduce the memory footprint drastically. Although, removing debug messages completely will make your first setup much harder, so handle with care.
 + updated help files in *help* folder.

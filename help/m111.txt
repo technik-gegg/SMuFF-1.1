@@ -1,11 +1,18 @@
 M111 Sn
 ------------
-Sn		Change debug level to n: 
+Sn		Change debug level to n (binary encoded): 
 		  0 = NONE
+
 		  1 = DEBUG
 		  2 = WARNING
 		  4 = INFO
+		  8 = SPECIAL
+		 16 = DEVELOPMENT (1)
+		 32 = DEVELOPMENT (2)
+		 64 = DEVELOPMENT (3)
+
+		Examples:
 		  6 = WARNING & INFO (default)
 		  7 = DEBUG & WARNING & INFO
-		  8 = SPECIAL
-		 15 = ALL
+		 15 = DEBUG & WARNING & INFO & SPECIAL
+		 31 = DEBUG & WARNING & INFO & SPECIAL & DEVELOPMENT (1)

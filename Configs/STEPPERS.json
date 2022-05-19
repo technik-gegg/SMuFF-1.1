@@ -30,7 +30,7 @@
     "MS3": 0
    },
   "Feeder": {
-    "ExtCtrl": false,
+    "ExtCtrl": true,
     "StepsMM": 410,
     "AccelSpeed": 6000,
     "AccelDist": 5,
@@ -50,7 +50,7 @@
     "Chunks": 20,
     "InsLen": 15,
     "DuetLaser": false,
-    "SharedStepper": false,
+    "SharedStepper": true,
     "MS3": 0,
     "UseEStop2": false,
     "AutoWipe": false,

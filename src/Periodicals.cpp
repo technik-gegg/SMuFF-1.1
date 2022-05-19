@@ -22,7 +22,6 @@ volatile bool leoNerdBlinkState  = false;
 volatile bool leoNerdBlinkGreen  = false;
 volatile bool leoNerdBlinkRed    = false;
 
-
 void sendStates(bool override) {
   if(!initDone)
     return;
@@ -50,9 +49,6 @@ void every10ms() {
 }
 
 void every20ms() {
-  if(refreshingDisplay)
-    return;
-  isrFastLEDTimerHandler();
   // Add your periodical code here
 }
 

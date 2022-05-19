@@ -1,5 +1,6 @@
 M205 P"..." S n | n.n | "..." [ I | X | Y | Z ]
-Parameter Name In P 	Option:
+
+Parameter Name In P 	Option
 -------------------------------------------
 AccelDist           	S n      X | Y | Z
 AccelSpeed          	S n      X | Y | Z
@@ -14,19 +15,26 @@ Color               	S "..."  I 0..11
 CSDown              	S n      X | Y | Z
 CSMax               	S n      X | Y | Z
 CSMin               	S n      X | Y | Z
+CutterTop              	S 0|1
 CValue              	S "..."  I 0..11
+DbgLevel              	S n
+DebugFreq             	S n
+Device              	S "..."
 DrvAddr             	S n      X | Y | Z
 EmulPrusa           	S 0|1
 EncTicks            	S 0|1
 EStopTest            	S 0|1
 EStopTrg            	S 0|1    X | Y | Z
 ExtCtrl             	S 0|1
+FanSpeed              	S n
 HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
 IdleAnim            	S 0|1
+InsLen              	S n.n
+InsSpeed              	S n
 InvDir              	S 0|1    X | Y | Z
 InvDuet              	S 0|1
-InsLen              	S n.n
+InvRelay              	S 0|1
 LBtnDown            	S "..."
 LBtnHold            	S "..."
 LCDCont             	S 60..255
@@ -41,6 +49,7 @@ Offset              	S n.n    X | Y | Z
 Output              	S 0..15  I 0..11
 PFactor             	S n      I 0..11
 Power               	S n      X | Y | Z
+PurgeDDE            	S n
 PurgeLen            	S n
 PurgeSpeed          	S n
 PwrSaveTime         	S n
@@ -60,6 +69,7 @@ ServoMinPwm         	S 500..2500
 ServoOpen           	S 0..180
 SharedStepper       	S 0|1
 Spacing             	S n.n
+SplitterDist           	S n.n
 SpdsInMms             	S 0|1
 Stall               	S n      X | Y | Z
 StatusBPM           	S n
@@ -67,6 +77,7 @@ StepDly             	S n      X | Y | Z
 StepsMM             	S n      X | Y | Z
 StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z
+SyncSteppers           	S 0|1
 TermMenu            	S 0|1
 TMode               	S 0|1    X | Y | Z
 TOff                	S n      X | Y | Z
@@ -74,6 +85,11 @@ ToolColor           	S 0..15
 Tools               	S n
 TraceUSB              	S 0|1
 UnldRetract         	S n
+UseChunks            	S 0|1
+UseCutter            	S 0|1
+UseDuet             	S 0|1
+UseEStop2            	S 0|1
 UsePurge            	S 0|1
 UseServo            	S 0|1
+UseSplitter           	S 0|1
 WipeSeq             	S "..."

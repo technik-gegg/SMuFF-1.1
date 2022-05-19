@@ -92,7 +92,7 @@ void recoverStore() {
             smuffConfig.feedLoadState[i] = jsonDoc[feedState][tmp];
           }
           else {
-            smuffConfig.feedLoadState[i] = SPL_NOT_LOADED;
+            smuffConfig.feedLoadState[i] = NOT_LOADED;
           }
         }
       }

@@ -25,6 +25,8 @@
 #define I       4
 #define SP      8
 #define DEV     16
+#define DEV2    32
+#define DEV3    64
 #define ALL D | W | I
 
 #if defined(DEBUG)

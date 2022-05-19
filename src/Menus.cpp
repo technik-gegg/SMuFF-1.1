@@ -392,13 +392,11 @@ void showMainMenu() {
   char     _title[128];
   char     _subtitle[80];
   char     _menu[800];
+  char      errmsg[MAX_ERR_MSG];
 
   while(!stopMenu) {
     sprintf_P(_title, P_TitleMainMenu);
-    // setupDummyMenu();
-    // xdumpMenu(_menu);
     setupMainMenu(_menu, ArraySize(_menu)-1);
-    // xdumpMenu(_menu);
     resetAutoClose();
     stopMenu = checkStopMenu(startTime);
 
@@ -410,6 +408,7 @@ void showMainMenu() {
     else {
       char* title = extractTitle(_menu, current_selection-1, _subtitle, ArraySize(_subtitle)-1);
       bool enabled = steppers[SELECTOR].getEnabled();
+      char *errmsg;
 
       switch(fnc) {
         case 1:
@@ -438,7 +437,7 @@ void showMainMenu() {
           break;
 
         case 5:
-          maintainTool();
+          maintainTool(errmsg);
           break;
 
         case 6:
@@ -450,21 +449,21 @@ void showMainMenu() {
 
         case 7:
           if(smuffConfig.prusaMMU2)
-              loadFilamentPMMU2();
+              loadFilamentPMMU2(errmsg);
           else
-              loadFilament();
+              loadFilament(errmsg);
           break;
 
         case 8:
-          unloadFilament();
+          unloadFilament(errmsg);
           break;
 
         case 9:
-          loadFilament();
+          loadFilament(errmsg);
           break;
 
         case 10: // Wipe Nozzle
-          G12("G12", "", 255);
+          G12("G12", "", 255, errmsg);
           break;
 
         case 11: // Cut Filament
@@ -490,11 +489,11 @@ void showMainMenu() {
           break;
 
         case 19:
-          loadToSplitter(true);
+          loadToSplitter(errmsg, true);
           break;
 
         case 20:
-          unloadFromSplitter(true);
+          unloadFromSplitter(errmsg, true);
           break;
 
       }
@@ -672,7 +671,7 @@ void positionServoCallback(int val) {
 void animationBpmCallback(int val) {
   #if defined(USE_FASTLED_TOOLS)
       for(int i=0; i< smuffConfig.toolCount*2; i++) {
-        #if !defined(__STM32G0XX)
+        #if !defined(USES_ADAFRUIT_NPX)
           fadeToBlackBy(ledsTool, smuffConfig.toolCount, 100);
           int8_t pos = beatsin8(val, 0, smuffConfig.toolCount-1);
           ledsTool[pos] += CHSV(fastLedHue, 255, 200);
@@ -2119,7 +2118,8 @@ void showToolsMenu() {
     else {
       int8_t tool = toolSelections[current_selection-2];
       if(!smuffConfig.sendActionCmds) {
-        selectTool(tool);
+        char* errmsg;
+        selectTool(tool, errmsg, true);
       }
       else {
         // send "Tool Change" action to controller

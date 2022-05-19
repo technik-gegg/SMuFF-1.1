@@ -47,7 +47,7 @@ void setupDisplay() {
   // If it's configured at 0x7a, you need to change the I2C_DISPLAY_ADDRESS in Config.h to 0x3d.
   #if I2C_DISPLAY_ADDRESS != 0x3C
   display.setI2CAddress(I2C_DISPLAY_ADDRESS);
-  __debugS(I, PSTR("[ setupDisplay: I2C address set to 0x%02X ]"), I2C_DISPLAY_ADDRESS);
+  __debugS(I, PSTR("setupDisplay: I2C address set to 0x%02X"), I2C_DISPLAY_ADDRESS);
   #endif
   #if defined(USE_LEONERD_DISPLAY)
     display.begin();
@@ -161,7 +161,7 @@ void drawStatus() {
   }
 
   display.setFont(SMALL_FONT);
-  sprintf_P(tmp, PSTR("        %5s  %6s"), parserBusy ? P_Busy : P_Ready, brand);
+  sprintf_P(tmp, PSTR("        %5s  %6s"), parserBusy ? P_Busy : (feederJammed ? P_Jammed : P_Ready), brand);
   display.drawStr(1, display.getDisplayHeight()-1, tmp);
 
   display.setFontMode(0);
@@ -175,7 +175,7 @@ void drawStatus() {
         display.drawGlyph(display.getDisplayWidth() - 18, 35, feederEndstop(2) ? 0x41 : 0x42);
     }
     else {
-      display.drawGlyph(display.getDisplayWidth() - 18, 18, smuffConfig.feedLoadState[getToolSelected()] > SPL_NOT_LOADED ? 0x41 : 0x42);
+      display.drawGlyph(display.getDisplayWidth() - 18, 18, smuffConfig.feedLoadState[getToolSelected()] > NOT_LOADED ? 0x41 : 0x42);
       display.setFont(ICONIC_FONT3);
       display.drawGlyph(display.getDisplayWidth() - 18, 35, smuffConfig.feedLoadState[getToolSelected()] == SPL_LOADED_TO_NOZZLE ? 0x47 : 0x20);
     }
@@ -211,7 +211,7 @@ void drawStatus() {
     }
   }
   #endif
-  // __debugS(D, PSTR("[ drawStatus done ]"));
+  // __debugS(DEV2, PSTR("drawStatus done"));
 }
 
 void drawFeed(bool updateBuffer) {
@@ -521,25 +521,26 @@ void drawSDStatus(int8_t stat)
       sprintf_P(tmp, P_SD_Reading, P_SD_ReadingSteppers);
       break;
   }
-  // __debugS(D, PSTR("[\tdrawSDStatus: drawing status ]"));
+  // __debugS(D, PSTR("\tdrawSDStatus: drawing status"));
   display.clearBuffer();
   drawLogo();
   drawVersion();
   display.setCursor((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, display.getDisplayHeight()-1);
   display.print(tmp);
-  // __debugS(D, PSTR("[\tdrawSDStatus: updating display ]"));
+  // __debugS(D, PSTR("\tdrawSDStatus: updating display"));
   display.updateDisplay();
-  __debugS(DEV, PSTR("[\tdrawSDStatus: %d -> %s ]"), stat, tmp);
+  __debugS(DEV, PSTR("\tdrawSDStatus: %d -> %s"), stat, tmp);
 }
 
 bool showFeederBlockedMessage() {
+  char errmsg[MAX_ERR_MSG];
   bool state = false;
   lastEncoderButtonTime = millis();
   beep(1);
   uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_RemoveMaterial, P_CancelRetryButtons);
   if (button == 1) {
     refreshStatus();
-    unloadFilament();
+    unloadFilament(errmsg);
     state = true;
   }
   display.clearDisplay();
@@ -547,13 +548,14 @@ bool showFeederBlockedMessage() {
 }
 
 bool showFeederLoadedMessage() {
+  char errmsg[MAX_ERR_MSG];
   bool state = false;
   lastEncoderButtonTime = millis();
   beep(1);
   uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_AskUnload, P_YesNoButtons);
   if (button == 1) {
     refreshStatus();
-    unloadFilament();
+    unloadFilament(errmsg);
     state = true;
   }
   display.clearDisplay();
@@ -561,6 +563,7 @@ bool showFeederLoadedMessage() {
 }
 
 bool showFeederLoadMessage() {
+  char errmsg[MAX_ERR_MSG];
   bool state = false;
   lastEncoderButtonTime = millis();
   beep(1);
@@ -568,9 +571,9 @@ bool showFeederLoadMessage() {
   if (button == 1) {
     refreshStatus();
     if (smuffConfig.prusaMMU2)
-      loadFilamentPMMU2();
+      loadFilamentPMMU2(errmsg);
     else
-      loadFilament();
+      loadFilament(errmsg);
     state = true;
   }
   display.clearDisplay();
@@ -592,7 +595,7 @@ bool showFeederFailedMessage(int8_t state) {
 }
 
 uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
-  //__debugS(DEV, PSTR("[ showDialog: %S ]"), title);
+  //__debugS(DEV2, PSTR("showDialog: %S"), title);
   if (isPwrSave)
     setPwrSave(0);
   setFastLEDStatus(FASTLED_STAT_WARNING);
@@ -621,7 +624,7 @@ void signalNoTool() {
 void refreshStatus(bool feedOnly /* = false */) {
   #if defined(USE_LEONERD_DISPLAY)
     if(encoder.busy()) {
-      __debugS(DEV,PSTR("[ refreshStatus: Encoder busy, aborting ]"));
+      __debugS(DEV2, PSTR("refreshStatus: Encoder busy, aborting"));
       return;
     }
   #endif
@@ -633,11 +636,11 @@ void refreshStatus(bool feedOnly /* = false */) {
       drawFeed();
     }
     else {
-      // __debugS(DEV,PSTR("[ refreshStatus: updating display ]"));
+      // __debugS(DEV2, PSTR("refreshStatus: updating display"));
       display.clearBuffer();
       drawStatus();
       display.updateDisplay();
-      // __debugS(DEV,PSTR("[ refreshStatus: display updated ]"));
+      // __debugS(DEV2, PSTR("refreshStatus: display updated"));
       // note to myself: if it's hanging here, you did something wrong!
     }
     refreshingDisplay = false;
@@ -645,14 +648,14 @@ void refreshStatus(bool feedOnly /* = false */) {
 }
 
 void setDisplayPowerSave(bool state) {
-  __debugS(DEV,PSTR("[ setDisplayPowerSave: %s ]"), state ? P_Yes : P_No);
+  __debugS(DEV3,PSTR("setDisplayPowerSave: %s"), state ? P_Yes : P_No);
   display.setPowerSave(state);
 }
 
 #else
 
 void setupDisplay() {
-    __debugS(D, PSTR("[\tsetupDisplay: Serial Display configured ]"));
+    __debugS(D, PSTR("\tsetupDisplay: Serial Display configured"));
 }
 
 void drawVersion() {

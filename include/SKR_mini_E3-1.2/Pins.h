@@ -80,8 +80,12 @@
 
 #define NEOPIXEL_TOOL_PIN   PC7     // for tools (NEOPIXEL)
 #define BRIGHTNESS_TOOL     127
+#if !defined(USES_ADAFRUIT_NPX)
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
+#else
+#define COLOR_ORDER_TOOL    NEO_GRB + NEO_KHZ800
+#endif
 
 #define SDCS_PIN            0       // use default
 #define DEBUG_PIN           0 

@@ -68,6 +68,8 @@ extern SdFat SD;
 #if defined(USE_ZSERVO)
 #include "ZServo.h"
 #else
+#undef TIMER_SERVO
+#define TIMER_SERVO   TIM7
 #include "Servo.h"
 #endif
 
@@ -125,9 +127,12 @@ extern SdFat SD;
 #define REVOLVER_SIGNAL         3
 #define LED_SIGNAL              4
 
-#define SPL_NOT_LOADED          0
-#define SPL_LOADED_TO_SPLITTER  1
-#define SPL_LOADED_TO_NOZZLE    2
+#define NOT_LOADED              0x00
+#define SPL_LOADED_TO_SPLITTER  0x01
+#define SPL_LOADED_TO_NOZZLE    0x02
+#define LOADED_TO_SELECTOR      0x10
+#define LOADED_TO_NOZZLE        0x20
+#define LOADED_TO_DDE           0x40
 
 #define INTERNAL                1
 #define EXTERNAL                0
@@ -307,8 +312,11 @@ extern GCodeFunctions           gCodeFuncsG[];
 extern ZStepper                 steppers[];
 extern ZTimer                   stepperTimer;
 extern ZTimer                   gpTimer;
-extern ZTimer                   servoTimer;
+#if defined(USE_FASTLED_TOOLS)
+extern ZTimer                   ledTimer;
+#endif
 #if defined(USE_ZSERVO)
+extern ZTimer                   servoTimer;
 extern ZServo                   servoWiper;
 extern ZServo                   servoLid;
 extern ZServo                   servoCutter;
@@ -470,10 +478,10 @@ extern bool showFeederFailedMessage(int8_t state);
 extern bool showFeederBlockedMessage();
 extern uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons);
 extern bool moveHome(int8_t index, bool showMessage = true, bool checkFeeder = true);
-extern bool loadFilament(bool showMessage = true);
-extern bool loadFilamentPMMU2(bool showMessage = true);
-extern bool unloadFilament();
-extern bool unloadFromSelector();
+extern bool loadFilament(char* errmsg, bool showMessage = true);
+extern bool loadFilamentPMMU2(char* errmsg, bool showMessage = true);
+extern bool unloadFilament(char* errmsg);
+extern bool unloadFromSelector(char* errmsg);
 extern void wipeNozzle();
 extern void cutFilament(bool keepClosed = true);
 extern bool handleFeederStall(uint16_t *speed, int8_t *retries);
@@ -481,7 +489,7 @@ extern bool nudgeBackFilament();
 extern void handleStall(int8_t axis);
 extern void runAndWait(int8_t index);
 extern void runNoWait(int8_t index);
-extern bool selectTool(int8_t ndx, bool showMessage = true);
+extern bool selectTool(int8_t ndx, char* errmsg, bool showMessage = true);
 extern void setStepperSteps(int8_t index, long steps, bool ignoreEndstop);
 extern void prepSteppingAbs(int8_t index, long steps, bool ignoreEndstop = false);
 extern void prepSteppingAbsMillimeter(int8_t index, float millimeter, bool ignoreEndstop = false);
@@ -510,6 +518,7 @@ extern void attachServo(int8_t servoNum, pin_t pin);
 extern void detachServo(int8_t servoNum);
 extern void setServoMaxCycles(int8_t servoNum, uint8_t cycles);
 extern bool isServoPulseComplete(int8_t servoNum);
+extern bool isServoDisabled(int8_t servoNum);
 extern bool setServoPos(int8_t servoNum, uint8_t degree);
 extern bool setServoMS(int8_t servoNum, uint16_t microseconds);
 extern void setServoLid(uint8_t pos);
@@ -554,9 +563,9 @@ extern void drawSwapTool(uint8_t from, uint8_t with);
 extern uint8_t swapTool(uint8_t index);
 extern int8_t getToolSelected();
 extern void positionRevolver();
-extern bool feedToEndstop(bool showMessage);
-extern bool feedToNozzle(bool showMessage);
-extern bool unloadFromNozzle(bool showMessage);
+extern bool feedToEndstop(char* errmsg, bool showMessage);
+extern bool feedToNozzle(char* errmsg, bool showMessage);
+extern bool unloadFromNozzle(char* errmsg, bool showMessage);
 extern uint8_t splitStringLines(char *lines[], uint8_t maxLines, const char *message, const char *token = "\n");
 extern void debounceButton();
 extern bool checkStopMenu(unsigned startTime);
@@ -581,7 +590,7 @@ extern void isrSplitterEndstops();
 extern void setToneTimerChannel(uint8_t ntimer, uint8_t channel);
 extern void isrStepperTimerHandler();
 extern void isrGPTimerHandler();
-extern void isrFastLEDTimerHandler();
+extern void isrLedTimerHandler();
 extern void isrServoTimerHandler();
 extern void isrStallDetectedX();
 extern void isrStallDetectedY();
@@ -619,16 +628,16 @@ extern void sendM205List(int8_t serial);
 extern void sendToolResponse(int8_t serial);
 extern void sendStartResponse(int8_t serial);
 extern void sendOkResponse(int8_t serial);
+extern void sendBusyResponse(int8_t serial);
 extern void sendErrorResponse(int8_t serial, const char *msg = nullptr);
-extern void sendErrorResponseP(int8_t serial, const char *msg = nullptr);
 extern void sendXon(Stream* serial);
 extern void sendXoff(Stream* serial);
 extern void parseGcode(const String &serialBuffer, int8_t serial);
-extern bool parse_G(const String &buf, int8_t serial);
-extern bool parse_M(const String &buf, int8_t serial);
-extern bool parse_T(const String &buf, int8_t serial);
-extern bool parse_PMMU2(char cmd, const String &buf, int8_t serial);
-extern bool parse_Action(const String &buf, int8_t serial);
+extern bool parse_G(const String &buf, int8_t serial, char* errmsg);
+extern bool parse_M(const String &buf, int8_t serial, char* errmsg);
+extern bool parse_T(const String &buf, int8_t serial, char* errmsg);
+extern bool parse_PMMU2(char cmd, const String &buf, int8_t serial, char* errmsg);
+extern bool parse_Action(const String &buf, int8_t serial, char* errmsg);
 extern int  getParam(String buf, const char *token);
 extern long getParamL(String buf, const char *token);
 extern float getParamF(String buf, const char *token);
@@ -644,7 +653,7 @@ extern void printDriverMode(int8_t serial);
 extern void printDriverRms(int8_t serial);
 extern void printDriverMS(int8_t serial);
 extern void printDriverStallThrs(int8_t serial);
-extern void maintainTool();
+extern bool maintainTool(char* errmsg);
 extern void printPeriodicalState(int8_t serial);
 extern void prepareSequence(const char *sequence, bool autoPlay = true);
 extern void playSequence();
@@ -670,7 +679,6 @@ extern void setFastLEDToolsRainbow();
 extern void setFastLEDToolsError();
 extern void setFastLEDToolsWarning();
 extern void setFastLEDToolsOk();
-extern void refreshFastLED();
 
 extern void switchFeederStepper(uint8_t stepper);
 extern void removeFirmwareBin();
@@ -695,8 +703,8 @@ extern void sendStates(bool override = false);
 extern void setTestRunPending(const char* testfile);
 extern void resetUpload();
 
-extern bool loadToSplitter(bool showMessage);
-extern bool unloadFromSplitter(bool showMessage);
+extern bool loadToSplitter(char* errmsg, bool showMessage);
+extern bool unloadFromSplitter(char* errmsg, bool showMessage);
 
 extern void calcHwDebugCounter();
 
@@ -711,4 +719,5 @@ extern void showBacklightLeds();
     extern void assHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb);
   #endif
 #endif 
+extern void fastFlipDbg();
 

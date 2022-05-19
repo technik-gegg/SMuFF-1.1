@@ -61,20 +61,20 @@ void initAdaNeoPx() {
     pinMode(NEOPIXEL_PIN, OUTPUT);
     cBackLight = new Adafruit_NeoPixel(NUM_LEDS, NEOPIXEL_PIN, COLOR_ORDER);
     cBackLight->setBrightness(BRIGHTNESS);
-    __debugS(D, PSTR("[\tinitAdaNeoPx: Backlight initialized ]"));
+    __debugS(D, PSTR("\tinitAdaNeoPx: Backlight initialized"));
   #else
     #if defined(NEOPIXEL_PIN)
-      __debugS(D, PSTR("[\tinitAdaNeoPx: Backlight not enabled. Neopixel Pin: %d ]"), NEOPIXEL_PIN);
+      __debugS(D, PSTR("\tinitAdaNeoPx: Backlight not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
     #endif
   #endif
   #if NEOPIXEL_TOOL_PIN > 0 && defined(USE_FASTLED_TOOLS)
     pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
     cTools = new Adafruit_NeoPixel(smuffConfig.toolCount, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL);
     cTools->setBrightness(BRIGHTNESS_TOOL);
-    __debugS(D, PSTR("[\tinitAdaNeoPx: Tools initialized ]"));
+    __debugS(D, PSTR("\tinitAdaNeoPx: Tools initialized"));
   #else
     #if defined(NEOPIXEL_TOOL_PIN)
-      __debugS(D, PSTR("[\tinitAdaNeoPx: Neopixels for tools not enabled. Neopixel Pin: %d ]"), NEOPIXEL_TOOL_PIN);
+      __debugS(D, PSTR("\tinitAdaNeoPx: Neopixels for tools not enabled. Neopixel Pin: %d"), NEOPIXEL_TOOL_PIN);
     #endif
   #endif
 #endif
@@ -93,20 +93,20 @@ void initFastLED() {
     pinMode(NEOPIXEL_PIN, OUTPUT);
     cBackLight = &FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(BRIGHTNESS);
-    __debugS(D, PSTR("[\tinitFastLED: Backlight initialized ]"));
+    __debugS(D, PSTR("\tinitFastLED: Backlight initialized"));
   #else
     #if defined(NEOPIXEL_PIN)
-    __debugS(D, PSTR("[\tinitFastLED: Neopixels for backlight not enabled. Neopixel Pin: %d ]"), NEOPIXEL_PIN);
+    __debugS(D, PSTR("\tinitFastLED: Neopixels for backlight not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
     #endif
   #endif
   #if NEOPIXEL_TOOL_PIN > 0 && defined(USE_FASTLED_TOOLS)
     pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
     cTools = &FastLED.addLeds<LED_TYPE_TOOL, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(BRIGHTNESS_TOOL);
-    __debugS(D, PSTR("[\tinitFastLED: Tools initialized ]"));
+    __debugS(D, PSTR("\tinitFastLED: Tools initialized"));
   #else
     #if defined(NEOPIXEL_TOOL_PIN)
-    __debugS(D, PSTR("[\tinitFastLED: Neopixels for tools not enabled. Neopixel Pin: %d ]"), NEOPIXEL_TOOL_PIN);
+    __debugS(D, PSTR("\tinitFastLED: Neopixels for tools not enabled. Neopixel Pin: %d"), NEOPIXEL_TOOL_PIN);
     #endif
   #endif
 #endif
@@ -121,7 +121,7 @@ void initHwDebug() {
   pinMode(DEBUG_PIN, OUTPUT);
   digitalWrite(DEBUG_PIN, HIGH);
   calcHwDebugCounter();
-  __debugS(D, PSTR("[\tinitHwDebug: Pin initialized, frequency is %dHz ]"), smuffConfig.dbgFreq);
+  __debugS(D, PSTR("\tinitHwDebug: Pin initialized, frequency is %dHz"), smuffConfig.dbgFreq);
 #endif
 }
 
@@ -133,13 +133,13 @@ void setupDuetSignals() {
   #if defined(DUET_SIG_FED_PIN) && DUET_SIG_FED_PIN > 0
     pinMode(DUET_SIG_FED_PIN, OUTPUT);
     digitalWrite(DUET_SIG_FED_PIN, (smuffConfig.invertDuet ? HIGH : LOW));
-    __debugS(D, PSTR("[\tsetupDuetSignals: Feeder pin initialized ]"));
+    __debugS(D, PSTR("\tsetupDuetSignals: Feeder pin initialized"));
   #endif
 
   #if defined(DUET_SIG_SEL_PIN) && DUET_SIG_SEL_PIN > 0
     pinMode(DUET_SIG_SEL_PIN, OUTPUT);
     digitalWrite(DUET_SIG_SEL_PIN, (smuffConfig.invertDuet ? HIGH : LOW));
-    __debugS(D, PSTR("[\tsetupDuetSignals: Selector pin initialized ]"));
+    __debugS(D, PSTR("\tsetupDuetSignals: Selector pin initialized"));
   #endif
 }
 
@@ -163,7 +163,7 @@ void reinitSerial(USBSerial* serial, uint8_t index) {
 }
 
 void setupSerial() {
-  const char* initMsg = "[\tsetupSerial: SERIAL%d initialized with %ld baud ]";
+  const char* initMsg = "\tsetupSerial: SERIAL%d initialized with %ld baud";
   // special case:
   // if the baudrate is set to 0, the board is running out of memory
   if (smuffConfig.serialBaudrates[0] != 0)
@@ -174,9 +174,9 @@ void setupSerial() {
   }
   else
   {
-    __debugS(D, PSTR("[\tsetupSerial: Config error for serial\n--------------------\n"));
+    __debugS(D, PSTR("\tsetupSerial: Config error for serial\n--------------------\n"));
     writeMainConfig((Print *)debugSerial);
-    __debugS(D, PSTR("\n-------------------- ]"));
+    __debugS(D, PSTR("\n--------------------"));
     longBeep(3);
     showDialog(P_TitleConfigError, P_ConfigFail1, P_ConfigFail4, P_OkButtonOnly);
   }
@@ -201,7 +201,7 @@ void setupSerial() {
 void setupSwSerial0() {
 #if defined(USE_SW_SERIAL0)
   swSerial0.begin(TMC_BAUDRATE);
-  __debugS(D, PSTR("[\tsetupSwSerial0: Software SERIAL initialized with %ld baud ]"), TMC_BAUDRATE);
+  __debugS(D, PSTR("\tsetupSwSerial0: Software SERIAL initialized with %ld baud"), TMC_BAUDRATE);
 #endif
 }
 
@@ -211,23 +211,25 @@ void setupRelay() {
     // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
     // switch on the external stepper by default. Otherwise, use the interal stepper.
     #if defined(USE_DDE)
-    switchFeederStepper(EXTERNAL);
-    #else
-    if (smuffConfig.extControlFeeder)
       switchFeederStepper(EXTERNAL);
-    else
-      switchFeederStepper(INTERNAL);
+    #else
+      if (smuffConfig.extControlFeeder)
+        switchFeederStepper(EXTERNAL);
+      else
+        switchFeederStepper(INTERNAL);
     #endif
   }
   else {
-      __debugS(D, PSTR("[\tsetupRelay: Relay pin undefined ]"));
+      __debugS(D, PSTR("\tsetupRelay: Relay pin undefined"));
   }
 }
 
 void setupServos() {
 
 #if !defined(MULTISERVO)
-  
+
+  __debugS(D, PSTR("\tsetupServos: min. PWM %d, max. PWM %d"), smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
+
   if (SERVO1_PIN > 0) {           // setup the Wiper servo
     setServoMaxCycles(SERVO_WIPER, smuffConfig.servoCycles1);
     setServoMinPwm(SERVO_WIPER, smuffConfig.servoMinPwm);
@@ -241,8 +243,9 @@ void setupServos() {
       resetPos = (uint8_t)param;
     }
     setServoPos(SERVO_WIPER, resetPos);
+    delay(20);
     disableServo(SERVO_WIPER);
-    __debugS(D, PSTR("[\tsetupServos: Wiper servo initialized ]"));
+    __debugS(D, PSTR("\tsetupServos: Wiper servo initialized"));
   }
   
   if (SERVO2_PIN > 0) {           // setup the Lid servo (replaces the Revolver stepper motor)
@@ -252,7 +255,7 @@ void setupServos() {
     setServoTickResolution(SERVO_LID);
     attachServo(SERVO_LID, SERVO2_PIN);
     setServoLid(SERVO_OPEN);
-    __debugS(D, PSTR("[\tsetupServos: Lid servo initialized ]"));
+    __debugS(D, PSTR("\tsetupServos: Lid servo initialized"));
   }
   
   if (SERVO3_PIN > 0) {           // setup the Filament-Cutter servo if defined
@@ -262,10 +265,11 @@ void setupServos() {
     setServoTickResolution(SERVO_CUTTER);
     attachServo(SERVO_CUTTER, SERVO3_PIN);
     setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
-    delay(100);
+    delay(20);
     disableServo(SERVO_CUTTER);
-    __debugS(D, PSTR("[\tsetupServos: Cutter servo initialized ]"));
+    __debugS(D, PSTR("\tsetupServos: Cutter servo initialized"));
   }
+
 #else
   servoPwm.begin();
   servoPwm.setOscillatorFrequency(27000000);
@@ -275,30 +279,30 @@ void setupServos() {
     delay(400);
     setServoPos(i + 10, servoPosClosed[i] - SERVO_CLOSED_OFS);
   }
-  __debugS(D, PSTR("[\tsetupServos: Multiservo initialized ]"));
+  __debugS(D, PSTR("\tsetupServos: Multiservo initialized"));
 #endif
 }
 
 void setupFan() {
   if (FAN_PIN > 0) {
     #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
-    fan.attach(FAN_PIN, 0);
-    fan.setTickRes(FAN_RESOLUTION);
-    fan.setPulseWidthMax((uint16_t(((float)1/FAN_FREQUENCY)*1000000L)));
-    fan.setBlipTimeout(FAN_BLIP_TIMEOUT);
+      fan.attach(FAN_PIN, 0);
+      fan.setTickRes(FAN_RESOLUTION);
+      fan.setPulseWidthMax((uint16_t(((float)1/FAN_FREQUENCY)*1000000L)));
+      fan.setBlipTimeout(FAN_BLIP_TIMEOUT);
     #else
-    pinMode(FAN_PIN, OUTPUT);
+      pinMode(FAN_PIN, OUTPUT);
     #endif
-    if (smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100)
-    {
-      #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
-      fan.setFanSpeed(smuffConfig.fanSpeed);
-      #else
-      analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
-      #endif
-    }
+      if (smuffConfig.fanSpeed >= 0 && smuffConfig.fanSpeed <= 100)
+      {
+        #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
+          fan.setFanSpeed(smuffConfig.fanSpeed);
+        #else
+          analogWrite(FAN_PIN, map(smuffConfig.fanSpeed, 0, 100, 0, 255));
+        #endif
+      }
   }
-  //__debugS(D, PSTR("[ setupFan: DONE ]"));
+  //__debugS(D, PSTR("setupFan: DONE"));
 }
 
 void setupEStopMux() {
@@ -314,11 +318,11 @@ void setupEStopMux() {
     delay(50);
     if(Z_END_PIN > 0) {
       smuffConfig.feedLoadState[i] = ((int8_t)digitalRead(Z_END_PIN) == steppers[FEEDER].getEndstopState());
-      __debugS(D, PSTR("[\tsetupEStopMux: T%d is %s ]"), i, smuffConfig.feedLoadState[i] == SPL_NOT_LOADED ? "open" : "triggered");
+      __debugS(D, PSTR("\tsetupEStopMux: T%d is %s"), i, smuffConfig.feedLoadState[i] == NOT_LOADED ? "open" : "triggered");
     }
   }
   splitterMux.setTool(toolSelected);
-  __debugS(D, PSTR("[\tsetupEStopMux: DONE ]"));
+  __debugS(D, PSTR("\tsetupEStopMux: DONE"));
 #endif
 }
 
@@ -336,11 +340,11 @@ void setupEncoder() {
 #if !defined(USE_SERIAL_DISPLAY)
   #if defined(USE_LEONERD_DISPLAY)
     encoder.begin(&I2CBus);
-    // __debugS(D, PSTR("[\tsetupEncoder: After encoder.begin() ]"));
+    // __debugS(DEV3, PSTR("\tsetupEncoder: After encoder.begin()"));
     uint8_t ver = encoder.queryVersion();
-    __debugS(D, PSTR("[\tsetupEncoder: LeoNerd's OLED Module version: %d ]"), ver);
+    __debugS(D, PSTR("\tsetupEncoder: LeoNerd's OLED Module version: %d"), ver);
     if (ver < 2) {
-      __debugS(W, PSTR("[\tsetupEncoder: LeoNerd's OLED Module version mismatch, you need version 2! ]"));
+      __debugS(W, PSTR("\tsetupEncoder: LeoNerd's OLED Module version mismatch, you need version 2!"));
     }
     else {
       encoder.setKeyBeepMask(BEEP_NONE);
@@ -349,7 +353,7 @@ void setupEncoder() {
     }
   #else
     encoder.setDoubleClickEnabled(true); // enable doubleclick on the rotary encoder
-    __debugS(D, PSTR("[\tsetupEncoder: Encoder initialized. ]"));
+    __debugS(D, PSTR("\tsetupEncoder: Encoder initialized."));
   #endif
 #endif
 }
@@ -358,7 +362,7 @@ void setupSteppers(){
 
   uint16_t maxSpeed = translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR);
   uint16_t accelSpeed = translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR);
-  steppers[SELECTOR] = ZStepper(SELECTOR, (char *)"SEL", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, accelSpeed, maxSpeed);
+  steppers[SELECTOR] = ZStepper(SELECTOR, (char *)"SELECTOR", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[SELECTOR].setEndstop(X_END_PIN, smuffConfig.endstopTrg[SELECTOR], ZStepper::MIN, 1, isrEndstopX);
   steppers[SELECTOR].stepFunc = overrideStepX;
   steppers[SELECTOR].setMaxStepCount(smuffConfig.maxSteps[SELECTOR]);
@@ -386,7 +390,7 @@ void setupSteppers(){
 #if !defined(SMUFF_V5) && !defined(SMUFF_V6S) && !defined(USE_DDE)
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
-  steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"REV", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
+  steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"REVOLVER", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::ORBITAL, 1, isrEndstopY);
   steppers[REVOLVER].stepFunc = overrideStepY;
   steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerRevolution);
@@ -414,20 +418,24 @@ void setupSteppers(){
 
 #else
   #if !defined(SMUFF_V6S) && !defined(USE_DDE)
-  // we don't use the Revolver stepper but a servo instead, although
-  // create a dummy instance
-  steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"REV", 0, 0, Y_ENABLE_PIN, 0, 0);
+    // we don't use the Revolver stepper but a servo instead, although
+    // create a dummy instance
+    steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"DUMMY_Y", 0, 0, Y_ENABLE_PIN, 0, 0);
   #else
-  // except for V6S, which uses a linear stepper instead of a servo
-  // or for Direct Drive Extruder
-  maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
-  accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
-  steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"REV", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
+    // except for V6S, which uses a linear stepper instead of a servo
+    // or for Direct Drive Extruder
+    maxSpeed = translateSpeed(smuffConfig.maxSpeed[REVOLVER], REVOLVER);
+    accelSpeed = translateSpeed(smuffConfig.accelSpeed[REVOLVER], REVOLVER);
   #if defined(SMUFF_V6S)
+    steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"LID", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
     steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MIN, 1, isrEndstopY);
     steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerMM[REVOLVER]*10);  // max. movement 10mm
   #else
-    steppers[REVOLVER].setEndstop(Y_END_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MINMAX, 1, isrEndstopY);
+    #if Z_END2_PIN == 0
+      #pragma error "DDE needs Z_END2_PIN definition as the endstop"
+    #endif
+    steppers[REVOLVER] = ZStepper(REVOLVER, (char *)"DDE", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, accelSpeed, maxSpeed);
+    steppers[REVOLVER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[REVOLVER], ZStepper::MINMAX, 1, isrEndstopZ2);
     steppers[REVOLVER].setMaxStepCount(smuffConfig.stepsPerMM[REVOLVER]*300); // max. movement 300mm
   #endif
   steppers[REVOLVER].stepFunc = overrideStepY;
@@ -453,16 +461,16 @@ void setupSteppers(){
     #endif
   }
     #if defined(SMUFF_V6S)
-      __debugS(D, PSTR("[\tsetupSteppers: Y-Stepper initialized for V6S ]"));
+      __debugS(D, PSTR("\tsetupSteppers: Y-Stepper initialized for V6S"));
     #else
-      __debugS(D, PSTR("[\tsetupSteppers: Y-Stepper initialized for DDE ]"));
+      __debugS(D, PSTR("\tsetupSteppers: Y-Stepper initialized for DDE"));
     #endif
   #endif
 #endif
 
   maxSpeed = translateSpeed(smuffConfig.maxSpeed[FEEDER], FEEDER);
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER);
-  steppers[FEEDER] = ZStepper(FEEDER, (char *)"FED", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, accelSpeed, maxSpeed);
+  steppers[FEEDER] = ZStepper(FEEDER, (char *)"FEEDER", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX, 1, isrEndstopZ);
   if (Z_END2_PIN > 0) {
     steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2, isrEndstopZ2); // optional
@@ -497,11 +505,11 @@ void setupSteppers(){
     steppers[i].setEnabled(true);
   }
 
-  __debugS(D, PSTR("[\tsetupSteppers: init steppers DONE ]"));
+  __debugS(D, PSTR("\tsetupSteppers: init steppers DONE"));
   for (uint8_t i = 0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
-  //__debugS(D, PSTR("[ setupSteppers: init tool swaps DONE ]"));
+  //__debugS(D, PSTR("setupSteppers: init tool swaps DONE"));
 }
 
 #ifdef HAS_TMC_SUPPORT
@@ -526,7 +534,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
 
   if (mode == 0)
   {
-    __debugS(D, PSTR("[\tinitDriver: Driver for %c-axis skipped ]"), axis == FEEDER2 ? 'E' : 'X'+axis);
+    __debugS(D, PSTR("\tinitDriver: Driver for %c-axis skipped"), axis == FEEDER2 ? 'E' : 'X'+axis);
     return nullptr;
   }
 
@@ -535,7 +543,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   #else
   TMC2209Stepper *driver = new TMC2209Stepper(rx_pin, tx_pin, rsense, drvrAdr);
   #endif
-  __debugS(D, PSTR("[\tinitDriver: Driver for %c-axis created on address %d ]"), axis == FEEDER2 ? 'E' : 'X'+axis, drvrAdr);
+  __debugS(D, PSTR("\tinitDriver: Driver for %c-axis created on address %d"), axis == FEEDER2 ? 'E' : 'X'+axis, drvrAdr);
 
   #if defined(HAS_TMC_SUPPORT) && !defined(TMC_HW_SERIAL)
   driver->beginSerial(TMC_SW_BAUDRATE);
@@ -550,13 +558,13 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
     // It's a different picture for external (Pololu style) stepper drivers.
     // So for now, this initialisation is skipped when compiling for E3 1.2 / 2.0 boards.
     #if !defined(__BRD_SKR_MINI_E3)
-    __debugS(D, PSTR("[\tinitDriver: Setting RSense to internal ]"));
+    __debugS(D, PSTR("\tinitDriver: Setting RSense to internal"));
     steppers[axis].setEnabled(false);
     driver->internal_Rsense(true);
     #endif
   }
   steppers[axis].setEnabled(true);
-  //intRsense = driver->internal_Rsense(); __debugS(D, PSTR("[ initDriver: RSense internal is %s ]"), intRsense ? "true" : "false");
+  //intRsense = driver->internal_Rsense(); __debugS(D, PSTR("initDriver: RSense internal is %s"), intRsense ? "true" : "false");
 
   driver->toff(toff);
   driver->blank_time(36);
@@ -565,7 +573,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   driver->pdn_disable(true);        // PDN disabled for UART operation
   driver->mstep_reg_select(1);      // set microstepping
   driver->microsteps(msteps);
-  __debugS(D, PSTR("[\tinitDriver: Basic Init done for %c-Axis. ]"), (axis==FEEDER2) ? 'E' : 'X' + axis);
+  __debugS(D, PSTR("\tinitDriver: Basic Init done for %c-Axis."), (axis==FEEDER2) ? 'E' : 'X' + axis);
 
   // setup StallGuard only if TMode is set to true
   // otherwise put it in SpreadCycle mode
@@ -597,14 +605,24 @@ void setDriverSpreadCycle(TMC2209Stepper *driver, bool spread, uint8_t stallThrs
     driver->en_spreadCycle(false);
     driver->TCOOLTHRS(0xFFFFF);
     driver->SGTHRS(stallThrs);
-    driver->pwm_ofs(1);
+    driver->pwm_ofs(36);
+    driver->pwm_grad(14);
+    driver->pwm_freq(1);
+    driver->pwm_lim(12);
+    driver->pwm_reg(8);
     driver->pwm_autoscale(true);
     driver->pwm_autograd(true);
+    driver->hend(0);
+    driver->hstrt(5);
+    driver->iholddelay(8);
+    driver->TPOWERDOWN(20);
+    driver->tbl(2);
   }
   driver->semin(csmin);
   driver->semax(csmax);
   driver->sedn(csdown);
   driver->seup(csdown);
+  driver->toff(toff);
 }
 
 void setupTMCDrivers()
@@ -613,7 +631,7 @@ void setupTMCDrivers()
 #if defined(TMC_HW_SERIAL)
   // make sure init of the HW-Serial is done only once
   if (!hwSerialInit) {
-    __debugS(D, PSTR("[\tsetupTMCDrivers: Initializing TMC HW-Serial with Baudrate %ld ]"), TMC_HW_BAUDRATE);
+    __debugS(D, PSTR("\tsetupTMCDrivers: Initializing TMC HW-Serial with Baudrate %ld"), TMC_HW_BAUDRATE);
     TMC_SERIAL.begin(TMC_HW_BAUDRATE);
     hwSerialInit = true;
   }
@@ -635,7 +653,7 @@ void setupTMCDrivers()
   drivers[FEEDER2] = initDriver(FEEDER2, E_SERIAL_TX_PIN, E_SERIAL_TX_PIN);
 #endif
 #endif
-  //__debugS(D, PSTR("[ setupTMCDrivers: initialized ]"));
+  //__debugS(D, PSTR("setupTMCDrivers: initialized"));
 
 #if defined(STALL_X_PIN)
   if (STALL_X_PIN > 0)
@@ -649,7 +667,7 @@ void setupTMCDrivers()
   if (STALL_Z_PIN > 0)
     pinMode(STALL_Z_PIN, INPUT_PULLUP);
 #endif
-  //__debugS(D, PSTR("[ setupTMCDrivers: DONE ]"));
+  //__debugS(D, PSTR("setupTMCDrivers: DONE"));
 }
 
 #endif
@@ -671,7 +689,8 @@ void setupTimers()
   //    Servo uses:         TIMER7 (stm32duino default)
   //
   //    Steppers use:       TIMER1 CH1
-  //    GP timer uses:      TIMER3 CH1 (general, encoder, fan, servo)
+  //    GP timer uses:      TIMER3 CH1 (general, encoder, fan)
+  //    NeoPixel uses:      TIMER4 CH1 
   //
   // Warning: If you need to modify this assignment, be sure you know what you do!
   //          Swapping timers and/or channels may lead to a non functioning device or
@@ -679,17 +698,45 @@ void setupTimers()
   //          the stm32duino library settings before you do so.
   // *****
   stepperTimer.setupTimer(ZTimer::_TIMER1, ZTimer::CH1, STEPPER_PSC, 0, isrStepperTimerHandler);  // prescaler set to STEPPER_PSC, timer will be calculated as needed
-  stepperTimer.setPreload(false);
-  __debugS(D, PSTR("[\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz ]"), (int)stepperTimer.getClockFrequency()/1000000, String((float)stepperTimer.getClockFrequency()/1000000/STEPPER_PSC).c_str());
+  stepperTimer.setPreload(true);
+  __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((float)stepperTimer.getClockFrequency()/1000000/STEPPER_PSC).c_str());
 
-  gpTimer.setupTimer(ZTimer::_TIMER3, ZTimer::CH1, GP_PSC, 0, isrGPTimerHandler);                 // prescaler set to GP_PSC, timer will be set to 100uS
-  __debugS(D, PSTR("[\tsetupTimers: GP timer initialized.      Freq: %d MHz, PSC: %s MHz ]"), (int)gpTimer.getClockFrequency()/1000000, String((float)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
+  #if defined(USE_ZSERVO)
+    servoTimer.setupTimer(ZTimer::_TIMER7, ZTimer::CH1, SERVO_PSC, 0, isrServoTimerHandler);      // prescaler set to SERVO_PSC, timer will be set to SERVO_RESOLUTION
+    __debugS(D, PSTR("\tsetupTimers: Servo timer initialized.   Freq: %d MHz, PSC: %s MHz"), (int)servoTimer.getClockFrequency()/1000000, String((float)servoTimer.getClockFrequency()/1000000/SERVO_PSC).c_str());
+  #endif
+
+  #if defined(USE_FASTLED_TOOLS)
+    ledTimer.setupTimer(ZTimer::_TIMER4, ZTimer::CH1, LED_PSC, 0, isrLedTimerHandler);            // prescaler set to LED_PSC, timer will be set to LED_RESOLUTION
+    __debugS(D, PSTR("\tsetupTimers: LED timer initialized.     Freq: %d MHz, PSC: %s MHz"), (int)ledTimer.getClockFrequency()/1000000, String((float)ledTimer.getClockFrequency()/1000000/LED_PSC).c_str());
+  #endif
+
+  gpTimer.setupTimer(ZTimer::_TIMER3, ZTimer::CH1, GP_PSC, 0, isrGPTimerHandler);                 // prescaler set to GP_PSC, timer will be set to GPTIMER_RESOLUTION
+  __debugS(D, PSTR("\tsetupTimers: GP timer initialized.      Freq: %d MHz, PSC: %s MHz"), (int)gpTimer.getClockFrequency()/1000000, String((float)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
 
   stepperTimer.setPriority(1, 0);
-  gpTimer.setPriority(0, 0);
+  gpTimer.setPriority(5, 0);
+  #if defined(USE_ZSERVO)
+    servoTimer.setPriority(0, 0);
+  #endif
+  #if defined(USE_FASTLED_TOOLS)
+    ledTimer.setPriority(15, 0);
+  #endif
   
 #endif
+  #if defined(USE_ZSERVO)
+    timerVal_t servo_ticks = calcInterval(&servoTimer, SERVO_RESOLUTION);
+    servoTimer.setNextInterruptInterval(servo_ticks);   // start servo timer
+    __debugS(D, PSTR("\tsetupTimers: Servo timer ticks set to:\t%ld"), servo_ticks);
+  #endif
+
+  #if defined(USE_FASTLED_TOOLS)
+    timerVal_t led_ticks = calcInterval(&ledTimer, LED_RESOLUTION);
+    ledTimer.setNextInterruptInterval(led_ticks);       // start led timer
+    __debugS(D, PSTR("\tsetupTimers: Led timer ticks set to:\t%ld"), led_ticks);
+  #endif
+  
   timerVal_t gpt_ticks = calcInterval(&gpTimer, GPTIMER_RESOLUTION);
-  gpTimer.setNextInterruptInterval(gpt_ticks);                                  // start general purpose timer
-  __debugS(D, PSTR("[\tsetupTimers: GP timer ticks set to: %ld ]"), gpt_ticks);
+  gpTimer.setNextInterruptInterval(gpt_ticks);          // start general purpose timer
+  __debugS(D, PSTR("\tsetupTimers: GP timer ticks set to:\t%ld"), gpt_ticks);
 }

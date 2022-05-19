@@ -32,6 +32,7 @@ volatile bool actionOk = false;
 
 void parseGcode(const String& serialBuffer, int8_t serial) {
 
+  char errmsg[MAX_ERR_MSG];
   String line = String(serialBuffer);
   resetSerialBuffer(serial);
 
@@ -40,7 +41,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
 
   if(line.startsWith("//ACTION:")) {    // check for //action commands sent from controller
     String tmp = String(line).substring(9);
-    parse_Action(tmp, serial);
+    parse_Action(tmp, serial, errmsg);
     return;
   }
 
@@ -68,7 +69,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
   if(parserBusy || !steppers[FEEDER].getMovementDone()) {
     if(!smuffConfig.prusaMMU2) {
       if(!line.startsWith("M2")) {
-        sendErrorResponseP(serial, P_Busy);
+        sendBusyResponse(serial);
         return;
       }
       else {
@@ -131,26 +132,26 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
   currentSerial = serial;
 
   if(line.startsWith("G")) {
-    if(parse_G(line.substring(1), serial))
+    if(parse_G(line.substring(1), serial, errmsg))
       sendOkResponse(serial);
     else
-      sendErrorResponseP(serial);
+      sendErrorResponse(serial, errmsg);
     setParserReady();
     return;
   }
   else if(line.startsWith("M")) {
-    if(parse_M(line.substring(1), serial))
+    if(parse_M(line.substring(1), serial, errmsg))
       sendOkResponse(serial);
     else
-      sendErrorResponseP(serial);
+      sendErrorResponse(serial, errmsg);
     setParserReady();
     return;
   }
   else if(line.startsWith("T")) {
-    if(parse_T(line.substring(1), serial))
+    if(parse_T(line.substring(1), serial, errmsg))
       sendOkResponse(serial);
     else
-      sendErrorResponseP(serial);
+      sendErrorResponse(serial, errmsg);
     setParserReady();
     return;
   }
@@ -167,7 +168,7 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
           line.startsWith("W") ||
           line.startsWith("A")) {
     //if(!line.startsWith("P")) __debugS(D, PSTR("From Prusa: '%s'"), line.c_str());
-    parse_PMMU2(line.charAt(0), line.substring(1), serial);
+    parse_PMMU2(line.charAt(0), line.substring(1), serial, errmsg);
     setParserReady();
     return;
   }
@@ -176,25 +177,24 @@ void parseGcode(const String& serialBuffer, int8_t serial) {
     sprintf_P(tmp, P_UnknownCmd, line.c_str());
     __debugS(I, PSTR("ParseGcode err: %s"), tmp);
     if(!smuffConfig.prusaMMU2) {
-      sendErrorResponseP(serial, tmp);
+      sendErrorResponse(serial, tmp);
     }
   }
   setParserReady();
   currentSerial = -1;
 }
 
-bool parse_T(const String& buf, int8_t serial) {
+bool parse_T(const String& buf, int8_t serial, char* errmsg) {
   bool stat = true;
 
   if(buf.length()==0) {
     sendToolResponse(serial);
-    return stat;
-  }
-  if(toupper(buf[0])=='M') {
-    maintainTool();
     return true;
   }
-  int8_t tool = buf.toInt();
+  if(toupper(buf[0])=='M') {
+    return maintainTool(errmsg);
+  }
+  int8_t tool = (int8_t)buf.toInt();
   int16_t param;
 
   char msg[20];
@@ -203,9 +203,11 @@ bool parse_T(const String& buf, int8_t serial) {
   ofs = String(msg).length()-2;
 
   if(tool == -1 || tool == 255) {
-    parse_G(String("28"), serial);
+    parse_G(String("28"), serial, errmsg);
   }
-  else if(tool >= 0 && tool <= smuffConfig.toolCount-1) {
+  else if(tool >= 0 && tool < smuffConfig.toolCount) {
+    if(!smuffConfig.prusaMMU2)  // Prusa doesn't expect "Tx" as a response
+      printResponse(msg, serial);
     //__debugS(D, PSTR("Tool change requested: T%d"), tool);
     if(feederEndstop()) {
       // Prusa expects the MMU to unload filament on its own before tool change
@@ -213,17 +215,27 @@ bool parse_T(const String& buf, int8_t serial) {
       if(smuffConfig.prusaMMU2 || smuffConfig.isSharedStepper)
         //__debugS(D, PSTR("must unload first!"));
         if(!smuffConfig.useSplitter)
-          unloadFilament();
+          unloadFilament(errmsg);
     }
-    stat = selectTool(tool, false);
+    stat = selectTool(tool, errmsg, false);
     if(stat) {
       if(!smuffConfig.prusaMMU2) {
         if((param = getParam(buf.substring(ofs), (char*)"S")) != -1) {
           //__debugS(D, PSTR("Tx has S Param: %d"), param);
-          if(param == 1)
-            loadFilament(false);
-          else if(param == 0)
-            unloadFilament();
+          if(param == 1) {
+            stat = loadFilament(errmsg, false);
+            if(!stat) {
+              snprintf_P(errmsg, MAX_ERR_MSG, P_CantLoad);
+              strcat(errmsg,"\n");
+            }
+          }
+          else if(param == 0) {
+            stat = unloadFilament(errmsg);
+            if(!stat) {
+              snprintf_P(errmsg, MAX_ERR_MSG, P_CantUnload);
+              strcat(errmsg,"\n");
+            }
+          }
         }
       }
     }
@@ -233,19 +245,19 @@ bool parse_T(const String& buf, int8_t serial) {
     if(smuffConfig.isSharedStepper)
       switchFeederStepper(EXTERNAL);
     #endif
-
-    if(!smuffConfig.prusaMMU2)  // Prusa doesn't expect "Tx" as a response
-      printResponse(msg, serial);
   }
   else {
-    sendErrorResponseP(serial, PSTR("Wrong tool selected."));
+    if(!smuffConfig.prusaMMU2)  // Prusa doesn't expect "Tx" as a response
+      printResponse(msg, serial);
+    snprintf_P(errmsg, MAX_ERR_MSG, P_WrongTool, tool);
+    strcat(errmsg,"\n");
     stat = false;
   }
 
   return stat;
 }
 
-bool parse_Action(const String& buf, int8_t serial) {
+bool parse_Action(const String& buf, int8_t serial, char* errmsg) {
 
   char tmp[256];
 
@@ -266,18 +278,19 @@ bool parse_Action(const String& buf, int8_t serial) {
     char msg[30];
     sprintf_P(msg, P_Action, P_ActionPong);
     printResponse(msg, serial);
+    __debugS(DEV, PSTR("Sent action command '%s' to Serial%d"), msg, serial);
   }
   return false;
 }
 
-bool parse_G(const String& buf, int8_t serial) {
+bool parse_G(const String& buf, int8_t serial, char* errmsg) {
   bool stat = true;
 
   if(buf.length()==0) {
     sendGList(serial);
     return stat;
   }
-  uint16_t code = buf.toInt();
+  uint16_t code = (uint16_t)buf.toInt();
   //__debugS(D, PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
 
   char msg[10];
@@ -286,8 +299,10 @@ bool parse_G(const String& buf, int8_t serial) {
   uint8_t ofs = String(msg).length()-2;
 
   for(uint16_t i=0; i< 999; i++) {
-    if(gCodeFuncsG[i].code == -1)
-      break;
+    if(gCodeFuncsG[i].code == -1) {
+      snprintf_P(errmsg, MAX_ERR_MSG, P_GUnknown, code);
+      return false;
+    }
     // deviation from standard GCode parser;
     // list help file if the first char is a question mark (?)
     if(buf.substring(ofs).charAt(0)=='?') {
@@ -296,20 +311,26 @@ bool parse_G(const String& buf, int8_t serial) {
       return true;
     }
     if(gCodeFuncsG[i].code == code) {
-      return gCodeFuncsG[i].func(msg, buf.substring(ofs), serial);
+      memset(errmsg, 0, MAX_ERR_MSG);
+      stat = gCodeFuncsG[i].func(msg, buf.substring(ofs), serial, errmsg);
+      if(!stat) {
+        if(*errmsg == 0)
+          snprintf_P(errmsg, MAX_ERR_MSG, P_GFailed, gCodeFuncsM[i].code);
+      }
+      return stat;
     }
   }
   return false;
 }
 
-bool parse_M(const String& buf, int8_t serial) {
+bool parse_M(const String& buf, int8_t serial, char* errmsg) {
   bool stat = true;
 
   if(buf.length()==0) {
     sendMList(serial);
     return stat;
   }
-  uint16_t code = buf.toInt();
+  uint16_t code = (uint16_t)buf.toInt();
 
   char msg[10];
   char tmp[50];
@@ -317,8 +338,10 @@ bool parse_M(const String& buf, int8_t serial) {
   uint8_t ofs = String(msg).length()-2;
 
   for(uint16_t i=0; i< 999; i++) {
-    if(gCodeFuncsM[i].code == -1)
-      break;
+    if(gCodeFuncsM[i].code == -1) {
+      snprintf_P(errmsg, MAX_ERR_MSG, P_MUnknown, code);
+      return false;
+    }
     if(gCodeFuncsM[i].code == code) {
       // deviation from standard GCode parser;
       // list help file if the first char is a question mark (?)
@@ -328,7 +351,13 @@ bool parse_M(const String& buf, int8_t serial) {
         return true;
       }
       //__debugS(D, PSTR("Calling: M"), gCodeFuncsM[i].code);
-      return gCodeFuncsM[i].func(msg, buf.substring(ofs), serial);
+      memset(errmsg, 0, MAX_ERR_MSG);
+      stat = gCodeFuncsM[i].func(msg, buf.substring(ofs), serial, errmsg);
+      if(!stat) {
+        if(*errmsg == 0)
+          snprintf_P(errmsg, MAX_ERR_MSG, P_MFailed, gCodeFuncsM[i].code);
+      }
+      return stat;
     }
   }
   return false;
@@ -337,14 +366,15 @@ bool parse_M(const String& buf, int8_t serial) {
 /**
  *  Parse pseudo GCodes to emulate a Prusa MMU2
  **/
-bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
+bool parse_PMMU2(char cmd, const String& buf, int8_t serial, char* errmsg) {
 
   char  tmp[80];
-  bool toolOk = true;
+  char  _errmsg[MAX_ERR_MSG];
+  bool  toolOk = true;
 
   if(!smuffConfig.prusaMMU2) {
     sprintf_P(tmp, P_NoPrusa);
-    sendErrorResponseP(serial, tmp);
+    sendErrorResponse(serial, tmp);
     //__debugS(D, PSTR("No Prusa Emulation configured!"));
     return false;
   }
@@ -352,7 +382,7 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
   bool  stat = true;
   int8_t   type = -1;
   if(buf.length()>0)
-    type = buf.toInt();
+    type = (int8_t)buf.toInt();
   switch(cmd) {
     case 'A':
       // Aborted - we've already handeled that
@@ -384,7 +414,7 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
       break;
 
     case 'C':     // Push filament to nozzle
-      if(loadFilament()) {
+      if(loadFilament(errmsg)) {
         sendOkResponse(serial);
         //__debugS(D, PSTR("To Prusa (C%d): ok<CR>"), type);
       }
@@ -392,25 +422,25 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
 
     case 'L':     // Load filament
       if(toolSelected != type)
-        toolOk = selectTool(type, false);
+        toolOk = selectTool(type, errmsg, false);
       if(toolOk) {
-        loadFilamentPMMU2();
+        loadFilamentPMMU2(errmsg);
         sendOkResponse(serial);
       }
       else
-        sendErrorResponse(serial);
+        sendErrorResponse(serial, errmsg);
       //__debugS(D, PSTR("To Prusa (L%d): ok<CR>"), type);
       break;
 
     case 'U':     // Unload filament
-      if(unloadFilament()) {
+      if(unloadFilament(errmsg)) {
         sendOkResponse(serial);
         //__debugS(D, PSTR("To Prusa (U%d): ok<CR>"), type);
       }
       break;
 
     case 'E':     // Eject filament
-      unloadFilament();
+      unloadFilament(errmsg);
       sendOkResponse(serial);
       //__debugS(D, PSTR("To Prusa (E%d): ok<CR>"), type);
       break;
@@ -436,7 +466,7 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
       sendOkResponse(serial);
       //__debugS(D, PSTR("To Prusa (X%d): ok<CR>"), type);
     #if !defined(SOFTRESET)
-      M999("", tmp, serial);
+      M999("", tmp, serial, _errmsg);
     #else
       // SOFTRESET needed if some bootloader sends messages at boot.
       // This will cause an buffer overrun in Marlins MMU code.
@@ -447,7 +477,7 @@ bool parse_PMMU2(char cmd, const String& buf, int8_t serial) {
       break;
 
     default:
-      sendErrorResponseP(serial);
+      sendErrorResponse(serial);
       //__debugS(D, PSTR("To Prusa (%c%d): Error:...<CR>"), cmd, type);
       break;
   }
@@ -566,14 +596,15 @@ void sendToolResponse(int8_t serial) {
 }
 
 void sendErrorResponse(int8_t serial, const char* msg /* = nullptr */) {
-  if(msg != nullptr)
-    printResponse(msg, serial);
+  char tmp[128];
+  snprintf_P(tmp, 127, P_Error, msg == nullptr ? "" : msg);
+  printResponse(tmp, serial);
   sendOkResponse(serial);
 }
 
-void sendErrorResponseP(int8_t serial, const char* msg /* = nullptr */) {
-  char tmp[128];
-  sprintf_P(tmp, P_Error, msg == nullptr ? "" : msg);
+void sendBusyResponse(int8_t serial) {
+  char tmp[20];
+  sprintf_P(tmp, P_Echo, P_IsBusy);
   printResponse(tmp, serial);
   sendOkResponse(serial);
 }

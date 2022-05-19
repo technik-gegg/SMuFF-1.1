@@ -122,6 +122,7 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {502, M502},
     {503, M503},
     {504, M504},
+    {562, M562},
     {569, M569},
     {575, M575},
     {577, M577},
@@ -151,11 +152,11 @@ int param;
 /*========================================================
  * Class M
  ========================================================*/
-bool dummy(const char *msg, String buf, int8_t serial)
+bool dummy(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   if (!smuffConfig.prusaMMU2)
   {
-    uint16_t code = buf.toInt();
+    uint16_t code = (uint16_t)buf.toInt();
     __debugS(I, PSTR("Ignored M-Code: M%d"), code);
   }
   return true;
@@ -164,7 +165,7 @@ bool dummy(const char *msg, String buf, int8_t serial)
 /*
   Deviating from the GCode standard, this method resets the parser busy flag
 */
-bool M2(const char *msg, String buf, int8_t serial)
+bool M2(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -176,7 +177,7 @@ bool M2(const char *msg, String buf, int8_t serial)
   Deviating from the GCode standard, this method is used for switching the Feeder stepper motor
   from internal (SMuFF) to external (3D-Printer).
 */
-bool M17(const char *msg, String buf, int8_t serial)
+bool M17(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -185,15 +186,12 @@ bool M17(const char *msg, String buf, int8_t serial)
     switchFeederStepper(EXTERNAL);
   else if (buf.indexOf(I_Param) != -1)
     switchFeederStepper(INTERNAL);
-  else
-  {
-    sprintf_P(tmp, PSTR("echo: %s\n"), smuffConfig.externalStepper ? P_External : P_Internal);
-    printResponse(tmp, serial);
-  }
+  sprintf_P(tmp, PSTR("echo: %s\n"), smuffConfig.externalStepper ? P_External : P_Internal);
+  printResponse(tmp, serial);
   return stat;
 }
 
-bool M18(const char *msg, String buf, int8_t serial)
+bool M18(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -205,27 +203,23 @@ bool M18(const char *msg, String buf, int8_t serial)
   }
   else
   {
-    if (buf.indexOf(X_Param) != -1)
-    {
+    if (buf.indexOf(X_Param) != -1) {
       steppers[SELECTOR].setEnabled(false);
     }
-    else if (buf.indexOf(Y_Param) != -1)
-    {
+    else if (buf.indexOf(Y_Param) != -1) {
       steppers[REVOLVER].setEnabled(false);
     }
-    else if (buf.indexOf(Z_Param) != -1)
-    {
+    else if (buf.indexOf(Z_Param) != -1) {
       steppers[FEEDER].setEnabled(false);
     }
-    else
-    {
+    else {
       stat = false;
     }
   }
   return stat;
 }
 
-bool M20(const char *msg, String buf, int8_t serial)
+bool M20(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char tmp[80];
   char fmt[20];
@@ -301,7 +295,7 @@ bool M20(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M42(const char *msg, String buf, int8_t serial)
+bool M42(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   int8_t pin;
@@ -360,7 +354,7 @@ bool M42(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M98(const char *msg, String buf, int8_t serial)
+bool M98(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   char cmd[80];
@@ -371,13 +365,13 @@ bool M98(const char *msg, String buf, int8_t serial)
   return false;
 }
 
-bool M100(const char *msg, String buf, int8_t serial)
+bool M100(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   return true;
 }
 
-bool M106(const char *msg, String buf, int8_t serial)
+bool M106(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   int freq = 0;
   printResponse(msg, serial);
@@ -403,7 +397,7 @@ bool M106(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M107(const char *msg, String buf, int8_t serial)
+bool M107(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
@@ -414,7 +408,7 @@ bool M107(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M110(const char *msg, String buf, int8_t serial)
+bool M110(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   if ((param = getParam(buf, N_Param)) != -1)
@@ -424,26 +418,28 @@ bool M110(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M111(const char *msg, String buf, int8_t serial)
+bool M111(const char *msg, String buf, int8_t serial, char* errmsg)
 {
-  char tmp[80];
+  char tmp[256];
   printResponse(msg, serial);
 
   #if defined(DEBUG)
     if ((param = getParam(buf, S_Param)) != -1) {
-      if(param >= 0 && param <= 63)
+      if(param >= 0 && param <= 255)
         smuffConfig.dbgLevel = (uint8_t)param;
     }
     if(hasParam(buf, W_Param))
       sprintf_P(tmp, "/* Debug */\n{\"Level\": %d }\n", smuffConfig.dbgLevel);
     else
-      sprintf_P(tmp, "Debug Level %d: Debug=%s, Warning=%s, Info=%s, Special=%s, Development=%s\n", 
+      sprintf_P(tmp, "Debug Level %d:\n\tDebug:\t\t%s\t[ 1]\n\tWarning:\t%s\t[ 2]\n\tInfo:\t\t%s\t[ 4]\n\tSpecial:\t%s\t[ 8]\n\tDev (1):\t%s\t[16]\n\tDev (2):\t%s\t[32]\n\tDev (3):\t%s\t[64]\n", 
         smuffConfig.dbgLevel, 
         smuffConfig.dbgLevel & D ? P_Yes : P_No, 
         smuffConfig.dbgLevel & W ? P_Yes : P_No, 
         smuffConfig.dbgLevel & I ? P_Yes : P_No, 
         smuffConfig.dbgLevel & SP ? P_Yes : P_No,
-        smuffConfig.dbgLevel & DEV ? P_Yes : P_No);
+        smuffConfig.dbgLevel & DEV ? P_Yes : P_No,
+        smuffConfig.dbgLevel & DEV2 ? P_Yes : P_No,
+        smuffConfig.dbgLevel & DEV3 ? P_Yes : P_No);
     printResponse(tmp, serial);
   #else
     printResponse("DEBUG flag not set while compiling, debug messages have been turned off.\n", serial);
@@ -451,7 +447,7 @@ bool M111(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M114(const char *msg, String buf, int8_t serial)
+bool M114(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char tmp[128];
   printResponse(msg, serial);
@@ -463,7 +459,7 @@ bool M114(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M115(const char *msg, String buf, int8_t serial)
+bool M115(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char tmp[200];
   char ver[8];
@@ -518,7 +514,7 @@ bool M115(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M117(const char *msg, String buf, int8_t serial)
+bool M117(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   String umsg = buf;
   if (umsg.length() > 0)
@@ -531,7 +527,7 @@ bool M117(const char *msg, String buf, int8_t serial)
   return false;
 }
 
-bool M118(const char *msg, String buf, int8_t serial)
+bool M118(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char _msg[80];
   bool state = false;
@@ -574,7 +570,7 @@ bool M118(const char *msg, String buf, int8_t serial)
   return false;
 }
 
-bool M119(const char *msg, String buf, int8_t serial)
+bool M119(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   if ((param = getParam(buf, Z_Param)) != -1)
@@ -593,7 +589,7 @@ bool M119(const char *msg, String buf, int8_t serial)
   modular, although, as you might need it only once or twice
   it's ok for now.
 */
-bool M122(const char *msg, String buf, int8_t serial)
+bool M122(const char *msg, String buf, int8_t serial, char* errmsg)
 {
 #ifndef HAS_TMC_SUPPORT
   return false;
@@ -1094,7 +1090,7 @@ bool M122(const char *msg, String buf, int8_t serial)
 #endif
 }
 
-bool M145(const char *msg, String buf, int8_t serial)
+bool M145(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char color[50];
   char tmp[40];
@@ -1138,7 +1134,7 @@ bool M145(const char *msg, String buf, int8_t serial)
   return false;
 }
 
-bool M150(const char *msg, String buf, int8_t serial)
+bool M150(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
 
@@ -1209,7 +1205,7 @@ bool M150(const char *msg, String buf, int8_t serial)
 #endif
 }
 
-bool M155(const char *msg, String buf, int8_t serial)
+bool M155(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1219,7 +1215,7 @@ bool M155(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M201(const char *msg, String buf, int8_t serial)
+bool M201(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1261,7 +1257,7 @@ bool M201(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M202(const char *msg, String buf, int8_t serial)
+bool M202(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1298,7 +1294,7 @@ bool M202(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M203(const char *msg, String buf, int8_t serial)
+bool M203(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1380,7 +1376,7 @@ void rangeError(int8_t serial, float min, float max)
   printResponse(tmp, serial);
 }
 
-bool M205(const char *msg, String buf, int8_t serial)
+bool M205(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1458,7 +1454,6 @@ bool M205(const char *msg, String buf, int8_t serial)
       else if (strcmp(cmd, invertRelay) == 0)         { smuffConfig.invertRelay = (param > 0); switchFeederStepper(smuffConfig.externalStepper); }
       else if (strcmp(cmd, useCutter) == 0)           { smuffConfig.useCutter = (param > 0); }
       else if (strcmp(cmd, autoWipe) == 0)            { smuffConfig.wipeBeforeUnload = (param > 0); }
-      else if (strcmp(cmd, sendAction) == 0)          { smuffConfig.sendActionCmds = (param > 0); }
       else if (strcmp(cmd, externalControl) == 0)     { smuffConfig.extControlFeeder = (param > 0); }
       else if (strcmp(cmd, enableChunks) == 0)        { smuffConfig.enableChunks = (param > 0); }
       else if (strcmp(cmd, endstop2) == 0)            { smuffConfig.useEndstop2 = (param > 0); }
@@ -1559,7 +1554,7 @@ void setTMCStall(int8_t axis, pin_t stallPin, int param, int cool, int trigg) {
       detachInterrupt(stallPin);
   }
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1586,7 +1581,7 @@ void setTMCTmode(int8_t axis, pin_t stallPin, int param) {
       detachInterrupt(stallPin);
   }
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1598,7 +1593,7 @@ void setTMCMicrosteps(int8_t axis, int param) {
   if (drivers[axis] != nullptr)
     drivers[axis]->microsteps(smuffConfig.stepperMicrosteps[axis]);
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1615,7 +1610,7 @@ void setTMCPower(int8_t axis, int param, int8_t irun, int8_t ihold) {
       drivers[axis]->ihold(ihold);
   }
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1627,7 +1622,7 @@ void setTMCCSMin(int8_t axis, int param) {
   if (drivers[axis] != nullptr)
     drivers[axis]->semin(smuffConfig.stepperCSmin[axis]);
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1639,7 +1634,7 @@ void setTMCCSMax(int8_t axis, int param) {
   if (drivers[axis] != nullptr)
     drivers[axis]->semax(smuffConfig.stepperCSmax[axis]);
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1653,7 +1648,7 @@ void setTMCCSDown(int8_t axis, int param) {
     drivers[axis]->seup(smuffConfig.stepperCSdown[axis]);
   }
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
@@ -1665,12 +1660,12 @@ void setTMCTOff(int8_t axis, int param) {
   if (drivers[axis] != nullptr)
     drivers[axis]->toff(smuffConfig.stepperToff[SELECTOR]);
     #if defined(SMUFF_V6S)
-    if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
+      if(axis == REVOLVER) steppers[REVOLVER].setEnabled(false);
     #endif
   #endif
 }
 
-bool M206(const char *msg, String buf, int8_t serial)
+bool M206(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1707,7 +1702,7 @@ void xlateSpeed205(int8_t axis, uint16_t speed, int8_t serial) {
 }
 
 
-bool M250(const char *msg, String buf, int8_t serial)
+bool M250(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   if ((param = getParam(buf, C_Param)) != -1)
@@ -1731,11 +1726,14 @@ bool M250(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M280(const char *msg, String buf, int8_t serial)
+bool M280(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   int8_t servoIndex = 0;
   char tmp[80];
+  uint32_t dly = 750;
+  uint8_t angle1 = 0, angle2 = 180;
+
   printResponse(msg, serial);
   if ((param = getParam(buf, I_Param)) != -1)
   {
@@ -1747,19 +1745,35 @@ bool M280(const char *msg, String buf, int8_t serial)
     smuffConfig.servoMaxPwm = (uint16_t)param;
     setServoMaxPwm(servoIndex, param);
   }
+  if ((param = getParam(buf, K_Param)) != -1)
+  {
+    if(param >= 0 && param <= 180)
+      angle1 = (uint8_t)param;
+  }
+  if ((param = getParam(buf, L_Param)) != -1)
+  {
+    if(param >= 0 && param <= 180)
+      angle2 = (uint8_t)param;
+  }
   if ((param = getParam(buf, P_Param)) != -1)
   {
     servoIndex = param;
   }
   if ((param = getParam(buf, S_Param)) != -1)
   {
+    bool isDisabled = isServoDisabled(servoIndex);
     if (!setServoPos(servoIndex, (uint8_t)param))
       stat = false;
+    if(isDisabled)
+      disableServo(servoIndex);
   }
   else if ((param = getParam(buf, F_Param)) != -1)
   {
+    bool isDisabled = isServoDisabled(servoIndex);
     if (!setServoMS(servoIndex, (uint16_t)param))
       stat = false;
+    if(isDisabled)
+      disableServo(servoIndex);
   }
   else
     stat = false;
@@ -1768,25 +1782,47 @@ bool M280(const char *msg, String buf, int8_t serial)
     setServoLid(param == 1 ? SERVO_CLOSED : SERVO_OPEN);
     stat = true;
   }
+  if ((param = getParam(buf, D_Param)) != -1)
+  {
+    dly = (uint32_t)param;
+  }
+  if ((param = getParam(buf, E_Param)) != -1)
+  {
+    if(param > 0)
+      enableServo(servoIndex);
+    else
+      disableServo(servoIndex);
+    stat = true;
+  }
   if ((param = getParam(buf, T_Param)) != -1)
   {
     if(param == 0)
       param = 5;
-    for (uint8_t i = 0; i <= 180; i += param)
+    if(angle1 > angle2) {
+      uint8_t tmp = angle1;
+      angle1 = angle2;
+      angle2 = tmp;
+    }
+    bool isDisabled = isServoDisabled(servoIndex);
+    sprintf_P(tmp, PSTR("echo: Testing servo '%s' in %d deg. steps\n"), (servoIndex == 0) ? "WIPER" : (servoIndex == 1 ? "LID" : "CUTTER"), param);
+    printResponse(tmp, serial);
+    for (uint8_t i = angle1; i <= angle2; i += param)
     {
-      sprintf_P(tmp, PSTR("Servo pos.: %d deg\n"), i);
+      long f = map(i, 0, 180, smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
+      sprintf_P(tmp, PSTR("echo: %d deg. (%s ms)\n"), i, String((double)f/1000).c_str());
       printResponse(tmp, serial);
       setServoPos(servoIndex, i);
-      if(param >= 5)
-        delay(750);
+      delay(dly);
       stat = true;
     }
+    if(isDisabled)
+      disableServo(servoIndex);
   }
   delay(50);
   return stat;
 }
 
-bool M300(const char *msg, String buf, int8_t serial)
+bool M300(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1825,7 +1861,7 @@ bool isMStepValid(int param) {
   return (param == 0 || param == 2 || param == 4 || param == 8 || param == 16 || param == 32 || param == 64 || param == 128 || param == 256);
 }
 
-bool M350(const char *msg, String buf, int8_t serial)
+bool M350(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1850,7 +1886,7 @@ bool M350(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M412(const char *msg, String buf, int8_t serial)
+bool M412(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -1865,7 +1901,7 @@ bool M412(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M500(const char *msg, String buf, int8_t serial)
+bool M500(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   bool stat = false;
@@ -1883,7 +1919,7 @@ bool M500(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M502(const char *msg, String buf, int8_t serial)
+bool M502(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   return false;
@@ -1912,7 +1948,7 @@ Print* getSerialInstance(int8_t serial) {
 
 }
 
-bool M503(const char *msg, String buf, int8_t serial)
+bool M503(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   Print *_print = getSerialInstance(serial);
@@ -1966,7 +2002,7 @@ bool writeToCfgFile(const char* buf, const char* filename) {
   return true;
 }
 
-bool M504(const char *msg, String buf, int8_t serial)
+bool M504(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char cfg[128];
   char target[40];
@@ -1995,7 +2031,16 @@ bool M504(const char *msg, String buf, int8_t serial)
   return false;
 }
 
-bool M569(const char *msg, String buf, int8_t serial)
+bool M562(const char *msg, String buf, int8_t serial, char* errmsg)
+{
+  bool stat = true;
+  char tmp[128];
+  printResponse(msg, serial);
+  feederJammed = false;
+  return stat;
+}
+
+bool M569(const char *msg, String buf, int8_t serial, char* errmsg)
 {
 #ifndef HAS_TMC_SUPPORT
   return false;
@@ -2025,7 +2070,7 @@ bool M569(const char *msg, String buf, int8_t serial)
 #endif
 }
 
-bool M575(const char *msg, String buf, int8_t serial)
+bool M575(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   long paramL;
@@ -2069,7 +2114,7 @@ bool M575(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M577(const char *msg, String buf, int8_t serial) {
+bool M577(const char *msg, String buf, int8_t serial, char* errmsg) {
   if ((param = getParam(buf, S_Param)) != -1) {
     setSignalPort(SELECTOR_SIGNAL, param & 1);
     setSignalPort(FEEDER_SIGNAL, param & 2);
@@ -2079,7 +2124,7 @@ bool M577(const char *msg, String buf, int8_t serial) {
   return true;
 }
 
-bool M700(const char *msg, String buf, int8_t serial)
+bool M700(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = false;
   printResponse(msg, serial);
@@ -2092,17 +2137,17 @@ bool M700(const char *msg, String buf, int8_t serial)
       stat = true;
     }
     else if(hasParam(buf, S_Param)) {
-      if(smuffConfig.feedLoadState[tool] == SPL_NOT_LOADED) {
-        stat = loadToSplitter(false);
+      if(smuffConfig.feedLoadState[tool] == NOT_LOADED) {
+        stat = loadToSplitter(errmsg, false);
       }
     }
     else
-      stat = loadFilament();
+      stat = loadFilament(errmsg);
   }
   return stat;
 }
 
-bool M701(const char *msg, String buf, int8_t serial)
+bool M701(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = false;
   printResponse(msg, serial);
@@ -2113,13 +2158,13 @@ bool M701(const char *msg, String buf, int8_t serial)
     if(slot == -1) {
       // reset all feed loaded states
       for(uint8_t i=0; i < MAX_TOOLS; i++) {
-        smuffConfig.feedLoadState[i] = SPL_NOT_LOADED;
+        smuffConfig.feedLoadState[i] = NOT_LOADED;
       }
       stat = true;
     }
     else if(slot >=0 && slot < MAX_TOOLS) {
       // reset feed loaded status for this particular slot only
-      smuffConfig.feedLoadState[slot] = SPL_NOT_LOADED;
+      smuffConfig.feedLoadState[slot] = NOT_LOADED;
       stat = true;
     }
     saveStore();
@@ -2130,18 +2175,18 @@ bool M701(const char *msg, String buf, int8_t serial)
   }
   else if (tool >= 0 && tool <= MAX_TOOLS) {
     if(hasParam(buf, S_Param) && smuffConfig.useSplitter) {
-      if(smuffConfig.feedLoadState[tool] == SPL_NOT_LOADED) {
+      if(smuffConfig.feedLoadState[tool] == NOT_LOADED) {
         //__debugS(I, PSTR("Not loaded. Doing nothing"));
         stat = true;
       }
-      if(smuffConfig.feedLoadState[tool] > SPL_NOT_LOADED) {
+      if(smuffConfig.feedLoadState[tool] > NOT_LOADED) {
         //__debugS(I, PSTR("Unloading from Splitter"));
-        stat = unloadFromSplitter(false);
+        stat = unloadFromSplitter(errmsg, false);
       }
     }
     else {
       //__debugS(I, PSTR("Unloading from Nozzle"));
-      stat = unloadFilament();
+      stat = unloadFilament(errmsg);
     }
   }
   else {
@@ -2150,7 +2195,7 @@ bool M701(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M906(const char *msg, String buf, int8_t serial)
+bool M906(const char *msg, String buf, int8_t serial, char* errmsg)
 {
 #ifndef HAS_TMC_SUPPORT
   return false;
@@ -2180,7 +2225,7 @@ bool M906(const char *msg, String buf, int8_t serial)
 #endif
 }
 
-bool M914(const char *msg, String buf, int8_t serial)
+bool M914(const char *msg, String buf, int8_t serial, char* errmsg)
 {
 #ifndef HAS_TMC_SUPPORT
   return false;
@@ -2215,7 +2260,7 @@ bool M914(const char *msg, String buf, int8_t serial)
 #endif
 }
 
-bool M997(const char *msg, String buf, int8_t serial)
+bool M997(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = false;
   printResponse(msg, serial);
@@ -2248,7 +2293,7 @@ bool M997(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool M999(const char *msg, String buf, int8_t serial)
+bool M999(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   // turn off all stepper motors, just in case
@@ -2262,7 +2307,7 @@ bool M999(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M2000(const char *msg, String buf, int8_t serial)
+bool M2000(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char s[80];
   char tmp[128];
@@ -2281,7 +2326,7 @@ bool M2000(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool M2001(const char *msg, String buf, int8_t serial)
+bool M2001(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char tmp[128];
   printResponse(msg, serial);
@@ -2335,7 +2380,7 @@ bool M2001(const char *msg, String buf, int8_t serial)
 /*========================================================
  * Class G
  ========================================================*/
-bool G0(const char *msg, String buf, int8_t serial)
+bool G0(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   if ((param = getParam(buf, Y_Param)) != -1)
@@ -2350,14 +2395,14 @@ bool G0(const char *msg, String buf, int8_t serial)
     else
     {
       #if defined(SMUFF_V6S)
-      prepSteppingAbsMillimeter(REVOLVER, stepperPosClosed[toolSelected], true);
+        prepSteppingAbsMillimeter(REVOLVER, stepperPosClosed[toolSelected], true);
       #else
-      prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + ((param)*smuffConfig.revolverSpacing), true);
+        prepSteppingAbs(REVOLVER, smuffConfig.firstRevolverOffset + ((param)*smuffConfig.revolverSpacing), true);
       #endif
       runAndWait(REVOLVER);
       #if defined(SMUFF_V6S)
-      lidOpen = steppers[REVOLVER].getEndstopHit();
-      steppers[REVOLVER].setEnabled(false);
+        lidOpen = steppers[REVOLVER].getEndstopHit();
+        steppers[REVOLVER].setEnabled(false);
       #endif
     }
   }
@@ -2415,7 +2460,7 @@ uint16_t handleFeedSpeed(String buf, uint8_t axis)
   }
 }
 
-bool G1(const char *msg, String buf, int8_t serial)
+bool G1(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   long curSpeed[NUM_STEPPERS], accel[NUM_STEPPERS];
   printResponse(msg, serial);
@@ -2474,27 +2519,23 @@ bool G1(const char *msg, String buf, int8_t serial)
 
   // for testing only: check if stall was detected
   __debugS(I, PSTR("[G1] Move took: %d ms"), millis() - start);
-#ifdef HAS_TMC_SUPPORT
-  const char P_StallRes[] PROGMEM = {"[G1] Stall Result %c: %d  Stalled: %s"};
-  if (hasParam(buf, X_Param) && drivers[SELECTOR] != nullptr && !drivers[SELECTOR]->spread_en())
-  {
-    uint16_t sr = drivers[SELECTOR]->SG_RESULT();
-    __debugS(DEV, P_StallRes, 'X', sr, steppers[SELECTOR].getStallDetected() ? P_Yes : P_No);
-  }
-  if (hasParam(buf, Y_Param) && drivers[REVOLVER] != nullptr && !drivers[REVOLVER]->spread_en())
-  {
-    uint16_t sr = drivers[REVOLVER]->SG_RESULT();
-    __debugS(DEV, P_StallRes, 'Y', sr, steppers[REVOLVER].getStallDetected() ? P_Yes : P_No);
-  }
-  if (hasParam(buf, Z_Param) && drivers[FEEDER] != nullptr && !drivers[FEEDER]->spread_en())
-  {
-    uint16_t sr = drivers[FEEDER]->SG_RESULT();
-    __debugS(DEV, P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
-  }
-#endif
+  #ifdef HAS_TMC_SUPPORT
+    const char P_StallRes[] PROGMEM = {"[G1] Stall Result %c: %d  Stalled: %s"};
+    if (hasParam(buf, X_Param) && drivers[SELECTOR] != nullptr && !drivers[SELECTOR]->spread_en()) {
+      uint16_t sr = drivers[SELECTOR]->SG_RESULT();
+      __debugS(DEV, P_StallRes, 'X', sr, steppers[SELECTOR].getStallDetected() ? P_Yes : P_No);
+    }
+    if (hasParam(buf, Y_Param) && drivers[REVOLVER] != nullptr && !drivers[REVOLVER]->spread_en()) {
+      uint16_t sr = drivers[REVOLVER]->SG_RESULT();
+      __debugS(DEV, P_StallRes, 'Y', sr, steppers[REVOLVER].getStallDetected() ? P_Yes : P_No);
+    }
+    if (hasParam(buf, Z_Param) && drivers[FEEDER] != nullptr && !drivers[FEEDER]->spread_en()) {
+      uint16_t sr = drivers[FEEDER]->SG_RESULT();
+      __debugS(DEV, P_StallRes, 'Z', sr, steppers[FEEDER].getStallDetected() ? P_Yes : P_No);
+    }
+  #endif
   // set all speeds back to the configured values
-  if (hasParam(buf, F_Param))
-  {
+  if (hasParam(buf, F_Param)) {
     steppers[SELECTOR].setMaxSpeed(curSpeed[SELECTOR]);
     steppers[SELECTOR].setAcceleration(accel[SELECTOR]);
     steppers[REVOLVER].setMaxSpeed(curSpeed[REVOLVER]);
@@ -2503,14 +2544,14 @@ bool G1(const char *msg, String buf, int8_t serial)
     steppers[FEEDER].setAcceleration(accel[FEEDER]);
   }
   #if defined(SMUFF_V6S)
-  lidOpen = steppers[REVOLVER].getEndstopHit();
-  steppers[REVOLVER].setEnabled(false);
+    lidOpen = steppers[REVOLVER].getEndstopHit();
+    steppers[REVOLVER].setEnabled(false);
   #endif
 
   return true;
 }
 
-bool G4(const char *msg, String buf, int8_t serial)
+bool G4(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -2531,7 +2572,7 @@ bool G4(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool G12(const char *msg, String buf, int8_t serial)
+bool G12(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   uint16_t wait = 500;
@@ -2587,7 +2628,7 @@ bool G12(const char *msg, String buf, int8_t serial)
   return true;
 }
 
-bool G28(const char *msg, String buf, int8_t serial)
+bool G28(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
   printResponse(msg, serial);
@@ -2615,14 +2656,14 @@ bool G28(const char *msg, String buf, int8_t serial)
   return stat;
 }
 
-bool G90(const char *msg, String buf, int8_t serial)
+bool G90(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   positionMode = ABSOLUTE;
   return true;
 }
 
-bool G91(const char *msg, String buf, int8_t serial)
+bool G91(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
   positionMode = RELATIVE;

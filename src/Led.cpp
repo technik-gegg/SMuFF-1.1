@@ -254,8 +254,11 @@ typedef enum {
   #endif
 #endif
 
+volatile bool fastLedRefresh = false;
+
 void showToolLeds() {
 #if defined(USE_FASTLED_TOOLS)
+  fastLedRefresh = true;
   if(cTools == nullptr)
     return;
   #if !defined(USES_ADAFRUIT_NPX)
@@ -263,6 +266,7 @@ void showToolLeds() {
   #else
     cTools->show();
   #endif
+  fastLedRefresh = false;
 #endif
 }
 
@@ -562,7 +566,7 @@ void setToolColorIndex(int color) {
 void testFastLED(bool tools) {
 #if defined(NEOPIXEL_PIN) && defined(USE_FASTLED_BACKLIGHT)
   if(!tools) {
-    __debugS(D, PSTR("[\ttesting Backlight LEDs ]"));
+    __debugS(D, PSTR("\ttesting Backlight LEDs"));
     for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
       #if !defined(USES_ADAFRUIT_NPX)
@@ -585,7 +589,7 @@ void testFastLED(bool tools) {
 #endif
 #if defined(NEOPIXEL_TOOL_PIN) && defined(USE_FASTLED_TOOLS)
   if(tools) {
-    __debugS(D, PSTR("[\ttesting Tools LEDs ]"));
+    __debugS(D, PSTR("\ttesting Tools LEDs"));
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {
       #if !defined(USES_ADAFRUIT_NPX)

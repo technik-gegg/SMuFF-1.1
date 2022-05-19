@@ -19,6 +19,8 @@
 
 #include "ZServo.h"
 
+extern void fastFlipDbg();
+
 static ZServo* servoInstances[MAX_SERVOS];
 
 /*
@@ -38,6 +40,7 @@ void ZServo::attach(pin_t pin, bool useTimer, int8_t servoIndex) {
   _useTimer = useTimer;
   attach(pin);
   setIndex(servoIndex);
+  enable();
 
   if(!_useTimer) {
     #if defined(__ESP32__)
@@ -52,11 +55,10 @@ void ZServo::attach(pin_t pin, bool useTimer, int8_t servoIndex) {
 void ZServo::attach(pin_t pin) {
   _pin = pin;
   if(_pin != 0) {
-    enable();
     #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
-    _fastPin = &(digitalPinToPort(_pin)->BSRR);
-    _pinMask_S = digitalPinToBitMask(_pin);
-    _pinMask_R = digitalPinToBitMask(_pin) << 16;
+      _fastPin = &(digitalPinToPort(_pin)->BSRR);
+      _pinMask_S = digitalPinToBitMask(_pin);
+      _pinMask_R = digitalPinToBitMask(_pin) << 16;
     #endif
     digitalWrite(_pin, 0);
   }
@@ -77,8 +79,10 @@ void ZServo::detach() {
 void ZServo::disable() {
   if(_pin == 0)
     return;
-  _disabled = true;
   pinMode(_pin, INPUT);
+  _disabled = true;
+  _pulseComplete = true;
+  // __debugS(DEV, PSTR("ZServo::disable %d: pin = %d]"), _servoIndex, _pin);
 }
 
 /*
@@ -87,19 +91,21 @@ void ZServo::disable() {
 void ZServo::enable() {
   if(_pin == 0)
     return;
-  _disabled = false;
   pinMode(_pin, OUTPUT);
+  _disabled = false;
+  // __debugS(DEV3, PSTR("ZServo::enable %d: pin = %d"), _servoIndex, _pin);
 }
 
 /*
   Main method to set the servo position.
   Values between 0 and 180 will be treated as degrees.
-  Values above 180 will be treated as milliseconds (usually in the range of 500-2400 us).
+  Values above 499 will be treated as microseconds (usually in the range of 500-2400 us).
 */
 void ZServo::write(uint16_t val) {
+  // __debugS(DEV3, PSTR("ZServo::write %d: val = %d"), _servoIndex, val);
   if(val >= 0 && val <= 180)
-    setServoPos(val);
-  else
+    setServoPos((uint8_t)val);
+  else if(val >= 500 && val <= 2400)
     setServoMS(val);
 }
 
@@ -108,6 +114,7 @@ void ZServo::writeMicroseconds(uint16_t microseconds) {
 }
 
 void ZServo::setIndex(int8_t servoIndex) {
+  // __debugS(DEV3, PSTR("ZServo::setIndex %d"), servoIndex);
   if(servoIndex >= 0 && servoIndex < MAX_SERVOS) {
     _servoIndex = servoIndex;
     servoInstances[_servoIndex] = this;
@@ -118,27 +125,24 @@ bool ZServo::setServoPos(uint8_t degree) {
   if(_pin == 0)
     return false;
 
-  if(millis()-_lastUpdate <= (DUTY_CYCLE/1000))
-    return false;
-
   if(_disabled)
     enable();
 
   _lastDegree = _degree;
 
   #if defined(__ESP32__)
-  if(!_useTimer) {
-    _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
-    //__debugS(D, PSTR("Servo %d: %d° = %d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
-  }
-  else {
-    _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
-    //__debugS(D, PSTR("Servo %d: %d° = %d us"), _servoIndex, degree, _pulseLen);
-  }
+    if(!_useTimer) {
+      _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
+      //__debugS(Dev3, PSTR("ZServo::setServoPos %d: %3d deg = %4d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
+    }
+    else {
+      _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
+      //__debugS(Ddev3, PSTR("ZServo::setServoPos %d: %3d deg = %4d us"), _servoIndex, degree, _pulseLen);
+    }
   #else
-  _pulseLen = (uint16_t)map((int32_t)degree, (int32_t)_minDegree, (int32_t)_maxDegree, (int32_t)_minPw, (int32_t)_maxPw);
-  _pulseLen = (_pulseLen / _tickRes) * _tickRes;    // round to _tickRes
-  //__debugS(D, PSTR("Servo %d: %d deg = %d us"), _servoIndex, degree, _pulseLen);
+    _pulseLen = (uint16_t)map((int32_t)degree, (int32_t)_minDegree, (int32_t)_maxDegree, (int32_t)_minPw, (int32_t)_maxPw);
+    _pulseLen = (uint16_t)((double)_pulseLen / _tickRes +.5) * _tickRes;    // round to _tickRes
+    // __debugS(DEV3, PSTR("ZServo::setServoPos %d: %3d deg = %4d us %3d"), _servoIndex, degree, _pulseLen, _pulseLen/_tickRes);
   #endif
   _degree = degree;
   _lastUpdate = millis();
@@ -151,11 +155,13 @@ bool ZServo::setServoPos(uint8_t degree) {
 void ZServo::setServoMS(uint16_t microseconds) {
   if(_disabled)
     enable();
-  _pulseLen = microseconds;
+  _pulseLen = (microseconds / _tickRes) * _tickRes;   // round to _tickRes
   _lastDegree = _degree;
   _degree = (uint8_t)map((int32_t)_pulseLen, (int32_t)_minPw, (int32_t)_maxPw, (int32_t)_minDegree, (int32_t)_maxDegree);
+  _lastUpdate = millis();
   _tickCnt = 0;
   _dutyCnt = 0;
+  // __debugS(DEV3, PSTR("ZServo::setServoMS %d: %3d deg = %4dus %3d"), _servoIndex, _degree, _pulseLen, _pulseLen/_tickRes);
 }
 
 /*
@@ -166,8 +172,9 @@ void ZServo::setServoMS(uint16_t microseconds) {
 */
 void ZServo::setServo() {
 
+  noInterrupts();
   if(!_useTimer) {
-    if(_degree != _lastDegree || millis() - _lastUpdate < 200) { // avoid jitter on servo by ignoring this call
+    if(_degree != _lastDegree) { // avoid jitter on servo by ignoring this call
       #if defined(__ESP32__)
         ledcWrite(SERVO_CHANNEL+_servoIndex, _pulseLen);
       #else
@@ -181,12 +188,10 @@ void ZServo::setServo() {
     // This (timer) option increments with every call by _tickRes (uS) and when _pulseLen is
     // reached it'll reset the output to low.
     // This way the MCU isn't being blocked while the delay is active, as it's in the method above.
-    noInterrupts();
     if(_tickCnt <= _pulseLen) {
       if(_pulseComplete) {
         #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
-          if(_fastPin != nullptr)
-            *_fastPin = _pinMask_S;
+          *_fastPin = _pinMask_S;   // set pin to HIGH
         #else
           setServoPin();
         #endif
@@ -196,42 +201,45 @@ void ZServo::setServo() {
     else {
       if(!_pulseComplete) {
         #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
-          if(_fastPin != nullptr)
-            *_fastPin = _pinMask_R;
+          *_fastPin = _pinMask_R;   // set pin to LOW
         #else
           resetServoPin();
         #endif
         _pulseComplete = true;
       }
     }
-    _tickCnt += _tickRes;
     // reset tick counter after the duty cycle for the next cycle
     if(_tickCnt >= DUTY_CYCLE) {
-      _tickCnt = (_maxCycles == 0 || (++_dutyCnt < _maxCycles)) ? 0 : _tickCnt;  // but no more cycles than defined to avoid jitter on the servo
+      // but no more cycles than defined by _maxCycles (to reduce jitter on the servo)
+      // if _maxCycles is 0, cycle keeps repeating
+      if(_maxCycles == 0 || (++_dutyCnt < _maxCycles))
+        _tickCnt = 0;
     }
-    interrupts();
+    else {
+      _tickCnt += (uint32_t)(_tickRes - _tickAdjust);
+    }
   }
+  interrupts();
 }
 
 void ZServo::setDelay() {
     // calculate the delay needed to allow the servo to reach the new position
     // based on a moving speed of MOVING_SPEED per 60° (default 200ms)
     uint8_t dist = abs(_lastDegree - _degree);
-    float dly = ((float)dist/60)*MOVING_SPEED;
-    delay((uint32_t)dly);
+    if(dist) {
+      float dly = ((float)dist/60)*MOVING_SPEED;
+      delay((uint32_t)dly);
+    }
 }
-
-static uint8_t servoIndex = 0;
 
 void isrServoHandler() {
   // call all handlers for all servos periodically if the
   // internal timer is being used.
-  for(servoIndex=0; servoIndex < MAX_SERVOS; servoIndex++) {
-    if(servoInstances[servoIndex] == nullptr || servoInstances[servoIndex]->isDisabled() || servoInstances[servoIndex]->isTimerStopped())
+  // fastFlipDbg();
+  for(int servoIndex=0; servoIndex < MAX_SERVOS; servoIndex++) {
+    if(servoInstances[servoIndex] == nullptr || servoInstances[servoIndex]->isDisabled())
       continue;
     servoInstances[servoIndex]->setServo();
   }
-  // servoIndex++;
-  // if(servoIndex == MAX_SERVOS)
-  //   servoIndex = 0;
+  // fastFlipDbg();
 }

@@ -26,10 +26,10 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.00"
+#define VERSION_STRING    "V3.10"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2022-02-22"
+#define VERSION_DATE      "2022-05-01"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -53,6 +53,8 @@ typedef uint32_t    pin_t;
 #define MAX_UNLOAD_COMMAND      20                  // max. length of unload command
 #define MAX_WIPE_SEQUENCE       25                  // max. length of wipe sequence
 #define MAX_BUTTON_LEN          15                  // max. length of button commands
+
+#define MAX_ERR_MSG             255                 // max. length of error messages
 
 #define NUM_STEPPERS            3
 #define SELECTOR                0
@@ -81,14 +83,15 @@ typedef uint32_t    pin_t;
 #define SERVO_LID           1
 #define SERVO_CUTTER        2
 
-#define SERVO_CLOSED_OFS    35          // for Multiservo
+#define SERVO_CLOSED_OFS    35                          // for Multiservo
 
-#define GPTIMER_RESOLUTION  20                          // general purpose timer ISR called every n uS
-#define SERVO_RESOLUTION    GPTIMER_RESOLUTION          // servo ISR service interval same as GP-Timer
+#define GPTIMER_RESOLUTION  100                         // general purpose timer ISR called every n microseconds
+#define SERVO_RESOLUTION    50                          // servo ISR called every n microseconds
 #define FAN_RESOLUTION      GPTIMER_RESOLUTION          // fan ISR service interval same as GP-Timer
+#define LED_RESOLUTION      10000                       // led ISR called every n milliseconds
                                         
-#define FAN_FREQUENCY       100         // fan frequency in Hz
-#define FAN_BLIP_TIMEOUT    1000        // fan blip timeout in millis (0 to turn blipping off)
+#define FAN_FREQUENCY       100                         // fan frequency in Hz
+#define FAN_BLIP_TIMEOUT    1000                        // fan blip timeout in millis (0 to turn blipping off)
 
 #define FEED_ERROR_RETRIES  4
 
@@ -110,14 +113,17 @@ typedef uint32_t    pin_t;
 #define STEPPER_PSC         3           // 24MHz on STM32F1 (72MHz MCU/SysClock)
 #define GP_PSC              72          // 1MHz 
 #define SERVO_PSC           72          // 1MHz
+#define LED_PSC             72          // 1MHz
 #elif defined(__STM32F4XX)
 #define STEPPER_PSC         7           // 24MHz on STM32F4 (168MHz MCU/SysClock)
 #define GP_PSC              168         // 1MHz 
 #define SERVO_PSC           168         // 1MHz
+#define LED_PSC             168         // 1MHz
 #elif defined(__STM32G0XX)
 #define STEPPER_PSC         3           // 21.3MHz on STM32G0 (64MHz MCU/SysClock)
 #define GP_PSC              64          // 1MHz 
 #define SERVO_PSC           64          // 1MHz
+#define LED_PSC             64          // 1MHz
 #else
 #define STEPPER_PSC         2           // 8MHz on AVR (16MHz MCU)
 #endif
@@ -198,3 +204,51 @@ const char terminalLineChrs[] PROGMEM = { 0xC4, 0xCD, 0xBA, 0xC9, 0xBB, 0xC8, 0x
 #define TERM_BGC_CYAN           46
 #define TERM_BGC_WHITE          47
 #define TERM_FGC_NONE           255
+
+
+#if defined(ARDUINO_ARCH_AVR)
+#include <util/atomic.h>
+#define CRITICAL_SECTION ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+
+#elif defined(ARDUINO_ARCH_SAM)
+  // Workaround as suggested by Stackoverflow user "Notlikethat"
+  // http://stackoverflow.com/questions/27998059/atomic-block-for-reading-vs-arm-systicks
+
+  static inline int __int_disable_irq(void) {
+    int primask;
+    asm volatile("mrs %0, PRIMASK\n" : "=r"(primask));
+    asm volatile("cpsid i\n");
+    return primask & 1;
+  }
+
+  static inline void __int_restore_irq(int *primask) {
+    if (!(*primask)) {
+      asm volatile ("" ::: "memory");
+      asm volatile("cpsie i\n");
+    }
+  }
+  // This critical section macro borrows heavily from
+  // avr-libc util/atomic.h
+  // --> http://www.nongnu.org/avr-libc/user-manual/atomic_8h_source.html
+  #define CRITICAL_SECTION for (int primask_save __attribute__((__cleanup__(__int_restore_irq))) = __int_disable_irq(), __ToDo = 1; __ToDo; __ToDo = 0)
+
+#elif defined(ARDUINO_ARCH_STM32)
+#include <Arduino.h>
+#include <cmsis_gcc.h>
+	// exact same as above only using predefined CMSIS functions
+
+  static inline int __int_disable_irq(void) {
+    int primask = __get_PRIMASK();
+    __disable_irq();
+    return primask & 1;
+  }
+
+  static inline void __int_restore_irq(int *primask) {
+    if (!(*primask)) {
+      __enable_irq();
+    }
+  }
+  #define CRITICAL_SECTION for (int primask_save __attribute__((__cleanup__(__int_restore_irq))) = __int_disable_irq(), __ToDo = 1; __ToDo; __ToDo = 0)
+#else
+  #error Unsupported controller architecture
+#endif

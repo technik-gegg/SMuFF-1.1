@@ -103,8 +103,12 @@
 //#define NEOPIXEL_TOOL_PIN   PA9     // alternative for tools (EXT1.8); Important: _only_ usable with TWI / LEONERD display
 //#define NEOPIXEL_TOOL_PIN   PB15    // alternative for tools (EXT1.3); Important: not! usable with TWI / LEONERD display
 #define BRIGHTNESS_TOOL     127
+#if !defined(USES_ADAFRUIT_NPX)
 #define LED_TYPE_TOOL       WS2812B
 #define COLOR_ORDER_TOOL    GRB
+#else
+#define COLOR_ORDER_TOOL    NEO_GRB + NEO_KHZ800
+#endif
 
 #define SDCS_PIN            0       // use default
 #define DEBUG_PIN           0       // PC3 - TB0 (using this header will lead to a sine wave on the output if freq. succseeds 100Hz  - see schematic)

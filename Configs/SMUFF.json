@@ -1,5 +1,5 @@
 {
- "Device": "--Name--",
+ "Device": "My SMuFF",
  "Baudrates": [ 115200, 115200, 115200, 115200 ],
  "Tools": 5,
  "BowdenLen": 550.0,
@@ -11,8 +11,8 @@
  "PwrSavTime": 300,
  "SendAction": false,
  "EmulPrusa": false,
- "ServoMinPwm": 900,
- "ServoMaxPwm": 2100,
+ "ServoMinPwm": 500,
+ "ServoMaxPwm": 2300,
  "WipeSeq": "S10I140J160P90R20",
  "BackColor": 4,
  "ToolColor": 5,

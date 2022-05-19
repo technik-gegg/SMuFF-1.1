@@ -64,10 +64,10 @@ public:
   void    setPulseWidthMinMax(uint16_t min, uint16_t max) { setPulseWidthMin(min); setPulseWidthMax(max); }
   void    setPulseWidthMin(uint16_t min) { _minPw = min; }
   void    setPulseWidthMax(uint16_t max) { _maxPw = max; }
-  void    setTickRes(uint8_t res) { _tickRes = res; }
-  uint8_t getTickRes() { return _tickRes; }
-  void    stop(bool state) { _timerStopped = state; }
-  bool    isTimerStopped() { return _timerStopped; }
+  void    setTickRes(uint16_t res) { _tickRes = res; }
+  uint16_t getTickRes() { return _tickRes; }
+  void    setTickResAdjust(uint16_t ticks) { _tickAdjust = ticks; }
+  uint16_t getTickResAdjust() { return _tickAdjust; }
   bool    hasTimer() { return _useTimer; }
   void    setMaxCycles(uint8_t val) { _maxCycles = val; }
   uint8_t getMaxCycles() { return _maxCycles; }
@@ -90,7 +90,6 @@ private:
   volatile pin_t    _pin;
   volatile int8_t   _pinState;
   bool              _useTimer = false;
-  bool              _timerStopped = false;
   bool              _disabled = false;
   int8_t            _servoIndex;
   volatile uint8_t  _degree;
@@ -104,7 +103,8 @@ private:
   uint16_t          _maxPw = US_PER_PULSE_180DEG;
   uint8_t           _minDegree = 0;
   uint8_t           _maxDegree = 180;
-  volatile uint8_t  _tickRes = 50;
+  volatile uint16_t _tickRes = 50;
+  volatile uint16_t _tickAdjust = 0;
   volatile bool     _pulseComplete = true;
   volatile uint32_t* _fastPin;
   uint32_t          _pinMask_S;

@@ -43,8 +43,8 @@ public:
   void    setPulseWidthMinMax(uint16_t min, uint16_t max) { _minSpeed = min; _maxSpeed = max; }
   void    setPulseWidthMin(uint16_t min) { _minSpeed = min; }
   void    setPulseWidthMax(uint16_t max) { _maxSpeed = max; }
-  void    setTickRes(uint8_t res) { _tickRes = res; }
-  uint8_t getTickRes() { return _tickRes; }
+  void    setTickRes(uint16_t res) { _tickRes = res; }
+  uint16_t getTickRes() { return _tickRes; }
   void    setBlipTimeout(uint16_t millis) { _blipTimeout = (uint32_t)millis * 1000; }
   uint16_t getBlipTimeout() { return (uint16_t)_blipTimeout / 1000; }
 
@@ -56,7 +56,7 @@ private:
   uint16_t  _maxSpeed = FAN_DUTY_CYCLE;
   uint16_t  _tickCnt;
   uint16_t  _pulseLen;
-  uint8_t   _tickRes = 1;
+  uint16_t  _tickRes = 1;
   uint32_t  _blipTime;
   uint32_t  _blipTimeout = 0;
 };
