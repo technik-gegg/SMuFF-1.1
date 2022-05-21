@@ -338,7 +338,6 @@ bool readDebugLevel() {
     return false;
   _File cfg;
   if(!__fopen(cfg, DEBUG_FILE, FILE_READ)) {
-    showOpenFailed(&cfg, DEBUG_FILE);
     return false;
   }
   else {
