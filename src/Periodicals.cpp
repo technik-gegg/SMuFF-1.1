@@ -21,6 +21,7 @@
 volatile bool leoNerdBlinkState  = false;
 volatile bool leoNerdBlinkGreen  = false;
 volatile bool leoNerdBlinkRed    = false;
+volatile bool sendingStatesToggle = false;
 
 void sendStates(bool override) {
   if(!initDone)
@@ -40,6 +41,7 @@ void sendStates(bool override) {
     if(CAN_USE_SERIAL1)                                   printPeriodicalState(1);
     if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)   printPeriodicalState(2);
     if(CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)   printPeriodicalState(3);
+    sendingStatesToggle = !sendingStatesToggle;
   }
   // Add your periodical code here
 }

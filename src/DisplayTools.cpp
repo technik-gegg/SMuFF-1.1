@@ -154,7 +154,10 @@ void drawStatus() {
   }
 
   display.setFont(ICONIC_FONT2);
-  display.drawGlyph(111, y+1, 0x4F);
+  if(sendingStatesToggle)
+    display.drawGlyph(111, y+1, 0x4F);
+  else
+    display.drawStr(111, y+1, " ");
   if(!smuffConfig.sendPeriodicalStats) {
     display.setFont(SMALL_FONT);
     display.drawStr(117, yText-2, PSTR("x"));

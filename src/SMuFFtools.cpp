@@ -1532,7 +1532,7 @@ void printPeriodicalState(int8_t serial) {
   const char *_open = "off";
   int8_t tool = getToolSelected();
 
-  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\tLID: %s\tI: %s\tSPL: %d\n"),
+  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\tLID: %s\tI: %s\tSPL: %d\tRLY: %s\n"),
             tool,
             selectorEndstop() ? _triggered : _open,
             revolverEndstop() ? _triggered : _open,
@@ -1544,7 +1544,8 @@ void printPeriodicalState(int8_t serial) {
             settingsChanged ? _triggered : _open,
             !lidOpen ? _triggered : _open,
             isIdle ? _triggered : _open,
-            smuffConfig.feedLoadState[tool]
+            smuffConfig.feedLoadState[tool],
+            smuffConfig.externalStepper ? "E" : "I"
   );
   printResponse(tmp, serial);
 }

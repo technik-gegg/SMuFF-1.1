@@ -48,6 +48,12 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**3.11** - Some minor changes
+
++ added flashing of the "Periodical State sending" glyph on the display when it's enabled. Flashing happens at half the frequency of states being sent.
++ added current relay state (**E** / **I**) to "Periodical States".
++ changed output of **M122W** and **M503W**. *M122W9* and *M503W0* are now sending all state/configuration data at once, which makes SMuFF-WI connect faster.
+
 **3.10** - Some minor changes / bug fixes
 
 + **removed SKR E3 V1.2** from the list of supported devices because this board isn't optimal for the SMuFF V6. Consider moving to E3 V2.0 or better E3 V3.0.

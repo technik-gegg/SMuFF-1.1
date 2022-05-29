@@ -419,7 +419,7 @@ extern bool                     splitterEndstopChanged;
 extern bool                     asyncDDE;
 extern volatile bool            refreshingDisplay;
 extern volatile uint16_t        flipDbgCnt;
-
+extern volatile bool            sendingStatesToggle;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper           *drivers[];

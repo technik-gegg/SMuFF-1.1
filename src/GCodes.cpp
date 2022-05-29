@@ -497,6 +497,8 @@ bool M115(const char *msg, String buf, int8_t serial, char* errmsg)
   strcat(options, "CREALITY");
   #if defined(CREALITY_HW_SPI)
     strcat(options, " HW-SPI");
+  #elif defined(USE_FAST_SW_SPI)
+    strcat(options, " FAST-SPI");
   #endif
 #elif defined(USE_SERIAL_DISPLAY)
   strcat(options, "SERIAL");
@@ -623,8 +625,12 @@ bool M122(const char *msg, String buf, int8_t serial, char* errmsg)
       sendTMCStatus(param, serial);
       return true;
     }
-    else
-      return false;
+    else {
+      for(int i=0; i < 4; i++)
+        sendTMCStatus(i, serial);
+      return true;
+    }
+    return false;
   }
 
   printResponseP(P_TMC_Setup00, serial);
@@ -1980,15 +1986,15 @@ bool M503(const char *msg, String buf, int8_t serial, char* errmsg)
     printResponseP(P_M503S5, serial);
     writeMaterials(_print, useWI);
   }
-  if (part == 6) {
+  if (part == 0 || part == 6) {
     printResponseP(P_M503S6, serial);
     writeSwapTools(_print, useWI);
   }
-  if (part == 7) {
+  if (part == 0 || part == 7) {
     printResponseP(P_M503S7, serial);
     writeRevolverMapping(_print, useWI);
   }
-  if (part == 8) {
+  if (part == 0 || part == 8) {
     printResponseP(P_M503S8, serial);
     writefeedLoadState(_print, useWI);
   }
