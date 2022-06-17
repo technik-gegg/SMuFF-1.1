@@ -239,10 +239,24 @@ const char P_GUnknown[] PROGMEM             = { "Unknown GCode 'G%d')'. Use G to
 const char P_MUnknown[] PROGMEM             = { "Unknown GCode 'M%d'. Use M to retrieve a list of known M-GCodes.\n" };
 
 const char P_WrongFormat [] PROGMEM         = { "Wrong format. Use Bdd:dd:dd...\n" };
-const char P_RangeError[] PROGMEM           = { "Invalid parameter value. Allowed range: " };
-const char P_UseRangeI[] PROGMEM            = { "%d...%d\n" };
-const char P_UseRangeF[] PROGMEM            = { "%s...%s\n" };
-const char P_UseRangeL[] PROGMEM            = { "%ld...%ld\n" };
+const char P_RangeError[] PROGMEM           = { "Invalid parameter value. Allowed range: %s\n" };
+const char P_ToolError[] PROGMEM            = { "Invalid tool index. Allowed range: %s\n" };
+const char P_AxisError[] PROGMEM            = { "Invalid or no axis. Allowed: %s\n" };
+const char P_MaterialError[] PROGMEM        = { "Invalid material index. Allowed range: %s\n" };
+const char P_ParamError[] PROGMEM           = { "Invalid or unsupported parameter.\n" };
+const char P_MissingParamError[] PROGMEM    = { "Mandatory parameter '%s' is missing.\n" };
+const char P_UseRangeI[] PROGMEM            = { "%d...%d" };
+const char P_UseRangeF[] PROGMEM            = { "%s...%s" };
+const char P_UseRangeL[] PROGMEM            = { "%ld...%ld" };
+const char P_UseAxis[] PROGMEM              = { "X, Y or Z" };
+const char P_PinNotConfig[] PROGMEM         = { "Pin was not configured %s\n" };
+const char P_ModeErrorPwm[] PROGMEM         = { "for PWM!" };
+const char P_ModeErrorPin[] PROGMEM         = { "for OUTPUT!" };
+const char P_PinNotMapped[] PROGMEM         = { "in SERVOMAP.json!" };
+const char P_NoMultiservo[] PROGMEM         = { "Multiservo not configured!" };
+
+const char P_CfgWriteError[] PROGMEM        = { "Error occurred on writing to file '%s'\n" };
+
 
 const char P_NoPrusa [] PROGMEM             = { "Prusa MMU2 mode is not configured." };
 const char P_PMMU_Title [] PROGMEM          = { "Waiting..." };

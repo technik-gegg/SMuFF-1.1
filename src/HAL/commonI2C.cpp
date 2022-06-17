@@ -20,6 +20,11 @@
 #include "SMuFF.h"
 #include "./commonI2C.h"
 
+#if defined(USE_MULTISERVO)
+  // Adafruit Multiservo is always on software I2C
+  SoftWire I2CBusMS(ADASERVO_SDA, ADASERVO_SCL, SOFT_FAST);
+#endif
+
 #if !defined(USE_SW_TWI)
   #if defined(USE_I2C)
   TwoWire I2CBus(DSP_SDA, DSP_SCL);
@@ -34,17 +39,6 @@
   #if defined(USE_SPLITTER_ENDSTOPS)
   SoftWire I2CBus2(SPLITTER_SDA, SPLITTER_SCL);
   #endif
-
-
-  void setupSoftWire(uint8_t bus) {
-    if(bus == 1) {
-    }
-    else {
-      #if defined(USE_SPLITTER_ENDSTOPS)
-      #endif
-    }
-    __debugS(D, PSTR("\tsetupSoftWire for IC2 #%d done"), bus);
-  }
 #endif
 
 static uint32_t transmissionCnt = 0;

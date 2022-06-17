@@ -125,6 +125,12 @@
 #define SPLITTER_SDA        PB15    // EXP1.3
 #endif
 
+#if defined(USE_MULTISERVO)
+// software I2C is being used on those pins
+#define ADASERVO_SCL        PC14    // Z-PROBE.1
+#define ADASERVO_SDA        PA1     // Z-PROBE.3
+#endif
+
 #define DUET_SIG_FED_PIN    PC3      // THB (thermistor output pins will work fine up to 100Hz - see schematic)
 #define DUET_SIG_SEL_PIN    PA0      // TH0
 

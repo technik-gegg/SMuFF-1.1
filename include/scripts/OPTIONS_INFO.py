@@ -111,8 +111,13 @@ for define in build_flags.get("CPPDEFINES"):
         swapServos = "Yes"
     if define =="USE_ZSERVO":
         zServo = "ZServo"
-    if define =="RELAY_ON_PROBE":
-        relayOnProbe = "Yes"
+    if define =="USE_MULTISERVO":
+        zServo = "Adafruit Multiservo"
+        relayOnProbe = "On TH0"
+    if define =="USE_MULTISERVO_RELAY":
+        relayOnProbe = "On Adadfruit Multiservo"
+    if define =="RELAY_ON_PROBE" and zServo != "Adafruit Multiservo":
+        relayOnProbe = "On PROBE"
     if define == "WARNING_NOT_RELEASED":
         warning  = "*** THIS BOARD HAS NOT BEEN RELEASED YET ***"
     if define == "MIMIC_LIBMAPLE_USB_ID":
@@ -210,7 +215,7 @@ if multiservo != "":
 if multiservo == "" and hsServo != "":
     print("\x1b[34mHIGHSPEED SERVO:\t\t", hsServo)
 if relayOnProbe != "":
-    print("\x1b[35mRELAY On PROBE:\t\t", relayOnProbe)
+    print("\x1b[35mRELAY:\t\t\t\t", relayOnProbe)
 
 print("\x1b[36m============================================================================================================================================\x1b[0m\n\n")
 #time.sleep(2)

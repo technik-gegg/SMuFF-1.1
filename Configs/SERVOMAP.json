@@ -1,8 +1,15 @@
 {
-   "T0": { "Close": 90, "Output": 15 },
-   "T1": { "Close": 90, "Output": 11 },
-   "T2": { "Close": 90, "Output": 8 },
-   "T3": { "Close": 90, "Output": 6 },
-   "T4": { "Close": 90, "Output": 3 },
-   "Wiper": { "Output": 1 }
+   "Wiper":    { "Output": 0,  "Mode": "PWM" },
+   "Lid":      { "Output": 1,  "Mode": "PWM" },
+   "Cutter":   { "Output": 2,  "Mode": "PWM" },
+   "Spare1":   { "Output": 3,  "Mode": "PWM" },
+   "Spare2":   { "Output": 4,  "Mode": "PWM" },
+   "Relay":    { "Output": 5,  "Mode": "OUTPUT" },
+   "User1":    { "Output": 6,  "Mode": "PWM" },
+   "User2":    { "Output": 7,  "Mode": "PWM" },
+   "T0":       { "Close": 90 },
+   "T1":       { "Close": 90 },
+   "T2":       { "Close": 90 },
+   "T3":       { "Close": 90 },
+   "T4":       { "Close": 90 }
 }

@@ -44,16 +44,22 @@ bool initSD(bool showStatus) {
       sdStat = SD.begin(SDCS_PIN);
     #endif
   }
-  else
+  else {
     sdStat = SD.begin();
-  __debugS(DEV, PSTR("\tinitSD: SD-Card initialized "));
+  }
 
   if (!sdStat) {
     if(showStatus) {
       drawSDStatus(SD_ERR_INIT);
       delay(5000);
     }
+    else {
+      __debugS(W, PSTR("\tinitSD: Failed to initialize SD-Card!"));
+    }
     return false;
+  }
+  else {
+    __debugS(DEV, PSTR("\tinitSD: SD-Card initialized "));
   }
   sdInit = true;
   return true;
@@ -334,7 +340,7 @@ bool readSteppersConfig()
 }
 
 bool readDebugLevel() {
-  if(!initSD())
+  if(!initSD(false))
     return false;
   _File cfg;
   if(!__fopen(cfg, DEBUG_FILE, FILE_READ)) {
@@ -501,23 +507,40 @@ bool readServoMapping() {
       char item[15];
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
         sprintf_P(item, P_Tool, i);
-
-        if(jsonDoc[item] == nullptr) {
-          #if defined(MULTISERVO)
-          servoMapping[i] = -1;
-          #else
-          #endif
-        }
-        else {
-          #if defined(MULTISERVO)
-          servoMapping[i] = jsonDoc[item][servoOutput];
-          #endif
+        // read the servo "closed" position of each tool T(i)
+        if(jsonDoc[item] != nullptr) {
           servoPosClosed[i] = jsonDoc[item][servoClosed];
         }
       }
-      #if defined(MULTISERVO)
-      // read the Wiper servo output pin only
-      servoMapping[16] = jsonDoc[wiper][servoOutput];
+      #if defined(USE_MULTISERVO)
+      // read the Wiper servo output pin
+      servoMapping[SERVO_WIPER]  = (int8_t)jsonDoc[wiper][servoOutput];
+      servoMapping[SERVO_LID]    = (int8_t)jsonDoc[lid][servoOutput];
+      servoMapping[SERVO_CUTTER] = (int8_t)jsonDoc[cutter][servoOutput];
+      servoMapping[SERVO_SPARE1] = (int8_t)jsonDoc[spare1][servoOutput];
+      servoMapping[SERVO_SPARE2] = (int8_t)jsonDoc[spare2][servoOutput];
+      servoMapping[RELAY]        = (int8_t)jsonDoc[relay][servoOutput];
+      // read optional pins
+      const char* mso = "\treadServoMapping: Multiservo channel";
+      uint8_t ndx = 1;
+      for(uint8_t i=SERVO_USER1; i <= SERVO_USER2; i++, ndx++) {
+        sprintf_P(item, outX, ndx);
+        outputMode[i] = MODE_UNSET;
+        if(jsonDoc[item] != nullptr) {
+          servoMapping[i] = (int8_t)jsonDoc[item][servoOutput];
+          if(strcmp(jsonDoc[item][mode], modePwm) == 0) {
+            outputMode[i] = MODE_PWM;
+            __debugS(DEV3, PSTR("%s %2d set to PWM"), mso, i);
+          }
+          else if (strcmp(jsonDoc[item][mode], modePin) == 0) {
+            outputMode[i] = MODE_OUTPUT;
+            __debugS(DEV3, PSTR("%s %2d set to OUTPUT"), mso, i);
+          }
+        }
+        if(outputMode[i] == MODE_UNSET) {
+            __debugS(DEV3, PSTR("%s %2d not set"), mso, i);
+        }
+      }
       #endif
 
       __debugS(D, PSTR("\treadServoMapping:\tDONE (%lu bytes)"), jsonDoc.memoryUsage());
@@ -899,18 +922,33 @@ bool writeServoMapping(Print* dumpTo, bool useWebInterface)
   char item[15];
   for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
     sprintf_P(item, P_Tool, i);
+    // write servo "closed" position for each tool T(i)
     JsonObject node = jsonObj.createNestedObject(item);
-    #if defined(MULTISERVO)
-    node[servoOutput] = servoMapping[i];
-    #endif
     node[servoClosed] = servoPosClosed[i];
   }
-  JsonObject node = jsonObj.createNestedObject(wiper);
-  #if defined(MULTISERVO)
-  // create the Wiper servo output pin only
-  node[servoOutput] = servoMapping[16];
-  #else
-  node[servoOutput] = 0;
+  #if defined(USE_MULTISERVO)
+    // write servo mappings for Lid, Wiper and Cutter
+    JsonObject node = jsonObj.createNestedObject(lid);
+    node[servoOutput] = servoMapping[SERVO_LID];
+    node = jsonObj.createNestedObject(wiper);
+    node[servoOutput] = servoMapping[SERVO_WIPER];
+    node = jsonObj.createNestedObject(cutter);
+    node[servoOutput] = servoMapping[SERVO_CUTTER];
+    node = jsonObj.createNestedObject(spare1);
+    node[servoOutput] = servoMapping[SERVO_SPARE1];
+    node = jsonObj.createNestedObject(spare2);
+    node[servoOutput] = servoMapping[SERVO_SPARE2];
+    node = jsonObj.createNestedObject(relay);
+    node[servoOutput] = servoMapping[RELAY];
+    // write optional pins
+    uint8_t ndx = 1;
+    for(uint8_t i=SERVO_USER1; i <= SERVO_USER2; i++, ndx++) {
+      sprintf_P(item, outX, ndx);
+      node = jsonObj.createNestedObject(item);
+      node[servoOutput] = servoMapping[i];
+      node[mode] = (outputMode[i] == MODE_PWM ? modePwm : (outputMode[i] == MODE_OUTPUT ? modePin : ""));
+    }
+
   #endif
 
   return dumpConfig(dumpTo, useWebInterface, SERVOMAP_FILE, jsonDoc);

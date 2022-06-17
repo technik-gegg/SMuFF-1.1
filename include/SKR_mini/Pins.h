@@ -97,6 +97,12 @@
 #define SPLITTER_SDA        PB7    // EXP1.6
 #endif
 
+#if defined(USE_MULTISERVO)
+// this option is not available on this board
+#define ADASERVO_SCL        0
+#define ADASERVO_SDA        0
+#endif
+
 #define DUET_SIG_FED_PIN    PB1      // THB (thermistor output pins will work fine up to 100Hz - see schematic)
 #define DUET_SIG_SEL_PIN    PA0      // TH0
 

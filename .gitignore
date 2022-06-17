@@ -17,6 +17,7 @@ sym-lib-table
 *.dcm
 Schematics/*.xml
 Schematics/*.csv
+Schematics/SMuFF Relay Board/Relay-Board-backups
 _autosave-*
 
 include/SKR_mini_E3-2.0/Pins_X-Swap.h

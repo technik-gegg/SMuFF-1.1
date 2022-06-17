@@ -1,0 +1,3 @@
+M260 Xn
+-------
+Xn 		the bus index to scan for devices (n: 1 | 2 | 3 - only with MULTISERVO option)

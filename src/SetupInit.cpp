@@ -118,8 +118,10 @@ void initFastLED() {
 */
 void initHwDebug() {
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN > 0
-  pinMode(DEBUG_PIN, OUTPUT);
-  digitalWrite(DEBUG_PIN, HIGH);
+  #if !defined(USE_MULTISERVO)
+    pinMode(DEBUG_PIN, OUTPUT);
+    digitalWrite(DEBUG_PIN, HIGH);
+  #endif
   calcHwDebugCounter();
   __debugS(D, PSTR("\tinitHwDebug: Pin initialized, frequency is %dHz"), smuffConfig.dbgFreq);
 #endif
@@ -206,30 +208,37 @@ void setupSwSerial0() {
 }
 
 void setupRelay() {
-  if (RELAY_PIN > 0) {
+  #if !defined(USE_MULTISERVO_RELAY)
+    if (RELAY_PIN == 0) {
+      __debugS(I, PSTR("\tsetupRelay: Relay pin undefined!"));
+      return;
+    }
     pinMode(RELAY_PIN, OUTPUT);
-    // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
-    // switch on the external stepper by default. Otherwise, use the interal stepper.
-    #if defined(USE_DDE)
+  #else
+    if(servoMapping[RELAY] == -1) {
+      __debugS(I, PSTR("\tsetupRelay: Relay pin on Multiservo board undefined!"));
+      return;
+    }
+    __debugS(I, PSTR("\tsetupRelay: Relay pin set to output %d on Multiservo board"), servoMapping[RELAY]);
+  #endif
+
+  // if there's an external Feeder stepper defined (i.e. the 3D-Printer drives the Feeder),
+  // switch on the external stepper by default. Otherwise, use the interal stepper.
+  #if defined(USE_DDE)
+    switchFeederStepper(EXTERNAL);
+  #else
+    if (smuffConfig.extControlFeeder)
       switchFeederStepper(EXTERNAL);
-    #else
-      if (smuffConfig.extControlFeeder)
-        switchFeederStepper(EXTERNAL);
-      else
-        switchFeederStepper(INTERNAL);
-    #endif
-  }
-  else {
-      __debugS(D, PSTR("\tsetupRelay: Relay pin undefined"));
-  }
+    else
+      switchFeederStepper(INTERNAL);
+  #endif
 }
 
 void setupServos() {
 
-#if !defined(MULTISERVO)
-
   __debugS(D, PSTR("\tsetupServos: min. PWM %d, max. PWM %d"), smuffConfig.servoMinPwm, smuffConfig.servoMaxPwm);
 
+#if !defined(USE_MULTISERVO)
   if (SERVO1_PIN > 0) {           // setup the Wiper servo
     setServoMaxCycles(SERVO_WIPER, smuffConfig.servoCycles1);
     setServoMinPwm(SERVO_WIPER, smuffConfig.servoMinPwm);
@@ -271,14 +280,24 @@ void setupServos() {
   }
 
 #else
+  #if defined(USE_HIGHSPEED_SERVO)
+    float pwmFreq = 250.0;
+  #else
+    float pwmFreq = 50.0;
+  #endif
   servoPwm.begin();
-  servoPwm.setOscillatorFrequency(27000000);
-  servoPwm.setPWMFreq(50);
-  for (uint8_t i = 0; i < smuffConfig.toolCount; i++) {
-    setServoPos(i + 10, servoPosClosed[i]);
-    delay(400);
-    setServoPos(i + 10, servoPosClosed[i] - SERVO_CLOSED_OFS);
+  servoPwm.setOscillatorFrequency(PCA9685_FREQ);  // see platformio.ini
+  servoPwm.setPWMFreq(pwmFreq);
+  __debugS(DEV3, PSTR("\tsetupServos: Multiservo oscilator freq.: %ld  PWM freq.: %s Hz"), PCA9685_FREQ, String((double)pwmFreq).c_str());
+  uint8_t resetPos = 90, param;
+  // try finding the default reset position of the wiper servo
+  // from within the wipe sequence
+  if ((param = getParam(String(smuffConfig.wipeSequence), (char *)"P")) != -1) {
+    resetPos = (uint8_t)param;
   }
+  setServoLid(SERVO_OPEN);
+  setServoPos(SERVO_WIPER, resetPos);
+  setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   __debugS(D, PSTR("\tsetupServos: Multiservo initialized"));
 #endif
 }
@@ -701,7 +720,7 @@ void setupTimers()
   stepperTimer.setPreload(true);
   __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((float)stepperTimer.getClockFrequency()/1000000/STEPPER_PSC).c_str());
 
-  #if defined(USE_ZSERVO)
+  #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
     servoTimer.setupTimer(ZTimer::_TIMER7, ZTimer::CH1, SERVO_PSC, 0, isrServoTimerHandler);      // prescaler set to SERVO_PSC, timer will be set to SERVO_RESOLUTION
     __debugS(D, PSTR("\tsetupTimers: Servo timer initialized.   Freq: %d MHz, PSC: %s MHz"), (int)servoTimer.getClockFrequency()/1000000, String((float)servoTimer.getClockFrequency()/1000000/SERVO_PSC).c_str());
   #endif
@@ -714,9 +733,13 @@ void setupTimers()
   gpTimer.setupTimer(ZTimer::_TIMER3, ZTimer::CH1, GP_PSC, 0, isrGPTimerHandler);                 // prescaler set to GP_PSC, timer will be set to GPTIMER_RESOLUTION
   __debugS(D, PSTR("\tsetupTimers: GP timer initialized.      Freq: %d MHz, PSC: %s MHz"), (int)gpTimer.getClockFrequency()/1000000, String((float)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
 
-  stepperTimer.setPriority(1, 0);
+  #if defined(USE_MULTISERVO)
+    stepperTimer.setPriority(0, 0);
+  #else
+    stepperTimer.setPriority(1, 0);
+  #endif
   gpTimer.setPriority(5, 0);
-  #if defined(USE_ZSERVO)
+  #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
     servoTimer.setPriority(0, 0);
   #endif
   #if defined(USE_FASTLED_TOOLS)
@@ -724,7 +747,7 @@ void setupTimers()
   #endif
   
 #endif
-  #if defined(USE_ZSERVO)
+  #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
     timerVal_t servo_ticks = calcInterval(&servoTimer, SERVO_RESOLUTION);
     servoTimer.setNextInterruptInterval(servo_ticks);   // start servo timer
     __debugS(D, PSTR("\tsetupTimers: Servo timer ticks set to:\t%ld"), servo_ticks);

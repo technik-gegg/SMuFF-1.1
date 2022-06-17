@@ -28,11 +28,15 @@
 #include <Wire.h>
   extern TwoWire I2CBus;
   extern TwoWire I2CBus2;
+  #if defined(USE_MULTISERVO)
+    #include <SoftWire.h>
+    extern SoftWire I2CBusMS;  
+  #endif
 #else
   #include <SoftWire.h>
   extern SoftWire I2CBus;
   extern SoftWire I2CBus2;
-  extern void setupSoftWire(uint8_t bus=1);
+  extern SoftWire I2CBusMS;
 #endif
 
 uint8_t u8x8_byte_smuff_i2c(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr);

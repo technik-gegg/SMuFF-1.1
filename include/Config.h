@@ -26,10 +26,10 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.11"
+#define VERSION_STRING    "V3.12"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2022-05-24"
+#define VERSION_DATE      "2022-06-04"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -70,25 +70,45 @@ typedef uint32_t    pin_t;
 #define MIN_CONTRAST            60
 #define MAX_CONTRAST            250
 
-#define I2C_SLAVE_ADDRESS       0x88
-#define I2C_DISPLAY_ADDRESS     0x3C        // supposed to be wired by default on OLED (alternative 0x3D)
+#define I2C_SLAVE_ADDRESS       0x88        // default address if the SMuFF I2C is running in slave mode (obsolete)
+#define I2C_DISPLAY_ADDRESS     0x3C        // default address for the OLED (alternative 0x3D)
 #define I2C_ENCODER_ADDRESS     0x3D        // default address for the LeoNerd Encoder
-#define I2C_SERVOCTL_ADDRESS    0x40        // default address for multi servo controller
-#define I2C_EEPROM_ADDRESS      0x50        // default address for EEPROM on E3 2.0
-#define I2C_SERVOBCAST_ADDRESS  0x70        // default address for multi servo controller (Broadcast Address)
-#define I2C_PORTEX_ADDRESS      0x3F
-#define I2C_SPL_MUX_ADDRESS     0x3E
+#define I2C_SERVOCTL_ADDRESS    0x40        // default address for Multiservo controller
+#define I2C_EEPROM_ADDRESS      0x50        // default address for EEPROM on E3 2.0, 3.0
+#define I2C_SERVOBCAST_ADDRESS  0x70        // default address for Multiservo controller (Broadcast Address)
+#define I2C_PORTEX_ADDRESS      0x3F        // default address for Port extender (obsolete)
+#define I2C_SPL_MUX_ADDRESS     0x3E        // default address for Splitter endstops controller
 
 #define SERVO_WIPER         0
 #define SERVO_LID           1
 #define SERVO_CUTTER        2
+#define SERVO_SPARE1        3
+#define SERVO_SPARE2        4
+#define RELAY               5
+#define SERVO_USER1         6
+#define SERVO_USER2         7
+
+#define OUT1                6
+#define OUT2                7
+#define OUT3                8
+#define OUT4                9
+#define OUT5                10
+#define OUT6                11
+#define OUT7                12
+#define OUT8                13
+#define OUT9                14
+#define OUT10               15
+
+#define MODE_UNSET          -1
+#define MODE_PWM            0
+#define MODE_OUTPUT         1
 
 #define SERVO_CLOSED_OFS    35                          // for Multiservo
 
-#define GPTIMER_RESOLUTION  100                         // general purpose timer ISR called every n microseconds
+#define GPTIMER_RESOLUTION  250                         // general purpose timer ISR called every n microseconds
 #define SERVO_RESOLUTION    50                          // servo ISR called every n microseconds
 #define FAN_RESOLUTION      GPTIMER_RESOLUTION          // fan ISR service interval same as GP-Timer
-#define LED_RESOLUTION      10000                       // led ISR called every n milliseconds
+#define LED_RESOLUTION      10000                       // led ISR called every n microseconds
                                         
 #define FAN_FREQUENCY       100                         // fan frequency in Hz
 #define FAN_BLIP_TIMEOUT    1000                        // fan blip timeout in millis (0 to turn blipping off)

@@ -2,11 +2,10 @@
 
 ![The SMuFF](images/SMuFF-V6.png)
 
-Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story here on the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
+Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Printables](https://www.printables.com/de/model/194737-smuff-v6-smart-multi-filament-feeder-with-bondtech) and [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story here on the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
 
 If you like this project and find it useful, please consider donating.
 [![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
-
 
 
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
@@ -47,6 +46,22 @@ For more information about building the SMuFF and some more detailed stuff, head
 ---
 
 ## Recent changes
+
+**3.12** - Changes for the MULTISERVO option
+
++ reworked **MULTISERVO** option. For one it's now named *USE_MULTISERVO* for more consistency throughout the other options, for the other it now is used to configure all servo motors and drive them via the external board (Adafruit Multiservo/FeatherWing board). This board gets always controlled over software I2C but the pinout varies through the controller boards.
++ the **USE_MULTISERVO** flag will become more importance in the future, hence I moved that option to the *[other]* section of *platformio.ini*.
++ modified the external **SoftWireSTM32 library** which had a bug that caused that the library wasn't able to scan for devices on the I2C bus properly.
++ moved relay control pin on **SKR mini E3-DIP V1.1** from **MS3** pin of the Z-Axis driver socket (in DDE mode) to the **TH0** pin if the **USE_MULTISERVO** flag is set. This is because this signal is being used as the data pin (SDA) for the software I2C controlling the Adafruit Multiservo board.
++ added **USE_MULTISERVO_RELAY** flag to the compile options in order to controll the relay via output #5 on the Adafruit Multiservo board instead of *MS3*, *TH0* or *PROBE* pins. This will be the future method of controlling the relay switch. **Please notice:** This method requires a pull-up resistor of 4.7 - 10K, either on +5V or +3.3V to make the signal switch as intended. Reason being is that the outputs on the Multiservo board are configured as open-drain.
++ corrected build environment for **SKR mini V1.1** (FastLED library was still referenced instead of the Adafruit Neopixel library).
++ fixed the bug that caused the **SKR mini V1.1** to hang at startup (wrong *debugSerial* port has been initialized).
++ added a couple more meaningful error messages to the GCode interpreter.
++ changed **SERVOMAP.json** config file to reflect the new MUTISERVO options. Please copy this file over to your SMuFF's SD-Card.
++ changed **ServoMinPwm** and **ServoMaxPwm** settings in SMUFF.json. These settings work better with the Adafruit Multiservo boards. Copy the modified file over to your SMuFF's SD-Card and don't forget to reconfigure your servo angle settings.
++ added the two user controlled servo ports (USER1/USER2) to **M280** GCode and **M42** GCode when using the MULTISERVO option. Send M280 P1000 / P1001 if those ports are supposed to drive custom servos, or M42 P1000 / P1001 if those ports are configured to be used as output pins (i.e. switched On/Off).
++ added **M260** GCode to allow scanning for I2C devices at runtime via the GCode interface.
++ updated some of the KiCad files to KiCad version 6.x
 
 **3.11** - Some minor changes
 

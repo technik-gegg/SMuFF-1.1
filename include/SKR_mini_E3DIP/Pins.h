@@ -58,13 +58,13 @@
 #define Z_DIR_PIN       PC5
 #define Z_ENABLE_PIN    PB1
 #define Z_END_PIN       PC15 // Z-STOP
-#define Z_END2_PIN      PC2 // E0-STOP
+#define Z_END2_PIN      PC2  // E0-STOP
 #define Z_END_DUET_PIN  Z_END2_PIN
 
 // SPI for stepper drivers
-#define ST_MISO_PIN     PB4 // MISO3
-#define ST_MOSI_PIN     PB5 // MOSI3
-#define ST_SCLK_PIN     PB3 // SCK3
+#define ST_MISO_PIN     PB4     // MISO3
+#define ST_MOSI_PIN     PB5     // MOSI3
+#define ST_SCLK_PIN     PB3     // SCK3
 #define X_CS_PIN        PC10   // doubles as XUART when used in serial mode
 #define Y_CS_PIN        PC11   // doubles as YUART when used in serial mode
 #define Z_CS_PIN        PC12   // doubles as ZUART when used in serial mode
@@ -144,9 +144,27 @@
 #define SPLITTER_SDA        PB11        // Z-Axis ENABLE
 #endif
 
+#if defined(USE_MULTISERVO)
+    #if !defined(USE_DDE)
+        // software I2C is being used on those pins
+        #define ADASERVO_SCL        PB12        // Y-Axis DIR
+        #define ADASERVO_SDA        PC11        // Y-Axis MS3
+    #else
+        #undef RELAY_PIN                        // Relay on MS3 pin can't be used in this configuration
+        #if !defined(USE_MULTISERVO_RELAY)
+            #define RELAY_PIN       PA0         // use TH0 instead
+        #else
+            #define RELAY_PIN       0           // or use Multiservo output 5 
+        #endif
+        // software I2C is being used on those pins
+        #define ADASERVO_SCL        PB2         // Z-Axis DIR
+        #define ADASERVO_SDA        PC12        // Z-Axis MS3
+    #endif
+#endif
+
 // moved to thermistor pins in V2.41
 #define DUET_SIG_FED_PIN    PC3         // THB (thermistor output pins will work fine up to 100Hz - see schematic)
-#define DUET_SIG_SEL_PIN    PA0         // TH0
+// #define DUET_SIG_SEL_PIN    PA0         // TH0 (not used on Duet but for relay in Multiservo mode)
 
 #define DEBUG_OFF_PIN       0
 
@@ -196,12 +214,16 @@
 // SERIAL3 - Cannot be used for serial comm.
 #if !defined(USE_SPLITTER_ENDSTOPS)
     #if defined(USE_DDE)
-    #define CAN_USE_SERIAL3 false   // Serial3 cannot be used when using DDE
+        #if defined(USE_MULTISERVO)
+            #define CAN_USE_SERIAL3 true   // Serial3 can be used when using Adafruit Multiservo board
+        #else
+            #define CAN_USE_SERIAL3 false   // Serial3 cannot be used when using DDE
+        #endif
     #else
     #define CAN_USE_SERIAL3 true    // if no Z-Axis driver is being used
     #endif
 #else
-#define CAN_USE_SERIAL3     false   // Serial3 cannot be used when Splitter with endstops is being used
+    #define CAN_USE_SERIAL3 false   // Serial3 cannot be used when Splitter with endstops is being used
 #endif
 #define TX3_PIN             PB10    // Z-Axis STEP
 #define RX3_PIN             PB11    // Z-Axis ENABLE

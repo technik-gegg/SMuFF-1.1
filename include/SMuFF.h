@@ -89,7 +89,7 @@ extern SdFat SD;
 #endif
 #include <SoftwareSerial.h>
 
-#if defined(MULTISERVO)
+#if defined(USE_MULTISERVO)
 #include <Adafruit_PWMServoDriver.h>
 #endif
 
@@ -118,7 +118,7 @@ extern SdFat SD;
   #endif
 #endif
 
-#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(MULTISERVO) || defined(USE_SW_TWI)
+#if defined(USE_TWI_DISPLAY) || defined(USE_LEONERD_DISPLAY) || defined(USE_SW_TWI)
 #define USE_I2C
 #endif
 
@@ -302,6 +302,7 @@ typedef struct {
   bool          invertDuet                            = false;
   bool          allowSyncSteppers                     = true;
   uint8_t       dbgLevel                              = W|I|SP;
+  bool          useDebugColoring                      = true;
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;
@@ -352,9 +353,10 @@ extern ClickEncoder             encoder;
   #endif
 #endif
 
-#if defined(MULTISERVO)
+#if defined(USE_MULTISERVO)
 extern Adafruit_PWMServoDriver  servoPwm;
 extern int8_t                   servoMapping[];
+extern int8_t                   outputMode[];
 #endif
 extern uint8_t                  servoPosClosed[];
 extern float                    stepperPosClosed[];

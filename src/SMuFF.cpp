@@ -20,9 +20,14 @@
 
 #define FASTFLIPDBG       0                               // for firmware debugging only
 
+#if defined(__BRD_SKR_MINI)
+Stream                    *debugSerial = &Serial1;        // send debug output to...
+Stream                    *terminalSerial = &Serial1;     // send terminal emulation output to ...
+#else
 Stream                    *debugSerial = &Serial2;        // send debug output to...
-Stream                    *logSerial = &Serial;           // send logs to USB by default
 Stream                    *terminalSerial = &Serial2;     // send terminal emulation output to ...
+#endif
+Stream                    *logSerial = &Serial;           // send logs to USB by default
 
 #if defined(USE_SW_SERIAL0)
 SoftwareSerial            swSerial0(SW_SERIAL_RX_PIN, SW_SERIAL_TX_PIN, false);  // mainly for testing purpose
@@ -35,15 +40,17 @@ ZTimer                    gpTimer;
 #if defined(USE_FASTLED_TOOLS)
 ZTimer                    ledTimer;
 #endif
-#if defined(USE_ZSERVO)
+#if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
 ZTimer                    servoTimer;
 ZServo                    servoWiper;
 ZServo                    servoLid;
 ZServo                    servoCutter;
 #else
-Servo                     servoWiper;
-Servo                     servoLid;
-Servo                     servoCutter;
+  #if !defined(USE_MULTISERVO)
+    Servo                 servoWiper;
+    Servo                 servoLid;
+    Servo                 servoCutter;
+  #endif
 #endif
 ZFan                      fan;
 
@@ -72,14 +79,15 @@ LeoNerdEncoder            encoder(I2C_ENCODER_ADDRESS);
 TMC2209Stepper            *drivers[NUM_STEPPERS+1];
 #endif
 
-#if defined(MULTISERVO)
-Adafruit_PWMServoDriver servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, Wire);
-int8_t                    servoMapping[18] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -1, -1}; // last two are used for the Wiper and Cutter mapping
+#if defined(USE_MULTISERVO)
+Adafruit_PWMServoDriver   servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, I2CBusMS);
+int8_t                    servoMapping[16]   = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // servo output mappings for the Wiper, Lid, Cutter, Spare1 and Spare2 servos
+int8_t                    outputMode[16]     = { 0,  0,  0,  0,  0,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // -1 = not used, 0 = PWM, 1 = OUTPUT
 uint8_t                   servoPosClosed[16] = {90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
 #else
 uint8_t                   servoPosClosed[MAX_TOOLS];
-float                     stepperPosClosed[MAX_TOOLS];
 #endif
+float                     stepperPosClosed[MAX_TOOLS];  // V6S only
 
 String                    serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3;
 volatile byte             nextStepperFlag = 0;
@@ -298,8 +306,13 @@ void isrStallDetectedZ() { steppers[FEEDER].stallDetected(); }
 void isrLedTimerHandler() {
 
   #if defined(USE_FASTLED_TOOLS)
-    if(!initDone || isUpload || !servoLid.isPulseComplete() || !servoCutter.isPulseComplete() || !servoWiper.isPulseComplete())
-      return;
+    #if !defined(USE_MULTISERVO)
+      if(!initDone || isUpload || !servoLid.isPulseComplete() || !servoCutter.isPulseComplete() || !servoWiper.isPulseComplete())
+        return;
+    #else
+      if(!initDone || isUpload)
+        return;
+    #endif
 
     ledTickCounter++;                         // increments every 10ms
 
@@ -342,6 +355,7 @@ void isrServoTimerHandler() {
   every millisecond.
   Serves also as a handler/dispatcher for periodicals / encoder / fan / NeoPixels.
 */
+bool dbgPinState = false;
 void isrGPTimerHandler() {
 
   tickCounter++; // increment tick counter
@@ -372,7 +386,12 @@ void isrGPTimerHandler() {
     // a square wave signal (default: 500 Hz) for debug purposes
     // frequency can be modified in smuffConfig.dbgFreq
     #if FASTFLIPDBG == 0
-      FLIPDBG
+      #if defined(USE_MULTISERVO)
+        // dbgPinState = !dbgPinState;
+        // servoPwm.setPin(servoMapping[SERVO_SPARE2], dbgPinState);
+      #else
+        FLIPDBG
+      #endif
     #endif
   }
   #endif
@@ -520,13 +539,13 @@ void runAndWait(int8_t index) {
 
 void setup() {
 
-  const char* after = PSTR("\033[36m=== %-30s o.k. ===\033[0m");
+  const char* after = PSTR("=== %-30s o.k. ===");
 
-  serialBuffer0.reserve(30);  // initialize serial buffers
+  serialBuffer0.reserve(30);      // initialize serial buffers
   serialBuffer1.reserve(30);
   serialBuffer2.reserve(30);
   serialBuffer3.reserve(30);
-  readDebugLevel();           // read Debug Level settings from SD-Card
+  readDebugLevel();               // read Debug Level settings from SD-Card
 
   // Setup a fixed baudrate until the config file was read.
   // This baudrate is the default setting on the ESP32 while
@@ -536,7 +555,9 @@ void setup() {
   if (CAN_USE_SERIAL2) Serial2.begin(115200);
   if (CAN_USE_SERIAL3) Serial3.begin(115200);
 
-  __debugS(SP, PSTR("\033[35m setup start \033[0m"));
+  __debugS(DEV3, PSTR("setup start"));
+  removeFirmwareBin();            // deletes the firmware.bin file; prevents flashing the firmware on each boot
+  __debugS(SP, after, "remove firmware.bin");
   
   // ------------------------------------------------------------------------------------------------------
   // Disable JTAG/SWI on these boards:
@@ -558,6 +579,7 @@ void setup() {
 
   initUSB();                // init the USB serial so it's being recognized by the Windows-PC
   initFastLED();            // init FastLED if configured
+  setupI2C();               // setup I2C/TWI devices
 
   #if defined(USE_I2C)
     // don't scan I2C if no I2C devices are being used; Scan will take ages
@@ -567,6 +589,10 @@ void setup() {
   #if defined(USE_SPLITTER_ENDSTOPS)
     enumI2cDevices(2);
     __debugS(D, after, "enumerating I2C Devices on bus 2");
+  #endif
+  #if defined(USE_MULTISERVO)
+    enumI2cDevices(3);
+    __debugS(D, after, "enumerating I2C Devices on bus 3");
   #endif
 
   setupDisplay();                                     // setup display first in order to show error messages if neccessary
@@ -619,7 +645,6 @@ void setup() {
   setupBacklight();                                   // setup display backlight
   setupDuetSignals();                                 // setup Duet3D signal pins
   setupFan();                                         // setup internal cooling fan
-  setupI2C();                                         // setup I2C/TWI devices
   __debugS(SP, after, "setup Misc.");
   getStoredData();                                    // read EEPROM.json from SD-Card; this call must happen after setupSteppers()
   
@@ -636,9 +661,6 @@ void setup() {
     moveHome(REVOLVER, false, false);                 // home Revolver / Lid-Servo
   else
     resetRevolver();
-
-  removeFirmwareBin();                                // deletes the firmware.bin file to prevent re-flashing on each boot
-  __debugS(SP, after, "remove firmware.bin");
 
   #if defined(SD_DETECT_PIN)                          // setup SD-Detect ISR
     if(SD_DETECT_PIN > 0) {
@@ -658,7 +680,7 @@ void setup() {
   
   __debugS(D, PSTR("startup tune"));
   startupBeep();                                        // signal startup has finished
-  __debugS(SP, PSTR("\033[35msetup end\033[0m"));
+  __debugS(DEV3, PSTR("setup end"));
 
   for (uint8_t i = 0; i < (uint8_t)ArraySize(intervalHandlers); i++) // init interval handler values
     intervalHandlers[i].val = intervalHandlers[i].period;

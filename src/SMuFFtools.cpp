@@ -185,14 +185,24 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
 
 
 void switchFeederStepper(uint8_t stepper) {
-  if (RELAY_PIN == 0)
-    return;
+  #if !defined(USE_MULTISERVO_RELAY)
+    if (RELAY_PIN == 0)
+      return;
+  #else
+    if(servoMapping[RELAY] == -1)
+      return;
+  #endif
   #if defined(USE_DDE)
     steppers[DDE_FEEDER].setEnabled(false);
   #else
     steppers[FEEDER].setEnabled(false);
   #endif
-  digitalWrite(RELAY_PIN, stepper == EXTERNAL ? smuffConfig.invertRelay : !smuffConfig.invertRelay);
+  #if !defined(USE_MULTISERVO_RELAY)
+    digitalWrite(RELAY_PIN, stepper == EXTERNAL ? smuffConfig.invertRelay : !smuffConfig.invertRelay);
+  #else
+    bool state = stepper == EXTERNAL ? smuffConfig.invertRelay : !smuffConfig.invertRelay;
+    servoPwm.setPin(servoMapping[RELAY], state ? 4095 : 0);
+  #endif
   smuffConfig.externalStepper = stepper == EXTERNAL;
   delay(50);   // gain the relay some time to debounce
 }
@@ -2442,60 +2452,69 @@ unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTranslation
   return ticks;
 }
 
-uint8_t scanI2CDevices(uint8_t *devices, uint8_t maxDevices)
-{
+uint8_t scanI2CLoop(TwoWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t index) {
   uint8_t cnt = 0;
-  #if defined(USE_SW_TWI)
-    setupSoftWire(1);
-  #endif
-  I2CBus.begin();
-  memset(devices, 0, maxDevices);
-  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++)
-  {
-    I2CBus.beginTransmission(address);
-    uint8_t stat = I2CBus.endTransmission();
-    //__debugS(DEV3, PSTR("Scanning at address 0x%02x returned 0x%x"), address, stat);
-    if (stat == I2C_SUCCESS)
+  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++) {
+    bus->beginTransmission(address);
+    uint8_t stat = bus->endTransmission();
+    if (stat == I2C_OK)
     {
       *(devices + cnt) = address;
       cnt++;
-      // __debugS(DEV3, PSTR("\tScan I2C on bus 1, address 0x%02]"), address);
+      // __debugS(DEV3, PSTR("\t\tDevice found on HW I2C (bus %d) at address 0x%02]"), index, address);
     }
     delay(3);
   }
   return cnt;
 }
 
-uint8_t scanI2C2Devices(uint8_t *devices, uint8_t maxDevices)
-{
+#if defined(USE_MULTISERVO) || defined(USE_SW_TWI)
+uint8_t scanI2CLoop(SoftWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t index) {
   uint8_t cnt = 0;
-  #if defined(USE_SPLITTER_ENDSTOPS)
-    #if defined(USE_SW_TWI)
-      setupSoftWire(2);
-    #endif
-    memset(devices, 0, maxDevices);
-    for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++)
-    {
-      I2CBus2.beginTransmission(address);
-      uint8_t stat = I2CBus2.endTransmission();
-      //__debugS(DEV3, PSTR("Scanning at address 0x%02x returned 0x%x"), address, stat);
-      if (stat == I2C_SUCCESS)
-      {
-        *(devices + cnt) = address;
-        cnt++;
-        // __debugS(DEV3, PSTR("[\tScan I2C on bus 2, address 0x%02x"), address);
-      }
-      delay(3);
+  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++) {
+    bus->beginTransmission(address);
+    uint8_t stat = bus->endTransmission();
+    if (stat == I2C_OK) {
+      *(devices + cnt) = address;
+      cnt++;
+      // __debugS(DEV3, PSTR("\t\tDevice found on SW I2C (bus %d) at address 0x%02]"), index, address);
     }
-  #endif
+    delay(3);
+  }
   return cnt;
 }
+#endif
 
 void enumI2cDevices(uint8_t bus) {
   uint8_t devs[40]; // unlikey that there are more devices than that on the bus
   const char *name;
-  bool encoder = false;
-  uint8_t deviceCnt = (bus == 1) ? scanI2CDevices(devs, ArraySize(devs)) : scanI2C2Devices(devs, ArraySize(devs));
+  bool encoder = false, multiservo = false, estopmux = false, i2cdisplay = false;
+  uint8_t deviceCnt = 0;
+  memset(devs, 0, ArraySize(devs));
+  switch(bus) {
+    case 1:
+      I2CBus.begin();
+      deviceCnt = scanI2CLoop(&I2CBus, devs, ArraySize(devs), 1);
+      break;
+
+    case 2:
+      #if defined(USE_SPLITTER_ENDSTOPS)
+        I2CBus2.begin();
+        deviceCnt = scanI2CLoop(&I2CBus2, devs, ArraySize(devs), 2);
+      #endif
+      break;
+
+    case 3:
+      #if defined(USE_MULTISERVO)
+        I2CBusMS.begin();
+        deviceCnt = scanI2CLoop(&I2CBusMS, devs, ArraySize(devs), 3);
+      #endif
+
+      break;
+    default:
+      __debugS(D, PSTR("Unknown I2C bus %d. Scan rejected."), bus);
+      return;
+  }
   if (deviceCnt > 0) {
     for (uint8_t i = 0; i < ArraySize(devs); i++) {
       if (devs[i] == 0)
@@ -2507,61 +2526,80 @@ void enumI2cDevices(uint8_t bus) {
           break;
         case I2C_DISPLAY_ADDRESS:
           name = PSTR("Display");
+          i2cdisplay = true;
           break;
         case I2C_SERVOCTL_ADDRESS:
         case I2C_SERVOBCAST_ADDRESS:
           name = PSTR("MultiServo");
+          multiservo = true;
           break;
         case I2C_EEPROM_ADDRESS:
           name = PSTR("EEPROM");
           break;
         case I2C_SPL_MUX_ADDRESS:
           name = PSTR("EStop MUX Splitter");
+          estopmux = true;
           break;
         default:
           name = PSTR("n.a.");
           break;
       }
-      __debugS(D, PSTR("\tI2C device found on bus %d @ 0x%02x (%s)"), bus, devs[i], name);
+      __debugS(DEV, PSTR("\tI2C device found on bus %d at address 0x%02x (%s)"), bus, devs[i], name);
     }
   }
   else {
-    __debugS(I, PSTR("I2C Scan has found no devices"));
+    __debugS(I, PSTR("I2C Scan has found no devices!"));
   }
-  if (!encoder) {
-#if defined(USE_LEONERD_DISPLAY)
-    __debugS(I, PSTR("LeoNerd's OLED configured but no encoder was found!"));
-#endif
-  }
+  const char noDevFound[] = { "is configured but the according device was not found!" };
+  #if defined(USE_TWI_DISPLAY)
+    if (!i2cdisplay) {
+        __debugS(I, PSTR("I2C display %s"), noDevFound);
+    }
+  #endif
+  #if defined(USE_SPLITTER_ENDSTOPS)
+    if (!estopmux) {
+        __debugS(I, PSTR("Splitter using endstops %s"), noDevFound);
+    }
+  #endif
+  #if defined(USE_LEONERD_DISPLAY)
+    if (!encoder) {
+        __debugS(I, PSTR("LeoNerd's OLED %s"), noDevFound);
+    }
+  #endif
+  #if defined(USE_MULTISERVO)
+    if (!multiservo) {
+      __debugS(I, PSTR("Adafruit Multiservo %s"), noDevFound);
+    }
+  #endif
 }
 
+static char _dbg[1024];
 
-void __debugS__(uint8_t level, const char *fmt, ...)
-{
+void __debugS__(uint8_t level, const char *fmt, ...) {
   if(debugSerial == nullptr || (smuffConfig.dbgLevel & level) == 0)
     return;
-  char _dbg[1024];
+
+  bool useColoring = smuffConfig.useDebugColoring;
+  char pfx1[25];
+  char pfx2[25];
+  memset(_dbg, 0, ArraySize(_dbg) - 1);
   va_list arguments;
   va_start(arguments, fmt);
   vsnprintf_P(_dbg, ArraySize(_dbg) - 1, fmt, arguments);
   va_end(arguments);
 
-  debugSerial->print(F("echo: dbg: "));
+  snprintf_P(pfx1, ArraySize(pfx1), PSTR("echo: dbg: "));
+  size_t maxlen = ArraySize(pfx2);
   switch(level) {
-    case D:     debugSerial->print(F("(D)    ")); break;
-    case I:     debugSerial->print(F("(I)    \033[32m")); break;
-    case W:     debugSerial->print(F("(W)    ")); break;
-    case SP:    debugSerial->print(F("(SP)   ")); break;
-    case DEV:   debugSerial->print(F("(DEV)  \033[33m")); break;
-    case DEV2:  debugSerial->print(F("(DEV2) \033[36m")); break;
-    case DEV3:  debugSerial->print(F("(DEV3) \033[35m")); break;
+    case D:     snprintf_P(pfx2, maxlen, PSTR("(D)    ")); break;
+    case I:     snprintf_P(pfx2, maxlen, PSTR("(I)    %s"), !useColoring ? "" : "\033[32m"); break;
+    case W:     snprintf_P(pfx2, maxlen, PSTR("(W)    %s"), !useColoring ? "" : "\033[31m"); break;
+    case SP:    snprintf_P(pfx2, maxlen, PSTR("(SP)   %s"), !useColoring ? "" : "\033[36m"); break;
+    case DEV:   snprintf_P(pfx2, maxlen, PSTR("(DEV)  %s"), !useColoring ? "" : "\033[33m"); break;
+    case DEV2:  snprintf_P(pfx2, maxlen, PSTR("(DEV2) %s"), !useColoring ? "" : "\033[36m"); break;
+    case DEV3:  snprintf_P(pfx2, maxlen, PSTR("(DEV3) %s"), !useColoring ? "" : "\033[35m"); break;
   }
-  if(level == I || level >= DEV) {
-    debugSerial->print(_dbg);
-    debugSerial->println("\033[0m");
-  }
-  else 
-    debugSerial->println(_dbg);
+  debugSerial->printf(PSTR("%s%s%s%s\n"), pfx1, pfx2, _dbg, (!useColoring || level == D) ? "" : "\033[0m");
 }
 
 void __terminal(const char *fmt, ...)

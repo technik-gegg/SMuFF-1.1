@@ -289,15 +289,10 @@ void setupServoMenu(char* menu, size_t maxBuffer) {
     smuffConfig.homeAfterFeed ? P_Yes : P_No,
     smuffConfig.resetBeforeFeed ? P_Yes : P_No,
     smuffConfig.revolverIsServo ? P_Yes : P_No,
-    #if defined(MULTISERVO)
-    servoPosClosed[toolSelected]-SERVO_CLOSED_OFS,
-    servoPosClosed[toolSelected],
-    #else
     smuffConfig.revolverOffPos,
     servoPosClosed[toolSelected] == 0 ? smuffConfig.revolverOnPos : servoPosClosed[toolSelected],
-    #endif
-    smuffConfig.servoCycles1,
-    smuffConfig.servoCycles2
+      smuffConfig.servoCycles1,
+      smuffConfig.servoCycles2
   );
 }
 
@@ -660,11 +655,7 @@ bool selectToolColor(int color, char* menuTitle) {
 }
 
 void positionServoCallback(int val) {
-  #if defined(MULTISERVO)
-  setServoPos(toolSelected+10, val);
-  #else
   setServoPos(SERVO_LID, val);
-  #endif
 }
 
 
@@ -895,28 +886,18 @@ void showServoMenu(char* menuTitle) {
             break;
 
         case 5: // Servo open
-            #if !defined(MULTISERVO)
             iVal = smuffConfig.revolverOffPos;
             if(showInputDialog(title, P_OpenPos, &iVal, 0, 180, positionServoCallback)) {
               smuffConfig.revolverOffPos = (uint8_t)iVal;
             }
-            #endif
             break;
 
         case 6: // Servo closed
-            #if defined(MULTISERVO)
-            iVal = servoPosClosed[toolSelected];
-            #else
             posForTool = servoPosClosed[toolSelected];
             iVal = posForTool == 0 ? smuffConfig.revolverOnPos : posForTool;
-            #endif
             if(showInputDialog(title, P_ClosedPos, &iVal, 0, 180, positionServoCallback)) {
-              #if defined(MULTISERVO)
-              servoPosClosed[toolSelected] = (uint8_t)iVal;
-              #else
               servoPosClosed[toolSelected] = (uint8_t)iVal;
               smuffConfig.revolverOnPos = (uint8_t)iVal;
-              #endif
             }
             break;
 
