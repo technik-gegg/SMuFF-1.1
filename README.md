@@ -2,9 +2,9 @@
 
 ![The SMuFF](images/SMuFF-V6.png)
 
-Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Printables](https://www.printables.com/de/model/194737-smuff-v6-smart-multi-filament-feeder-with-bondtech) and [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story here on the official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
+Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Printables](https://www.printables.com/de/model/194737-smuff-v6-smart-multi-filament-feeder-with-bondtech) and [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story on how it came to life on my official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
 
-If you like this project and find it useful, please consider donating.
+If you like this project and find it useful, you may consider donating.
 [![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
 
 
@@ -20,24 +20,24 @@ To use this firmware, you have to [compile it](https://sites.google.com/view/the
 
 The Bigtreetech SKR mini series boards are very small and yet  powerful because of the 32-Bit STM Micro Controller Unit.
 
-Of course, this firmware can be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. I recommend using a 32 bit controller board instead.
-Make sure your board of choice has at least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are (at least):
+Of course, this firmware can also be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. I recommend using a 32 bit controller board instead.
+Make sure your board of choice has at least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are at least:
 
 + two stepper motor drivers (sockets)
 + two endstop connectors
-+ one servo connector
++ one servo connector (or two spare I/O pins for Software-I2C)
 + an onboard SD-Card
 + one spare serial port (USB or TTL)
-+ a 128 x 64 pixel display (connector)
-+ a rotary encoder (connector)
++ a 128 x 64 pixel display connector
++ a rotary encoder connector
 
 Simply create a new build environment in your **platformio.ini** and adopt the settings according to your controllers hardware in your custom **pins.h** file.
 
-The configuration files **\*.json** have to be copied into the root folder of your SD-Card for the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the built-in menus or the [WebInterface](https://github.com/technik-gegg/SMuFF-WI), save them and reboot.
+The configuration files **\*.json** and **debug.txt** have to be copied into the root folder of your SD-Card for the controller board. Hence, changing runtime parameters doesn't require recompiling the firmware. Just edit the settings from within the built-in menus or the [WebInterface](https://github.com/technik-gegg/SMuFF-WI), save them and reboot.
 
 I've added the option to run GCode scripts for automated testing of your hardware.
-In the **test** folder you'll find some sample scripts. Copy those over to your SD-Card and pick one from within the menu to start the test run. Once started, the test will run infinitelly until you stop it.
-Each test result will be displayed on the LCD and also sent to the log serial port (USB - if not defined otherwise).
+In the **test** folder you'll find some sample scripts. Copy the folder over to your SD-Card and pick a script from within the menu to start the test run. Once started, the test will run infinitelly until you stop it.
+Each test result will be displayed on the LCD and also sent to the log serial port (which is the USB port, if not defined otherwise).
 
 For more information about building the SMuFF and some more detailed stuff, head over to my official [SMuFF homepage](https://sites.google.com/view/the-smuff/) or to my [Discord server](https://discord.com/invite/BzZ3rBf).
 
@@ -47,20 +47,37 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**3.13** - Changes for Duet3D and Serial display / some bugfixes
+
++ fixed bug in TMC driver **Stealth-Mode setting** via SMuFF-WI. Value was accidentally inverted.
++ fixed bug that caused a compilation failure when using the *SKR_E3_30_RET6___DDE* build environment.
++ added [SMuFF-Backbone](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.m19pbkoy3v6p) schematic and PCB design.
++ added **DuetSerial** (port) setting to **SMUFF.json** and menus. You **must** now define the serial port where the Duet3D/RRF is connected to (set to Ser.1 by default). This serial port will only be taken into account if the SMuFF is configured for Duet3D/RRF. For this option you need to copy the modified **options.mnu** and **duet3d.opt** files into the according folders on your SMuFFs SD-Card.
++ added **DspSerial** (port) setting to **SMUFF.json**. The Display serial port can only be configured either through the **-D DISPLAY_SERIAL_PORT** definition in *platformio.ini* or manually in SMUFF.json but not from the menus (because there will be no menus in this mode). See notes on **USE_SERIAL_DISPLAY** for version **3.00** down below.
++ updated **M42** & **M280** & **M205** help files (for Multiservo use).
++ added Dialogs and Sound support on SMuFF-WI when *USE_DISPLAY_SERIAL* is enabled.
++ added **SWAP_SELECTOR_ENDSTOP** build option for those who experience the X-STOP (used for Selector) is not being triggered on a **SKR E3 V3.0**. With this option enabled, the firmware expects the Selector endstop to be connected to *Y-STOP* rather than *X-STOP*.
++ added *JAM* flag in periodical status messages; This is being used in my OctoPrint/Klipper plugins to indicate whether or not the tool change has failed for some reason.
++ added option to switch the *Debugger Serial Port* from within **debug.txt** on startup, without the need for recompiling the firmware. To use this option simply add a **;x** after the value, whereas *x* determines a port number between **0** and **3**. Port **0** always indicates the **USB** serial port, whereas ports **1..3** depend on the controller board you're using (*port 2 is the default value and is assigned to the **TFT** header on most boards*).
+*Keep in mind:* This setting will vanish once you set the debug flags via GCode **M111** and store them using **M500**.
++ added option to switch the *Debugger Serial Port* on the fly via **M205** GCode. To use it, simply apply parameters **P"ChangeDbg" Sx**, whereas *x* is the number of the new serial port in the range of **0..3** (see description above).
+*Keep in mind:* This setting is temporary and will be reset at the next boot.
++ added option to filter in help files. After the **?** append the phrase to filter for. For example: **M205?dist** will only show the header and all lines containing the string *"dist"*.
+
 **3.12** - Changes for the MULTISERVO option
 
-+ reworked **MULTISERVO** option. For one it's now named *USE_MULTISERVO* for more consistency throughout the other options, for the other it now is used to configure all servo motors and drive them via the external board (Adafruit Multiservo/FeatherWing board). This board gets always controlled over software I2C but the pinout varies through the controller boards.
++ reworked **MULTISERVO** option. For one it's now named *USE_MULTISERVO* for more consistency throughout the other options. For the other, it's now being used to configure all servos to control them via an external board (Adafruit Multiservo/FeatherWing/ [SMuFF-Backbone](https://sites.google.com/view/the-smuff/work-in-progress?authuser=0#h.m19pbkoy3v6p) board). This external board is always being controlled by using software I2C. The pins used for SW-I2C vary throughout the different controller boards.
 + the **USE_MULTISERVO** flag will become more importance in the future, hence I moved that option to the *[other]* section of *platformio.ini*.
 + modified the external **SoftWireSTM32 library** which had a bug that caused that the library wasn't able to scan for devices on the I2C bus properly.
 + moved relay control pin on **SKR mini E3-DIP V1.1** from **MS3** pin of the Z-Axis driver socket (in DDE mode) to the **TH0** pin if the **USE_MULTISERVO** flag is set. This is because this signal is being used as the data pin (SDA) for the software I2C controlling the Adafruit Multiservo board.
-+ added **USE_MULTISERVO_RELAY** flag to the compile options in order to controll the relay via output #5 on the Adafruit Multiservo board instead of *MS3*, *TH0* or *PROBE* pins. This will be the future method of controlling the relay switch. **Please notice:** This method requires a pull-up resistor of 4.7 - 10K, either on +5V or +3.3V to make the signal switch as intended. Reason being is that the outputs on the Multiservo board are configured as open-drain.
++ added **USE_MULTISERVO_RELAY** flag to the compile options in order to control the relay via output #5 on the Multiservo board instead of *MS3*, *TH0* or *PROBE* pins. This will be the future method of controlling the relay switch. **Please notice:** This method requires a pull-up resistor of 4.7K - 10K, either on +5V or +3.3V to make the signal switch as intended. The reason being is that the outputs on the Multiservo board are configured as open-drain.
 + corrected build environment for **SKR mini V1.1** (FastLED library was still referenced instead of the Adafruit Neopixel library).
 + fixed the bug that caused the **SKR mini V1.1** to hang at startup (wrong *debugSerial* port has been initialized).
 + added a couple more meaningful error messages to the GCode interpreter.
 + changed **SERVOMAP.json** config file to reflect the new MUTISERVO options. Please copy this file over to your SMuFF's SD-Card.
-+ changed **ServoMinPwm** and **ServoMaxPwm** settings in SMUFF.json. These settings work better with the Adafruit Multiservo boards. Copy the modified file over to your SMuFF's SD-Card and don't forget to reconfigure your servo angle settings.
-+ added the two user controlled servo ports (USER1/USER2) to **M280** GCode and **M42** GCode when using the MULTISERVO option. Send M280 P1000 / P1001 if those ports are supposed to drive custom servos, or M42 P1000 / P1001 if those ports are configured to be used as output pins (i.e. switched On/Off).
-+ added **M260** GCode to allow scanning for I2C devices at runtime via the GCode interface.
++ changed **ServoMinPwm** and **ServoMaxPwm** settings in SMUFF.json. These settings work better with the Multiservo boards. Copy the modified file over to your SMuFF's SD-Card and don't forget to reconfigure your servo angle settings.
++ added the two user controlled servo ports (USER1/USER2) to **M280** GCode and **M42** GCode when using the MULTISERVO option. Send M280 P1000 / P1001 if those ports are supposed to drive custom servos, or M42 P1000 / P1001 if those ports are configured to be used as output pins (i.e. to be switched on/off).
++ added **M260** GCode to allow scanning for I2C devices at runtime using the GCode interface.
 + updated some of the KiCad files to KiCad version 6.x
 
 **3.11** - Some minor changes
@@ -190,7 +207,7 @@ Keep in mind that you still have to set the correct **display** option before yo
 + fully integrated the Splitter option.
 + added new **main-menu** variant for the Splitter option.
 + added Splitter option settings in **options** menu.
-+ extended **M700** and **M701** GCodes to handle Splitter option. A suffix **S** loads unloads to/from Splitter, whereas an  **R** suffix in M701 allows you to reset the currently saved states.
++ extended **M700** and **M701** GCodes to handle Splitter option. A suffix **S** loads unloads to/from Splitter, whereas a  **R** suffix in M701 allows you to reset the currently saved states.
 + added feed states for Splitter option, which reflects if and to where the filament has been loaded. States will also get saved to EEPROM.json.
 + added new icon for the "fully loaded" state (in F2) on the main screen when using Splitter option.
 + fixed bug not turning display backlight back on after idle state.
@@ -250,7 +267,7 @@ If this feature is turned on and when not in menus, the topmost line on teminal 
 + fixed a bug in the calculation of speeds in mm/s. **However, I still recommend using speed settings in ticks rather than mm/s** (that's: SpeedsInMMs set to false). If you do use mm/s, please be aware that accelleration/decelleration are not being taken into account and therefore it's only a close estimation of the speed (which doesn't really matter for the function of the SMuFF anyway).
 + fixed bug for not initializing the software serial when not running on a SKR E3 2.0 board (which operates on a hardware serial).
 + added back setting the internal RSense on a TMC stepper driver when not on a SKR E3 1.2/2.0 board.
-+ added software I2C support for LeoNerds OLED module (by GMagician). **Please notice**: If you get an compile time error stating *LeoNerdEncoder::begin(SoftWire\*)* has not been found, you have to delete the LeoNerd-OLED-Module-Library folder from the **.pio/libdeps** folder manually.
++ added software I2C support for LeoNerds OLED module (by GMagician). **Please notice**: If you get a compile time error stating *LeoNerdEncoder::begin(SoftWire\*)* has not been found, you have to delete the LeoNerd-OLED-Module-Library folder from the **.pio/libdeps** folder manually.
 
 **2.22** - Changed configuration file names; Minor changes for FastLEDs
 
@@ -318,7 +335,7 @@ You have to figure the correct length for purging yourself. However, if you happ
 
 **2.17** - minor modifications
 
-+ added parsing for "**\n**" (two bytes) in the received data, which eventually gets threated as line-feed ('**_\n_**'). This is needed for Duet3D / RRF firmware which doesn't send an LF at the end of a message when sent using **M118** GCode.
++ added parsing for "**\n**" (two bytes) in the received data, which eventually gets threated as line-feed ('**_\n_**'). This is needed for Duet3D / RRF firmware which doesn't send a LF at the end of a message when sent using **M118** GCode.
 + added Filament-Cutter handling (see [Filament-Cutter](https://www.thingiverse.com/thing:4650129)). Be aware that you'll need to attach the servo to **SERVO3_PIN**, which is not available on all controller boards. For those board which support only two servos, you have to pick either Wiper **or** Cutter and assign it accordingly in the *Pins.h* file. Usage of the cutter and open/close positions are defined through the **Options** menu (SMUFF.CFG).
 Cutting filament can also be activated through the **G12 C** GCode command. Because of this change, the files **options.mnu** and **g12.txt** have changed and must be copied to the SD-Card, as well as the SMUFF.CFG.
 + added function keys (PF1-PF4) to be used in VT100 terminal emulation which will execute the commands assigned in *LBtnDown*, *LBtnHold*, *RBtnDown* and *RBtnHold* accordingly.
@@ -358,7 +375,7 @@ Cutting filament can also be activated through the **G12 C** GCode command. Beca
 
 + overhauled the intro in this README
 + added the [SKR mini E3 **V2.0**](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4?_pos=3&_sid=ecb22ada6&_ss=r) controller board to the build environments. Keep in mind that this controller board uses one hardware serial (Serial4) for communication with the TMC2209 stepper drivers and thus, the drivers are enumerated through the MS1/MS2 pins. Hence, you must setup the *DriverAddress* in the TMC configuration accordingly.
-+ added support for the [LeoNerd OLED Module](https://www.tindie.com/products/leonerd/oled-front-panel-module/) as an replacement for my DIY display/encoder board.
++ added support for the [LeoNerd OLED Module](https://www.tindie.com/products/leonerd/oled-front-panel-module/) as a replacement for my DIY display/encoder board.
 This PCB is an out-of-the-box solution and is controlled completely through the TWI/I2C interface. Hence, it'll need only 4 wires to connect with (5 if RESET gets wired up too).
 The slightly bigger OLED display (1.3") is also an improvement in terms of readability.
 To activate it, set the **USE_LEONERD_DISPLAY** definition instead of **USE_xxx_DISPLAY** in platformio.ini.
@@ -433,7 +450,7 @@ To activate it, set the **USE_LEONERD_DISPLAY** definition instead of **USE_xxx_
 
 **2.07** - Added FastLED to project
 
-Since some displays nowadays come with an NeoPixel backlight, I've seen the urge to add the FastLED library, which controls NeoPixels in a very comfortable way.
+Since some displays nowadays come with a NeoPixel backlight, I've seen the urge to add the FastLED library, which controls NeoPixels in a very comfortable way.
 Though, on the STM32 Maple framework it will not compile right away, but there's a workaround. Please read the comments above the initFastLed() function carefully.
 
 **2.06** - Changes for USB connection
@@ -512,7 +529,7 @@ This setting defines how the wiper servo will run. The sequence is a string in t
 + Added ok/missed feeds to test run. You'll need a 2nd endstop at the end of the bowden tube, which gets connected to the X+ endstop port on the SKR mini.
 + On feed errors, firmware will now retry 4 times before giving up. On second retry it'll home and reset the Selector. On third retry it'll go through all tools and retract the filament a bit (to prevent other tools/filaments blocking the Selector), then reposition the Selector as well.
 + Modified the servo module, so that it can handle more than one servo. Also, redefined the pins for the servo in the Pins.h. Servos are now driven by the endstops Y+ and Z+ ports.
-+ Added experimental code to replace the Revolver stepper motor with an standard sized servo. This is still work in progress.
++ Added experimental code to replace the Revolver stepper motor with a standard sized servo. This is still work in progress.
 
 **1.60** - New enhancements
 
@@ -525,7 +542,7 @@ This setting defines how the wiper servo will run. The sequence is a string in t
 + added **Reset Feeder Jam** to the *Main Menu*, dropped the double click action for this from last version.
 + did some code clean up, extracted menu- and dialog functions into separate files.
 + moved the ClickEncoder library source into the project since I needed some code enhancements (resetButton).
-+ added **Testrun Menu** - an integrated test function (SKR only) - *place scripts with GCodes on the SD-Card which will get executed one by one in an continous loop*.
++ added **Testrun Menu** - an integrated test function (SKR only) - *place scripts with GCodes on the SD-Card which will get executed one by one in a continous loop*.
 + added some test scripts to the **test** folder - *copy those onto your SD-Card o  use them* .
 
 **Please notice:**
@@ -564,7 +581,7 @@ If you've already assembled your SMuFF with the Wanhao i3 mini controller, it's 
 + Moved datastore from EEPROM to SD-Card (mainly because of the STM32).
 + Indexer for Materials in SMUFF.CFG renamed from Tool0..x to T0..x (because of memory issues).
 + Added *FeedChunks* and *EnableChunks* settings to SMUFF.CFG. Those are needed since the communcation on the 2nd serial port tends to hand in long operations (such as feeding the filament to nozzle) and Prusa won't be able to abort the feed.
-+ Added *StepDelay* setting to SMUFF.CFG for the SKR Mini. This is needed because of the speed of an 32 bit board to keep the steppers from stalling.
++ Added *StepDelay* setting to SMUFF.CFG for the SKR Mini. This is needed because of the speed of a 32 bit board to keep the steppers from stalling.
 + Added schematics of the SKR Mini LCD board.
 
 **1.4**  - Major changes to gain better compatibility for Prusa Emulation Mode and setup for a different platform (STM32). Latter is unfinished yet.

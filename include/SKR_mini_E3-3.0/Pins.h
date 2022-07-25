@@ -31,7 +31,11 @@
 #define X_STEP_PIN          PB13
 #define X_DIR_PIN           PB12
 #define X_ENABLE_PIN        PB14
+#if defined(SWAP_SELECTOR_ENDSTOP)
+#define X_END_PIN           PC1     // Y-STOP
+#else
 #define X_END_PIN           PC0     // X-STOP
+#endif
 // REVOLVER (Y)
 #define STEP_HIGH_Y         digitalWrite(Y_STEP_PIN, HIGH);
 #define STEP_LOW_Y          digitalWrite(Y_STEP_PIN, LOW);
@@ -50,7 +54,11 @@
 #define Y_DIR_PIN           PB2
 #define Y_ENABLE_PIN        PB11
 #endif
+#if defined(SWAP_SELECTOR_ENDSTOP)
 #define Y_END_PIN           PC1     // Y-STOP
+#else
+#define Y_END_PIN           PC0     // X-STOP
+#endif
 // FEEDER (Z)
 #define STEP_HIGH_Z         digitalWrite(Z_STEP_PIN, HIGH);
 #define STEP_LOW_Z          digitalWrite(Z_STEP_PIN, LOW);

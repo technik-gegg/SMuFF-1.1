@@ -1,6 +1,6 @@
 M280 Pn Sn | Rn | Tn [ In Jn Fn Dn Kn Ln En ]
 --------------------------------
-Pn	the servo index (n: 0 = Wiper servo, 1 = Lid servo, 10..26 servo 1-16 if Multiservo is being used)
+Pn	the servo index (n: 0 = Wiper servo, 1 = Lid servo, 1000..1015 servo 0-15 if Multiservo is being used)
 Sn	the desired servo position (n: 0..180 deg.)
 In	the minimum PWM frequency in microseconds (default: n = 800 depicts 0 deg.)
 Jn	the maximum PWM frequency in microseconds (default: n = 2400 depicts 180 deg.)

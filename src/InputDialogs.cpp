@@ -135,7 +135,7 @@ void getInput(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked, boo
   }
 }
 
-bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max, fCallback cb, float increment) {
+bool showInputDialog(const char* title, const char* PROGMEM message, double* val, double min, double max, fCallback cb, double increment) {
   bool stat = true;
   int16_t turn;
   uint8_t wheelBtn;

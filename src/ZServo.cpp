@@ -132,8 +132,8 @@ bool ZServo::setServoPos(uint8_t degree) {
 
   #if defined(__ESP32__)
     if(!_useTimer) {
-      _pulseLen = (int)(((degree/(float)_maxDegree)*_maxPw)/(float)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
-      //__debugS(Dev3, PSTR("ZServo::setServoPos %d: %3d deg = %4d us (v:%d)"), _servoIndex, degree, (int)((float)_pulseLen / ((float)65536 / DUTY_CYCLE)), _pulseLen);
+      _pulseLen = (int)(((degree/(double)_maxDegree)*_maxPw)/(double)DUTY_CYCLE*65536.0) + ((65536.0/DUTY_CYCLE)*_minPw);
+      //__debugS(Dev3, PSTR("ZServo::setServoPos %d: %3d deg = %4d us (v:%d)"), _servoIndex, degree, (int)((double)_pulseLen / ((double)65536 / DUTY_CYCLE)), _pulseLen);
     }
     else {
       _pulseLen = map(degree, _minDegree, _maxDegree, _minPw, _maxPw);
@@ -227,7 +227,7 @@ void ZServo::setDelay() {
     // based on a moving speed of MOVING_SPEED per 60° (default 200ms)
     uint8_t dist = abs(_lastDegree - _degree);
     if(dist) {
-      float dly = ((float)dist/60)*MOVING_SPEED;
+      double dly = ((double)dist/60)*MOVING_SPEED;
       delay((uint32_t)dly);
     }
 }

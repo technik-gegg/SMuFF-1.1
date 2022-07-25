@@ -85,9 +85,9 @@ public:
   long          getTotalSteps() { return _totalSteps; }
   void          setTotalSteps(long count) { _totalSteps = count; }
   long          getStepPosition() { return _stepPosition; }
-  void          setStepPosition(long position) { _stepPosition = position; _stepPositionMM = (float)((float)position / _stepsPerMM); }
-  float         getStepPositionMM() { return _stepPositionMM; }
-  void          setStepPositionMM(float position) { _stepPositionMM = position; _stepPosition = (long)(position * _stepsPerMM);}
+  void          setStepPosition(long position) { _stepPosition = position; _stepPositionMM = (double)((double)_stepPosition / _stepsPerMM); }
+  double        getStepPositionMM() { return _stepPositionMM; }
+  void          setStepPositionMM(double position) { _stepPositionMM = position; _stepPosition = (long)(position * _stepsPerMM);}
   void          incrementStepPosition() { _stepPosition += _dir; }
   bool          getMovementDone() { return _movementDone; }
   void          setMovementDone(bool state);
@@ -107,8 +107,8 @@ public:
   bool          isLTDuration(timerVal_t* value) { if(_durationInt < *value) { *value = _durationInt; return true; } return false; }
   uint16_t      getStepsPerMM() { return _stepsPerMM; }
   void          setStepsPerMM(uint16_t steps) { _stepsPerMM = steps; }
-  float         getStepsPerDegree() { return _stepsPerDegree; }
-  void          setStepsPerDegree(float steps) { _stepsPerDegree = steps; }
+  double        getStepsPerDegree() { return _stepsPerDegree; }
+  void          setStepsPerDegree(double steps) { _stepsPerDegree = steps; }
 
   bool          getAllowAccel() { return _allowAcceleration; }
   void          setAllowAccel(bool state) { _allowAcceleration = state; }
@@ -117,7 +117,7 @@ public:
   bool          getIgnoreAbort() { return _ignoreAbort; }
   void          setIgnoreAbort(bool state) { _ignoreAbort = state; }
   long          getStepsTaken() { return _stepsTaken; }
-  float         getStepsTakenMM() { return (float)_stepsTaken / _stepsPerMM; }
+  double        getStepsTakenMM() { return (double)_stepsTaken / _stepsPerMM; }
   void          setStepsTaken(long count) { _stepsTaken = count; }
   uint8_t       getAccelDistance() { return _accelDistance; }
   void          setAccelDistance(uint8_t dist) { _accelDistance = dist; }
@@ -165,8 +165,8 @@ private:
   volatile long         _stepCount = 0;               // number of steps completed in current movement
   volatile long         _maxStepCount = 0;            // maximum number of steps
   uint16_t              _stepsPerMM = 0;              // steps needed for one millimeter
-  float                 _stepsPerDegree = 0;          // steps needed for 1 degree on orbital motion
-  float                 _stepPositionMM = 0;          // current position of stepper in millimeter
+  double                _stepsPerDegree = 0;          // steps needed for 1 degree on orbital motion
+  double                _stepPositionMM = 0;          // current position of stepper in millimeter
   bool                  _invertDir = false;           // stepper direction inversion
   bool                  _allowAcceleration = true;    // allow / disallow acceleration
   volatile bool         _abort = false;               // flag signals abortion of operation
@@ -181,11 +181,11 @@ private:
   volatile timerVal_t   _intrCount = 0;
 
   // per iteration variables (potentially changing every interrupt)
-  volatile float          _durationF;                 // current interval length as float for accel/decel
+  volatile double         _durationF;                 // current interval length as double for accel/decel
   volatile timerVal_t     _durationInt;               // current interval length
   volatile long           _accelDistSteps = 0;        // amount of steps for acceleration
   volatile long           _decelDistPos = 0;          // step position for deceleration
-  volatile float          _stepsAcceleration = 0;     // increment for acceleration / deceleration
+  volatile double         _stepsAcceleration = 0;     // increment for acceleration / deceleration
 
   void resetStepper();                                // method to reset work params
   void updateAcceleration();                          // method to calculate and update acceleration / deceleration

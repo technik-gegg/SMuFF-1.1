@@ -553,7 +553,9 @@ void setBacklightIndex(int color) {
 }
 
 void setContrast(int contrast) {
+  #if !defined(USE_SERIAL_DISPLAY)
   display.setContrast((uint8_t)contrast);
+  #endif
 }
 
 void setToolColorIndex(int color) {

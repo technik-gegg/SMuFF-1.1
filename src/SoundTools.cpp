@@ -29,6 +29,8 @@ char PROGMEM    tuneEncoder[MAX_TUNE3] = {"F330D10P10."};
 #else
 char PROGMEM    tuneEncoder[MAX_TUNE3] = {"F1440D3."};
 #endif
+uint8_t         sequenceSerial;
+const char*     tuneNames[] = { "", "Beep", "LongBeep", "Startup", "User" };
 
 #define _F_ 0     // Frequency index
 #define _D_ 1     // Duration index
@@ -102,7 +104,17 @@ void startupBeep() {
            The '.' at the end of a tone is mandatory and must not be omitted.
 */
 void prepareSequence(const char *seq, bool autoPlay /* =true */) {
-#if !defined(USE_LEONERD_DISPLAY)
+#if defined(USE_SERIAL_DISPLAY)
+  sequenceSerial = 0;
+  if(seq == tuneBeep)           sequenceSerial = 1;
+  else if(seq == tuneLongBeep)  sequenceSerial = 2;
+  else if(seq == tuneStartup)   sequenceSerial = 3; 
+  else if(seq == tuneUser)      sequenceSerial = 4;
+  if (autoPlay)
+    playSequence();
+  return;
+#endif
+#if !defined(USE_LEONERD_DISPLAY) 
   if (BEEPER_PIN <= 0)
     return;
 #endif
@@ -140,15 +152,23 @@ void prepareSequence(const char *seq, bool autoPlay /* =true */) {
 }
 
 void playSequence() {
-  if(BEEPER_PIN <= 0)
-    return;
-  for (uint8_t i = 0; i < MAX_SEQUENCE; i++) {
-    if (sequence[i][_F_] == 0)
+  #if defined(USE_SERIAL_DISPLAY)
+    char msg[80];
+    if(sequenceSerial > 0) {
+      snprintf(msg, ArraySize(msg)-1, "{\"PlaySequence\": \"%s\"}\n", tuneNames[sequenceSerial]);
+      printResponse(msg, smuffConfig.displaySerial);
+    }
+  #else
+    if(BEEPER_PIN <= 0)
       return;
-    _tone(sequence[i][_F_], sequence[i][_D_]);
-    delay(sequence[i][_D_]);
-    if (sequence[i][_P_] > 0)
-      delay(sequence[i][_P_]);
-  }
+    for (uint8_t i = 0; i < MAX_SEQUENCE; i++) {
+      if (sequence[i][_F_] == 0)
+        return;
+      _tone(sequence[i][_F_], sequence[i][_D_]);
+      delay(sequence[i][_D_]);
+      if (sequence[i][_P_] > 0)
+        delay(sequence[i][_P_]);
+    }
+  #endif
 }
 

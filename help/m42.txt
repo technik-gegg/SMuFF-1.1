@@ -1,5 +1,5 @@
 M42 Pn Sn Mn
 ------------
-Pn	Address pin number n
+Pn	Address pin number n (n: 1000..1015 for accessing ports 0-15 on Multiservo module)
 Sn	State for Pn (0 | 1)
-Mn	Pin mode (n: 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN)
+Mn	Pin mode (n: 0=INPUT, 1=OUTPUT, 2=INPUT_PULLUP, 3=INPUT_PULLDOWN; not used on Multiservo module)

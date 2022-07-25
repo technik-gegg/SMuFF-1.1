@@ -38,9 +38,12 @@ void sendStates(bool override) {
     if(parserBusy && !override)
       return;
     printPeriodicalState(0);
-    if(CAN_USE_SERIAL1)                                   printPeriodicalState(1);
-    if(CAN_USE_SERIAL2 && smuffConfig.hasPanelDue != 2)   printPeriodicalState(2);
-    if(CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)   printPeriodicalState(3);
+    if(CAN_USE_SERIAL1 && (smuffConfig.hasPanelDue != 1 && smuffConfig.duet3Dport != 1))
+      printPeriodicalState(1);
+    if(CAN_USE_SERIAL2 && (smuffConfig.hasPanelDue != 2 && smuffConfig.duet3Dport != 2))
+      printPeriodicalState(2);
+    if(CAN_USE_SERIAL3 && (smuffConfig.hasPanelDue != 3 && smuffConfig.duet3Dport != 3))
+      printPeriodicalState(3);
     sendingStatesToggle = !sendingStatesToggle;
   }
   // Add your periodical code here

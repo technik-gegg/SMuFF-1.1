@@ -30,9 +30,17 @@
 #define ALL D | W | I
 
 #if defined(DEBUG)
-extern void __debugS__(uint8_t level, const char* fmt, ...);
-#define __debugS(level, fmt, ...)   __debugS__(level, fmt, ## __VA_ARGS__)
+extern void __initDebug__();
+extern void __flushDebug__();
+extern void __debugS__(uint8_t level, bool isInt, const char* fmt, ...);
+#define __initDebug()                   __initDebug__()
+#define __debugS(level, fmt, ...)       __debugS__(level, false, fmt, ## __VA_ARGS__)
+#define __debugSInt(level, fmt, ...)    __debugS__(level, true, fmt, ## __VA_ARGS__)
+#define __flushDebug()                  __flushDebug__()
 #else
+#define __initDebug()
 #define __debugS(fmt, ...)
+#define __debugSInt(fmt, ...)
+#define __flushDebug()
 #endif
 

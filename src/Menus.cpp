@@ -21,12 +21,12 @@
 #include "InputDialogs.h"
 
 extern uint8_t  swapTools[];
-extern ZStepper steppers[];
 extern int8_t   toolSelections[];
 bool            forceStopMenu = false;
 
 char            selColorName[2][10];
 char            duePort[10];
+char            duetPort[10];
 char            driverMode[10];
 char            ms3State[10];
 
@@ -50,7 +50,7 @@ void checkMenuSize(const char* PROGMEM name, char* menu, size_t size) {
   Used to check whether the acceleration is faster than max. speed for example.
 */
 void validateSpeed(int current, uint16_t* destVal, uint8_t percent) {
-  unsigned percentVal = (unsigned)round(((float)(current / 100) * percent));
+  unsigned percentVal = (unsigned)round(((double)(current / 100) * percent));
   if(smuffConfig.speedsInMMS) {
     if(percentVal < *destVal)
       *destVal = percentVal;
@@ -214,6 +214,7 @@ void setupOptionsMenu(char* menu, size_t maxBuffer) {
     smuffConfig.allowSyncSteppers ? P_Yes : P_No,
     smuffConfig.useDuet ? P_Yes : P_No,
     smuffConfig.invertDuet ? P_Yes : P_No,
+    smuffConfig.duet3Dport==0 ? P_None : translateDuet3DPort(smuffConfig.duet3Dport),
     smuffConfig.hasPanelDue==0 ? P_None : translatePanelDuePort(smuffConfig.hasPanelDue),
     smuffConfig.servoMinPwm,
     smuffConfig.servoMaxPwm,
@@ -553,6 +554,17 @@ const char* translatePanelDuePort(uint8_t port) {
   return duePort;
 }
 
+const char* translateDuet3DPort(uint8_t port) {
+  char* ports[4];
+  char tmp[40];
+  sprintf_P(tmp, loadOptions(P_OptDuet3D, ArraySize(tmp)));
+  splitStringLines(ports, (int)ArraySize(ports), tmp);
+  if(port >= 0 && port < (int)ArraySize(ports))
+    strcpy(duetPort, ports[port]);
+  else sprintf_P(duetPort, P_Undefined);
+  return duetPort;
+}
+
 const char* translateTMCDriverMode(uint8_t mode) {
   char* modes[3];
   char tmp[40];
@@ -575,10 +587,16 @@ const char* translateMS3State(uint8_t mode) {
   return ms3State;
 }
 
+void selectDuet3DPort(char* menuTitle) {
+  int val = smuffConfig.duet3Dport;
+  if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptDuet3D, 300)), nullptr, true))
+    smuffConfig.duet3Dport = (uint8_t)val;
+}
+
 void selectPanelDuePort(char* menuTitle) {
   int val = smuffConfig.hasPanelDue;
   if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptPanelDue, 300)), nullptr, true))
-    smuffConfig.hasPanelDue = val;
+    smuffConfig.hasPanelDue = (uint8_t)val;
 }
 
 bool selectBaudrate(uint8_t port, char* menuTitle) {
@@ -683,7 +701,7 @@ void showTMCMenu(char* menuTitle, uint8_t axis) {
   uint8_t current_selection = 0;
   bool bVal;
   int iVal;
-  float fVal;
+  double fVal;
   char* title;
   char tmp[50];
   char _subtitle[80];
@@ -1167,7 +1185,7 @@ void showFeederMenu(char* menuTitle) {
   bool bVal;
   int iVal;
   uint16_t uiVal;
-  float fVal;
+  double fVal;
   char tmp[50];
   char _subtitle[80];
   char _menu[800];
@@ -1499,7 +1517,7 @@ void showSettingsMenu(char* menuTitle) {
   bool stopMenu = false;
   uint32_t startTime = millis();
   uint8_t current_selection = 0;
-  float fVal;
+  double fVal;
   int iVal;
   char *title;
   char _subtitle[80];
@@ -1595,7 +1613,7 @@ void showOptionsMenu(char* menuTitle) {
   uint32_t startTime = millis();
   uint8_t current_selection = 0;
   int iVal;
-  float fVal;
+  double fVal;
   bool bVal;
   char *title;
   char _subtitle[80];
@@ -1687,11 +1705,15 @@ void showOptionsMenu(char* menuTitle) {
             }
             break;
 
-        case 12: // PanelDue
+        case 12: // Duet3D Port
+            selectDuet3DPort(title);
+            break;
+
+        case 13: // PanelDue Port
             selectPanelDuePort(title);
             break;
 
-        case 14: // Servo Min PWM
+        case 15: // Servo Min PWM
             iVal = smuffConfig.servoMinPwm;
             if(showInputDialog(title, P_InMilliseconds, &iVal, 400, 1000, nullptr, 20)) {
               smuffConfig.servoMinPwm = iVal;
@@ -1701,7 +1723,7 @@ void showOptionsMenu(char* menuTitle) {
             }
             break;
 
-        case 15: // Servo Max PWM
+        case 16: // Servo Max PWM
             iVal = smuffConfig.servoMaxPwm;
             if(showInputDialog(title, P_InMilliseconds, &iVal, 1000, 3000, nullptr, 20)) {
               smuffConfig.servoMaxPwm = iVal;
@@ -1711,59 +1733,59 @@ void showOptionsMenu(char* menuTitle) {
             }
             break;
 
-        case 17: // Use Cutter
+        case 18: // Use Cutter
             bVal = smuffConfig.useCutter;
             if(showInputDialog(title, P_YesNo, &bVal))
               smuffConfig.useCutter = bVal;
             break;
 
-        case 18: // Cutter Open
+        case 19: // Cutter Open
             iVal = smuffConfig.cutterOpen;
             if(showInputDialog(title, P_OpenPos, &iVal, 0, 180, nullptr, 1)) {
               smuffConfig.cutterOpen = iVal;
             }
             break;
 
-        case 19: // Cutter Close
+        case 20: // Cutter Close
             iVal = smuffConfig.cutterClose;
             if(showInputDialog(title, P_ClosedPos, &iVal, 0, 180, nullptr, 1)) {
               smuffConfig.cutterClose = iVal;
             }
             break;
 
-        case 20: // Cutter On Top
+        case 21: // Cutter On Top
             bVal = smuffConfig.cutterOnTop;
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.cutterOnTop = bVal;
             }
             break;
 
-        case 22: // Use Splitter
+        case 23: // Use Splitter
             bVal = smuffConfig.useSplitter;
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.useSplitter = bVal;
             }
             break;
 
-        case 23: // Splitter Distance
+        case 24: // Splitter Distance
             fVal = smuffConfig.splitterDist;
             if(showInputDialog(title, P_InMillimeter, &fVal, 0, 200, nullptr, 1)) {
               smuffConfig.splitterDist = fVal;
             }
             break;
 
-        case 25: // Use DDE
+        case 26: // Use DDE
             // does nothing since it's defined during compilation
             break;
 
-        case 26: // DDE Distance
+        case 27: // DDE Distance
             fVal = smuffConfig.ddeDist;
             if(showInputDialog(title, P_InMillimeter, &fVal, 0, 400, nullptr, 1)) {
               smuffConfig.ddeDist = fVal;
             }
             break;
 
-        case 27: // Purge DDE
+        case 28: // Purge DDE
             bVal = smuffConfig.purgeDDE;
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.purgeDDE = bVal;
@@ -1780,7 +1802,7 @@ void showPurgeMenu(char* menuTitle) {
   bool stopMenu = false;
   uint32_t startTime = millis();
   uint8_t current_selection = 0;
-  float fVal;
+  double fVal;
   int iVal;
   bool bVal;
   char *title;
@@ -2003,9 +2025,9 @@ void showStatusInfoMenu(char* menuTitle) {
 
 void changeOffset(uint8_t index) {
   uint16_t steps = smuffConfig.stepsPerRevolution/360;
-  float stepsF = 0.1f;
+  double stepsF = 0.1f;
   long pos;
-  float posF;
+  double posF;
   int16_t turn;
   uint8_t btn;
   bool stat = true, isHeld, isClicked;

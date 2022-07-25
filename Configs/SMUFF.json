@@ -45,5 +45,7 @@
  "TraceUSB": false,
  "CutterTop": false,
  "UseDuet": false,
- "SyncSteppers": true
-}
+ "SyncSteppers": true,
+ "DspSerial": -1,
+ "DuetSerial": 1
+ }

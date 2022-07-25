@@ -87,7 +87,7 @@ uint8_t                   servoPosClosed[16] = {90, 90, 90, 90, 90, 90, 90, 90, 
 #else
 uint8_t                   servoPosClosed[MAX_TOOLS];
 #endif
-float                     stepperPosClosed[MAX_TOOLS];  // V6S only
+double                     stepperPosClosed[MAX_TOOLS];  // V6S only
 
 String                    serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3;
 volatile byte             nextStepperFlag = 0;
@@ -96,6 +96,7 @@ int8_t                    toolSelections[MAX_TOOLS];
 uint8_t                   remoteKey = REMOTE_NONE;
 volatile uint16_t         bracketCnt = 0;
 volatile uint16_t         jsonPtr = 0;
+String                    jsonData;
 static volatile uint16_t  intervalMask;       // bit-mask for interval reached
 uint16_t                  mmsMin = 1;         // minimum moving speed for stepper in mm/s
 uint16_t                  mmsMax = 800;       // maximum moving speed for stepper in mm/s
@@ -127,6 +128,9 @@ bool                      isReceiving = false;
 volatile bool             refreshingDisplay = false;
 volatile uint16_t         flipDbgCnt;
 volatile uint32_t         __systick = 0;        // for benchmarking only
+uint32_t                  waitForDlgId = 0;
+bool                      gotDlgId = false;
+uint8_t                   dlgButton;
 
 volatile IntervalHandler intervalHandlers[] = {
     {  10, 0, every10ms}, 
@@ -248,13 +252,22 @@ void HAL_SYSTICK_Callback(void) {
 /*
   Interrupt handler for Endstops
  */
+void showTriggerMessage(const char* axis, int state) {
+  __debugSInt(DEV, P_EstopTriggerMsg, axis, state);
+}
+
+void showTriggerMessageFeeder(int index) {
+  double pos = steppers[index].getStepPosition() / steppers[index].getStepsPerMM();
+  __debugSInt(DEV3, PSTR("Z2 triggered @ %s mm"), String(pos).c_str());
+}
+
 void isrEndstopX() {
   int hit = (int)digitalRead(steppers[SELECTOR].getEndstopPin(1))==steppers[SELECTOR].getEndstopState(1);
   steppers[SELECTOR].setEndstopHit(hit, 1);
   steppers[SELECTOR].adjustPositionOnEndstop(1);
   if(hit)
     endstopEventX();
-  __debugS(DEV, PSTR("X has tiggered, state: %d"), hit);
+  showTriggerMessage("X", hit);
 }
 
 void isrEndstopY() {
@@ -263,7 +276,7 @@ void isrEndstopY() {
   steppers[REVOLVER].adjustPositionOnEndstop(1);
   if(hit)
     endstopEventY();
-  __debugS(DEV, PSTR("Y has tiggered, state: %d"), hit);
+  showTriggerMessage("Y", hit);
 }
 
 void isrEndstopZ() {
@@ -272,7 +285,7 @@ void isrEndstopZ() {
   steppers[FEEDER].adjustPositionOnEndstop(1);
   if(hit)
     endstopEventZ();
-  __debugS(DEV, PSTR("Z has tiggered, state: %d"), hit);
+  showTriggerMessage("Z", hit);
 }
 
 void isrEndstopZ2() {
@@ -289,7 +302,8 @@ void isrEndstopZ2() {
   #endif
   if(hit)
     endstopEventZ2();
-  __debugS(DEV, PSTR("Z2 has tiggered, state: %d"), hit);
+  showTriggerMessage("Z2", hit);
+  showTriggerMessageFeeder(FEEDER);
 }
 
 /*
@@ -483,7 +497,7 @@ void calcSyncMovementFactor() {
       maxIdx  = i;
     }
   }
-  __debugS(DEV2, PSTR("Stepper '%s' total steps: %ld"), steppers[maxIdx].getDescriptor(), maxTotal);
+  __debugS(DEV2, PSTR("Stepper '%-8s' total steps: %ld"), steppers[maxIdx].getDescriptor(), maxTotal);
 
   // find all smaller movements and set the factor proportionally, i.e.
   // slow down movement so all steppers start and stop in sync
@@ -493,7 +507,7 @@ void calcSyncMovementFactor() {
     long ts = steppers[i].getTotalSteps();
     if(i != maxIdx) {
       steppers[i].setInterruptFactor(maxTotal/ts);
-      __debugS(DEV2, PSTR("Stepper '%s' total steps: %ld  interrupt factor: %d"), steppers[i].getDescriptor(), ts, steppers[i].getInterruptFactor());
+      __debugS(DEV2, PSTR("Stepper '%-8s' total steps: %ld  interrupt factor: %d"), steppers[i].getDescriptor(), ts, steppers[i].getInterruptFactor());
     }
   }
 }
@@ -510,8 +524,12 @@ void runAndWait(int8_t index) {
   static uint32_t lastFeedUpdate = 0;
   bool dualFeeder = false;
   #if defined(USE_DDE)
-    if(!asyncDDE && (remainingSteppersFlag & _BV(FEEDER)) && (remainingSteppersFlag & _BV(DDE_FEEDER)))
+    if(!asyncDDE && (remainingSteppersFlag & _BV(FEEDER)) && (remainingSteppersFlag & _BV(DDE_FEEDER))) {
       dualFeeder = true;
+      if(index != -1)
+        __debugS(DEV2, PSTR("[runAndWait] Stepper: %-8s"), steppers[index].getDescriptor());
+      __debugS(DEV2, PSTR("[runAndWait] Remaining: %4lx  AsyncDDE: %s DualFeeder: %s"), remainingSteppersFlag, asyncDDE ? "Yes" : "No", dualFeeder ? "Yes" : "No");
+    }
   #endif
   runNoWait(index);
   while (remainingSteppersFlag)
@@ -527,7 +545,7 @@ void runAndWait(int8_t index) {
       }
     #endif
     if(index != -1 && !(remainingSteppersFlag & _BV(index))) {
-      __debugS(DEV2, PSTR("Stepper '%s' has finished"), steppers[index].getDescriptor());
+      __debugS(DEV2, PSTR("Stepper '%-8s' has finished @ position: %s mm"), steppers[index].getDescriptor(), String(steppers[index].getStepPositionMM()).c_str());
       break;
     }
   }
@@ -540,7 +558,8 @@ void runAndWait(int8_t index) {
 void setup() {
 
   const char* after = PSTR("=== %-30s o.k. ===");
-
+  
+  __initDebug();
   serialBuffer0.reserve(30);      // initialize serial buffers
   serialBuffer1.reserve(30);
   serialBuffer2.reserve(30);
@@ -943,6 +962,7 @@ void loop() {
   }
   
   loopEx();
+  __flushDebug();
 }
 
 /*
@@ -1232,14 +1252,17 @@ bool isJsonData(char in, uint8_t port) {
   }
 
   if (jsonPtr > 0) {
-    // data not comming from PanelDue port...
-    if(port != smuffConfig.hasPanelDue) {
-      if(smuffConfig.duet3Dport == 0)
-        smuffConfig.duet3Dport = port;
+    if(port == smuffConfig.displaySerial) {
+      // JSON data is coming in from Serial display port
+      jsonData += in;
+    }
+    else if(port == smuffConfig.duet3Dport) {
+      // JSON data is coming in from Duet3D port
       // send to PanelDue
       sendToPanelDue(in);
     }
-    else { // data sent from PanelDue...
+    else if(port == smuffConfig.hasPanelDue) { 
+      // JSON data is coming in from PanelDue
       sendToDuet3D(in);
     }
     if (bracketCnt > 0)
@@ -1290,21 +1313,41 @@ void handleSerial(const char* in, size_t len, String& buffer, uint8_t port) {
     if (in[i] == 0x03) {
       isTestrun = false;
       resetSerialBuffer(port);
-      //__debugS(D, PSTR("Ctrl-C received from port %d"), port);
+      __debugS(DEV, PSTR("Ctrl-C received from port %d"), port);
       return;
     }
     // do not proceed any further if a test is running
     if(isTestrun)
       return;
-    // parse for JSON data coming from Duet3D
-    if(port == 1 || port == 3) {
+    if(port == smuffConfig.displaySerial) {
       if(isJsonData(in[i], port)) {
-        __debugS(D, PSTR("JSON data received on port %d"), port);
+        continue;
+      }
+    }
+    // parse for JSON data coming from Duet3D
+    if(port == smuffConfig.duet3Dport) {
+      if(isJsonData(in[i], port)) {
         continue;
       }
     }
     if (in[i] == '\n' || (isCtlKey && in[i] == 'n')) {
-      parseGcode(buffer, port);
+      if(jsonData != "") {
+        uint32_t id = parseJson(jsonData);
+        if(id > 0) {
+          __debugS(DEV3, PSTR("Got JSON data on port %d [ DlgId: %d, Button: %d ]"), port, id, dlgButton);
+          if(id == waitForDlgId) {
+            gotDlgId = true;
+          }
+        }
+        else {
+          __debugS(DEV3, PSTR("Got invalid JSON data on port %d [ %s ]"), port, jsonData.c_str());
+        }
+        jsonData = "";
+      }
+      else {
+        // __debugS(DEV3, PSTR("[%d] sent [%s] [%s]"), port, buffer.c_str(), jsonData.c_str());
+        parseGcode(buffer, port);
+      }
       isQuote = false;
       actionOk = false;
       isCtlKey = false;

@@ -9,19 +9,20 @@ Sync. Steppers	%s|8
 -
 Use Duet/RRF	%s|10
 Invert Busy Signal	%s|11
-PanelDue Port	%s|12
+Duet3D Port	%s|12
+PanelDue Port	%s|13
 -
-Servo Min. PWM	%d|14
-Servo Max. PWM	%d|15
+Servo Min. PWM	%d|15
+Servo Max. PWM	%d|16
 -
-Use Cutter	%s|17
-Cutter Open	%d|18
-Cutter Close	%d|19
-Cutter on Top	%s|20
+Use Cutter	%s|18
+Cutter Open	%d|19
+Cutter Close	%d|20
+Cutter on Top	%s|21
 -
-Use Splitter	%s|22
-Splitter Dist.	%s|23
+Use Splitter	%s|23
+Splitter Dist.	%s|24
 -
-Use DDE	%s|25
-DDE Dist.	%s|26
-Purge DDE	%s|27
+Use DDE	%s|26
+DDE Dist.	%s|27
+Purge DDE	%s|28

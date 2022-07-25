@@ -21,14 +21,14 @@
 #include "SMuFF.h"
 
 typedef void(*iCallback)(int val);
-typedef void(*fCallback)(float val);
+typedef void(*fCallback)(double val);
 typedef void(*bCallback)(bool val);
 
 bool getEncoderButton(bool encoderOnly = false);
 void getEncoderButton(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked);
 void getInput(int16_t* turn, uint8_t* button, bool* isHeld, bool* isClicked, bool checkSerial = true);
 void drawValue(const char* title, const char* PROGMEM message, String val);
-bool showInputDialog(const char* title, const char* PROGMEM message, float* val, float min, float max, fCallback cb = nullptr, float increment = 1.0f);
+bool showInputDialog(const char* title, const char* PROGMEM message, double* val, double min, double max, fCallback cb = nullptr, double increment = 1.0);
 bool showInputDialog(const char* title, const char* PROGMEM message, int* val, int16_t min, int16_t max, iCallback cb = nullptr, int16_t increment = 1);
 bool showInputDialog(const char* title, const char* PROGMEM message, bool* val, bCallback cb = nullptr);
 bool showInputDialog(const char* title, const char* PROGMEM message, unsigned long* val, String list);

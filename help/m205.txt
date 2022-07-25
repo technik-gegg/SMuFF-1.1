@@ -9,6 +9,7 @@ AutoWipe            	S 0|1
 BackColor           	S n
 Baudrates           	S "..." I 0..3
 BowdenLen           	S n.n
+ChangeDbg              	S 0..3
 Chunks              	S n
 Close               	S 0..180 I 0..11
 Color               	S "..."  I 0..11

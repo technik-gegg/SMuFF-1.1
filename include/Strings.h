@@ -57,6 +57,7 @@ const char P_MnuPurge [] PROGMEM            = { "purge" };
 
 const char P_OptColors [] PROGMEM           = { "colors" };
 const char P_OptPanelDue [] PROGMEM         = { "paneldue" };
+const char P_OptDuet3D [] PROGMEM           = { "duet3d" };
 const char P_OptBaudrates [] PROGMEM        = { "baudrates" };
 const char P_OptTmcModes [] PROGMEM         = { "tmc-modes" };
 const char P_OptMicrosteps [] PROGMEM       = { "microsteps" };
@@ -85,6 +86,7 @@ const char P_RemoveMaterial[] PROGMEM       = { "Please remove material!" };
 const char P_SelectedTool [] PROGMEM        = { " \n" };
 const char P_CantLoad [] PROGMEM            = { "Can't load feeder." };
 const char P_CantUnload [] PROGMEM          = { "Can't unload feeder." };
+const char P_CantUnloadDDE [] PROGMEM       = { "Can't unload DDE." };
 const char P_CheckUnit [] PROGMEM           = { "Please check unit!" };
 
 const char P_ConfigFail1 [] PROGMEM         = { "Config file is" };
@@ -190,6 +192,7 @@ const char P_DuetLSDisabled[] PROGMEM       = { "Duet3D LaserSensor\nnot enabled
 const char P_DuetLSData[] PROGMEM           = { "Position:%s%6smm\nQ/B/S:    %3d/%3d/%3d\nSwitch:           %3s\nError:      %4s\nVersion:          %3d" };
 const char P_PanelDuePort[] PROGMEM         = { "On Port:" };
 const char P_FreeMemory[] PROGMEM           = { "Estimated Free Memory: %d Bytes\n" };
+const char P_EstopTriggerMsg[] PROGMEM      = { "%s has triggered, state: %d" };
 
 const char P_SD_Reading[] PROGMEM           = { "Reading %s..." };
 const char P_SD_ReadingConfig[] PROGMEM     = { "Config" };
@@ -235,7 +238,7 @@ const char P_ActionMsg [] PROGMEM           = { "Printer says:\n%s" };
 const char P_FileNotFound [] PROGMEM        = { "File '%s' not found!" };
 const char P_GFailed[] PROGMEM              = { "Executing GCode (G%d) has failed.\n" };
 const char P_MFailed[] PROGMEM              = { "Executing GCode (M%d) has failed.\n" };
-const char P_GUnknown[] PROGMEM             = { "Unknown GCode 'G%d')'. Use G to retrieve a list of known G-GCodes.\n" };
+const char P_GUnknown[] PROGMEM             = { "Unknown GCode 'G%d'. Use G to retrieve a list of known G-GCodes.\n" };
 const char P_MUnknown[] PROGMEM             = { "Unknown GCode 'M%d'. Use M to retrieve a list of known M-GCodes.\n" };
 
 const char P_WrongFormat [] PROGMEM         = { "Wrong format. Use Bdd:dd:dd...\n" };
@@ -254,6 +257,7 @@ const char P_ModeErrorPwm[] PROGMEM         = { "for PWM!" };
 const char P_ModeErrorPin[] PROGMEM         = { "for OUTPUT!" };
 const char P_PinNotMapped[] PROGMEM         = { "in SERVOMAP.json!" };
 const char P_NoMultiservo[] PROGMEM         = { "Multiservo not configured!" };
+const char P_InvalidPort[] PROGMEM          = { "Serial port '%d' can't be used on this board.\n" };
 
 const char P_CfgWriteError[] PROGMEM        = { "Error occurred on writing to file '%s'\n" };
 

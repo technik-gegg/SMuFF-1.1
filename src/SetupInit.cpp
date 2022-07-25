@@ -128,7 +128,7 @@ void initHwDebug() {
 }
 
 void calcHwDebugCounter() {
-  flipDbgCnt = (uint16_t)((float)(1/((float)GPTIMER_RESOLUTION/1000000L))/(smuffConfig.dbgFreq*2));
+  flipDbgCnt = (uint16_t)((double)(1/((double)GPTIMER_RESOLUTION/1000000L))/(smuffConfig.dbgFreq*2));
 }
 
 void setupDuetSignals() {
@@ -281,9 +281,9 @@ void setupServos() {
 
 #else
   #if defined(USE_HIGHSPEED_SERVO)
-    float pwmFreq = 250.0;
+    double pwmFreq = 250.0;
   #else
-    float pwmFreq = 50.0;
+    double pwmFreq = 50.0;
   #endif
   servoPwm.begin();
   servoPwm.setOscillatorFrequency(PCA9685_FREQ);  // see platformio.ini
@@ -307,7 +307,7 @@ void setupFan() {
     #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
       fan.attach(FAN_PIN, 0);
       fan.setTickRes(FAN_RESOLUTION);
-      fan.setPulseWidthMax((uint16_t(((float)1/FAN_FREQUENCY)*1000000L)));
+      fan.setPulseWidthMax((uint16_t(((double)1/FAN_FREQUENCY)*1000000L)));
       fan.setBlipTimeout(FAN_BLIP_TIMEOUT);
     #else
       pinMode(FAN_PIN, OUTPUT);
@@ -386,6 +386,7 @@ void setupSteppers(){
   steppers[SELECTOR].stepFunc = overrideStepX;
   steppers[SELECTOR].setMaxStepCount(smuffConfig.maxSteps[SELECTOR]);
   steppers[SELECTOR].setStepsPerMM(smuffConfig.stepsPerMM[SELECTOR]);
+  steppers[SELECTOR].endstopFunc = endstopEventX;
   steppers[SELECTOR].setInvertDir(smuffConfig.invertDir[SELECTOR]);
   steppers[SELECTOR].setAccelDistance(smuffConfig.accelDist[SELECTOR]);
   steppers[SELECTOR].setStopOnStallDetected(false);
@@ -491,9 +492,12 @@ void setupSteppers(){
   accelSpeed = translateSpeed(smuffConfig.accelSpeed[FEEDER], FEEDER);
   steppers[FEEDER] = ZStepper(FEEDER, (char *)"FEEDER", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, accelSpeed, maxSpeed);
   steppers[FEEDER].setEndstop(Z_END_PIN, smuffConfig.endstopTrg[FEEDER], ZStepper::MINMAX, 1, isrEndstopZ);
+  // #if !defined(USE_DDE)
   if (Z_END2_PIN > 0) {
-    steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2, isrEndstopZ2); // optional
+    if(smuffConfig.useEndstop2)
+      steppers[FEEDER].setEndstop(Z_END2_PIN, smuffConfig.endstopTrg[3], ZStepper::MINMAX, 2, isrEndstopZ2); // optional
   }
+  // #endif
   steppers[FEEDER].stepFunc = overrideStepZ;
   steppers[FEEDER].setStepsPerMM(smuffConfig.stepsPerMM[FEEDER]);
   steppers[FEEDER].endstopFunc = endstopEventZ;
@@ -544,7 +548,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   int8_t csmin = smuffConfig.stepperCSmin[axis];
   int8_t csmax = smuffConfig.stepperCSmax[axis];
   int8_t csdown = smuffConfig.stepperCSdown[axis];
-  float rsense = smuffConfig.stepperRSense[axis];
+  double rsense = smuffConfig.stepperRSense[axis];
   uint8_t drvrAdr = (uint8_t)smuffConfig.stepperAddr[axis];
   int8_t toff = smuffConfig.stepperToff[axis];
   if(toff == -1) {
@@ -694,7 +698,7 @@ void setupTMCDrivers()
 timerVal_t calcInterval(ZTimer* timer, uint32_t resolution) {
   uint32_t f = timer->getClockFrequency();
   uint32_t psc = timer->getPrescaler();
-  timerVal_t ticks = (timerVal_t)((f/psc)*((float)resolution/1000000L));
+  timerVal_t ticks = (timerVal_t)((f/psc)*((double)resolution/1000000L));
   return ticks;
 }
 
@@ -718,20 +722,20 @@ void setupTimers()
   // *****
   stepperTimer.setupTimer(ZTimer::_TIMER1, ZTimer::CH1, STEPPER_PSC, 0, isrStepperTimerHandler);  // prescaler set to STEPPER_PSC, timer will be calculated as needed
   stepperTimer.setPreload(true);
-  __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((float)stepperTimer.getClockFrequency()/1000000/STEPPER_PSC).c_str());
+  __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((double)stepperTimer.getClockFrequency()/1000000/STEPPER_PSC).c_str());
 
   #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
     servoTimer.setupTimer(ZTimer::_TIMER7, ZTimer::CH1, SERVO_PSC, 0, isrServoTimerHandler);      // prescaler set to SERVO_PSC, timer will be set to SERVO_RESOLUTION
-    __debugS(D, PSTR("\tsetupTimers: Servo timer initialized.   Freq: %d MHz, PSC: %s MHz"), (int)servoTimer.getClockFrequency()/1000000, String((float)servoTimer.getClockFrequency()/1000000/SERVO_PSC).c_str());
+    __debugS(D, PSTR("\tsetupTimers: Servo timer initialized.   Freq: %d MHz, PSC: %s MHz"), (int)servoTimer.getClockFrequency()/1000000, String((double)servoTimer.getClockFrequency()/1000000/SERVO_PSC).c_str());
   #endif
 
   #if defined(USE_FASTLED_TOOLS)
     ledTimer.setupTimer(ZTimer::_TIMER4, ZTimer::CH1, LED_PSC, 0, isrLedTimerHandler);            // prescaler set to LED_PSC, timer will be set to LED_RESOLUTION
-    __debugS(D, PSTR("\tsetupTimers: LED timer initialized.     Freq: %d MHz, PSC: %s MHz"), (int)ledTimer.getClockFrequency()/1000000, String((float)ledTimer.getClockFrequency()/1000000/LED_PSC).c_str());
+    __debugS(D, PSTR("\tsetupTimers: LED timer initialized.     Freq: %d MHz, PSC: %s MHz"), (int)ledTimer.getClockFrequency()/1000000, String((double)ledTimer.getClockFrequency()/1000000/LED_PSC).c_str());
   #endif
 
   gpTimer.setupTimer(ZTimer::_TIMER3, ZTimer::CH1, GP_PSC, 0, isrGPTimerHandler);                 // prescaler set to GP_PSC, timer will be set to GPTIMER_RESOLUTION
-  __debugS(D, PSTR("\tsetupTimers: GP timer initialized.      Freq: %d MHz, PSC: %s MHz"), (int)gpTimer.getClockFrequency()/1000000, String((float)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
+  __debugS(D, PSTR("\tsetupTimers: GP timer initialized.      Freq: %d MHz, PSC: %s MHz"), (int)gpTimer.getClockFrequency()/1000000, String((double)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
 
   #if defined(USE_MULTISERVO)
     stepperTimer.setPriority(0, 0);

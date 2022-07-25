@@ -17,7 +17,18 @@ sym-lib-table
 *.dcm
 Schematics/*.xml
 Schematics/*.csv
-Schematics/SMuFF Relay Board/Relay-Board-backups
+Schematics/SMuFF Relay Board/Relay-Board-backups/
+Schematics/SMuFF-Backbone/SMuFF-Backbone-backups/
+Schematics/SMuFF-Backbone/*.wrl
+Schematics/SMuFF-Backbone/*.stl
+Schematics/SMuFF-Backbone/*.step
+Schematics/SMuFF-Backbone/*.em?
+Schematics/SMuFF-Backbone/*.glb
+Schematics/SMuFF-Backbone/*-UART*
+Schematics/SMuFF-Backbone/Libraries
+Schematics/SMuFF-Backbone/Libraries.pretty/Logo.kicad_mod
+Schematics/SMuFF-Backbone/Libraries.pretty/Logo-5mm.kicad_mod
+Schematics/SMuFF-Backbone/Libraries.pretty/*5x2mm*
 _autosave-*
 
 include/SKR_mini_E3-2.0/Pins_X-Swap.h

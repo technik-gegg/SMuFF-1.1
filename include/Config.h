@@ -26,10 +26,10 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.12"
+#define VERSION_STRING    "V3.13"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2022-06-04"
+#define VERSION_DATE      "2022-07-25"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -99,9 +99,9 @@ typedef uint32_t    pin_t;
 #define OUT9                14
 #define OUT10               15
 
-#define MODE_UNSET          -1
-#define MODE_PWM            0
-#define MODE_OUTPUT         1
+#define MS_MODE_UNSET       -1
+#define MS_MODE_PWM         0
+#define MS_MODE_OUTPUT      1
 
 #define SERVO_CLOSED_OFS    35                          // for Multiservo
 

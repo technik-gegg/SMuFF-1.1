@@ -18,11 +18,13 @@
  */
 #include "SMuFF.h"
 #include "SMuFFBitmaps.h"
+#include "ConfigNamesExt.h"
 
 bool            displayingUserMessage = false;
 bool            isWarning;
 uint16_t        userMessageTime = 0;
 static unsigned termRefresh = 0;
+static uint32_t dialogId = 1;
 
 #ifdef HAS_TMC_SUPPORT
 TMC2209Stepper *showDriver = nullptr;
@@ -339,14 +341,13 @@ void showTMCStatus(uint8_t axis) {
     drawUserMessage(_msg, true, false, showDriver->stealth() ? drawStallCallback : nullptr);
     delay(100);
     if (showDriver->diag()) {
-      //if(n==0)
-      //  __debugS(I, PSTR("Stepper stall detected @ %ld"), showDriver->SG_RESULT());
+      //if(n==0) __debugS(DEV3, PSTR("Stepper stall detected @ %ld"), showDriver->SG_RESULT());
       n++;
     }
     // reset stall flag after 3 secs.
     if (n % 30 == 0 && showDriver->diag()) {
       n = 0;
-      //__debugS(D, PSTR("Stall has been reset!"));
+      //__debugS(DEV3, PSTR("Stepper stall has been reset!"));
     }
   }
   tmcWarning = false;
@@ -408,11 +409,11 @@ void drawPurgingMessage(uint16_t len, uint8_t tool) {
   display.clearBuffer();
   sprintf_P(_sel, P_Purging);
   sprintf_P(_wait, P_Wait);
-  sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((float)len * 2.4).c_str());
+  sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((double)len * 2.4).c_str());
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 4, tmp);
-  sprintf_P(tmp, P_PurgeCubic, String((float)len * 2.4).c_str());
+  sprintf_P(tmp, P_PurgeCubic, String((double)len * 2.4).c_str());
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 15, tmp);
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
@@ -543,8 +544,8 @@ bool showFeederBlockedMessage() {
   uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_RemoveMaterial, P_CancelRetryButtons);
   if (button == 1) {
     refreshStatus();
-    unloadFilament(errmsg);
-    state = true;
+    state = unloadFilament(errmsg);
+    __debugS(DEV3, PSTR("showFeederBlockedMessage: returned [%s]"), errmsg);
   }
   display.clearDisplay();
   return state;
@@ -558,8 +559,8 @@ bool showFeederLoadedMessage() {
   uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_AskUnload, P_YesNoButtons);
   if (button == 1) {
     refreshStatus();
-    unloadFilament(errmsg);
-    state = true;
+    state = unloadFilament(errmsg);
+    __debugS(DEV3, PSTR("showFeederLoadedMessage: returned [%s]"), errmsg);
   }
   display.clearDisplay();
   return state;
@@ -574,22 +575,22 @@ bool showFeederLoadMessage() {
   if (button == 1) {
     refreshStatus();
     if (smuffConfig.prusaMMU2)
-      loadFilamentPMMU2(errmsg);
+      state = loadFilamentPMMU2(errmsg);
     else
-      loadFilament(errmsg);
-    state = true;
+      state = loadFilament(errmsg);
+    __debugS(DEV3, PSTR("showFeederLoadMessage: returned [%s]"), errmsg);
   }
   display.clearDisplay();
   return state;
 }
 
-bool showFeederFailedMessage(int8_t state) {
+bool showFeederFailedMessage(int8_t opt) {
   lastEncoderButtonTime = millis();
   beep(3);
   uint8_t button = 99;
   isWarning = true;
   do {
-    button = showDialog(P_TitleWarning, state == 1 ? P_CantLoad : P_CantUnload, P_CheckUnit, P_CancelRetryButtons);
+    button = showDialog(P_TitleWarning, opt == 1 ? P_CantLoad : P_CantUnload, P_CheckUnit, P_CancelRetryButtons);
   } while (button != 1 && button != 2);
   isWarning = false;
   display.clearDisplay();
@@ -597,7 +598,7 @@ bool showFeederFailedMessage(int8_t state) {
   return button == 1 ? false : true;
 }
 
-uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
+uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons, int32_t timeout) {
   //__debugS(DEV2, PSTR("showDialog: %S"), title);
   if (isPwrSave)
     setPwrSave(0);
@@ -658,82 +659,138 @@ void setDisplayPowerSave(bool state) {
 #else
 
 void setupDisplay() {
-    __debugS(D, PSTR("\tsetupDisplay: Serial Display configured"));
+    __debugS(D, PSTR("\tsetupDisplay: Serial Display configured on port SERIAL %d"), smuffConfig.displaySerial);
 }
 
-void drawVersion() {
-}
-
-void drawLogo() {
-}
-
-void drawStatus() {
-}
-
-void drawFeed(bool updateBuffer) {
-}
-
-void drawUpload(uint32_t remain) {
-}
-
-void drawSymbolCallback() {
-}
-
+void drawVersion() {}                                       // not used
+void drawLogo() {}                                          // not used
+void drawStatus() {}                                        // not used
+void drawFeed(bool updateBuffer) {}                         // not used
+void drawUpload(uint32_t remain) {}                         // not used
+void drawSymbolCallback() {}                                // not used
 #ifdef HAS_TMC_SUPPORT
-void drawStallCallback() {
-}
+void drawStallCallback() {}                                 // not used
 #endif
-
-void showTMCStatus(uint8_t axis) {
-}
-
-void resetDisplay() {
-}
-
-void drawSelectingMessage(uint8_t tool) {
-}
+void showTMCStatus(uint8_t axis) {}                         // not used
+void resetDisplay() {}                                      // not used
+void refreshStatus(bool feedOnly) {}                        // not used
+void setDisplayPowerSave(bool state) {}                     // not used
+void drawTestrunMessage(unsigned long loop, char *msg) {}   // not used
+void drawSelectingMessage(uint8_t tool) {}                  // not used
+void drawSDStatus(int8_t stat) {}                           // not used
+void signalNoTool() {}                                      // not used
 
 void drawPurgingMessage(uint16_t len, uint8_t tool) {
+  char tmp[128];
+  if(len == 0 && tool == 0)
+    sprintf_P(tmp, PSTR("echo: purging: done\n"));
+  else
+    sprintf_P(tmp, PSTR("echo: purging: T:%d L:%d C:%f\n"), tool, len, len*2.4);
+  printResponse(tmp, smuffConfig.displaySerial);
 }
 
-void drawTestrunMessage(unsigned long loop, char *msg) {
+void drawUserMessage(String message, bool smallFont, bool center, void (*drawCallbackFunc)()) {
+  char msg[1024];
+  message.replace("\n", "\\n");
+  snprintf(msg, ArraySize(msg)-1, "{\"%s\": \"%s\"}\n", userMessage, message.c_str());
+  printResponse(msg, smuffConfig.displaySerial);
 }
 
-void drawUserMessage(String message, bool smallFont /* = false */, bool center /* = true */, void (*drawCallbackFunc)() /* = nullptr */) {
-}
+uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons, int32_t timeout) {
+  uint8_t state = 0;
+  char dlg[1024];
 
-void drawSDStatus(int8_t stat) {
+  // no action if no display serial port is defined
+  if(smuffConfig.displaySerial == -1)
+    return state;
+
+  setFastLEDStatus(FASTLED_STAT_WARNING);
+  String btn(buttons);
+  String msg(message);
+  String addMsg(addMessage);
+  // replace all '\n' because it might mess with the JSON parser on the other end
+  btn.replace("\n","|");
+  msg.replace("\n","\\n");
+  addMsg.replace("\n","\\n");
+  
+  snprintf(dlg, ArraySize(dlg)-1, "{\"%s\": { \"Id\": %d, \"Title\": \"%s\", \"Message\": \"%s\", \"Action\": \"%s\", \"Buttons\": \"%s\"}}\n", userDialog, dialogId, title, msg.c_str(), addMsg.c_str(), btn.c_str());
+  printResponse(dlg, smuffConfig.displaySerial);
+  
+  waitForDlgId = dialogId++;
+  gotDlgId = false;
+  setParserBusy();
+  do {
+    // wait for response
+    delay(100);
+    checkSerialPending();
+    if(timeout != -1) {
+      if(--timeout == 0)
+        break;
+    }
+  } while(!gotDlgId);
+  setParserReady();
+  setFastLEDStatus(FASTLED_STAT_NONE);
+
+  if(gotDlgId) {
+    state = dlgButton;
+  }
+  return state;
 }
 
 bool showFeederBlockedMessage() {
   bool state = false;
-  return state;
+  char errmsg[MAX_ERR_MSG];
+
+  uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_RemoveMaterial, P_CancelRetryButtons, -1);
+  if (button == 1) {
+    state = unloadFilament(errmsg);
+    __debugS(DEV3, PSTR("showFeederBlockedMessage: returned [%s]"), state ? P_OkButtonOnly : errmsg);
+  }
+  else {
+    __debugS(DEV3, PSTR("showFeederBlockedMessage: cancelled"));
+  }
+ return state;
 }
 
 bool showFeederLoadedMessage() {
   bool state = false;
+  char errmsg[MAX_ERR_MSG];
+
+  uint8_t button = showDialog(P_TitleWarning, P_FeederLoaded, P_AskUnload, P_YesNoButtons, -1);
+  if (button == 1) {
+    state = unloadFilament(errmsg);
+    __debugS(DEV3, PSTR("showFeederLoadedMessage: returned [%s]"), state ? P_OkButtonOnly : errmsg);
+  }
+  else {
+    __debugS(DEV3, PSTR("showFeederLoadedMessage: cancelled"));
+  }
   return state;
 }
 
 bool showFeederLoadMessage() {
   bool state = false;
+  char errmsg[MAX_ERR_MSG];
+
+  uint8_t button = showDialog(P_TitleSelected, P_SelectedTool, P_AskLoad, P_YesNoButtons, 300);
+  if (button == 1) {
+    if (smuffConfig.prusaMMU2)
+      state = loadFilamentPMMU2(errmsg);
+    else
+      state = loadFilament(errmsg);
+    __debugS(DEV3, PSTR("showFeederLoadMessage: returned [%s]"), state ? P_OkButtonOnly : errmsg);
+  }
+  else {
+    __debugS(DEV3, PSTR("showFeederLoadMessage: cancelled"));
+  }
   return state;
 }
 
-bool showFeederFailedMessage(int8_t state) {
-  return state;
+bool showFeederFailedMessage(int8_t opt) {
+  uint8_t button;
+  do {
+    button = showDialog(P_TitleWarning, opt == 1 ? P_CantLoad : P_CantUnload, P_CheckUnit, P_CancelRetryButtons, 300);
+  } while (button != 1 && button != 2);
+  return button == 1 ? false : true;
 }
 
-uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons) {
-  return 0;
-}
-
-void signalNoTool() {
-}
-
-void refreshStatus(bool feedOnly /* = false */) {
-}
-
-void setDisplayPowerSave(bool state) {
-}
 #endif

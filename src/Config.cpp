@@ -158,6 +158,7 @@ bool readMainConfig()
       smuffConfig.encoderTickSound =            jsonDoc[encoderTicks];
       smuffConfig.bowdenLength =                jsonDoc[bowdenLength];
       smuffConfig.selectorDistance =            jsonDoc[selectorDist];
+      smuffConfig.selectorUnloadDist =          jsonDoc[selectorUnloadDist] | smuffConfig.selectorDistance;
       smuffConfig.i2cAddress =                  i2cAdrMinMax(jsonDoc[i2cAdr]);
       smuffConfig.menuAutoClose =               jsonDoc[autoClose];
       smuffConfig.serialBaudrates[0] =          jsonDoc[serialBaudrate][0];
@@ -227,6 +228,8 @@ bool readMainConfig()
       smuffConfig.invertDuet =                  jsonDoc[invertDuet];
       smuffConfig.useDuet =                     jsonDoc[useDuet] | false;
       smuffConfig.allowSyncSteppers =           jsonDoc[syncSteppers] | true;
+      smuffConfig.displaySerial =               jsonDoc[dspSerialPort] | -1;
+      smuffConfig.duet3Dport =                  jsonDoc[duetSerialPort] | 1;
       
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -340,22 +343,30 @@ bool readSteppersConfig()
 }
 
 bool readDebugLevel() {
+  bool stat = false;
   if(!initSD(false))
-    return false;
+    return stat;
   _File cfg;
   if(!__fopen(cfg, DEBUG_FILE, FILE_READ)) {
-    return false;
+    return stat;
   }
   else {
-    char tmp[80];
+    char tmp[MAX_ERR_MSG];
     cfg.read(tmp, ArraySize(tmp));
     cfg.close();
     int dbgLevel = atoi(tmp);
     if(dbgLevel >= 0 && dbgLevel <= 127) {
       smuffConfig.dbgLevel = (uint8_t)dbgLevel;
-      return true;
+      stat = true;
     }
-    return false;
+    char* pos = strchr(tmp,';');
+    if(pos != nullptr) {
+        int port = atoi(pos+1);
+        if(port >= 0 && port <=3) {
+          changeDebugPort(port, tmp, false);
+        }
+    }
+    return stat;
   }
 }
 
@@ -525,19 +536,19 @@ bool readServoMapping() {
       uint8_t ndx = 1;
       for(uint8_t i=SERVO_USER1; i <= SERVO_USER2; i++, ndx++) {
         sprintf_P(item, outX, ndx);
-        outputMode[i] = MODE_UNSET;
+        outputMode[i] = MS_MODE_UNSET;
         if(jsonDoc[item] != nullptr) {
           servoMapping[i] = (int8_t)jsonDoc[item][servoOutput];
           if(strcmp(jsonDoc[item][mode], modePwm) == 0) {
-            outputMode[i] = MODE_PWM;
+            outputMode[i] = MS_MODE_PWM;
             __debugS(DEV3, PSTR("%s %2d set to PWM"), mso, i);
           }
           else if (strcmp(jsonDoc[item][mode], modePin) == 0) {
-            outputMode[i] = MODE_OUTPUT;
+            outputMode[i] = MS_MODE_OUTPUT;
             __debugS(DEV3, PSTR("%s %2d set to OUTPUT"), mso, i);
           }
         }
-        if(outputMode[i] == MODE_UNSET) {
+        if(outputMode[i] == MS_MODE_UNSET) {
             __debugS(DEV3, PSTR("%s %2d not set"), mso, i);
         }
       }
@@ -583,7 +594,7 @@ bool readRevolverMapping() {
         if(jsonDoc[item] == nullptr)
           stepperPosClosed[i] = smuffConfig.revolverClose;
         else
-          stepperPosClosed[i] = (float)jsonDoc[item];
+          stepperPosClosed[i] = (double)jsonDoc[item];
       }
       __debugS(D, PSTR("\treadRevolverMapping:\tDONE (%lu bytes)"), jsonDoc.memoryUsage());
       jsonDoc.clear();
@@ -701,6 +712,7 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[toolCount]            = smuffConfig.toolCount;
   jsonDoc[bowdenLength]         = smuffConfig.bowdenLength;
   jsonDoc[selectorDist]         = smuffConfig.selectorDistance;
+  jsonDoc[selectorUnloadDist]   = smuffConfig.selectorUnloadDist;
   jsonDoc[contrast]             = smuffConfig.lcdContrast;
   jsonDoc[i2cAdr]               = smuffConfig.i2cAddress;
   jsonDoc[autoClose]            = smuffConfig.menuAutoClose;
@@ -746,6 +758,8 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[invertDuet]           = smuffConfig.invertDuet;
   jsonDoc[useDuet]              = smuffConfig.useDuet;
   jsonDoc[syncSteppers]         = smuffConfig.allowSyncSteppers;
+  jsonDoc[dspSerialPort]        = smuffConfig.displaySerial;
+  jsonDoc[duetSerialPort]       = smuffConfig.duet3Dport;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }
@@ -946,7 +960,7 @@ bool writeServoMapping(Print* dumpTo, bool useWebInterface)
       sprintf_P(item, outX, ndx);
       node = jsonObj.createNestedObject(item);
       node[servoOutput] = servoMapping[i];
-      node[mode] = (outputMode[i] == MODE_PWM ? modePwm : (outputMode[i] == MODE_OUTPUT ? modePin : ""));
+      node[mode] = (outputMode[i] == MS_MODE_PWM ? modePwm : (outputMode[i] == MS_MODE_OUTPUT ? modePin : ""));
     }
 
   #endif
@@ -1114,3 +1128,28 @@ bool saveConfig(String& buffer) {
 
   return true;
 }
+
+uint32_t parseJson(String& data) {
+  uint32_t id=0;
+  DynamicJsonDocument jsonDoc(capacity);      // use memory from heap to deserialize
+  DeserializationError error = deserializeJson(jsonDoc, data);
+  // __debugS(DEV, PSTR("parseJson: after deserialize... (%lu bytes)"), jsonDoc.memoryUsage());
+  if (error) {
+    __debugS(W, PSTR("parseJson: Deserialize failed with code %s - [%s]"), error.c_str(), data.c_str());
+  }
+  else {
+    if(jsonDoc.containsKey(userDialog)) {
+      id = jsonDoc[userDialog][userDlgId];
+      dlgButton = jsonDoc[userDialog][userDlgButton] | 0;
+    }
+    else if(jsonDoc.containsKey(userMessage)) {
+      id = jsonDoc[userMessage][userDlgId];
+      dlgButton = 0;
+    }
+    else {
+      __debugS(D, PSTR("parseJson: Invalid message!  Data=[%s]"), data.c_str());
+    }
+  }
+  return id;
+}
+

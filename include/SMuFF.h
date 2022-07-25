@@ -28,6 +28,7 @@
 #include <U8g2lib.h>
 #include "Menus.h"
 #include "InputDialogs.h"
+#define DISPLAY_SERIAL_PORT -1
 #endif
 
 #if defined(USE_LEONERD_DISPLAY)
@@ -137,10 +138,10 @@ extern SdFat SD;
 #define INTERNAL                1
 #define EXTERNAL                0
 
-#define MAX_SEQUENCE            60
-#define MAX_TUNE1               60
-#define MAX_TUNE2               40
-#define MAX_TUNE3               20
+#define MAX_SEQUENCE            512
+#define MAX_TUNE1               512
+#define MAX_TUNE2               128
+#define MAX_TUNE3               64
 
 #define SERVO_OPEN              0
 #define SERVO_CLOSED            1
@@ -189,8 +190,9 @@ typedef struct {
 typedef struct {
   unsigned long serialBaudrates[4]                    = { 57600, 57600, 57600, 57600 };
   uint8_t       toolCount                             = 5;
-  float         bowdenLength                          = 400.0f;
-  float         selectorDistance                      = 23.0f;
+  double        bowdenLength                          = 400.0f;
+  double        selectorDistance                      = 23.0f;
+  double        selectorUnloadDist                    = 23.0f;
   uint8_t       i2cAddress                            = 0x58;
   uint8_t       lcdContrast                           = DSP_CONTRAST;
   uint8_t       menuAutoClose                         = 20;
@@ -217,7 +219,7 @@ typedef struct {
   bool          usePurge                              = false;
   uint16_t      cutterOpen                            = 90;
   uint16_t      cutterClose                           = 50;
-  float         cutterLength                          = 0;
+  double        cutterLength                          = 0;
   bool          cutterOnTop                           = false;
 
   // ALL STEPPERS
@@ -230,12 +232,12 @@ typedef struct {
   uint8_t       stepDelay[NUM_STEPPERS+1]             = { 3, 3, 3 };
   uint8_t       accelDist[NUM_STEPPERS+1]             = { 21, 5, 5 };
   int8_t        ms3config[NUM_STEPPERS+1]             = { -1, -1, -1 };
-  float         speedAdjust[NUM_STEPPERS+1]           = { 1, 1, 1 };
+  double        speedAdjust[NUM_STEPPERS+1]           = { 1, 1, 1 };
   // TMC drivers via UART or SPI
   uint16_t      stepperPower[NUM_STEPPERS + 1]        = { 700, 700, 700, 700 };
   uint8_t       stepperMode[NUM_STEPPERS + 1]         = { 0, 0, 0, 0 };                   // 0 = NONE, 1 = UART, 2 = SPI
   bool          stepperStealth[NUM_STEPPERS + 1]      = { false, false, false, false };   // true = StealthChop, false = SpreadCycle mode (for Stall Detection)
-  float         stepperRSense[NUM_STEPPERS + 1]       = { 0.11, 0.11, 0.11, 0.11 };
+  double        stepperRSense[NUM_STEPPERS + 1]       = { 0.11, 0.11, 0.11, 0.11 };
   uint16_t      stepperMicrosteps[NUM_STEPPERS + 1]   = { 16, 16, 16, 16 };
   int8_t        stepperStall[NUM_STEPPERS + 1]        = { 0, 0, 0, 0 };
   int8_t        stepperCSmin[NUM_STEPPERS + 1]        = { 0, 0, 0, 0 };
@@ -258,23 +260,23 @@ typedef struct {
   uint8_t       servoCycles1                          = 0;
   uint8_t       servoCycles2                          = 0;
   // SELECTOR specific settings
-  float         firstToolOffset                       = FIRST_TOOL_OFFSET;
-  float         toolSpacing                           = TOOL_SPACING;
+  double        firstToolOffset                       = FIRST_TOOL_OFFSET;
+  double        toolSpacing                           = TOOL_SPACING;
   // FEEDER specific settings
   bool          extControlFeeder                      = false;
   uint16_t      insertSpeed                           = 1000;
   uint8_t       feedChunks                            = 20;
   bool          enableChunks                          = false;
-  float         insertLength                          = 5.0;
-  float         unloadRetract                         = -20.0f;
-  float         unloadPushback                        = 5.0f;
-  float         pushbackDelay                         = 1.5f;
-  float         reinforceLength                       = 3.0f;
+  double        insertLength                          = 5.0;
+  double        unloadRetract                         = -20.0f;
+  double        unloadPushback                        = 5.0f;
+  double        pushbackDelay                         = 1.5f;
+  double        reinforceLength                       = 3.0f;
   bool          isSharedStepper                       = false;
   bool          externalStepper                       = false;
   bool          useDuet                               = false;
   uint16_t      purgeSpeed                            = 5000;
-  float         purgeLength                           = 0;
+  double        purgeLength                           = 0;
   bool          useEndstop2                           = false;
 
   char          materials[MAX_TOOLS][MAX_MATERIAL_LEN+1];
@@ -289,12 +291,12 @@ typedef struct {
   bool          invertRelay                           = false;
   bool          menuOnTerminal                        = false;
   bool          webInterface                          = false;
-  float         revolverClose                         = 0;
+  double        revolverClose                         = 0;
   bool          useSplitter                           = false;
-  float         splitterDist                          = 0;
+  double        splitterDist                          = 0;
   uint8_t       feedLoadState[MAX_TOOLS];
   bool          useDDE                                = false;
-  float         ddeDist                               = 0;
+  double        ddeDist                               = 0;
   bool          purgeDDE                              = false;
   bool          traceUSBTraffic                       = false;
   char          deviceName[MAX_BUTTON_LEN]            = {0};
@@ -303,6 +305,8 @@ typedef struct {
   bool          allowSyncSteppers                     = true;
   uint8_t       dbgLevel                              = W|I|SP;
   bool          useDebugColoring                      = true;
+  int8_t        displaySerial                         = DISPLAY_SERIAL_PORT;         // Serial Port for USE_SERIAL_DISPLAY
+
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;
@@ -359,7 +363,7 @@ extern int8_t                   servoMapping[];
 extern int8_t                   outputMode[];
 #endif
 extern uint8_t                  servoPosClosed[];
-extern float                    stepperPosClosed[];
+extern double                    stepperPosClosed[];
 
 
 extern const char               brand[];
@@ -422,6 +426,9 @@ extern bool                     asyncDDE;
 extern volatile bool            refreshingDisplay;
 extern volatile uint16_t        flipDbgCnt;
 extern volatile bool            sendingStatesToggle;
+extern uint32_t                 waitForDlgId;
+extern bool                     gotDlgId;
+extern uint8_t                  dlgButton;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper           *drivers[];
@@ -476,9 +483,9 @@ extern bool revolverEndstop();
 extern bool feederEndstop(int8_t index = 1);
 extern bool showFeederLoadedMessage();
 extern bool showFeederLoadMessage();
-extern bool showFeederFailedMessage(int8_t state);
+extern bool showFeederFailedMessage(int8_t opt);
 extern bool showFeederBlockedMessage();
-extern uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons);
+extern uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons, int32_t timeout = -1);
 extern bool moveHome(int8_t index, bool showMessage = true, bool checkFeeder = true);
 extern bool loadFilament(char* errmsg, bool showMessage = true);
 extern bool loadFilamentPMMU2(char* errmsg, bool showMessage = true);
@@ -494,9 +501,9 @@ extern void runNoWait(int8_t index);
 extern bool selectTool(int8_t ndx, char* errmsg, bool showMessage = true);
 extern void setStepperSteps(int8_t index, long steps, bool ignoreEndstop);
 extern void prepSteppingAbs(int8_t index, long steps, bool ignoreEndstop = false);
-extern void prepSteppingAbsMillimeter(int8_t index, float millimeter, bool ignoreEndstop = false);
+extern void prepSteppingAbsMillimeter(int8_t index, double millimeter, bool ignoreEndstop = false);
 extern void prepSteppingRel(int8_t index, long steps, bool ignoreEndstop = false);
-extern void prepSteppingRelMillimeter(int8_t index, float millimeter, bool ignoreEndstop = false);
+extern void prepSteppingRelMillimeter(int8_t index, double millimeter, bool ignoreEndstop = false);
 extern void resetRevolver();
 extern void serialEvent();
 extern void serialEvent1();
@@ -568,16 +575,18 @@ extern void positionRevolver();
 extern bool feedToEndstop(char* errmsg, bool showMessage);
 extern bool feedToNozzle(char* errmsg, bool showMessage);
 extern bool unloadFromNozzle(char* errmsg, bool showMessage);
+extern bool unloadFromDDE();
 extern uint8_t splitStringLines(char *lines[], uint8_t maxLines, const char *message, const char *token = "\n");
 extern void debounceButton();
 extern bool checkStopMenu(unsigned startTime);
 extern void drawTestrunMessage(unsigned long loop, char *msg);
 extern bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char *files);
 extern void testRun(const char *fname);
-extern void moveFeeder(float distanceMM);
+extern void moveFeeder(double distanceMM);
 extern void overrideStepX(pin_t pin);
 extern void overrideStepY(pin_t pin);
 extern void overrideStepZ(pin_t pin);
+extern void endstopEventX();
 extern void endstopEventY();
 extern void endstopEventZ();
 extern void endstopEventZ2();
@@ -642,12 +651,13 @@ extern bool parse_PMMU2(char cmd, const String &buf, int8_t serial, char* errmsg
 extern bool parse_Action(const String &buf, int8_t serial, char* errmsg);
 extern int  getParam(String buf, const char *token);
 extern long getParamL(String buf, const char *token);
-extern float getParamF(String buf, const char *token);
+extern double getParamF(String buf, const char *token);
 extern bool hasParam(String buf, const char *token);
 extern bool getParamString(String buf, const char *token, char *dest, int16_t bufLen);
 extern void prepStepping(int8_t index, long param, bool Millimeter = true, bool ignoreEndstop = false);
 extern void saveSettings(int8_t serial);
 extern void reportSettings(int8_t serial);
+extern void printResponse(const char *response);
 extern void printResponse(const char *response, int8_t serial);
 extern void printResponseP(const char *response, int8_t serial);
 extern void printOffsets(int8_t serial);
@@ -693,8 +703,8 @@ extern unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTran
 extern bool getEncoderButton(bool encoderOnly);
 extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool *isClicked);
 
-extern void listTextFile(const char* filename PROGMEM, int8_t serial);
-extern void listHelpFile(const char* filename PROGMEM, int8_t serial);
+extern void listTextFile(const char* filename PROGMEM, const char* filter, int8_t serial);
+extern void listHelpFile(const char* filename PROGMEM, const char* filter, int8_t serial);
 extern const char *loadMenu(const char* filename PROGMEM, int ordinals[], size_t maxLen);
 extern const char *loadOptions(const char* filename PROGMEM, size_t maxLen);
 extern bool loadReport(const char* filename PROGMEM, char* buffer, const char* ext, uint16_t maxLen);
@@ -722,4 +732,6 @@ extern void showBacklightLeds();
   #endif
 #endif 
 extern void fastFlipDbg();
+extern uint32_t parseJson(String& data);
+extern void changeDebugPort(int param, char* errmsg, bool noMsg = false);
 

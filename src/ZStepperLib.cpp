@@ -45,7 +45,7 @@ ZStepper::ZStepper(int8_t number, char* descriptor, pin_t stepPin, pin_t dirPin,
     pinMode(_dirPin,     OUTPUT);
   if(_enablePin > 0)
     pinMode(_enablePin,  OUTPUT);
-  __debugS(DEV2, PSTR("Stepper '%-10s' stepPin: %4d   dirPin: %4d  enablePin: %4d]"), _descriptor, _stepPin, _dirPin, _enablePin);
+  __debugS(DEV2, PSTR("\tStepper '%-8s' stepPin: %4d   dirPin: %4d  enablePin: %4d"), _descriptor, _stepPin, _dirPin, _enablePin);
 }
 
 void defaultStepFunc(pin_t pin) {
@@ -57,23 +57,25 @@ void defaultStepFunc(pin_t pin) {
 }
 
 void ZStepper::dumpParams() {
-  __debugS(DEV2, PSTR("Stepper '%s'\n\t\t\ttotal: %6lu  _accelDist: %5lu _decelDist: %5lu  _acceleration: %5lu\n\t\t\t_stepsAcceleration: %s   _maxSpeed: %5lu   _durationInt: %6lu  _timerTrigger: %lu\n\t\t\t_intrFactor: %d  ignoreEndstop: %s  _allowAccel: %s"), 
-          _descriptor,
+  __debugS(DEV3, PSTR("\tStepper '%-8s':"), _descriptor);
+  __debugS(DEV3, PSTR("   total steps:        %6lu _accelDist:   %5lu   _decelDist:   %6lu    _acceleration: %lu"),
           _totalSteps, 
           _accelDistSteps, 
           _decelDistPos, 
-          _acceleration, 
+          _acceleration);
+  __debugS(DEV3, PSTR("   _stepsAcceleration: %s   _maxSpeed:    %5lu   _durationInt: %6lu    _timerTrigger: %lu"), 
           String(_stepsAcceleration).c_str(), 
           _maxSpeed, 
           _durationInt, 
-          _timerTrigger,
+          _timerTrigger);
+  __debugS(DEV3, PSTR("   _intrFactor:     %4d      ignoreEndstop: %-3s    _allowAccel:   %-3s"), 
           _intrFactor,
           _ignoreEndstop ? "Yes" : "No",
           _allowAcceleration ? "Yes" : "No");
 }
 
 void ZStepper::resetStepper() {
-  _durationF = (float)_acceleration;
+  _durationF = (double)_acceleration;
   _durationInt = _acceleration;
   _timerTrigger = _durationInt;
   _stepCount = 0;
@@ -101,7 +103,7 @@ void ZStepper::prepareMovement(long steps, bool ignoreEndstop /*= false */) {
   if(speedDiff <= 0)
     _stepsAcceleration = 0;
   else {
-    _stepsAcceleration = (float)speedDiff / _accelDistSteps;
+    _stepsAcceleration = (double)speedDiff / _accelDistSteps;
     if(_stepsAcceleration > _accelDistSteps)
       _stepsAcceleration = 0;
   }
@@ -114,10 +116,12 @@ void ZStepper::setEndstop(pin_t pin, int8_t triggerState, EndstopType type, int8
     _endstopPin = pin;
     _endstopState = triggerState;
     _endstopType = type;
-    if(pin > 0) {
+    if(pin != 0) {
       pinMode(_endstopPin, ((triggerState == 0) ? INPUT_PULLUP : INPUT));
-      if(endstopIsrFunc != nullptr)
+      if(endstopIsrFunc != nullptr) {
         attachInterrupt(digitalPinToInterrupt(_endstopPin), endstopIsrFunc, CHANGE);
+        __debugS(DEV2, PSTR("\tStepper '%-8s' endstop %d ISR set for pin: %d"), _descriptor, index, _endstopPin);
+      }
       _endstopHit = (int)digitalRead(_endstopPin) == (int)_endstopState;
     }
   }
@@ -127,8 +131,10 @@ void ZStepper::setEndstop(pin_t pin, int8_t triggerState, EndstopType type, int8
     _endstopType2 = type;
     if(pin != 0) {
       pinMode(_endstopPin2, ((triggerState == 0) ? INPUT_PULLUP : INPUT));
-      if(endstopIsrFunc != nullptr)
+      if(endstopIsrFunc != nullptr) {
         attachInterrupt(digitalPinToInterrupt(_endstopPin2), endstopIsrFunc, CHANGE);
+        __debugS(DEV2, PSTR("\tStepper '%-8s' endstop %d ISR set for pin: %d"), _descriptor, index, _endstopPin2);
+      }
       _endstopHit2 = (int)digitalRead(_endstopPin2) == (int)_endstopState2;
     }
   }
@@ -139,7 +145,7 @@ void ZStepper::setDirection(ZStepper::MoveDirection direction) {
     _dir = direction;
     uint32_t val = !_invertDir ? (_dir == CCW ? HIGH : LOW) : (_dir == CCW ? LOW : HIGH);
     digitalWrite(_dirPin, val);
-    __debugS(DEV2, PSTR("Stepper '%s' direction: %s"), _descriptor, val==CW ? "CW" : "CCW");
+    __debugS(DEV2, PSTR("\tStepper '%-8s' direction: %s"), _descriptor, _dir==CW ? "CW" : "CCW");
   }
 }
 
@@ -147,7 +153,7 @@ void ZStepper::setEnabled(bool state) {
   if(_enablePin != 0) {
     digitalWrite(_enablePin, state ? LOW : HIGH);
     _enabled = state;
-    __debugS(DEV2, PSTR("Stepper '%s' %s"), _descriptor, _enabled ? "enabled" : "disabled");
+    __debugS(DEV2, PSTR("\tStepper '%-8s' %s"), _descriptor, _enabled ? "enabled" : "disabled");
   }
 }
 
@@ -178,6 +184,7 @@ void ZStepper::updateAcceleration() {
 void ZStepper::adjustPositionOnEndstop(int8_t index) {
 
   if(index == 1) {
+    long stepPos = _stepPosition;
     if(!_ignoreEndstop && _endstopHit && !_movementDone) {
       switch(_endstopType) {
         case MIN:
@@ -187,32 +194,44 @@ void ZStepper::adjustPositionOnEndstop(int8_t index) {
         case MAX:
           _stepPosition = _maxStepCount;
           break;
+        case MINMAX:
+          // keep _stepPosition
+          break;
       }
+      __debugSInt(DEV3, PSTR("\tStepper '%-8s' Adjusted step pos. %ld, before: %ld"), _descriptor, _stepPosition, stepPos);
+      setStepPosition(_stepPosition);
     }
   }
   else {
     if(!_ignoreEndstop && _endstopHit2 && !_movementDone) {
       // not used yet, might be used in the future
+      __debugSInt(DEV3, PSTR("\tStepper '%-8s' unused condition: '!_ignoreEndstop && _endstopHit2 && !_movementDone'"), _descriptor);
     }
   }
 }
 
 void ZStepper::setMovementDone(bool state) {
   _movementDone = state;
-  if(_movementDone)
+  if(_movementDone) {
     setStepPosition(_stepPosition); // update step position to get the position in mm right
+    // __debugS(DEV2, PSTR("\tStepper '%-8s' movement %sdone"), _descriptor, state ? "" : "not ");
+  }
   resetTimerTrigger();
 }
 
 bool ZStepper::handleISR() {
   if(_stepPin == 0) {       // just in case step pin hasn't been defined
-    setMovementDone(true);  // abort handler
+    setMovementDone(true);  // abort this handler
     return true;
   }
   
+  // check for "Abort" condition (PMMU only)
+  if(!_ignoreAbort && _abort) {
+    setMovementDone(true);
+    return true;
+  }
   // check for "Movement Done" conditions
-  if((!_ignoreEndstop && _endstopHit && !_movementDone)
-     || (!_ignoreAbort && _abort)) {
+  if(!_ignoreEndstop && _endstopHit && !_movementDone) {
     setMovementDone(true);
     return true;
   }
@@ -283,14 +302,14 @@ bool ZStepper::getEndstopHit(int8_t index) {
 
 void ZStepper::home() {
   // calculate the movement distances: if an endstop is set, go 20% beyond max.
-  long distance = (_endstopPin > 0) ? -((long)((float)_maxStepCount*1.2)) : -_maxStepCount;
+  long distance = (_endstopPin > 0) ? -((long)((double)_maxStepCount*1.2)) : -_maxStepCount;
   long distanceF = 0;
   long back = -(distance/36);
   // if the endstop type is ORBITAL (Revolver) and the current position is beyond the middle, turn inverse
   if(_endstopType == ORBITAL && (getStepPosition() >= _maxStepCount/2 && getStepPosition() <= _maxStepCount)) {
     distanceF = abs(distance);
   }
-  //__debugS(DEV2, PSTR("ZStepper::home Distance: %d - max: %d - back: %d"), distance, _maxStepCount, back);
+  //__debugS(DEV3, PSTR("\tStepper '%-8s' home Distance: %ld - max: %ld - back: %ld"), _descriptor, distance, _maxStepCount, back);
 
   // only if the endstop is not being hit already, move to endstop position
   if(!_endstopHit) {
@@ -313,6 +332,7 @@ void ZStepper::home() {
   prepareMovement(distance);
   if(runAndWaitFunc != nullptr)
     runAndWaitFunc(_number);
+  __debugS(DEV3, PSTR("\tStepper '%-8s' Position after home: %ld (%s mm)"), _descriptor, _stepPosition, String(_stepPositionMM).c_str());
 
   // reset the speed
   setMaxSpeed(curSpeed);

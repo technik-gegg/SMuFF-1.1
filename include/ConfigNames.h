@@ -31,6 +31,7 @@ const char* serial2Baudrate PROGMEM    = "Ser2Spd";
 const char* serial3Baudrate PROGMEM    = "Ser3Spd";
 const char* bowdenLength PROGMEM       = "BowdenLen";
 const char* selectorDist PROGMEM       = "SelectorDist";
+const char* selectorUnloadDist PROGMEM = "SelectorUnload";
 const char* contrast PROGMEM           = "LCDCont";
 const char* i2cAdr PROGMEM             = "I2CAddr";
 const char* autoClose PROGMEM          = "MenuClose";
@@ -152,5 +153,15 @@ const char* modePin PROGMEM            = "OUTPUT";
 const char* outX PROGMEM               = "User%d";
 const char* user1 PROGMEM              = "User1";
 const char* user2 PROGMEM              = "User2";
+const char* dspSerialPort PROGMEM      = "DspSerial";
+const char* duetSerialPort PROGMEM     = "DuetSerial";
+const char* userMessage PROGMEM        = "UserMessage";
+const char* userDialog PROGMEM         = "UserDialog";
+const char* userDlgId PROGMEM          = "Id";
+const char* userDlgButton PROGMEM      = "Button";
+const char* userDlgStatus PROGMEM      = "Status";
+const char* userDlgOption PROGMEM      = "Option";
+const char* changeDebug PROGMEM        = "ChangeDbg";
+
 
 
