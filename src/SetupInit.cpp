@@ -69,7 +69,11 @@ void initAdaNeoPx() {
   #endif
   #if NEOPIXEL_TOOL_PIN > 0 && defined(USE_FASTLED_TOOLS)
     pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
-    cTools = new Adafruit_NeoPixel(smuffConfig.toolCount, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL);
+    uint16_t pixelCount = smuffConfig.toolCount;
+    #if defined(USE_NUM_PIXELS) && USE_NUM_PIXELS != 0
+      pixelCount = USE_NUM_PIXELS;
+    #endif
+    cTools = new Adafruit_NeoPixel(pixelCount, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL);
     cTools->setBrightness(BRIGHTNESS_TOOL);
     __debugS(D, PSTR("\tinitAdaNeoPx: Tools initialized"));
   #else

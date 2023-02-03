@@ -47,6 +47,11 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**3.14** - minor changes / bug fix
+
++ added option **USE_NUM_PIXELS** in *platformio.ini*. Usually, the number of Neopixels matches the number of tools but in some special case you may have more Neopixels on your strip then tools. In order to make the animations using all pixels, enable this definition and set its value to the according number.
++ fixed bug where Lid servo didn't close before unloading when Cutter has been configured as sitting "on top".
+
 **3.13** - Changes for Duet3D and Serial display / some bugfixes
 
 + fixed bug in TMC driver **Stealth-Mode setting** via SMuFF-WI. Value was accidentally inverted.

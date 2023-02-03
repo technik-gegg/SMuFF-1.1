@@ -653,7 +653,7 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
       #else
       #endif
       sendStates(true);
-      // rest of it feed slowly
+      // feed rest of it slowly
       do {
         changeFeederSpeed(speed);
         changeDDEFeederSpeed(speed*0.9);   // let the DDE extruder run slightly faster
@@ -960,8 +960,10 @@ bool unloadFromDDE() {
     }
   }
   else {
-    if(smuffConfig.useCutter && smuffConfig.cutterOnTop)
+    if(smuffConfig.useCutter && smuffConfig.cutterOnTop) {
       __debugS(DEV3, PSTR("Cutter sitting on top of DDE, not retracting from DDE"));
+    }
+    setServoLid(SERVO_CLOSED);
     stat = true;
   }
   sendStates(true);
@@ -994,6 +996,7 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
     // invert Feeder endstop state for unloading
     bool endstopState = steppers[FEEDER].getEndstopState();
     steppers[FEEDER].setEndstopState(!endstopState);
+    setServoLid(SERVO_CLOSED);      // bugfix, Lid not being closed on DDE and CutterOnTop
     do {
       steppers[FEEDER].setAllowAccel(true);
      
