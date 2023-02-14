@@ -47,6 +47,16 @@ For more information about building the SMuFF and some more detailed stuff, head
 
 ## Recent changes
 
+**3.15** - minor changes / bug fixes
+
++ added option **NEVER_DISABLE_SERVOS** in *platformio.ini* section *'other'* which will inhibit disabling servos after they had been moved. The default behaviour is that the SMuFF will disable the PWM signal on **Wiper** and **Cutter** servos after wiping/cutting, because some servos run less jittery when disabled.
+However, it turned out that disabling the PWM signal on some servos causes those servos eventually start moving out of the blue. Allowing the PWM signal to stay active helped fixing this issue.
+If you discover random movements on your Wiper/Cutter servo, activate this new option before compiling the firmware.
+*This option however doesn't influence the behaviour on the Multiservo board(s) - which still are the better option for driving servos.*
++ fixed the bug that sometimes caused the filament not being fully retracted (i.e. Feeder endstop not triggered). Happens only if the configured "Bowden length" value doesn't match the real distance or the filament "slipped" during retraction. In such case the Feeder was supposed to retry until the endstop has triggered but didn't due to wrong condition checking. Thanks to **palkovnik807** on Discord for pointing it out.
++ fixed the bug that caused the **DDE Feeder** not doing a purge under certain conditions because the stepper wasn't enabled. Thanks to **Thyom** on Discord for finding it.
++ added printout of DDE Feeder endstop state for GCode **M119**, in case SMuFF is configured for DDE.
+
 **3.14** - minor changes / bug fix
 
 + added option **USE_NUM_PIXELS** in *platformio.ini*. Usually, the number of Neopixels matches the number of tools but in some special case you may have more Neopixels on your strip then tools. In order to make the animations using all pixels, enable this definition and set its value to the according number.

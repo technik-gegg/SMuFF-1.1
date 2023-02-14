@@ -2336,16 +2336,19 @@ bool M700(const char *msg, String buf, int8_t serial, char* errmsg)
       int param = getParam(buf, S_Param);
       if(param == 1) {
         if(smuffConfig.feedLoadState[tool] == NOT_LOADED) {
+          __debugS(DEV3, PSTR("[M700]: Loading to Splitter."));
           stat = loadToSplitter(errmsg, showMsg);
         }
       }
       else if(param == 2) {
-        __debugS(DEV3, PSTR("[M701]: Loading DDE."));
-
+        __debugS(DEV3, PSTR("[M700]: Loading DDE (not implemented yet)."));
+        // will return "failed"
       }
     }
-    else
+    else {
+      __debugS(DEV3, PSTR("[M700]: Loading filament."));
       stat = loadFilament(errmsg, showMsg);
+    }
   }
   return stat;
 }

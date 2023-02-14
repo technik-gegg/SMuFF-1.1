@@ -139,10 +139,12 @@ void detachServo(int8_t servoNum) {
 void disableServo(int8_t servoNum) {
   #if !defined(USE_MULTISERVO)
     #if defined(USE_ZSERVO)
-      ZServo* instance = getServoInstance(servoNum);
-      if(instance != nullptr) {
-          instance->disable();
-      }
+      #if !defined(NEVER_DISABLE_SERVOS)
+        ZServo* instance = getServoInstance(servoNum);
+        if(instance != nullptr) {
+            instance->disable();
+        }
+      #endif
     #endif
   #endif
 }

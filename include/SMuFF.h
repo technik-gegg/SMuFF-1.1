@@ -481,6 +481,7 @@ extern void setDisplayPowerSave(bool state);
 extern bool selectorEndstop();
 extern bool revolverEndstop();
 extern bool feederEndstop(int8_t index = 1);
+extern bool ddeEndstop();
 extern bool showFeederLoadedMessage();
 extern bool showFeederLoadMessage();
 extern bool showFeederFailedMessage(int8_t opt);

@@ -86,6 +86,10 @@ bool feederEndstop(int8_t index) {
   return steppers[FEEDER].getEndstopHit(index);
 }
 
+bool ddeEndstop() {
+  return steppers[DDE_FEEDER].getEndstopHit();
+}
+
 void setAbortRequested(bool state) {
   steppers[FEEDER].setAbort(state); // stop any ongoing stepper movements
 }
@@ -681,7 +685,7 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
       } while (!stat && retries > 0);
       sendStates(true);
 
-      // Pruge DDE
+      // Purge DDE / feed to nozzle
       #if defined (USE_DDE)
         len = smuffConfig.reinforceLength == 0 ? 5 : smuffConfig.reinforceLength; // feed another 5 mm with both extruders before the main extruder takes over
         steppers[FEEDER].setIgnoreAbort(false);
@@ -694,6 +698,7 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
         steppers[DDE_FEEDER].setAllowAccel(true);
         setServoLid(SERVO_OPEN);
         delay(750);  // wait for the servo to react
+
         // purge Direct Drive Extruder if configured likewise
         if(smuffConfig.usePurge && smuffConfig.purgeLength > 0) {
           len = smuffConfig.purgeLength;
@@ -814,6 +819,10 @@ bool loadFilament(char* errmsg, bool showMessage) {
     purgeFilament();
   #endif
 
+  #if defined(USE_DDE)
+    __debugS(DEV2, PSTR("DDE endstop state after load: %d hit: %d"), steppers[DDE_FEEDER].getEndstopState(), steppers[DDE_FEEDER].getEndstopHit(1));
+  #endif
+
   steppers[FEEDER].setMaxSpeed(curSpeed);
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
@@ -910,9 +919,10 @@ bool unloadFromDDE() {
   int8_t retries = FEED_ERROR_RETRIES;
   double len = smuffConfig.ddeDist * 2;   // retract more than configured, endstop will terminate retraction
 
+  bool ddeEndstopState = steppers[DDE_FEEDER].getEndstopState();
   // don't feed DDE in reverse if Cutter is being used and not sitting on top
   if(!smuffConfig.useCutter || (smuffConfig.useCutter && !smuffConfig.cutterOnTop)) {
-    bool ddeEndstopState = steppers[DDE_FEEDER].getEndstopState();
+    __debugS(DEV2, PSTR("DDE endstop state: %d hit: %d"), ddeEndstopState, steppers[DDE_FEEDER].getEndstopHit(1));
     if(!steppers[DDE_FEEDER].getEndstopHit(1)) {
       // no filament in DDE?
       __debugS(DEV2, PSTR("DDE endstop NOT set, skipping unloading from DDE"));
@@ -1008,25 +1018,34 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
       runAndWait(FEEDER);
       double moved = steppers[FEEDER].getStepPositionMM();
       __debugS(I, PSTR("Feeder has retracted %s mm"), String(moved).c_str());
+      
+      // first check: If endstop not got hit, repeat retracting
+      // bug fix
+      stat = steppers[FEEDER].getEndstopHit();
 
-      // did the Feeder stall?
-      stat = handleFeederStall(&speed, &retries);
-      if(!smuffConfig.useSplitter) {
-        #if !defined(USE_DDE)
-          // check whether the 2nd endstop has triggered as well if configured to do so
-          if (Z_END2_PIN > 0 && smuffConfig.useEndstop2 && stat) {
-            // endstop still triggered?
-            if (steppers[FEEDER].getEndstopHit(2)) {
-              retries--;
-              stat = false;
-              __debugS(DEV, PSTR("E-Stop2 trigger failed. Retrying %d more times"), retries);
-              // if only one retry is left, try cutting the filament again
-              if (retries == 1) {
-                cutFilament(false);
+      if(stat) {
+        // did the Feeder stall?
+        stat = handleFeederStall(&speed, &retries);
+        if(!smuffConfig.useSplitter) {
+          #if !defined(USE_DDE)
+            // check whether the 2nd endstop has triggered as well if configured to do so
+            if (Z_END2_PIN > 0 && smuffConfig.useEndstop2 && stat) {
+              // endstop still triggered?
+              if (steppers[FEEDER].getEndstopHit(2)) {
+                retries--;
+                stat = false;
+                __debugS(DEV, PSTR("E-Stop2 trigger failed. Retrying %d more times"), retries);
+                // if only one retry is left, try cutting the filament again
+                if (retries == 1) {
+                  cutFilament(false);
+                }
               }
             }
-          }
-        #endif
+          #endif
+        }
+      }
+      else {
+        __debugS(DEV, PSTR("E-Stop trigger failed. Retrying %d more times"), retries);
       }
     } while (!stat && retries > 0);
     steppers[FEEDER].setEndstopState(endstopState);
@@ -1143,6 +1162,7 @@ void purgeDDE() {
       steppers[DDE_FEEDER].setEndstopState(!defaultDDEEndstopState);
       uint16_t curSpeed = steppers[DDE_FEEDER].getMaxSpeed();
       steppers[DDE_FEEDER].setMaxSpeed(smuffConfig.purgeSpeed);
+      steppers[DDE_FEEDER].setEnabled(true);
       steppers[DDE_FEEDER].setStepPositionMM(0);
       double len = smuffConfig.ddeDist == 0 ? 100 : smuffConfig.ddeDist * 2;
       __debugS(I, PSTR("Purging DDE (max. %s mm)..."),String(len).c_str());
@@ -1226,6 +1246,10 @@ bool unloadFilament(char* errmsg) {
   steppers[FEEDER].setMaxSpeed(curSpeed);
   steppers[FEEDER].setStepPosition(0);
   steppers[FEEDER].setAbort(false);
+
+  #if defined(USE_DDE)
+    __debugS(DEV2, PSTR("DDE endstop state after unload: %d hit: %d"), steppers[DDE_FEEDER].getEndstopState(), steppers[DDE_FEEDER].getEndstopHit(1));
+  #endif
 
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
   saveStore();
@@ -1680,6 +1704,10 @@ void printEndstopState(int8_t serial) {
   if (Z_END2_PIN > 0) {
     sprintf_P(tmp, PSTR("Feeder2 (Z2): %s\n"), feederEndstop(2) ? _triggered : _open);
     printResponse(tmp, serial);
+    #if defined(USE_DDE)
+      sprintf_P(tmp, PSTR("DDE (Z2): %s\n"), ddeEndstop() ? _triggered : _open);
+      printResponse(tmp, serial);
+    #endif
   }
 }
 
