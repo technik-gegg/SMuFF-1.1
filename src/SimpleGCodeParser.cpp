@@ -221,7 +221,7 @@ bool parse_T(const String& buf, int8_t serial, char* errmsg) {
           unloadFilament(errmsg);
     }
 
-    bool showMsg = serial==smuffConfig.displaySerial ? true : false;
+    bool showMsg = SM_SHOULD_SHOW_MESSAGE(serial);
     
     if((stat = selectTool(tool, errmsg, showMsg))) {
       if(!smuffConfig.prusaMMU2) {

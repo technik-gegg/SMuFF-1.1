@@ -983,25 +983,25 @@ void loopEx() {
 
 void fncKey1() {
   if (strlen(smuffConfig.lButtonDown) > 0) {
-    parseGcode(String(smuffConfig.lButtonDown), -1);
+    parseGcode(String(smuffConfig.lButtonDown), SM_SERIAL_PORT_NULL);
   }
 }
 
 void fncKey2() {
   if (strlen(smuffConfig.lButtonHold) > 0) {
-    parseGcode(String(smuffConfig.lButtonHold), -1);
+    parseGcode(String(smuffConfig.lButtonHold), SM_SERIAL_PORT_NULL);
   }
 }
 
 void fncKey3() {
   if (strlen(smuffConfig.rButtonDown) > 0) {
-    parseGcode(String(smuffConfig.rButtonDown), -1);
+    parseGcode(String(smuffConfig.rButtonDown), SM_SERIAL_PORT_NULL);
   }
 }
 
 void fncKey4() {
   if (strlen(smuffConfig.rButtonHold) > 0) {
-    parseGcode(String(smuffConfig.rButtonHold), -1);
+    parseGcode(String(smuffConfig.rButtonHold), SM_SERIAL_PORT_NULL);
   }
   else {
     // open / close LID servo by default

@@ -400,7 +400,7 @@ void drawPurgingMessage(uint16_t len, uint8_t tool) {
   if (displayingUserMessage) // don't show if something else is being displayed
     return;
   if(len == 0 && tool == 0) {
-    if(currentSerial != -1) {
+    if(currentSerial != SM_SERIAL_PORT_NULL) {
       sprintf_P(tmp, PSTR("echo: purging: done\n"));
       printResponse(tmp, currentSerial);
     }
@@ -420,7 +420,7 @@ void drawPurgingMessage(uint16_t len, uint8_t tool) {
   display.updateDisplay();
   if(smuffConfig.webInterface) {
     sprintf_P(tmp, PSTR("echo: purging: T:%d L:%d C:%f\n"), tool, len, len*2.4);
-    if(currentSerial != -1)
+    if(currentSerial != SM_SERIAL_PORT_NULL)
       printResponse(tmp, currentSerial);
   }
 #if defined(USE_TERMINAL_MENUS)
@@ -701,8 +701,9 @@ uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons, 
   char dlg[1024];
 
   // no action if no display serial port is defined
-  if(smuffConfig.displaySerial == -1)
+  if(smuffConfig.displaySerial == SM_SERIAL_PORT_NULL) {
     return state;
+  }
 
   setFastLEDStatus(FASTLED_STAT_WARNING);
   String btn(buttons);

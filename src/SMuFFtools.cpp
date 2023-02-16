@@ -2187,7 +2187,7 @@ void testRun(const char *fname)
           if (gCode.indexOf("{RNDTL}") > -1) {
             gCode.replace("{RNDTL}", String(tool));
           }
-          parseGcode(gCode, -1);
+          parseGcode(gCode, SM_SERIAL_PORT_NULL);
           //__debugS(D, PSTR("GCode: %s"), gCode.c_str());
           if (*line == 'T')
           {

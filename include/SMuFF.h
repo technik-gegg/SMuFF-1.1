@@ -24,11 +24,21 @@
 #include "Strings.h"
 #include "GCodes.h"
 
-#if !defined(USE_SERIAL_DISPLAY)
+#define SM_SERIAL_PORT_NULL -1
+#ifdef USE_SERIAL_DISPLAY
+  #define SM_SHOULD_SHOW_MESSAGE(__serial__) \
+    __serial__ != SM_SERIAL_PORT_NULL \
+    && smuffConfig.displaySerial != SM_SERIAL_PORT_NULL \
+    && __serial__ == smuffConfig.displaySerial
+#else
+  #define SM_SHOULD_SHOW_MESSAGE(__serial__) false
+#endif
+
+#ifndef USE_SERIAL_DISPLAY
 #include <U8g2lib.h>
 #include "Menus.h"
 #include "InputDialogs.h"
-#define DISPLAY_SERIAL_PORT -1
+#define DISPLAY_SERIAL_PORT SM_SERIAL_PORT_NULL
 #endif
 
 #if defined(USE_LEONERD_DISPLAY)

@@ -2321,7 +2321,7 @@ bool M577(const char *msg, String buf, int8_t serial, char* errmsg) {
 bool M700(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = false;
-  bool showMsg = serial==smuffConfig.displaySerial ? true : false;
+  bool showMsg = SM_SHOULD_SHOW_MESSAGE(serial);
 
   printResponse(msg, serial);
   currentSerial = serial;
@@ -2356,7 +2356,7 @@ bool M700(const char *msg, String buf, int8_t serial, char* errmsg)
 bool M701(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = false;
-  bool showMsg = serial==smuffConfig.displaySerial ? true : false;
+  bool showMsg = SM_SHOULD_SHOW_MESSAGE(serial);
 
   printResponse(msg, serial);
   currentSerial = serial;
@@ -2848,7 +2848,7 @@ bool G12(const char *msg, String buf, int8_t serial, char* errmsg)
 bool G28(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   bool stat = true;
-  bool showMsg = serial==smuffConfig.displaySerial ? true : false;
+  bool showMsg = SM_SHOULD_SHOW_MESSAGE(serial);
 
   printResponse(msg, serial);
   if (buf.length() == 0)
