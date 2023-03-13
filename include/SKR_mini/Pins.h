@@ -75,21 +75,13 @@
 
 #define NEOPIXEL_TOOL_PIN   PB8     // for tools (EXP2.6)
 #define BRIGHTNESS_TOOL     127
-#if !defined(USES_ADAFRUIT_NPX)
-#define LED_TYPE_TOOL       WS2812B
-#define COLOR_ORDER_TOOL    GRB
-#else
 #define COLOR_ORDER_TOOL    NEO_GRB + NEO_KHZ800
-#endif
 
 #define SDCS_PIN            0       // use default
 #define DEBUG_PIN           PA1     // Endstop Y+
 
 #define USB_CONNECT_PIN     0       // not avail
 #define SD_DETECT_PIN       PA3
-#if !defined(USE_SERIAL_DISPLAY)
-#define USE_TERMINAL_MENUS  1
-#endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // using the same pins as for TWI displays (HW-I2C)

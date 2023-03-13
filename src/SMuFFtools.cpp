@@ -189,6 +189,7 @@ bool moveHome(int8_t index, bool showMessage, bool checkFeeder) {
 
 
 void switchFeederStepper(uint8_t stepper) {
+  char relay[50];
   #if !defined(USE_MULTISERVO_RELAY)
     if (RELAY_PIN == 0)
       return;
@@ -203,12 +204,15 @@ void switchFeederStepper(uint8_t stepper) {
   #endif
   #if !defined(USE_MULTISERVO_RELAY)
     digitalWrite(RELAY_PIN, stepper == EXTERNAL ? smuffConfig.invertRelay : !smuffConfig.invertRelay);
+    snprintf_P(relay, ArraySize(relay)-1, PSTR("Relay"));
   #else
     bool state = stepper == EXTERNAL ? smuffConfig.invertRelay : !smuffConfig.invertRelay;
     servoPwm.setPin(servoMapping[RELAY], state ? 4095 : 0);
+    snprintf_P(relay, ArraySize(relay)-1, PSTR("Relay on Multiservo (pin %d)"), servoMapping[RELAY]);
   #endif
   smuffConfig.externalStepper = stepper == EXTERNAL;
-  delay(50);   // gain the relay some time to debounce
+  __debugS(DEV4, PSTR("%s set to \"%s\" state"), relay, smuffConfig.externalStepper ? P_External : P_Internal);
+  delay(150);   // gain the relay some time to debounce
 }
 
 void moveFeeder(double distanceMM) {
@@ -292,14 +296,14 @@ void positionRevolver() {
 
 void changeFeederSpeed(uint16_t speed) {
   unsigned long _speed = translateSpeed(speed, FEEDER);
-  __debugS(DEV2, PSTR("Changing Feeder speed to %3d (%6ld ticks)"), _speed, steppers[FEEDER].getMaxSpeed());
+  __debugS(DEV2, PSTR("Changing Feeder speed from %ld to %ld"), steppers[FEEDER].getMaxSpeed(), _speed);
   steppers[FEEDER].setMaxSpeed(_speed);
 }
 
 void changeDDEFeederSpeed(uint16_t speed) {
   #if defined(USE_DDE)
   unsigned long _speed = translateSpeed(speed, DDE_FEEDER);
-  __debugS(DEV2, PSTR("Changing DDE-Feeder speed to %3d (%6ld ticks)"), _speed, steppers[DDE_FEEDER].getMaxSpeed());
+  __debugS(DEV2, PSTR("Changing DDE-Feeder speed from %ld to %ld"), steppers[DDE_FEEDER].getMaxSpeed(), _speed);
   steppers[DDE_FEEDER].setMaxSpeed(_speed);
   #endif
 }
@@ -583,13 +587,14 @@ bool handleFeederStall(uint16_t *speed, int8_t *retries) {
 bool feedToNozzle(char* errmsg, bool showMessage) {
   bool stat = true;
   uint16_t speed = smuffConfig.maxSpeed[FEEDER];
-  
+  changeFeederSpeed(speed);
+
   #if defined(USE_DDE)
     uint16_t speed2 = smuffConfig.maxSpeed[DDE_FEEDER];
+    changeDDEFeederSpeed(speed2);
   #endif
   
   int8_t retries = FEED_ERROR_RETRIES;
-
   if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
     // prepare to feed full speed in chunks
     double bLen = smuffConfig.bowdenLength;
@@ -608,7 +613,7 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
       #if !defined(USE_DDE)
         __debugS(D, PSTR("Feeding to nozzle (95%%)"));
       #else
-        __debugS(D, PSTR("Feeding to DDE"));
+        __debugS(D, PSTR("Feeding to DDE (95%%)"));
       #endif
       prepSteppingRelMillimeter(FEEDER, len - remains, true);
       runAndWait(FEEDER);
@@ -659,6 +664,7 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
       sendStates(true);
       // feed rest of it slowly
       do {
+        __debugS(D, PSTR("Feeding to nozzle (remaining 5%%)"));
         changeFeederSpeed(speed);
         changeDDEFeederSpeed(speed*0.9);   // let the DDE extruder run slightly faster
         #if !defined (USE_DDE)
@@ -816,7 +822,7 @@ bool loadFilament(char* errmsg, bool showMessage) {
       prepSteppingRelMillimeter(FEEDER, smuffConfig.reinforceLength, true);
       runAndWait(FEEDER);
     }
-    purgeFilament();
+    purgeFilament(0);
   #endif
 
   #if defined(USE_DDE)
@@ -832,7 +838,7 @@ bool loadFilament(char* errmsg, bool showMessage) {
   return true;
 }
 
-void purgeFilament() {
+void purgeFilament(double forceLen) {
   if (smuffConfig.usePurge && smuffConfig.purgeLength > 0 && !steppers[FEEDER].getAbort()) {
     #if !defined(USE_DDE)
     positionRevolver();
@@ -841,15 +847,19 @@ void purgeFilament() {
     uint16_t curSpeed2 = steppers[DDE_FEEDER].getMaxSpeed();
     changeFeederSpeed(smuffConfig.purgeSpeed);
     changeDDEFeederSpeed(smuffConfig.purgeSpeed);
-    uint16_t len = smuffConfig.purgeLength;
-    if (smuffConfig.purges[toolSelected] > 100) {
+    double len = forceLen == 0 ? smuffConfig.purgeLength : forceLen;
+    if (smuffConfig.purges[toolSelected] != 100 && forceLen == 0) {
       len *= ((double)smuffConfig.purges[toolSelected] / 100);
+      __debugS(DEV2, PSTR("Purge length adjusted by: %d %%"), smuffConfig.purges[toolSelected]);
     }
     drawPurgingMessage(len, toolSelected);
+    __debugS(DEV2, PSTR("Purging: %s mm"), String(len).c_str());
     #if !defined(USE_DDE)
+    steppers[FEEDER].setStepPositionMM(0);
     prepSteppingRelMillimeter(FEEDER, len, true);
     runAndWait(FEEDER);
     #else
+    steppers[DDE_FEEDER].setStepPositionMM(0);
     prepSteppingRelMillimeter(DDE_FEEDER, len, true);
     runAndWait(DDE_FEEDER);
     #endif
@@ -986,74 +996,91 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
   int8_t retries = FEED_ERROR_RETRIES;
   double posNow = steppers[FEEDER].getStepPositionMM();
 
-  if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
-    __debugS(I, PSTR("Unloading in %d chunks"), smuffConfig.feedChunks);
-    // prepare to unfeed 3 times the bowden length full speed in chunks
-    double bLen = -((smuffConfig.useSplitter ? smuffConfig.splitterDist : smuffConfig.bowdenLength * 3));
-    double len = bLen / smuffConfig.feedChunks;
-    for (uint8_t i = 0; i < smuffConfig.feedChunks; i++) {
-      prepSteppingRelMillimeter(FEEDER, len);
-      runAndWait(FEEDER);
+  // Feeder endstop not triggered means: Filament not loaded!
+  // In such case, avoid any retraction
+  if(steppers[FEEDER].getEndstopHit()) {
+
+    if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
+      __debugS(I, PSTR("Unloading in %d chunks"), smuffConfig.feedChunks);
+      // prepare to unfeed 3 times the bowden length full speed in chunks
+      double bLen = -((smuffConfig.useSplitter ? smuffConfig.splitterDist : smuffConfig.bowdenLength * 3));
+      double len = bLen / smuffConfig.feedChunks;
+      for (uint8_t i = 0; i < smuffConfig.feedChunks; i++) {
+        prepSteppingRelMillimeter(FEEDER, len);
+        runAndWait(FEEDER);
+      }
+    }
+    else {
+      #if defined(USE_DDE)
+        if(!unloadFromDDE()) {
+          snprintf_P(errmsg, MAX_ERR_MSG, P_CantUnloadDDE);
+          return false;
+        }
+      #endif
+      // invert Feeder endstop state for unloading
+      bool endstopState = steppers[FEEDER].getEndstopState();
+      steppers[FEEDER].setEndstopState(!endstopState);
+      setServoLid(SERVO_CLOSED);      // bugfix, Lid not being closed on DDE and CutterOnTop
+      do {
+        steppers[FEEDER].setAllowAccel(true);
+      
+        // prepare 110% to retract with full speed
+        double len = (smuffConfig.useSplitter ? smuffConfig.splitterDist : smuffConfig.bowdenLength * 1.1);
+        __debugS(D, PSTR("Retracting from Feeder (%s mm)"), String(len).c_str());
+        steppers[FEEDER].setStepPositionMM(0);
+        prepSteppingRelMillimeter(FEEDER, -len, smuffConfig.useSplitter ? true : false);
+        runAndWait(FEEDER);
+        double moved = steppers[FEEDER].getStepPositionMM();
+        __debugS(I, PSTR("Feeder has retracted %s mm"), String(moved).c_str());
+        
+        // first check: If endstop not got hit, repeat retracting
+        // bug fix
+        stat = steppers[FEEDER].getEndstopHit();
+
+        if(stat) {
+          // did the Feeder stall?
+          stat = handleFeederStall(&speed, &retries);
+          if(!smuffConfig.useSplitter) {
+            #if !defined(USE_DDE)
+              // check whether the 2nd endstop has triggered as well if configured to do so
+              if (Z_END2_PIN > 0 && smuffConfig.useEndstop2 && stat) {
+                // endstop still triggered?
+                if (steppers[FEEDER].getEndstopHit(2)) {
+                  retries--;
+                  stat = false;
+                  __debugS(DEV, PSTR("E-Stop2 trigger failed. Retrying %d more times"), retries);
+                  // if only one retry is left, try cutting the filament again
+                  if (retries == 1) {
+                    cutFilament(false);
+                  }
+                }
+              }
+            #endif
+          }
+        }
+        else {
+          retries--;
+          __debugS(DEV, PSTR("E-Stop trigger failed. Retrying %d more times"), retries);
+          // if only one retry is left, try cutting the filament again
+          if (retries == 1) {
+            cutFilament(false);
+          }
+        }
+      } while (!stat && retries > 0);
+      steppers[FEEDER].setEndstopState(endstopState);
     }
   }
   else {
-    #if defined(USE_DDE)
-      if(!unloadFromDDE()) {
-        snprintf_P(errmsg, MAX_ERR_MSG, P_CantUnloadDDE);
-        return false;
-      }
-    #endif
-    // invert Feeder endstop state for unloading
-    bool endstopState = steppers[FEEDER].getEndstopState();
-    steppers[FEEDER].setEndstopState(!endstopState);
-    setServoLid(SERVO_CLOSED);      // bugfix, Lid not being closed on DDE and CutterOnTop
-    do {
-      steppers[FEEDER].setAllowAccel(true);
-     
-      // prepare 110% to retract with full speed
-      double len = (smuffConfig.useSplitter ? smuffConfig.splitterDist : smuffConfig.bowdenLength * 1.1);
-      __debugS(D, PSTR("Retracting from Feeder (%s mm)"), String(len).c_str());
-      steppers[FEEDER].setStepPositionMM(0);
-      prepSteppingRelMillimeter(FEEDER, -len, smuffConfig.useSplitter ? true : false);
-      runAndWait(FEEDER);
-      double moved = steppers[FEEDER].getStepPositionMM();
-      __debugS(I, PSTR("Feeder has retracted %s mm"), String(moved).c_str());
-      
-      // first check: If endstop not got hit, repeat retracting
-      // bug fix
-      stat = steppers[FEEDER].getEndstopHit();
-
-      if(stat) {
-        // did the Feeder stall?
-        stat = handleFeederStall(&speed, &retries);
-        if(!smuffConfig.useSplitter) {
-          #if !defined(USE_DDE)
-            // check whether the 2nd endstop has triggered as well if configured to do so
-            if (Z_END2_PIN > 0 && smuffConfig.useEndstop2 && stat) {
-              // endstop still triggered?
-              if (steppers[FEEDER].getEndstopHit(2)) {
-                retries--;
-                stat = false;
-                __debugS(DEV, PSTR("E-Stop2 trigger failed. Retrying %d more times"), retries);
-                // if only one retry is left, try cutting the filament again
-                if (retries == 1) {
-                  cutFilament(false);
-                }
-              }
-            }
-          #endif
-        }
-      }
-      else {
-        __debugS(DEV, PSTR("E-Stop trigger failed. Retrying %d more times"), retries);
-      }
-    } while (!stat && retries > 0);
-    steppers[FEEDER].setEndstopState(endstopState);
+    __debugS(W, PSTR("Feeder endstop was not triggered. Skipping unloading from nozzle."));
   }
+
   // do some calculations in order to give some hints
   double posEnd = posNow - steppers[FEEDER].getStepPositionMM();
   // calculate supposed length;
-  double dist = smuffConfig.bowdenLength + smuffConfig.cutterLength - smuffConfig.unloadRetract;
+  double cutterLen = (smuffConfig.useCutter && smuffConfig.cutterOnTop) ? smuffConfig.cutterLength : 0.0;
+  double dist = smuffConfig.bowdenLength + cutterLen - smuffConfig.unloadRetract;
+  __debugS(I, PSTR("Unload from Nozzle distance was %s mm"), String(dist).c_str());
+
   if(smuffConfig.useSplitter) {
     smuffConfig.feedLoadState[toolSelected] = SPL_LOADED_TO_SPLITTER;
   }
@@ -1076,7 +1103,7 @@ bool unloadFromSelector(char* errmsg) {
   bool stat = true;
   // only if the unload hasn't been aborted yet, unload from Selector
   if (steppers[FEEDER].getAbort() == false) {
-    delay(1500);
+    delay(250);
     int8_t retries = FEED_ERROR_RETRIES;
     uint16_t speed = smuffConfig.insertSpeed;
     //double dist = smuffConfig.selectorDistance;
@@ -1204,16 +1231,22 @@ bool unloadFilament(char* errmsg) {
 
   #if !defined(USE_DDE)
     if (smuffConfig.unloadRetract != 0) {
-      __debugS(I, PSTR("Unload retract: %s mm"), String(smuffConfig.unloadRetract).c_str());
-      prepSteppingRelMillimeter(FEEDER, -smuffConfig.unloadRetract, true);
-      runAndWait(FEEDER);
-      if (smuffConfig.unloadPushback != 0) {
-        __debugS(I, PSTR("Unload pushback: %s mm"), String(smuffConfig.unloadPushback).c_str());
-        changeFeederSpeed(smuffConfig.insertSpeed);
-        prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadPushback, true);
+      // do the unload retraction only if filament is fully loaded
+      if (smuffConfig.feedLoadState[toolSelected] != ((smuffConfig.useSplitter) ? SPL_LOADED_TO_NOZZLE : LOADED_TO_NOZZLE)) {
+        __debugS(I, PSTR("Not loaded to nozzle (feedLoadState = %x), unload retraction skipped"), smuffConfig.feedLoadState[toolSelected]);
+      }
+      else {
+        __debugS(I, PSTR("Unload retract: %s mm"), String(smuffConfig.unloadRetract).c_str());
+        prepSteppingRelMillimeter(FEEDER, -smuffConfig.unloadRetract, true);
         runAndWait(FEEDER);
-        delay(smuffConfig.pushbackDelay * 1000);
-        steppers[FEEDER].setMaxSpeed(curSpeed);
+        if (smuffConfig.unloadPushback != 0) {
+          __debugS(I, PSTR("Unload pushback: %s mm"), String(smuffConfig.unloadPushback).c_str());
+          changeFeederSpeed(smuffConfig.insertSpeed);
+          prepSteppingRelMillimeter(FEEDER, smuffConfig.unloadPushback, true);
+          runAndWait(FEEDER);
+          delay(smuffConfig.pushbackDelay);
+          steppers[FEEDER].setMaxSpeed(curSpeed);
+        }
       }
     }
   #endif
@@ -1607,13 +1640,13 @@ void prepSteppingRelMillimeter(int8_t index, double millimeter, bool ignoreEndst
 }
 
 void printPeriodicalState(int8_t serial) {
-  char tmp[120];
+  char tmp[256];
 
   const char *_triggered = "on";
   const char *_open = "off";
   int8_t tool = getToolSelected();
 
-  sprintf_P(tmp, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\tLID: %s\tI: %s\tSPL: %d\tRLY: %s\tJAM: %s\n"),
+  snprintf_P(tmp, ArraySize(tmp)-1, PSTR("echo: states: T: T%d\tS: %s\tR: %s\tF: %s\tF2: %s\tTMC: %c%s\tSD: %s\tSC: %s\tLID: %s\tI: %s\tSPL: %d\tRLY: %s\tJAM: %s\n"),
             tool,
             selectorEndstop() ? _triggered : _open,
             revolverEndstop() ? _triggered : _open,
@@ -2120,8 +2153,6 @@ void testRun(const char *fname)
     sprintf_P(filename, PSTR("/test/%s.gcode"), fname);
     feederErrors = 0;
 
-    __log(P_SendTermCls); // clear screen on VT100
-    terminalClear(true);
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {
       endstop2Hit[i] = 0L;
@@ -2129,7 +2160,7 @@ void testRun(const char *fname)
     }
 
     if(__fopen(file, filename, FILE_READ)) {
-      fastLedStatus = FASTLED_STAT_NONE;
+      setFastLEDStatus(FASTLED_STAT_NONE);
 
       stallDetectedCountFeeder = stallDetectedCountSelector = 0;
 
@@ -2514,35 +2545,44 @@ void blinkLED()
 */
 unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTranslation)
 {
+  return translateSpeed((double)speed, axis, forceTranslation);
+}
+
+unsigned long translateSpeed(double speed, uint8_t forAxis, bool forceTranslation)
+{
   if(!forceTranslation)
     if (!smuffConfig.speedsInMMS)
       return speed;
-  uint16_t stepsPerMM = (axis == REVOLVER) ? smuffConfig.stepsPerRevolution / 360 : smuffConfig.stepsPerMM[axis];
-  uint8_t delay = smuffConfig.stepDelay[axis];
-  // correction can be set via M202 GCode command if needed; Default is 1.0 (i.e. no correction)
-  double correction = smuffConfig.speedAdjust[axis];
-  unsigned long freq = F_CPU / STEPPER_PSC;
-  double oneTick = (double)1 / freq;
-  // check for lowest speed possible and correct it if it's below
-  uint16_t minSpeed = (uint16_t)ceil(((double)((unsigned long)freq/stepsPerMM)/0xFFFF));
-  if(minSpeed > speed) {
-    __debugS(D, PSTR("Speed requested: %3d mm/s  - Min. Speed: %3d mm/s"), speed, minSpeed);
-    speed = minSpeed;
+
+  // Basic formula:   ticks = [stepper-clock] / ( [mm/s] * [steps/mm] )
+  //                  mm/s = [stepper-clock] / [ticks] / [steps/mm]
+  //
+  //                  stepper-clock = [CPU frequency] / [Prescaler]
+
+  // Notice: Not taking step-delay into account here! 
+  unsigned long stepper_clock = F_CPU / STEPPER_PSC;
+  uint16_t stepsPerMM = smuffConfig.stepsPerMM[forAxis];
+  double minSpeed = 0.0, maxSpeed = 0.0;
+
+  unsigned long ticks = (unsigned long)(stepper_clock / (double)(speed * stepsPerMM));
+  //__debugS(DEV3, PSTR("Ticks before adjust: %ld (stepper clock: %ld, speed: %s, steps/mm: %d)"), ticks, stepper_clock, String(speed).c_str(), stepsPerMM);
+
+  if(ticks > 65534) {
+    ticks = 65534;  // lowest achievable speed in ticks, since that's the timer reload value which must not exceed 16 bit
+    minSpeed = (double)(stepper_clock / ticks / stepsPerMM);
+    if(speed < minSpeed) {
+      __debugS(I, PSTR("Speed requested: %3d mm/s  - Min. Speed: %3.1f mm/s"), speed, minSpeed);
+      speed = minSpeed;
+    }
   }
-  unsigned long pulses = speed * stepsPerMM;
-  double delayTot = pulses * (delay * 0.000001);
-  double timeTot = ((double) oneTick * pulses) + delayTot;
-  // if time total is more than 1 sec. its impossible to meet speed/s, so set a save value of 40mm/s.
-  unsigned long ticks = (unsigned long)((timeTot <= 1.0f) ? (1 / (timeTot * correction)) : 500); // 500 equals round about 40 mm/s
-  /*
-  char ttl[30], dtl[30], ot[30];
-  dtostrf(timeTot, 12, 6, ttl);
-  dtostrf(delayTot, 12, 6, dtl);
-  dtostrf(oneTick, 12, 10, ot);
-  __debugS(D, PSTR("\nONE T:\t%s\nSPEED:\t\t%4d\nStepsMM:\t%4d\nPULSES:\t%12lu\nTICKS:\t%12lu\nTIME:\t%s\nDELAY:\t%s"), ot, speed, stepsPerMM, pulses, ticks, ttl, dtl);
-  */
-  if (timeTot > 1)
-    __debugS(I, PSTR("Speed too fast, has been reset to 40mm/s! Slow down speed in mm/s."));
+  if(ticks < 5) {
+    ticks = 5;  // highest achievable speed in ticks
+    maxSpeed = (double)(stepper_clock / ticks / stepsPerMM);
+    if(speed > maxSpeed) {
+      __debugS(I, PSTR("Speed requested: %3d mm/s  - Max. Speed: %3.1f mm/s"), speed, maxSpeed);
+      speed = maxSpeed;
+    }
+  }
   return ticks;
 }
 
@@ -2668,7 +2708,7 @@ void enumI2cDevices(uint8_t bus) {
 }
 
 static char _dbg[1024];
-static char _dbgInt[512];
+static char _dbgInt[1024];
 static char _dbgPfx1[20];
 
 void __initDebug__() {
@@ -2690,7 +2730,7 @@ void __debugS__(uint8_t level, bool isInt, const char *fmt, ...) {
     return;
 
   bool useColoring = smuffConfig.useDebugColoring;
-  char pfx2[25];
+  char pfx2[40];
   memset(_dbg, 0, ArraySize(_dbg) - 1);
   va_list arguments;
   va_start(arguments, fmt);
@@ -2706,6 +2746,7 @@ void __debugS__(uint8_t level, bool isInt, const char *fmt, ...) {
     case DEV:   snprintf_P(pfx2, maxlen, PSTR("(DEV)  %s"), !useColoring ? "" : "\033[33m"); break;
     case DEV2:  snprintf_P(pfx2, maxlen, PSTR("(DEV2) %s"), !useColoring ? "" : "\033[36m"); break;
     case DEV3:  snprintf_P(pfx2, maxlen, PSTR("(DEV3) %s"), !useColoring ? "" : "\033[35m"); break;
+    case DEV4:  snprintf_P(pfx2, maxlen, PSTR("(DEV4) %s"), !useColoring ? "" : "\033[34m"); break;
   }
   if(!isInt) {
     __flushDebug__();
@@ -2713,8 +2754,8 @@ void __debugS__(uint8_t level, bool isInt, const char *fmt, ...) {
   }
   else {
     // messages generated in interrupt handlers will get buffered instead of directly printed out
-    char tmp[512];
-    snprintf(tmp, ArraySize(tmp), PSTR("%s%s%s%s%s\n"), _dbgPfx1, pfx2, (!useColoring) ? "<>" : "\033[31m<>\033[0m", _dbg, (!useColoring || level == D) ? "" : "\033[0m");
+    char tmp[256];
+    snprintf(tmp, ArraySize(tmp), PSTR("%s%s%s%s%s\n"), _dbgPfx1, pfx2, (!useColoring) ? "<INT> " : "\033[37m", _dbg, (!useColoring || level == D) ? "" : "\033[0m");
     strncat(_dbgInt, tmp, ArraySize(_dbgInt)-strlen(_dbgInt));
   }
 }

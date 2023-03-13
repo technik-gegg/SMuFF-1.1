@@ -187,35 +187,6 @@ void drawStatus() {
   }
   drawFeed(false);
 
-  #if !defined(USE_TERMINAL_MENUS)
-  if(smuffConfig.menuOnTerminal) {
-    termRefresh++;
-    if(termRefresh % 5 == 0) {
-      char tmcStat;
-      char purge = (uint8_t)(smuffConfig.usePurge ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
-      char pstat = (uint8_t)(smuffConfig.sendPeriodicalStats ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
-      char f1 = (uint8_t)(feederEndstop() ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
-      char f2 = (uint8_t)(feederEndstop(2) ? TERM_PRESENT_CHR : TERM_NOTAVAIL_CHR);
-      if (!smuffConfig.useEndstop2)
-        f2 = '-';
-      #if HAS_TMC_SUPPORT
-        sprintf_P(driver, PSTR(" TMC %c"), (isUsingTmc ? (tmcWarning ? '!' : ' ') : '-'));
-      #else
-        sprintf_P(driver, PSTR(" A4988 "));
-      #endif
-      __terminal(P_SendTermStatus,
-            tool, TERM_VERTLINE_CHR,
-            f1, TERM_VERTLINE_CHR,
-            f2, TERM_VERTLINE_CHR,
-            mode, TERM_VERTLINE_CHR,
-            relay, TERM_VERTLINE_CHR,
-            driver, TERM_VERTLINE_CHR,
-            purge, TERM_VERTLINE_CHR,
-            pstat, TERM_VERTLINE_CHR,
-            brand);
-    }
-  }
-  #endif
   // __debugS(DEV2, PSTR("drawStatus done"));
 }
 
@@ -382,26 +353,18 @@ void drawSelectingMessage(uint8_t tool) {
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 10, _wait);
   display.updateDisplay();
-#if defined(USE_TERMINAL_MENUS)
-  if(smuffConfig.menuOnTerminal) {
-    terminalClear(true);
-    terminalSend(1, 1, _sel, true, 0);
-    terminalSend(3, 1, tmp, true, 2);
-    terminalSend(5, 1, _wait, true, 0);
-  }
-#endif
 }
 
-void drawPurgingMessage(uint16_t len, uint8_t tool) {
+void drawPurgingMessage(double len, uint8_t tool) {
   char _sel[20];
   char _wait[30];
-  char tmp[50];
+  char tmp[128];
 
   if (displayingUserMessage) // don't show if something else is being displayed
     return;
   if(len == 0 && tool == 0) {
     if(currentSerial != -1) {
-      sprintf_P(tmp, PSTR("echo: purging: done\n"));
+      snprintf_P(tmp, ArraySize(tmp)-1, PSTR("echo: purging: done\n"));
       printResponse(tmp, currentSerial);
     }
     return;
@@ -409,28 +372,21 @@ void drawPurgingMessage(uint16_t len, uint8_t tool) {
   display.clearBuffer();
   sprintf_P(_sel, P_Purging);
   sprintf_P(_wait, P_Wait);
-  sprintf_P(tmp, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((double)len * 2.4).c_str());
+  snprintf_P(tmp, ArraySize(tmp)-1, P_PurgeLen, smuffConfig.purges[tool], String(len).c_str(), String((double)len * 2.4).c_str());
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_sel)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 - 10, _sel);
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 4, tmp);
-  sprintf_P(tmp, P_PurgeCubic, String((double)len * 2.4).c_str());
+  snprintf_P(tmp, ArraySize(tmp)-1, P_PurgeCubic, String((double)len * 2.4).c_str());
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(tmp)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + 15, tmp);
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
   display.updateDisplay();
   if(smuffConfig.webInterface) {
-    sprintf_P(tmp, PSTR("echo: purging: T:%d L:%d C:%f\n"), tool, len, len*2.4);
-    if(currentSerial != -1)
+    snprintf_P(tmp, ArraySize(tmp)-1, PSTR("echo: Purging: Tool: %d Length: %s mm Volume: %s mm³\n"), tool, String(len).c_str(), String(len*2.4).c_str());
+    __debugS(DEV4, tmp, strlen(tmp));
+    if(currentSerial > 0)
       printResponse(tmp, currentSerial);
   }
-#if defined(USE_TERMINAL_MENUS)
-  if(smuffConfig.menuOnTerminal) {
-    terminalClear(true);
-    terminalSend(1, 1, _sel, true, 0);
-    terminalSend(3, 1, tmp, true, 2);
-    terminalSend(5, 1, _wait, true, 0);
-  }
-#endif
 }
 
 void drawTestrunMessage(unsigned long loop, char *msg) {
@@ -445,13 +401,6 @@ void drawTestrunMessage(unsigned long loop, char *msg) {
   display.setFont(BASE_FONT);
   display.drawStr((display.getDisplayWidth() - display.getStrWidth(_wait)) / 2, (display.getDisplayHeight() - display.getMaxCharHeight()) / 2 + display.getMaxCharHeight() + 15, _wait);
   display.updateDisplay();
-#if defined(USE_TERMINAL_MENUS)
-  if(smuffConfig.menuOnTerminal) {
-    terminalSend(1, 1, _sel, true, 0);
-    terminalSend(3, 1, msg, true, 2);
-    terminalSend(5, 1, _wait, true, 0);
-  }
-#endif
 }
 
 void drawUserMessage(String message, bool smallFont /* = false */, bool center /* = true */, void (*drawCallbackFunc)() /* = nullptr */) {
@@ -461,7 +410,6 @@ void drawUserMessage(String message, bool smallFont /* = false */, bool center /
   if (isPwrSave) {
     setPwrSave(0);
   }
-  terminalClear(true);
   display.clearBuffer();
   display.setDrawColor(1);
   display.setFont(smallFont ? BASE_FONT : BASE_FONT_BIG);
@@ -478,12 +426,6 @@ void drawUserMessage(String message, bool smallFont /* = false */, bool center /
       }
     }
     y += display.getMaxCharHeight();
-    if(smuffConfig.menuOnTerminal) {
-      if (i==1 && isSeparator)
-        terminalDrawSeparator(tp + i, 1, 36);
-      else
-        terminalSend(tp + i, 1, lines[i], center, 0, true);
-    }
   }
   if (drawCallbackFunc != nullptr)
     drawCallbackFunc();
@@ -495,34 +437,34 @@ void drawUserMessage(String message, bool smallFont /* = false */, bool center /
 
 void drawSDStatus(int8_t stat)
 {
-  char tmp[40];
+  char tmp[80];
 
   switch (stat) {
     case SD_ERR_INIT:
-      sprintf_P(tmp, P_SD_InitError);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_InitError);
       longBeep(2);
       break;
     case SD_ERR_NOCONFIG:
-      sprintf_P(tmp, P_SD_NoConfig);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_NoConfig);
       longBeep(1);
       break;
     case SD_READING_CONFIG:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingConfig);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_Reading, P_SD_ReadingConfig);
       break;
     case SD_READING_TMC:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingTmc);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_Reading, P_SD_ReadingTmc);
       break;
     case SD_READING_SERVOS:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingServos);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_Reading, P_SD_ReadingServos);
       break;
     case SD_READING_MATERIALS:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingMaterials);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_Reading, P_SD_ReadingMaterials);
       break;
     case SD_READING_PURGES:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingPurges);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_Reading, P_SD_ReadingPurges);
       break;
     case SD_READING_STEPPERS:
-      sprintf_P(tmp, P_SD_Reading, P_SD_ReadingSteppers);
+      snprintf_P(tmp, ArraySize(tmp)-1, P_SD_Reading, P_SD_ReadingSteppers);
       break;
   }
   // __debugS(D, PSTR("\tdrawSDStatus: drawing status"));
@@ -611,7 +553,6 @@ uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons, 
   sprintf_P(msg1, message);
   sprintf_P(msg2, addMessage);
   sprintf_P(btn, buttons);
-  terminalClear(true);
   uint8_t stat = display.userInterfaceMessage(_title, msg1, msg2, btn);
   setFastLEDStatus(FASTLED_STAT_NONE);
   return stat;
@@ -659,7 +600,10 @@ void setDisplayPowerSave(bool state) {
 #else
 
 void setupDisplay() {
-    __debugS(D, PSTR("\tsetupDisplay: Serial Display configured on port SERIAL %d"), smuffConfig.displaySerial);
+  __debugS(D, PSTR("\tsetupDisplay: Serial Display configured on port SERIAL %d"), smuffConfig.displaySerial);
+  if(smuffConfig.displaySerial < 1) {
+    __debugS(W, PSTR("\t\tSerial Display must be located on a valid serial port (1-3)!"));
+  }
 }
 
 void drawVersion() {}                                       // not used
@@ -680,7 +624,7 @@ void drawSelectingMessage(uint8_t tool) {}                  // not used
 void drawSDStatus(int8_t stat) {}                           // not used
 void signalNoTool() {}                                      // not used
 
-void drawPurgingMessage(uint16_t len, uint8_t tool) {
+void drawPurgingMessage(double len, uint8_t tool) {
   char tmp[128];
   if(len == 0 && tool == 0)
     sprintf_P(tmp, PSTR("echo: purging: done\n"));
@@ -701,7 +645,7 @@ uint8_t showDialog(PGM_P title, PGM_P message, PGM_P addMessage, PGM_P buttons, 
   char dlg[1024];
 
   // no action if no display serial port is defined
-  if(smuffConfig.displaySerial == -1)
+  if(smuffConfig.displaySerial < 1)
     return state;
 
   setFastLEDStatus(FASTLED_STAT_WARNING);

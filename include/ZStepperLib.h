@@ -25,7 +25,7 @@
 
 #include "Debug.h"
 
-extern void defaultStepFunc(pin_t pin);
+extern void defaultStepFunc(pin_t pin, bool resetPin = false);
 
 class ZStepper {
 public:
@@ -50,7 +50,7 @@ public:
   void          home();
   void          stallDetected() { _stallCount++; }
 
-  void          (*stepFunc)(pin_t) = defaultStepFunc;
+  void          (*stepFunc)(pin_t pin, bool resetPin) = defaultStepFunc;
   void          (*endstopFunc)() = nullptr;
   void          (*endstop2Func)() = nullptr;
   bool          (*endstopCheck)() = nullptr;

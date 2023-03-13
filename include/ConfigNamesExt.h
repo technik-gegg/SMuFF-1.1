@@ -156,3 +156,5 @@ extern char* userDlgButton;
 extern char* userDlgOption;
 extern char* userDlgStatus;
 extern char* changeDebug;
+extern char* ledRefresh;
+extern char* spi3Miso;

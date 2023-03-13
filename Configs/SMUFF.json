@@ -46,6 +46,8 @@
  "CutterTop": false,
  "UseDuet": false,
  "SyncSteppers": true,
- "DspSerial": -1,
- "DuetSerial": 1
+ "DspSerial": -2,
+ "DuetSerial": 1,
+ "LedRefresh": [50, 750],
+ "Spi3Miso" : 1
  }

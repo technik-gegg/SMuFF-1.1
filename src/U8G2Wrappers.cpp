@@ -85,127 +85,123 @@
             return stat;
         }
 
-    #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
-        #if !defined(USE_TWI_DISPLAY) && !defined(USE_LEONERD_DISPLAY)
-            #if SPI3_MOSI != 0 && SPI3_MISO != 0 && SPI3_SCLK != 0
-                SPIClass SPI_3(SPI3_MOSI, SPI3_MISO, SPI3_SCLK, SPI3_CS);
+    #if defined(__STM32F1XX) && defined(__BRD_SKR_MINI)
+        SPIClass SPI_3(SPI3_MOSI, SPI3_MISO, SPI3_SCLK, SPI3_CS);
 
-                /* =========================================
-                    ATTENTION:
-                    The following section does a rewrite of the U8G2 library function
+        /* =========================================
+            ATTENTION:
+            The following section does a rewrite of the U8G2 library function
 
-                    extern "C" uint8_t u8x8_byte_arduino_2nd_hw_spi(...)
+            extern "C" uint8_t u8x8_byte_arduino_2nd_hw_spi(...)
 
-                    This is a must for the SKR mini V1.1 in order to route
-                    all display handling to SPI3 instead of SPI2 since the
-                    controller is wired as such.
+            This is a must for the SKR mini V1.1 in order to route
+            all display handling to SPI3 instead of SPI2 since the
+            controller is wired as such.
 
-                    If your NOT using an SKR mini V1.1 but any other controller
-                    board based on the STM32 AND this controller uses SPI2 for
-                    data exchange, you may comment out this whole section and the
-                    standard U8G2 library will do its work as expected.
-                =========================================== */
-                uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
+            If your NOT using an SKR mini V1.1 but any other controller
+            board based on the STM32 AND this controller uses SPI2 for
+            data exchange, you may comment out this whole section and the
+            standard U8G2 library will do its work as expected.
+        =========================================== */
+        uint8_t __wrap_u8x8_byte_arduino_2nd_hw_spi(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
+        {
+            uint8_t *data;
+            uint8_t internal_spi_mode;
+
+            switch (msg)
+            {
+            case U8X8_MSG_BYTE_SEND:
+
+                // 1.6.5 offers a block transfer, but the problem is, that the
+                // buffer is overwritten with the incoming data
+                // so it can not be used...
+                // SPI.transfer((uint8_t *)arg_ptr, arg_int);
+
+                data = (uint8_t *)arg_ptr;
+                while (arg_int > 0)
                 {
-                    uint8_t *data;
-                    uint8_t internal_spi_mode;
-
-                    switch (msg)
-                    {
-                    case U8X8_MSG_BYTE_SEND:
-
-                        // 1.6.5 offers a block transfer, but the problem is, that the
-                        // buffer is overwritten with the incoming data
-                        // so it can not be used...
-                        // SPI.transfer((uint8_t *)arg_ptr, arg_int);
-
-                        data = (uint8_t *)arg_ptr;
-                        while (arg_int > 0)
-                        {
-                            SPI_3.transfer((uint8_t)*data);
-                            data++;
-                            arg_int--;
-                        }
-
-                        break;
-                    case U8X8_MSG_BYTE_INIT:
-                        if (u8x8->bus_clock == 0) /* issue 769 */
-                            u8x8->bus_clock = u8x8->display_info->sck_clock_hz;
-                        /* disable chipselect */
-                        u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
-                        /* no wait required here */
-
-                        /* for SPI1: setup correct level of the clock signal */
-                        // removed, use SPI.begin() instead: pinMode(11, OUTPUT);
-                        // removed, use SPI.begin() instead: pinMode(13, OUTPUT);
-                        // removed, use SPI.begin() instead: digitalWrite(13, u8x8_GetSPIClockPhase(u8x8));
-
-                        /* setup hardware with SPI.begin() instead of previous digitalWrite() and pinMode() calls */
-                        SPI_3.begin();
-
-                        break;
-
-                    case U8X8_MSG_BYTE_SET_DC:
-                        u8x8_gpio_SetDC(u8x8, arg_int);
-                        break;
-
-                    case U8X8_MSG_BYTE_START_TRANSFER:
-                        /* SPI1 mode has to be mapped to the mode of the current controller, at least Uno, Due, 101 have different SPI_MODEx values */
-                        internal_spi_mode = 0;
-                        switch (u8x8->display_info->spi_mode)
-                        {
-                        case 0:
-                            internal_spi_mode = SPI_MODE0;
-                            break;
-                        case 1:
-                            internal_spi_mode = SPI_MODE1;
-                            break;
-                        case 2:
-                            internal_spi_mode = SPI_MODE2;
-                            break;
-                        case 3:
-                            internal_spi_mode = SPI_MODE3;
-                            break;
-                        }
-
-                #if ARDUINO >= 10600
-                        SPI_3.beginTransaction(SPISettings(u8x8->bus_clock, MSBFIRST, internal_spi_mode));
-                #else
-                        SPI_3.begin();
-
-                        if (u8x8->display_info->sck_pulse_width_ns < 70)
-                            SPI3.setClockDivider(SPI_CLOCK_DIV2);
-                        else if (u8x8->display_info->sck_pulse_width_ns < 140)
-                            SPI3.setClockDivider(SPI_CLOCK_DIV4);
-                        else
-                            SPI3.setClockDivider(SPI_CLOCK_DIV8);
-                        SPI3.setDataMode(internal_spi_mode);
-                        SPI3.setBitOrder(MSBFIRST);
-                #endif
-
-                        u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_enable_level);
-                        u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->post_chip_enable_wait_ns, nullptr);
-                        break;
-
-                    case U8X8_MSG_BYTE_END_TRANSFER:
-                        u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->pre_chip_disable_wait_ns, nullptr);
-                        u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
-
-                #if ARDUINO >= 10600
-                        SPI_3.endTransaction();
-                #else
-                        SPI_3.end();
-                #endif
-
-                        break;
-                    default:
-                        return 0;
-                    }
-
-                    return 1;
+                    SPI_3.transfer((uint8_t)*data);
+                    data++;
+                    arg_int--;
                 }
-                #endif
+
+                break;
+            case U8X8_MSG_BYTE_INIT:
+                if (u8x8->bus_clock == 0) /* issue 769 */
+                    u8x8->bus_clock = u8x8->display_info->sck_clock_hz;
+                /* disable chipselect */
+                u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
+                /* no wait required here */
+
+                /* for SPI1: setup correct level of the clock signal */
+                // removed, use SPI.begin() instead: pinMode(11, OUTPUT);
+                // removed, use SPI.begin() instead: pinMode(13, OUTPUT);
+                // removed, use SPI.begin() instead: digitalWrite(13, u8x8_GetSPIClockPhase(u8x8));
+
+                /* setup hardware with SPI.begin() instead of previous digitalWrite() and pinMode() calls */
+                SPI_3.begin();
+
+                break;
+
+            case U8X8_MSG_BYTE_SET_DC:
+                u8x8_gpio_SetDC(u8x8, arg_int);
+                break;
+
+            case U8X8_MSG_BYTE_START_TRANSFER:
+                /* SPI1 mode has to be mapped to the mode of the current controller, at least Uno, Due, 101 have different SPI_MODEx values */
+                internal_spi_mode = 0;
+                switch (u8x8->display_info->spi_mode)
+                {
+                case 0:
+                    internal_spi_mode = SPI_MODE0;
+                    break;
+                case 1:
+                    internal_spi_mode = SPI_MODE1;
+                    break;
+                case 2:
+                    internal_spi_mode = SPI_MODE2;
+                    break;
+                case 3:
+                    internal_spi_mode = SPI_MODE3;
+                    break;
+                }
+
+        #if ARDUINO >= 10600
+                SPI_3.beginTransaction(SPISettings(u8x8->bus_clock, MSBFIRST, internal_spi_mode));
+        #else
+                SPI_3.begin();
+
+                if (u8x8->display_info->sck_pulse_width_ns < 70)
+                    SPI3.setClockDivider(SPI_CLOCK_DIV2);
+                else if (u8x8->display_info->sck_pulse_width_ns < 140)
+                    SPI3.setClockDivider(SPI_CLOCK_DIV4);
+                else
+                    SPI3.setClockDivider(SPI_CLOCK_DIV8);
+                SPI3.setDataMode(internal_spi_mode);
+                SPI3.setBitOrder(MSBFIRST);
         #endif
+
+                u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_enable_level);
+                u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->post_chip_enable_wait_ns, nullptr);
+                break;
+
+            case U8X8_MSG_BYTE_END_TRANSFER:
+                u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->pre_chip_disable_wait_ns, nullptr);
+                u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);
+
+        #if ARDUINO >= 10600
+                SPI_3.endTransaction();
+        #else
+                SPI_3.end();
+        #endif
+
+                break;
+            default:
+                return 0;
+            }
+
+            return 1;
+        }
     #endif
 
     void DrawUTF8Line(u8g2_t *u8g2, u8g2_uint_t x, u8g2_uint_t y, u8g2_uint_t w, const char *s, uint8_t border_size, uint8_t is_invert)
@@ -296,7 +292,6 @@
                 yy = y - (line_height / 2) + 1;
                 u8g2_DrawHLine(u8g2, SEPERATOR_MARGIN, yy, u8g2_GetDisplayWidth(u8g2) - (SEPERATOR_MARGIN * 2));
                 u8g2_DrawHLine(u8g2, SEPERATOR_MARGIN, yy + 1, u8g2_GetDisplayWidth(u8g2) - (SEPERATOR_MARGIN * 2));
-                terminalSend(idx+2-u8sl->first_pos, 1, s, false, is_invert);
                 return line_height;
             }
 
@@ -313,13 +308,10 @@
                 u8g2_uint_t l = x - 1;
                 DrawUTF8Line(u8g2, x, y, w, tab, border_size, is_invert);
                 DrawUTF8Line(u8g2, MY_BORDER_SIZE, y, l - MY_BORDER_SIZE, s2, border_size, is_invert);
-                terminalSend(idx+2-u8sl->first_pos, 1, s2, false, is_invert, true);
-                terminalSend(idx+2-u8sl->first_pos, 1+TERM_LINE_WIDTH-strlen(tab), tab, false, is_invert ? 5 : 4, false);
             }
             else
             {
                 u8g2_DrawUTF8Line(u8g2, MY_BORDER_SIZE, y, u8g2_GetDisplayWidth(u8g2) - 2 * MY_BORDER_SIZE, s, border_size, is_invert);
-                terminalSend(idx+2-u8sl->first_pos, 1, *s2==0 ? s : s2, true, is_invert, true);
             }
             //__debugS(D, PSTR("draw_selection_list_line %s"), s2);
             return line_height;
@@ -349,8 +341,6 @@
 
             uint8_t title_lines = u8x8_GetStringLineCnt(title);
             uint8_t display_lines;
-
-            terminalSend(1, 1, title, true, 6, true);
 
             //__debugS(D, PSTR("__wrap_u8g2_UserInterfaceSelectionList"));
 
@@ -467,8 +457,6 @@
 
             /* draw the buttons */
             x = d;
-            uint8_t tp = (TERM_LINE_WIDTH - button_term_width)/2;
-            char btn[TERM_LINE_WIDTH+1];
             for( i = 0; i < cnt; i++ )
             {
                 is_invert = i == cursor ? 1 : 0;
@@ -477,16 +465,6 @@
                 u8g2_DrawUTF8Line(u8g2, x, y, 0, p, 1, is_invert);
                 x += u8g2_GetUTF8Width(u8g2, p);
                 x += SPACE_BETWEEN_BUTTONS_IN_PIXEL;
-                char* pp = strchr(p, '\n');
-                if(pp != nullptr)
-                    strncpy(btn, p, strlen(p)-strlen(pp));
-                else
-                    strcpy(btn, p);
-                terminalSend(ln, tp, btn, false, is_invert, false);
-                if(pp != nullptr)
-                    tp += strlen(p)-strlen(pp);
-                else
-                    tp += strlen(p);
             }
 
             /* return the number of buttons */
@@ -539,8 +517,6 @@
             }
             y += u8g2_GetAscent(u8g2);
 
-
-            char tmp[TERM_LINE_WIDTH+1];
             for(;;)
             {
                 uint8_t ln = 1;
@@ -549,21 +525,14 @@
                 {
                     yy = y;
                     /* draw message box */
-
                     yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title1);
-                    ln = terminalSendLines(ln, 1, title1, true, 4, true);
-
-                    if ( title2 != nullptr )
+                    if (title2 != nullptr)
                     {
                         u8g2_DrawUTF8Line(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), title2, 0, 0);
                         yy+=line_height;
-                        strncpy(tmp, title2, ArraySize(tmp));
-                        ln = terminalSendLines(ln, 1, tmp, true, 0, true);
                     }
                     yy += u8g2_DrawUTF8Lines(u8g2, 0, yy, u8g2_GetDisplayWidth(u8g2), line_height, title3);
                     yy += SPACE_BETWEEN_TEXT_AND_BUTTONS_IN_PIXEL;
-                    strncpy(tmp, title3, ArraySize(tmp));
-                    ln = terminalSendLines(ln, 1, tmp, true, 0, true);
 
                     button_cnt = draw_button_line(u8g2, yy, u8g2_GetDisplayWidth(u8g2), cursor, buttons, ++ln);
 

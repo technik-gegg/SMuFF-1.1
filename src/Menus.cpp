@@ -680,17 +680,10 @@ void positionServoCallback(int val) {
 void animationBpmCallback(int val) {
   #if defined(USE_FASTLED_TOOLS)
       for(int i=0; i< smuffConfig.toolCount*2; i++) {
-        #if !defined(USES_ADAFRUIT_NPX)
-          fadeToBlackBy(ledsTool, smuffConfig.toolCount, 100);
-          int8_t pos = beatsin8(val, 0, smuffConfig.toolCount-1);
-          ledsTool[pos] += CHSV(fastLedHue, 255, 200);
-          FastLED.delay(25);
-        #else
-          fadeToBlackBy(cTools, smuffConfig.toolCount, 100);
-          int8_t pos = beatsin8(val, 0, smuffConfig.toolCount-1);
-          cTools->setPixelColor(pos, cTools->gamma32(cTools->ColorHSV(fastLedHue, 255, 200)));
-          delay(25);
-        #endif
+        fadeToBlackBy(cTools, smuffConfig.toolCount, 100);
+        int8_t pos = beatsin8(val, 0, smuffConfig.toolCount-1);
+        cTools->setPixelColor(pos, cTools->gamma32(cTools->ColorHSV(fastLedHue, 255, 200)));
+        delay(25);
       }
   #endif
 }

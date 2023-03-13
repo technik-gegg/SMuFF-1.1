@@ -7,7 +7,6 @@ Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **
 If you like this project and find it useful, you may consider donating.
 [![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
 
-
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
 
 | Board |  |
@@ -16,7 +15,6 @@ To use this firmware, you have to [compile it](https://sites.google.com/view/the
 | Bigtreetech [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)|**recommended**|
 | Bigtreetech [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4) | **recommended**|
 | Bigtreetech [SKR mini E3 V3.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-for-ender-3) |**recommended** |
-| Bigtreetech [SKR mini E3 RRF V1.1](https://www.biqu.equipment/products/bigtreetech-e3-rrf-v1-1-mainboard-3d-printer-part-integrated-esp8266-wi-fi-module-for-ender3)| *not released yet*|
 
 The Bigtreetech SKR mini series boards are very small and yet  powerful because of the 32-Bit STM Micro Controller Unit.
 
@@ -41,11 +39,46 @@ Each test result will be displayed on the LCD and also sent to the log serial po
 
 For more information about building the SMuFF and some more detailed stuff, head over to my official [SMuFF homepage](https://sites.google.com/view/the-smuff/) or to my [Discord server](https://discord.com/invite/BzZ3rBf).
 
-[![Open in VS-Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/technik-gegg/SMuFF-1.1/tree/SMuFF-3.0)
+[![Open in VS-Code](https://img.shields.io/badge/preview%20in-vscode.dev-blue)](https://open.vscode.dev/technik-gegg/SMuFF-1.1/tree/SMuFF-3.0) [![Discord](https://img.shields.io/discord/741179485474521110?color=%23F80000&label=chat&logo=Discord&logoColor=%23FFFFFF)](https://discord.com/invite/BzZ3rBf)
+
+---
+
+## Credit where credit is due
+
+A special thanks to the folks who have created the following (Arduino) libraries, on which the SMuFF firmware builds upon:
+
++ [Adafruit](https://github.com/technik-gegg/Adafruit-PWM-Servo-Driver-Library.git) for the PWM Servo library
++ [Benoît Blanchon](https://github.com/bblanchon/ArduinoJson.git) for the Arduino JSON library
++ [Bill Greinman](https://github.com/greiman/SdFat) for the SD-Card library
++ [Oliver Kraus](https://github.com/olikraus/U8G2_Arduino.git) for the U8G2 display library
++ [teemuatlut](https://github.com/teemuatlut/TMCStepper) for the TMC-Stepper library
 
 ---
 
 ## Recent changes
+
+**3.16** - bug fixes / enhancements / cleanup
+
++ **changed the stepper motors timer prescaler from 24Mhz to 2MHz** (internally 4MHz). This means, you **must** adjust your stepper ticks, otherwise steppers are going to turn terribly slow! Had to do this in order to gain more granular control over the stepper motors at lower speeds.
+*Rule of thumb: Divide your current speed settings (Max. speed, Accel. speed, Purge speed, etc.) roughly by 10.*
+The stepper timer in fact is running on double the frequency (4MHz) in order to achieve a longer pulse on the stepper driver, because now every 1st tick is used to set the STEP signal, every 2nd to reset the STEP signal. This makes the *Step-Delay* setting unnecessary and you should set it to 0. Though I left this setting in the config, just in case one needs it.
++ changed behaviour of "Unload retraction". If a value is set, it will only be executed if filament is fully loaded (down to nozzle). Keep in mind that this feature is used to shorten the filament remains when using the Cutter and yet only works on a Bowden setup.
++ changed data-type in *purgeFilament()* from uint16_t to double for more accurate purging.
++ changed the method of debug outputs in endstop interrupt functions, since sending data to serial ports from within ISR routines is always a bit critical and may block or crash the controller.
++ added **DEV4** debug flag for a more granular output control of debug messages (i.e. printing incoming GCodes, memory stats, ...).
++ updated GCode **M100** to determine free system memory (RAM). Before, this GCode only returned "ok".
++ added printing out memory stats every minute if *DEV4* debug flag is set.
++ removed the "*Mirroring the display on a VT-100 terminal*" feature introduced in V2.24 completely. Although it was nice to have back then, the software options around the SMuFF have evolved. Hence this feature is obsolete now and was only messing up the source code.
++ removed the (meanwhile) obsolete conditional code for FastLED library. My modified Adafruit NeoPixel library is covering all that's needed.
++ overhauled the code for handling the NeoPixels on tools. NeoPixels will not update as long as one of the stepper motors is spinning (Feeder / Selector), which makes the steppers run smoother.
++ added parameter **P** to GCode **M700** (load filament) in order to purge material (after it's being loaded). If no *value* (e.g. *M700 P*) is given, it'll purge the configured purge amount, otherwise the length of filament given in *value* (e.g. *M700 P12.34*).
+
+  **[ Bug fixes ]**
+
++ fixed the bug that puts a "loading" dialog on the display while in *Testrun mode* (kudos to **palkovnik807**).
++ fixed the bug where retries were not being decremented while unloading filament (a.k.a "infinite loop" if unloading went wrong).
++ fixed a potential buffer overflow in *drawPurgingMessage()* and *printPeriodicalState()* functions.
++ fixed a bug that may have caused the MS1/MS2/MS3 pins being set up wrong on the **E3-DIP V1.1** (only), because the according pins on the MCU were in an undefined state. Now those pins are being set to LOW (0V) at startup.
 
 **3.15** - minor changes / bug fixes
 

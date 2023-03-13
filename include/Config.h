@@ -26,10 +26,10 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.15"
+#define VERSION_STRING    "V3.16"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2023-02-13"
+#define VERSION_DATE      "2023-02-16"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -130,22 +130,22 @@ typedef uint32_t    pin_t;
 #define REMOTE_PF4          12
 
 #if defined(__STM32F1XX)
-#define STEPPER_PSC         3           // 24MHz on STM32F1 (72MHz MCU/SysClock)
+#define STEPPER_PSC         36          // 2MHz on STM32F1 (72MHz MCU/SysClock)
 #define GP_PSC              72          // 1MHz 
 #define SERVO_PSC           72          // 1MHz
 #define LED_PSC             72          // 1MHz
 #elif defined(__STM32F4XX)
-#define STEPPER_PSC         7           // 24MHz on STM32F4 (168MHz MCU/SysClock)
+#define STEPPER_PSC         84          // 2MHz on STM32F4 (168MHz MCU/SysClock)
 #define GP_PSC              168         // 1MHz 
 #define SERVO_PSC           168         // 1MHz
 #define LED_PSC             168         // 1MHz
 #elif defined(__STM32G0XX)
-#define STEPPER_PSC         3           // 21.3MHz on STM32G0 (64MHz MCU/SysClock)
+#define STEPPER_PSC         32          // 2MHz on STM32G0 (64MHz MCU/SysClock)
 #define GP_PSC              64          // 1MHz 
 #define SERVO_PSC           64          // 1MHz
 #define LED_PSC             64          // 1MHz
 #else
-#define STEPPER_PSC         2           // 8MHz on AVR (16MHz MCU)
+#define STEPPER_PSC         8           // 2MHz on AVR (16MHz MCU)
 #endif
 #define MAX_POWER           2000        // maximum allowed power for rms_current()
 #define MAX_STALL_COUNT     100         // maximum stall counter for stepper

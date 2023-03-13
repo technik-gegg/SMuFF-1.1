@@ -103,6 +103,10 @@ void every2s() {
   // Add your periodical code here
 }
 
+static long fiveSecCounter = 0;
 void every5s() {
+  fiveSecCounter++;
+  if(fiveSecCounter % 12 == 0)
+      showFreeMemory();       // dump memory info once a minute
   // Add your periodical code here
 }

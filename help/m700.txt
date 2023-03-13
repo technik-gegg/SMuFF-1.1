@@ -1,5 +1,6 @@
-M700	 [S]
+M700	 [S | P [length]]
 ---------------------------
 S 		load filament to Splitter
+P 		purge filament only (if no length is given, purge the configured length)
 
-Without parameters the tool gets loaded to Nozzle (default for non Splitter option).
+Without parameters filament of the current tool gets loaded down to the nozzle (default for non Splitter option).

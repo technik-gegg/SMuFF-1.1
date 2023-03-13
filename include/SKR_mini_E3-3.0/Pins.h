@@ -114,9 +114,6 @@
 
 #define USB_CONNECT_PIN     0       // not available
 #define SD_DETECT_PIN       PC3
-#if !defined(USE_SERIAL_DISPLAY)
-#define USE_TERMINAL_MENUS  1
-#endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // using the same pins as for TWI displays (SW-I2C)

@@ -30,7 +30,7 @@
   extern TwoWire I2CBus2;
   #if defined(USE_MULTISERVO)
     #include <SoftWire.h>
-    extern SoftWire I2CBusMS;  
+    extern SoftWire I2CBusMS;
   #endif
 #else
   #include <SoftWire.h>

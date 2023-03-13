@@ -48,7 +48,7 @@ ZStepper::ZStepper(int8_t number, char* descriptor, pin_t stepPin, pin_t dirPin,
   __debugS(DEV2, PSTR("\tStepper '%-8s' stepPin: %4d   dirPin: %4d  enablePin: %4d"), _descriptor, _stepPin, _dirPin, _enablePin);
 }
 
-void defaultStepFunc(pin_t pin) {
+void defaultStepFunc(pin_t pin, bool resetPin) {
   if(pin > 0) {
     digitalWrite(pin, HIGH);
     delayMicroseconds(1);
@@ -224,22 +224,24 @@ bool ZStepper::handleISR() {
     setMovementDone(true);  // abort this handler
     return true;
   }
+  static bool resetPin = false;
   
   // check for "Abort" condition (PMMU only)
-  if(!_ignoreAbort && _abort) {
+  if(!_ignoreAbort && _abort && !resetPin) {
     setMovementDone(true);
     return true;
   }
   // check for "Movement Done" conditions
-  if(!_ignoreEndstop && _endstopHit && !_movementDone) {
+  if(!_ignoreEndstop && _endstopHit && !_movementDone && !resetPin) {
     setMovementDone(true);
     return true;
   }
-  updateAcceleration();
+  if(!resetPin)
+    updateAcceleration();
 
 #ifdef HAS_TMC_SUPPORT
   // check stepper motor stall on TMC2209 if configured likewise
-  if(_stallCountThreshold > 0 && _stallCount > _stallCountThreshold) {
+  if(_stallCountThreshold > 0 && _stallCount > _stallCountThreshold  && !resetPin) {
     _stallDetected = true;
     if(_stopOnStallDetected) {
       setMovementDone(true);
@@ -252,10 +254,13 @@ bool ZStepper::handleISR() {
     setMovementDone(true);
   }
   else if(_stepCount < _totalSteps) {
-    stepFunc(_stepPin);
-    _stepCount++;
-    _stepsTaken += _dir;
-    incrementStepPosition();
+    stepFunc(_stepPin, resetPin);
+    if(!resetPin) {
+      _stepCount++;
+      _stepsTaken += _dir;
+      incrementStepPosition();
+    }
+    resetPin = !resetPin;
     if(_stepCount >= _totalSteps) {
       setMovementDone(true);
     }

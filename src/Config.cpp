@@ -228,8 +228,11 @@ bool readMainConfig()
       smuffConfig.invertDuet =                  jsonDoc[invertDuet];
       smuffConfig.useDuet =                     jsonDoc[useDuet] | false;
       smuffConfig.allowSyncSteppers =           jsonDoc[syncSteppers] | true;
-      smuffConfig.displaySerial =               jsonDoc[dspSerialPort] | -1;
+      smuffConfig.displaySerial =               jsonDoc[dspSerialPort] | -2;
       smuffConfig.duet3Dport =                  jsonDoc[duetSerialPort] | 1;
+      smuffConfig.ledRefresh[0] =               jsonDoc[ledRefresh][0] | FASTLED_UPDATE_FAST;
+      smuffConfig.ledRefresh[1] =               jsonDoc[ledRefresh][1] | FASTLED_UPDATE_SLOW;
+      smuffConfig.spi3Miso =                    jsonDoc[spi3Miso] | 1;
       
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -355,7 +358,7 @@ bool readDebugLevel() {
     cfg.read(tmp, ArraySize(tmp));
     cfg.close();
     int dbgLevel = atoi(tmp);
-    if(dbgLevel >= 0 && dbgLevel <= 127) {
+    if(dbgLevel >= 0 && dbgLevel <= 255) {
       smuffConfig.dbgLevel = (uint8_t)dbgLevel;
       stat = true;
     }
@@ -642,9 +645,9 @@ bool readMaterials() {
           strncpy(smuffConfig.materialNames[i], pItem, MAX_MATERIAL_NAME_LEN);
         }
         //__debugS(D, PSTR("[\treadMaterials: '%s' named '%s']"), item, smuffConfig.materialNames[i]);
-        uint16_t len = jsonDoc[item][pfactor];
-        if(len > 0) {
-          smuffConfig.purges[i] = len;
+        uint16_t factor = jsonDoc[item][pfactor];
+        if(factor > 0) {
+          smuffConfig.purges[i] = factor;
         }
         else {
           smuffConfig.purges[i] = 100;
@@ -760,6 +763,9 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[syncSteppers]         = smuffConfig.allowSyncSteppers;
   jsonDoc[dspSerialPort]        = smuffConfig.displaySerial;
   jsonDoc[duetSerialPort]       = smuffConfig.duet3Dport;
+  jsonDoc[ledRefresh][0]        = smuffConfig.ledRefresh[0];
+  jsonDoc[ledRefresh][1]        = smuffConfig.ledRefresh[1];
+  jsonDoc[spi3Miso]             = smuffConfig.spi3Miso;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }

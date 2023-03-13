@@ -110,12 +110,7 @@
 
 #define NEOPIXEL_TOOL_PIN   PA1         // SERVOS (NeoPixel for tools)
 #define BRIGHTNESS_TOOL     127
-#if !defined(USES_ADAFRUIT_NPX)
-#define LED_TYPE_TOOL       WS2812B
-#define COLOR_ORDER_TOOL    GRB
-#else
 #define COLOR_ORDER_TOOL    NEO_GRB + NEO_KHZ800
-#endif
 
 #define SDCS_PIN            0           // use default
 
@@ -126,17 +121,13 @@
     #define DEBUG_PIN           PA0         // TH0 //-1
 #else
     #if defined(__STM32F1XX)
-    #define DEBUG_PIN_NAME      PC_14
+    #define DEBUG_PIN_NAME      PC_0
     #endif
-    #define DEBUG_PIN           PC14        // PROBE
+    #define DEBUG_PIN           PC0        // Y-STOP
 #endif
 
 #define USB_CONNECT_PIN     PC13
 #define SD_DETECT_PIN       PC4
-
-#if !defined(USE_SERIAL_DISPLAY)
-    #define USE_TERMINAL_MENUS  1
-#endif
 
 #if defined(USE_SPLITTER_ENDSTOPS)
 // only describing pins, since the 2nd hardware I2C is being used and pins are pre-defined

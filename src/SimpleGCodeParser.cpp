@@ -199,6 +199,7 @@ bool parse_T(const String& buf, int8_t serial, char* errmsg) {
   }
   int8_t tool = (int8_t)buf.toInt();
   int16_t param;
+  __debugS(DEV4, PSTR("Got T[%s]: >%d< (len: %d)"), buf.c_str(), tool, buf.length());
 
   char msg[20];
   uint16_t ofs = 0;
@@ -221,8 +222,12 @@ bool parse_T(const String& buf, int8_t serial, char* errmsg) {
           unloadFilament(errmsg);
     }
 
-    bool showMsg = serial==smuffConfig.displaySerial ? true : false;
-    
+    bool showMsg = false;
+    #if defined(USE_SERIAL_DISPLAY)
+      showMsg = serial == smuffConfig.displaySerial ? true : false;
+      __debugS(DEV3, PSTR("showMsg: %s, serial: %d, dspSerial: %d"), showMsg ? P_Yes : P_No, serial, smuffConfig.displaySerial);
+    #endif
+
     if((stat = selectTool(tool, errmsg, showMsg))) {
       if(!smuffConfig.prusaMMU2) {
         if((param = getParam(buf.substring(ofs), (char*)"S")) != -1) {
@@ -301,7 +306,7 @@ bool parse_G(const String& buf, int8_t serial, char* errmsg) {
     return stat;
   }
   uint16_t code = (uint16_t)buf.toInt();
-  //__debugS(D, PSTR("G[%s]: >%d< %d"), buf.c_str(), code, buf.length());
+  __debugS(DEV4, PSTR("Got G[%s]: >%d< (len: %d)"), buf.c_str(), code, buf.length());
 
   char msg[10];
   char tmp[50];
@@ -348,6 +353,7 @@ bool parse_M(const String& buf, int8_t serial, char* errmsg) {
     return stat;
   }
   uint16_t code = (uint16_t)buf.toInt();
+  __debugS(DEV4, PSTR("Got M[%s]: >%d< (len: %d)"), buf.c_str(), code, buf.length());
 
   char msg[10];
   char tmp[50];

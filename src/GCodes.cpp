@@ -36,13 +36,14 @@ void setTMCCSMax(int8_t axis, int param);
 void setTMCCSDown(int8_t axis, int param);
 void setTMCTOff(int8_t axis, int param);
 bool isMStepValid(int param);
-void xlateSpeed205(int8_t axis, uint16_t speed, int8_t serial);
+void xlateSpeed205(int8_t axis, double speed, int8_t mode, int8_t serial);
 void rangeError(int min, int max, char* errmsg);
 void rangeError(long min, long max, char* errmsg);
 void rangeError(double min, double max, char* errmsg);
 void toolError(char* errmsg);
 void parameterError(char* errmsg);
 void missingParamError(const char* paramName, char* errmsg);
+void setLedRefresh(uint16_t param, int index);
 
 extern uint32_t lastEvent;
 
@@ -403,6 +404,9 @@ bool M98(const char *msg, String buf, int8_t serial, char* errmsg)
 bool M100(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   printResponse(msg, serial);
+  char free[80];
+  getFreeMemory(free, ArraySize(free)-1);
+  printResponse(free, serial);
   return true;
 }
 
@@ -466,7 +470,7 @@ bool M111(const char *msg, String buf, int8_t serial, char* errmsg)
     if(hasParam(buf, W_Param))
       sprintf_P(tmp, "/* Debug */\n{\"Level\": %d }\n", smuffConfig.dbgLevel);
     else
-      sprintf_P(tmp, "Debug Level %d:\n\tDebug:\t\t%s\t[ 1]\n\tWarning:\t%s\t[ 2]\n\tInfo:\t\t%s\t[ 4]\n\tSpecial:\t%s\t[ 8]\n\tDev (1):\t%s\t[16]\n\tDev (2):\t%s\t[32]\n\tDev (3):\t%s\t[64]\n", 
+      sprintf_P(tmp, "Debug Level %d:\n\tDebug:\t\t%s\t[  1]\n\tWarning:\t%s\t[  2]\n\tInfo:\t\t%s\t[  4]\n\tSpecial:\t%s\t[  8]\n\tDev (1):\t%s\t[ 16]\n\tDev (2):\t%s\t[ 32]\n\tDev (3):\t%s\t[ 64]\n\tDev (4):\t%s\t[128]\n", 
         smuffConfig.dbgLevel, 
         smuffConfig.dbgLevel & D ? P_Yes : P_No, 
         smuffConfig.dbgLevel & W ? P_Yes : P_No, 
@@ -474,7 +478,8 @@ bool M111(const char *msg, String buf, int8_t serial, char* errmsg)
         smuffConfig.dbgLevel & SP ? P_Yes : P_No,
         smuffConfig.dbgLevel & DEV ? P_Yes : P_No,
         smuffConfig.dbgLevel & DEV2 ? P_Yes : P_No,
-        smuffConfig.dbgLevel & DEV3 ? P_Yes : P_No);
+        smuffConfig.dbgLevel & DEV3 ? P_Yes : P_No,
+        smuffConfig.dbgLevel & DEV4 ? P_Yes : P_No);
     printResponse(tmp, serial);
   #else
     printResponse("DEBUG flag not set while compiling, debug messages have been turned off.\n", serial);
@@ -1234,11 +1239,7 @@ bool M150(const char *msg, String buf, int8_t serial, char* errmsg)
   {
     if (index == -1 || index > NUM_LEDS)
       return false;
-    #if !defined(USES_ADAFRUIT_NPX)
-      setFastLED(index, CRGB(red, green, blue));
-    #else
-      setFastLED(index, ColorRGB(red, green, blue));
-    #endif
+    setFastLED(index, ColorRGB(red, green, blue));
   }
   return true;
 #else
@@ -1556,15 +1557,17 @@ bool M205(const char *msg, String buf, int8_t serial, char* errmsg) {
       else if (strcmp(cmd, cutterOpen) == 0)          { smuffConfig.cutterOpen = (uint8_t)param; }
       else if (strcmp(cmd, cutterClose) == 0)         { smuffConfig.cutterClose = (uint8_t)param; }
       else if (strcmp(cmd, insertSpeed) == 0)         { smuffConfig.insertSpeed = (uint16_t)param; }
+      else if (strcmp(cmd, ledRefresh) == 0)          { if(index >=0 && index <= 1) setLedRefresh((uint16_t)param, index); else { rangeError(0, 1, errmsg); stat = false; }}
+      else if (strcmp(cmd, spi3Miso) == 0)            { if (param >=  0 && param <= 1) smuffConfig.insertSpeed = (int8_t)param; else { rangeError(0, 1, errmsg); stat = false; }}
 
-      else if (strcmp(cmd, dbgLvl) == 0)              { if (param >=  0 && param <= 127) smuffConfig.dbgLevel = (uint8_t)param; else { rangeError(0, 127, errmsg); stat = false; } }
+      else if (strcmp(cmd, dbgLvl) == 0)              { if (param >=  0 && param <= 255) smuffConfig.dbgLevel = (uint8_t)param; else { rangeError(0, 255, errmsg); stat = false; } }
       else if (strcmp(cmd, backlightColor) == 0)      { if (param >=  0 && param <=  15) { smuffConfig.backlightColor = (uint8_t)param; setBacklightIndex(smuffConfig.backlightColor); } else { rangeError(0, 15, errmsg); stat = false; } }
       else if (strcmp(cmd, toolColor) == 0)           { if (param >=  0 && param <=  15) { smuffConfig.toolColor = (uint8_t)param; setToolColorIndex(smuffConfig.toolColor); } else { rangeError(0, 15, errmsg); stat = false; } }
       else if (strcmp(cmd, animBpm) == 0)             { if (param >   0 && param <= 255) { smuffConfig.animationBPM = (uint8_t)param; lastEvent = millis() - smuffConfig.powerSaveTimeout*1500; isIdle = true; } else { rangeError(0, 255, errmsg); stat = false; } }
       else if (strcmp(cmd, statusBpm) == 0)           { if (param >   0 && param <= 255) smuffConfig.statusBPM = (uint8_t)param; else { rangeError(0, 255, errmsg); stat = false; } }
       else if (strcmp(cmd, fanSpeed) == 0)            { if (param >=  0 && param <= 100) { smuffConfig.fanSpeed = (uint8_t)param; setupFan(); } else { rangeError(0, 100, errmsg); stat = false; } }
       else if (strcmp(cmd, contrast) == 0)            { if (param >= 60 && param <= 255) { smuffConfig.lcdContrast = (uint8_t)param; display.setContrast(smuffConfig.lcdContrast); } else { rangeError(60, 255, errmsg); stat = false; } }
-      else if (strcmp(cmd, xlateSpeed) == 0)          { if (axis != -1) { xlateSpeed205(axis, (uint16_t)param, serial); } else { axisError(errmsg); stat = false; } }
+      else if (strcmp(cmd, xlateSpeed) == 0)          { if (axis != -1) { xlateSpeed205(axis, (double)fParam, pinmode, serial); } else { axisError(errmsg); stat = false; } }
       else if (strcmp(cmd, stepsPerMillimeter) == 0)  { if (axis != -1) { smuffConfig.stepsPerMM[axis] = (uint16_t)param; steppers[axis].setStepsPerMM(smuffConfig.stepsPerMM[axis]); } else { axisError(errmsg); stat = false; } }
       else if (strcmp(cmd, endstopTrig) == 0)         { if (axis != -1) { smuffConfig.endstopTrg[axis] = (uint8_t)param; steppers[axis].setEndstopState(smuffConfig.endstopTrg[axis]); } else { axisError(errmsg); stat = false; } }
       else if (strcmp(cmd, maxSpeed) == 0)            { if (axis != -1) { smuffConfig.maxSpeed[axis] = (uint16_t)param; steppers[axis].setMaxSpeed(smuffConfig.maxSpeed[axis]); } else { axisError(errmsg); stat = false; } }
@@ -1620,6 +1623,10 @@ bool M205(const char *msg, String buf, int8_t serial, char* errmsg) {
     }
   }
   return stat;
+}
+
+void setLedRefresh(uint16_t param, int index) {
+  smuffConfig.ledRefresh[index] = param;
 }
 
 void setTMCStall(int8_t axis, pin_t stallPin, int param, int cool, int trigg) {
@@ -1783,11 +1790,27 @@ bool M206(const char *msg, String buf, int8_t serial, char* errmsg)
   return stat;
 }
 
-void xlateSpeed205(int8_t axis, uint16_t speed, int8_t serial) {
-  unsigned long spd = translateSpeed(speed, axis, true);
+void xlateSpeed205(int8_t axis, double speed, int8_t mode, int8_t serial) {
+  unsigned long spd = 0;
+  if(mode == 1)
+    spd = translateSpeed((double)speed/60, axis, true);
+  else
+    spd = translateSpeed(speed, axis, true);
   char tmp[50];
-  sprintf_P(tmp, P_XlateSpeedResponse, String(spd).c_str());
+  snprintf_P(tmp, ArraySize(tmp)-1, P_XlateSpeedResponse, spd);
   printResponse(tmp, serial);
+
+  String speedMMS, speedMMM;
+  if(mode == 1) {
+    speedMMS = String((double)speed/60);
+    speedMMM = String(speed);
+  }
+  else {
+    speedMMS = String(speed);
+    speedMMM = String(speed*60);
+  }
+    
+  __debugS(I, PSTR("[XlateSpeed]: On %c-Axis %s mm/s (%s mm/min) translates to %ld timer ticks."), axis+'X', speedMMS.c_str(), speedMMM.c_str(), spd);
 }
 
 
@@ -2329,7 +2352,11 @@ bool M700(const char *msg, String buf, int8_t serial, char* errmsg)
   if (tool >= 0 && tool <= MAX_TOOLS)
   {
     if(hasParam(buf, P_Param)) {
-      purgeFilament();
+      double len = getParamF(buf, P_Param);
+      if(len == -1.0)
+        len = 0;
+      __debugS(DEV3, PSTR("[M700]: Purging %s mm."), String((len == 0 ? smuffConfig.purgeLength : len)).c_str());
+      purgeFilament(len);
       stat = true;
     }
     else if(hasParam(buf, S_Param)) {
@@ -2808,6 +2835,15 @@ bool G12(const char *msg, String buf, int8_t serial, char* errmsg)
   else
     p = buf;
 
+  // G12C received, cut filament and return
+  if (hasParam(p, C_Param)) {
+    if(smuffConfig.useCutter) {
+      cutFilament(false);
+      return true;
+    }
+    return false;
+  }
+
   if ((param = getParam(p, S_Param)) != -1) {
     wait = (uint16_t)param; // defines the wipe speed
   }
@@ -2823,24 +2859,15 @@ bool G12(const char *msg, String buf, int8_t serial, char* errmsg)
   if ((param = getParam(p, R_Param)) != -1) {
     repeat = param; // defines the number of repeats
   }
-  if (hasParam(p, C_Param)) {
-    if(smuffConfig.useCutter) {
-      cutFilament(false);
-      return true;
-    }
-    return false;
-  }
 
-  unsigned n = 1;
-  for (n = 0; n < repeat; n++)
+  for (unsigned n = 0; n < repeat; n++)
   {
     setServoPos(SERVO_WIPER, pos1);
-    delay(wait);
+    delayMicroseconds(wait*1000);
     setServoPos(SERVO_WIPER, pos2);
-    delay(wait);
+    delayMicroseconds(wait*1000);
   }
   setServoPos(SERVO_WIPER, pos0);
-  delay(100);
   disableServo(SERVO_WIPER);
   return true;
 }

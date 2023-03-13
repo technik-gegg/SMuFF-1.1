@@ -56,31 +56,25 @@ void readSequences() {
 }
 
 void initAdaNeoPx() {
-#if defined(USES_ADAFRUIT_NPX)
-  #if NEOPIXEL_PIN > 0 && defined(USE_FASTLED_BACKLIGHT)
-    pinMode(NEOPIXEL_PIN, OUTPUT);
-    cBackLight = new Adafruit_NeoPixel(NUM_LEDS, NEOPIXEL_PIN, COLOR_ORDER);
-    cBackLight->setBrightness(BRIGHTNESS);
-    __debugS(D, PSTR("\tinitAdaNeoPx: Backlight initialized"));
-  #else
-    #if defined(NEOPIXEL_PIN)
-      __debugS(D, PSTR("\tinitAdaNeoPx: Backlight not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
-    #endif
+#if NEOPIXEL_PIN > 0 && defined(USE_FASTLED_BACKLIGHT)
+  pinMode(NEOPIXEL_PIN, OUTPUT);
+  cBackLight = new Adafruit_NeoPixel(NUM_LEDS, NEOPIXEL_PIN, COLOR_ORDER);
+  cBackLight->setBrightness(BRIGHTNESS);
+  __debugS(D, PSTR("\tinitAdaNeoPx: Backlight initialized"));
+#else
+  #if defined(NEOPIXEL_PIN)
+    __debugS(D, PSTR("\tinitAdaNeoPx: Backlight not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
   #endif
-  #if NEOPIXEL_TOOL_PIN > 0 && defined(USE_FASTLED_TOOLS)
-    pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
-    uint16_t pixelCount = smuffConfig.toolCount;
-    #if defined(USE_NUM_PIXELS) && USE_NUM_PIXELS != 0
-      pixelCount = USE_NUM_PIXELS;
-    #endif
-    cTools = new Adafruit_NeoPixel(pixelCount, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL);
-    cTools->setBrightness(BRIGHTNESS_TOOL);
-    __debugS(D, PSTR("\tinitAdaNeoPx: Tools initialized"));
-  #else
-    #if defined(NEOPIXEL_TOOL_PIN)
-      __debugS(D, PSTR("\tinitAdaNeoPx: Neopixels for tools not enabled. Neopixel Pin: %d"), NEOPIXEL_TOOL_PIN);
-    #endif
+#endif
+#if NEOPIXEL_TOOL_PIN > 0 && defined(USE_FASTLED_TOOLS)
+  pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
+  uint16_t pixelCount = smuffConfig.toolCount;
+  #if defined(USE_NUM_PIXELS) && USE_NUM_PIXELS != 0
+    pixelCount = USE_NUM_PIXELS;
   #endif
+  cTools = new Adafruit_NeoPixel(pixelCount, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL);
+  cTools->setBrightness(BRIGHTNESS_TOOL);
+  __debugS(D, PSTR("\tinitAdaNeoPx: Tools initialized"));
 #endif
 }
 
@@ -90,42 +84,26 @@ void initAdaNeoPx() {
   but also for the tool status if wired and defined.
 */
 void initFastLED() {
-#if defined(USES_ADAFRUIT_NPX)
   initAdaNeoPx();
-#else
-  #if NEOPIXEL_PIN > 0 && defined(USE_FASTLED_BACKLIGHT)
-    pinMode(NEOPIXEL_PIN, OUTPUT);
-    cBackLight = &FastLED.addLeds<LED_TYPE, NEOPIXEL_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-    FastLED.setBrightness(BRIGHTNESS);
-    __debugS(D, PSTR("\tinitFastLED: Backlight initialized"));
-  #else
-    #if defined(NEOPIXEL_PIN)
-    __debugS(D, PSTR("\tinitFastLED: Neopixels for backlight not enabled. Neopixel Pin: %d"), NEOPIXEL_PIN);
-    #endif
-  #endif
-  #if NEOPIXEL_TOOL_PIN > 0 && defined(USE_FASTLED_TOOLS)
-    pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
-    cTools = &FastLED.addLeds<LED_TYPE_TOOL, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL>(ledsTool, smuffConfig.toolCount).setCorrection(TypicalLEDStrip);
-    FastLED.setBrightness(BRIGHTNESS_TOOL);
-    __debugS(D, PSTR("\tinitFastLED: Tools initialized"));
-  #else
-    #if defined(NEOPIXEL_TOOL_PIN)
-    __debugS(D, PSTR("\tinitFastLED: Neopixels for tools not enabled. Neopixel Pin: %d"), NEOPIXEL_TOOL_PIN);
-    #endif
-  #endif
-#endif
 }
 
 /*
   Initialize pin for hardware debugging.
   Primarily used to attach an oscilloscope.
 */
+extern volatile uint32_t*  debugPin;
+extern uint32_t   pinMask_DebugSet;
+extern uint32_t   pinMask_DebugReset;
+
 void initHwDebug() {
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN > 0
-  #if !defined(USE_MULTISERVO)
-    pinMode(DEBUG_PIN, OUTPUT);
-    digitalWrite(DEBUG_PIN, HIGH);
-  #endif
+  pinMode(DEBUG_PIN, OUTPUT);
+  digitalWrite(DEBUG_PIN, HIGH);
+#if defined(FASTFLIPDBG) && (defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX))
+  debugPin = &(digitalPinToPort(DEBUG_PIN)->BSRR);
+  pinMask_DebugSet = digitalPinToBitMask(DEBUG_PIN);
+  pinMask_DebugReset = digitalPinToBitMask(DEBUG_PIN) << 16;
+#endif
   calcHwDebugCounter();
   __debugS(D, PSTR("\tinitHwDebug: Pin initialized, frequency is %dHz"), smuffConfig.dbgFreq);
 #endif
@@ -383,6 +361,23 @@ void setupEncoder() {
 
 void setupSteppers(){
 
+  // only relevant on the E3-DIP V1.1
+  #if defined(__BRD_SKR_MINI_E3DIP)
+    #if SPI3_MOSI > 0 && SPI3_SCLK > 0 && SPI3_MISO > 0
+      // configure the pins as outputs and set them to LOW, since those are connected
+      // to the MS1/MS2 pins on the stepper driver socket
+      pinMode(SPI3_MOSI, OUTPUT);
+      pinMode(SPI3_SCLK, OUTPUT);
+      pinMode(SPI3_MISO, OUTPUT);
+      digitalWrite(SPI3_MOSI, smuffConfig.spi3Mosi);
+      digitalWrite(SPI3_SCLK, smuffConfig.spi3Sclk);
+      digitalWrite(SPI3_MISO, smuffConfig.spi3Miso);
+      __debugS(DEV, PSTR("SPI3 pins set to OUTPUT: MOSI = %s, SCLK = %s, MISO = %s"), 
+          smuffConfig.spi3Mosi == 1 ? P_High : P_Low, 
+          smuffConfig.spi3Sclk == 1 ? P_High : P_Low, 
+          smuffConfig.spi3Miso == 1 ? P_High : P_Low);
+    #endif 
+  #endif
   uint16_t maxSpeed = translateSpeed(smuffConfig.maxSpeed[SELECTOR], SELECTOR);
   uint16_t accelSpeed = translateSpeed(smuffConfig.accelSpeed[SELECTOR], SELECTOR);
   steppers[SELECTOR] = ZStepper(SELECTOR, (char *)"SELECTOR", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, accelSpeed, maxSpeed);
@@ -724,22 +719,23 @@ void setupTimers()
   //          communication interrupts/breaks. Read the STM32 MCU spec. and check
   //          the stm32duino library settings before you do so.
   // *****
-  stepperTimer.setupTimer(ZTimer::_TIMER1, ZTimer::CH1, STEPPER_PSC, 0, isrStepperTimerHandler);  // prescaler set to STEPPER_PSC, timer will be calculated as needed
+  uint32_t stpPsc = STEPPER_PSC/2;  // double the frequency (i.e. half PSC), since two ticks will make one stepping pulse
+  stepperTimer.setupTimer(ZTimer::_TIMER1, ZTimer::CH1, stpPsc, 0, isrStepperTimerHandler);  // prescaler set to STEPPER_PSC, timer will be calculated as needed
   stepperTimer.setPreload(true);
-  __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((double)stepperTimer.getClockFrequency()/1000000/STEPPER_PSC).c_str());
+  __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((double)stepperTimer.getClockFrequency()/1000000/stpPsc).c_str());
 
   #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
     servoTimer.setupTimer(ZTimer::_TIMER7, ZTimer::CH1, SERVO_PSC, 0, isrServoTimerHandler);      // prescaler set to SERVO_PSC, timer will be set to SERVO_RESOLUTION
-    __debugS(D, PSTR("\tsetupTimers: Servo timer initialized.   Freq: %d MHz, PSC: %s MHz"), (int)servoTimer.getClockFrequency()/1000000, String((double)servoTimer.getClockFrequency()/1000000/SERVO_PSC).c_str());
+    __debugS(D, PSTR("\tsetupTimers: Servo   timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)servoTimer.getClockFrequency()/1000000, String((double)servoTimer.getClockFrequency()/1000000/SERVO_PSC).c_str());
   #endif
 
   #if defined(USE_FASTLED_TOOLS)
     ledTimer.setupTimer(ZTimer::_TIMER4, ZTimer::CH1, LED_PSC, 0, isrLedTimerHandler);            // prescaler set to LED_PSC, timer will be set to LED_RESOLUTION
-    __debugS(D, PSTR("\tsetupTimers: LED timer initialized.     Freq: %d MHz, PSC: %s MHz"), (int)ledTimer.getClockFrequency()/1000000, String((double)ledTimer.getClockFrequency()/1000000/LED_PSC).c_str());
+    __debugS(D, PSTR("\tsetupTimers: LED     timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)ledTimer.getClockFrequency()/1000000, String((double)ledTimer.getClockFrequency()/1000000/LED_PSC).c_str());
   #endif
 
   gpTimer.setupTimer(ZTimer::_TIMER3, ZTimer::CH1, GP_PSC, 0, isrGPTimerHandler);                 // prescaler set to GP_PSC, timer will be set to GPTIMER_RESOLUTION
-  __debugS(D, PSTR("\tsetupTimers: GP timer initialized.      Freq: %d MHz, PSC: %s MHz"), (int)gpTimer.getClockFrequency()/1000000, String((double)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
+  __debugS(D, PSTR("\tsetupTimers: GP      timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)gpTimer.getClockFrequency()/1000000, String((double)gpTimer.getClockFrequency()/1000000/GP_PSC).c_str());
 
   #if defined(USE_MULTISERVO)
     stepperTimer.setPriority(0, 0);
@@ -758,16 +754,16 @@ void setupTimers()
   #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
     timerVal_t servo_ticks = calcInterval(&servoTimer, SERVO_RESOLUTION);
     servoTimer.setNextInterruptInterval(servo_ticks);   // start servo timer
-    __debugS(D, PSTR("\tsetupTimers: Servo timer ticks set to:\t%ld"), servo_ticks);
+    __debugS(D, PSTR("\tsetupTimers: Servo timer ticks set to:\t%ld uS"), servo_ticks);
   #endif
 
   #if defined(USE_FASTLED_TOOLS)
     timerVal_t led_ticks = calcInterval(&ledTimer, LED_RESOLUTION);
     ledTimer.setNextInterruptInterval(led_ticks);       // start led timer
-    __debugS(D, PSTR("\tsetupTimers: Led timer ticks set to:\t%ld"), led_ticks);
+    __debugS(D, PSTR("\tsetupTimers: Led   timer ticks set to:\t%ld uS"), led_ticks);
   #endif
   
   timerVal_t gpt_ticks = calcInterval(&gpTimer, GPTIMER_RESOLUTION);
   gpTimer.setNextInterruptInterval(gpt_ticks);          // start general purpose timer
-  __debugS(D, PSTR("\tsetupTimers: GP timer ticks set to:\t%ld"), gpt_ticks);
+  __debugS(D, PSTR("\tsetupTimers: GP    timer ticks set to:\t%ld uS"), gpt_ticks);
 }

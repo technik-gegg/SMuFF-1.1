@@ -18,13 +18,15 @@
  */
 #include "SMuFF.h"
 
-#define FADE_SPEED          100
-#define FADE_SPEED_MARQUEE  80
+#define FADE_SPEED            100
+#define FADE_SPEED_MARQUEE    FASTLED_UPDATE_FAST
 
 uint8_t           lastFastLedIndex = 255, lastFastLedColor = 0;
 volatile uint8_t  lastFastLedStatus = 0;
-volatile bool     fastLedStatus = false;
+volatile uint8_t  fastLedStatus = 0;
 volatile uint8_t  fastLedHue = 0;
+volatile uint32_t lastFastLedUpdate = 0;
+
 
 typedef enum {
   AliceBlue=0xF0F8FF,
@@ -182,7 +184,6 @@ uint8_t           colorMap[8] PROGMEM = {0, 1, 2, 4, 6, 5, 3, 7};
   const CRGB LEDColors[8] PROGMEM = { Black, Red, Green, Blue, Cyan, Magenta, Yellow, White };
 #endif
 
-#if defined(USES_ADAFRUIT_NPX)
 typedef enum {
   HUE_RED = 0,
   HUE_ORANGE = 32,
@@ -193,92 +194,68 @@ typedef enum {
   HUE_PURPLE = 192,
   HUE_PINK = 224
 } HSVHue;
-#endif 
 
 #if defined(USE_FASTLED_BACKLIGHT)
-  #if defined(USES_ADAFRUIT_NPX)
-    Adafruit_NeoPixel* cBackLight;
-  #else
-    CLEDController* cBackLight;
-    CRGB leds[NUM_LEDS];
-  #endif
+  Adafruit_NeoPixel* cBackLight;
 #endif
 
 #if defined(USE_FASTLED_TOOLS)
-  #if defined(USES_ADAFRUIT_NPX)
-    Adafruit_NeoPixel* cTools;
-  #else
-    CLEDController* cTools;
-    CRGB ledsTool[MAX_TOOLS];
-  #endif
+  Adafruit_NeoPixel* cTools;
 #endif
 
-#if defined(USES_ADAFRUIT_NPX)
-  #if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
-    /* some FastLED wrapper functions for Adafruit NeoPixel library */
-    uint32_t ColorRGB(uint8_t r, uint8_t g, uint8_t b) {
-      return ((r << 16) | (g << 8) | b);
-    }
+#if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
+  /* some FastLED wrapper functions for Adafruit NeoPixel library */
+  uint32_t ColorRGB(uint8_t r, uint8_t g, uint8_t b) {
+    return ((r << 16) | (g << 8) | b);
+  }
 
-    void ColorToRGB(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b) {
-      *r = (color >> 16) & 0xff;
-      *g = (color >> 8)  & 0xff;
-      *b = (color >> 0 ) & 0xff;
-    }
+  void ColorToRGB(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b) {
+    *r = (color >> 16) & 0xff;
+    *g = (color >> 8)  & 0xff;
+    *b = (color >> 0 ) & 0xff;
+  }
 
-    void nscale8(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t scale) {
-      if(instance == nullptr)
-        return;
-      uint8_t r, g, b;
-      for(uint16_t i = 0; i < num_leds; ++i) {
-        ColorToRGB(instance->getPixelColor(i), &r, &g, &b);
-        nscale8x3( &r, &g, &b, scale);
-        instance->setPixelColor(i, ColorRGB(r, g, b));
-      }
+  void nscale8(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t scale) {
+    if(instance == nullptr)
+      return;
+    uint8_t r, g, b;
+    for(uint16_t i = 0; i < num_leds; ++i) {
+      ColorToRGB(instance->getPixelColor(i), &r, &g, &b);
+      nscale8x3( &r, &g, &b, scale);
+      instance->setPixelColor(i, ColorRGB(r, g, b));
     }
+  }
 
-    void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy) {
-      if(instance == nullptr)
-        return;
-      nscale8(instance, num_leds, 255 - fadeBy);
-    }
+  void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy) {
+    if(instance == nullptr)
+      return;
+    nscale8(instance, num_leds, 255 - fadeBy);
+  }
 
-    void addHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb) {
-      if(instance == nullptr)
-        return;
-      uint8_t r1, r2, g1, g2, b1, b2;
-      ColorToRGB(rgb, &r1, &g1, &b1);
-      ColorToRGB(instance->getPixelColor(index), &r2, &g2, &b2);
-      instance->setPixelColor(index, ColorRGB(qadd8(r1, r2), qadd8(g1, g2), qadd8(b1, b2)));
-    }
-  #endif
+  void addHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb) {
+    if(instance == nullptr)
+      return;
+    uint8_t r1, r2, g1, g2, b1, b2;
+    ColorToRGB(rgb, &r1, &g1, &b1);
+    ColorToRGB(instance->getPixelColor(index), &r2, &g2, &b2);
+    instance->setPixelColor(index, ColorRGB(qadd8(r1, r2), qadd8(g1, g2), qadd8(b1, b2)));
+  }
 #endif
 
-volatile bool fastLedRefresh = false;
-
-void showToolLeds() {
+void updateToolLeds() {
 #if defined(USE_FASTLED_TOOLS)
-  fastLedRefresh = true;
   if(cTools == nullptr)
     return;
-  #if !defined(USES_ADAFRUIT_NPX)
-    cTools->showLeds();
-  #else
-    cTools->show();
-  #endif
-  fastLedRefresh = false;
+  cTools->show();
+  lastFastLedUpdate = micros();
 #endif
 }
 
-void showBacklightLeds() {
+void updateBacklightLeds() {
 #if defined(USE_FASTLED_BACKLIGHT)
   if(cBackLight == nullptr)
     return;
-  #if !defined(USES_ADAFRUIT_NPX)
-    cBackLight->showLeds();
-  #else
-    cBackLight->show();
-  #endif
+  cBackLight->show();
 #endif
 }
 
@@ -346,36 +323,23 @@ void setBacklightRGB(byte R, byte G, byte B) {
 
 void setBacklightCRGB(CRGB color) {
 #if defined(USE_FASTLED_BACKLIGHT)
-  #if !defined(USES_ADAFRUIT_NPX)
-    fill_solid(leds, NUM_LEDS, color);
-    //__debugS(I, PSTR("Backlight set"));
-  #else
-    if(cBackLight != nullptr)
-      cBackLight->fill(color, 0, NUM_LEDS);
-  #endif
-  showBacklightLeds();
+  if(cBackLight != nullptr)
+    cBackLight->fill(color, 0, NUM_LEDS);
+  updateBacklightLeds();
 #endif
 }
 
 void setFastLED(uint8_t index, CRGB color) {
 #if defined(USE_FASTLED_BACKLIGHT)
-  #if !defined(USES_ADAFRUIT_NPX)
-    leds[index] = color;
-  #else
-    if(cBackLight != nullptr)
-      cBackLight->setPixelColor(index, color);
-  #endif
+  if(cBackLight != nullptr)
+    cBackLight->setPixelColor(index, color);
 #endif
 }
 
 void setFastLEDIndex(uint8_t index, uint8_t color) {
 #if defined(USE_FASTLED_BACKLIGHT)
-  #if !defined(USES_ADAFRUIT_NPX)
-    leds[index] = LEDColors[color];
-  #else
-    if(cBackLight != nullptr)
-      cBackLight->setPixelColor(index, LEDColors[color]);
-  #endif
+  if(cBackLight != nullptr)
+    cBackLight->setPixelColor(index, LEDColors[color]);
 #endif
 }
 
@@ -383,22 +347,12 @@ void setFastLEDStatus() {
   setFastLEDStatus(lastFastLedStatus);
 }
 
-volatile uint32_t lastStatusUpdate;
-volatile bool settingFastLedStatus = false;
-
 void setFastLEDStatus(uint8_t status) {
-  if(settingFastLedStatus)
-    return;
-  if ((millis() - lastStatusUpdate) < 20) {
-    lastFastLedStatus = status;
-    return;
-  }
-  lastStatusUpdate = millis();
-  fastLedStatus = true;
-  settingFastLedStatus = true;
+
+  lastFastLedStatus = fastLedStatus;
+  fastLedStatus = status;
   switch (status) {
     case FASTLED_STAT_NONE:
-      fastLedStatus = false;
       setFastLEDTools();
       break;
     case FASTLED_STAT_MARQUEE:
@@ -417,58 +371,36 @@ void setFastLEDStatus(uint8_t status) {
       setFastLEDToolsOk();
       break;
   }
-  lastFastLedStatus = status;
-  settingFastLedStatus = false;
 }
 
 void setFastLEDToolsRainbow() {
 #if defined(USE_FASTLED_TOOLS)
-  #if !defined(USES_ADAFRUIT_NPX)
-    // FastLED's built-in rainbow generator
-    fill_rainbow(ledsTool, smuffConfig.toolCount, fastLedHue);
-  #else
-    if(cTools != nullptr)
-      cTools->rainbow(fastLedHue);
-  #endif
+  if(cTools != nullptr)
+    cTools->rainbow(fastLedHue);
 #endif
 }
 
 void setFastLEDToolsError() {
 #if defined(USE_FASTLED_TOOLS)
-  #if !defined(USES_ADAFRUIT_NPX)
-    uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
-    fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_RED, 255, brightness));
-  #else
-    uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
-    if(cTools != nullptr)
-      cTools->fill(cTools->gamma32(cTools->ColorHSV(HUE_RED, 255, brightness)));
-  #endif
+  uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
+  if(cTools != nullptr)
+    cTools->fill(cTools->gamma32(cTools->ColorHSV(HUE_RED, 255, brightness)));
 #endif
 }
 
 void setFastLEDToolsWarning() {
 #if defined(USE_FASTLED_TOOLS)
-  #if !defined(USES_ADAFRUIT_NPX)
-    uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
-    fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_ORANGE, 255, brightness));
-  #else
-    uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
-    if(cTools != nullptr)
-      cTools->fill(cTools->gamma32(cTools->ColorHSV(HUE_ORANGE, 255, brightness)));
-  #endif
+  uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
+  if(cTools != nullptr)
+    cTools->fill(cTools->gamma32(cTools->ColorHSV(HUE_ORANGE, 255, brightness)));
 #endif
 }
 
 void setFastLEDToolsOk() {
 #if defined(USE_FASTLED_TOOLS)
-  #if !defined(USES_ADAFRUIT_NPX)
-    uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
-    fill_solid(ledsTool, smuffConfig.toolCount, CHSV(HUE_GREEN, 255, brightness));
-  #else
-    uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
-    if(cTools != nullptr)
-      cTools->fill(cTools->gamma32(cTools->ColorHSV(HUE_GREEN, 255, brightness)));
-  #endif
+  uint8_t brightness = beatsin8(smuffConfig.statusBPM, 0, 255);
+  if(cTools != nullptr)
+    cTools->fill(cTools->gamma32(cTools->ColorHSV(HUE_GREEN, 255, brightness)));
 #endif
 }
 
@@ -476,25 +408,13 @@ void setFastLEDToolsMarquee() {
 #if defined(USE_FASTLED_TOOLS)
   int8_t pos = beatsin8(smuffConfig.animationBPM, 0, smuffConfig.toolCount-1);
   uint32_t color = smuffConfig.materialColors[smuffConfig.toolCount - pos - 1];
-  #if !defined(USES_ADAFRUIT_NPX)
-    /*
-     * taken from: https://github.com/FastLED/FastLED/blob/master/examples/DemoReel100/DemoReel100.ino
-     */
-    fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
-    // if the material color value is 0, set a random color
+  fadeToBlackBy(cTools, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
+  if(cTools != nullptr) {
     if(color == 0)
-      ledsTool[pos] += CHSV(fastLedHue, 255, 200);
+      addHSV(cTools, pos, cTools->gamma32(cTools->ColorHSV((uint16_t)fastLedHue<<8, 255, 200)));
     else
-      ledsTool[pos] = CRGB(color);
-  #else
-    fadeToBlackBy(cTools, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
-    if(cTools != nullptr) {
-      if(color == 0)
-        addHSV(cTools, pos, cTools->gamma32(cTools->ColorHSV((uint16_t)fastLedHue<<8, 255, 200)));
-      else
-        cTools->setPixelColor(pos, color);  
-    }
-  #endif
+      cTools->setPixelColor(pos, color);  
+  }
 #endif
 }
 
@@ -504,24 +424,13 @@ void setFastLEDTools(){
 
 void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag) {
 #if defined(USE_FASTLED_TOOLS)
-  if (fastLedStatus && fastLedStatus != FASTLED_STAT_MARQUEE) {
-    lastFastLedIndex = index;
-    lastFastLedColor = color;
-    return;
+  fadeToBlackBy(cTools, smuffConfig.toolCount, FADE_SPEED);
+  if (index >= 0 && index < smuffConfig.toolCount) {
+    if(cTools != nullptr)
+      cTools->setPixelColor(smuffConfig.toolCount - index - 1, LEDColors[color]);
   }
-  uint8_t ndx = lastFastLedIndex;
-  #if !defined(USES_ADAFRUIT_NPX)
-    fadeToBlackBy(ledsTool, smuffConfig.toolCount, FADE_SPEED);
-    if (index >= 0 && index < smuffConfig.toolCount) {
-      ledsTool[smuffConfig.toolCount - ndx - 1] = LEDColors[color];
-    }
-  #else
-    fadeToBlackBy(cTools, smuffConfig.toolCount, FADE_SPEED);
-    if (index >= 0 && index < smuffConfig.toolCount) {
-      if(cTools != nullptr)
-        cTools->setPixelColor(smuffConfig.toolCount - ndx - 1, LEDColors[color]);
-    }
-  #endif
+  if(setFlag)
+      updateToolLeds();
   lastFastLedIndex = index;
   lastFastLedColor = color;
 #endif
@@ -529,17 +438,13 @@ void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag) {
 
 void setFastLEDIntensity(uint8_t intensity) {
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-  #if !defined(USES_ADAFRUIT_NPX)
-    FastLED.setBrightness(intensity);
-  #else
-    #if defined(USE_FASTLED_BACKLIGHT)
+  #if defined(USE_FASTLED_BACKLIGHT)
     if(cBackLight != nullptr)
       cBackLight->setBrightness(intensity);
-    #endif
-    #if defined(USE_FASTLED_TOOLS)
+  #endif
+  #if defined(USE_FASTLED_TOOLS)
     if(cTools != nullptr)
       cTools->setBrightness(intensity);
-    #endif
   #endif
 #endif
 }
@@ -561,7 +466,7 @@ void setContrast(int contrast) {
 void setToolColorIndex(int color) {
 #if defined(USE_FASTLED_TOOLS)
   setFastLEDToolIndex(lastFastLedIndex, color, false);
-  showToolLeds();
+  updateToolLeds();
 #endif
 }
 
@@ -571,20 +476,12 @@ void testFastLED(bool tools) {
     __debugS(D, PSTR("\ttesting Backlight LEDs"));
     for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
-      #if !defined(USES_ADAFRUIT_NPX)
-        leds[i] = LEDColors[(uint8_t)random(1,7)];
-        if(cBackLight != nullptr)
-          cBackLight->showLeds();
+      if(cBackLight != nullptr) {
+        cBackLight->setPixelColor(i, LEDColors[(uint8_t)random(1,7)]);
+        cBackLight->show();
         delay(250);
-        leds[i] = CRGB::Black;
-      #else
-        if(cBackLight != nullptr) {
-          cBackLight->setPixelColor(i, LEDColors[(uint8_t)random(1,7)]);
-          cBackLight->show();
-          delay(250);
-          cBackLight->setPixelColor(i, LEDColors[0]);
-        }
-      #endif
+        cBackLight->setPixelColor(i, LEDColors[0]);
+      }
     }
     setBacklightCRGB(LEDColors[smuffConfig.backlightColor]);
   }
@@ -594,22 +491,14 @@ void testFastLED(bool tools) {
     __debugS(D, PSTR("\ttesting Tools LEDs"));
     for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
     {
-      #if !defined(USES_ADAFRUIT_NPX)
-        ledsTool[i] = LEDColors[(uint8_t)random(1,7)];
-        if(cTools != nullptr)
-          cTools->showLeds();
+      if(cTools != nullptr) {
+        cTools->setPixelColor(i, LEDColors[(uint8_t)random(1,7)]);
+        cTools->show();
         delay(250);
-        ledsTool[i] = CRGB::Black;
-      #else
-        if(cTools != nullptr) {
-          cTools->setPixelColor(i, LEDColors[(uint8_t)random(1,7)]);
-          cTools->show();
-          delay(250);
-          cTools->setPixelColor(i, LEDColors[0]);
-        }
-      #endif
+        cTools->setPixelColor(i, LEDColors[0]);
+      }
     }
-    showToolLeds();
+    updateToolLeds();
   }
 #endif
 }

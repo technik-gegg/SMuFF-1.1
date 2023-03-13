@@ -1,4 +1,4 @@
-M205 P"..." S n | n.n | "..." [ I | X | Y | Z ]
+M205 P"..." S n | n.n | "..." [ I | X | Y | Z | M ]
 
 Parameter Name In P 	Option
 -------------------------------------------
@@ -9,36 +9,37 @@ AutoWipe            	S 0|1
 BackColor           	S n
 Baudrates           	S "..." I 0..3
 BowdenLen           	S n.n
-ChangeDbg              	S 0..3
+ChangeDbg           	S 0..3
 Chunks              	S n
 Close               	S 0..180 I 0..11
 Color               	S "..."  I 0..11
 CSDown              	S n      X | Y | Z
 CSMax               	S n      X | Y | Z
 CSMin               	S n      X | Y | Z
-CutterTop              	S 0|1
+CutterTop           	S 0|1
 CValue              	S "..."  I 0..11
-DbgLevel              	S n
-DebugFreq             	S n
+DbgLevel            	S n
+DebugFreq           	S n
 Device              	S "..."
 DrvAddr             	S n      X | Y | Z
 EmulPrusa           	S 0|1
 EncTicks            	S 0|1
-EStopTest            	S 0|1
+EStopTest           	S 0|1
 EStopTrg            	S 0|1    X | Y | Z
 ExtCtrl             	S 0|1
-FanSpeed              	S n
+FanSpeed            	S n
 HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
 IdleAnim            	S 0|1
 InsLen              	S n.n
-InsSpeed              	S n
+InsSpeed            	S n
 InvDir              	S 0|1    X | Y | Z
-InvDuet              	S 0|1
-InvRelay              	S 0|1
+InvDuet             	S 0|1
+InvRelay            	S 0|1
 LBtnDown            	S "..."
 LBtnHold            	S "..."
 LCDCont             	S 60..255
+LedRefresh          	S 1..2000 I 0..1
 Material            	S "..."  I 0..11
 MaxSpeed            	S n      X | Y | Z
 MaxStall            	S n      X | Y | Z
@@ -70,27 +71,28 @@ ServoMinPwm         	S 500..2500
 ServoOpen           	S 0..180
 SharedStepper       	S 0|1
 Spacing             	S n.n
-SplitterDist           	S n.n
-SpdsInMms             	S 0|1
+SplitterDist        	S n.n
+SpdsInMms           	S 0|1
 Stall               	S n      X | Y | Z
 StatusBPM           	S n
 StepDly             	S n      X | Y | Z
 StepsMM             	S n      X | Y | Z
 StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z
-SyncSteppers           	S 0|1
+SyncSteppers        	S 0|1
 TermMenu            	S 0|1
 TMode               	S 0|1    X | Y | Z
 TOff                	S n      X | Y | Z
 ToolColor           	S 0..15
 Tools               	S n
-TraceUSB              	S 0|1
+TraceUSB            	S 0|1
 UnldRetract         	S n
-UseChunks            	S 0|1
-UseCutter            	S 0|1
+UseChunks           	S 0|1
+UseCutter           	S 0|1
 UseDuet             	S 0|1
-UseEStop2            	S 0|1
+UseEStop2           	S 0|1
 UsePurge            	S 0|1
 UseServo            	S 0|1
-UseSplitter           	S 0|1
+UseSplitter         	S 0|1
 WipeSeq             	S "..."
+XlateSpeed          	S n  X | Y | Z  [ M 0|1 ]    (M0: S=mm/s, M1: S=mm/m)

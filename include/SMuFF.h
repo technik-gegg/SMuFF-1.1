@@ -28,7 +28,7 @@
 #include <U8g2lib.h>
 #include "Menus.h"
 #include "InputDialogs.h"
-#define DISPLAY_SERIAL_PORT -1
+#define DISPLAY_SERIAL_PORT -2
 #endif
 
 #if defined(USE_LEONERD_DISPLAY)
@@ -52,16 +52,8 @@ extern SdFat SD;
 
 
 #if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-  #if defined(USES_ADAFRUIT_NPX)
-    #include <Adafruit_NeoPixel.h>
-    #include "lib8tion/lib8tion.h"
-  #else
-    #define FASTLED_ALLOW_INTERRUPTS      0
-    #define FASTLED_INTERRUPT_RETRY_COUNT 1
-    #define FASTLED_USE_PROGMEM           0
-    //#define FASTLED_FORCE_SOFTWARE_PINS   1
-    #include <FastLED.h>
-  #endif
+  #include <Adafruit_NeoPixel.h>
+  #include "lib8tion/lib8tion.h"
 #endif
 #include "HAL/HAL.h"
 #include "ZStepperLib.h"
@@ -99,9 +91,7 @@ extern SdFat SD;
 #if !defined(USE_FASTLED_BACKLIGHT) && !defined(USE_FASTLED_TOOLS)
   #define CRGB uint32_t
 #else
-  #if defined(USES_ADAFRUIT_NPX)
-    #define CRGB uint32_t
-  #endif
+  #define CRGB uint32_t
 #endif
 
 #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
@@ -146,6 +136,8 @@ extern SdFat SD;
 #define SERVO_OPEN              0
 #define SERVO_CLOSED            1
 
+#define FASTLED_UPDATE_FAST     50
+#define FASTLED_UPDATE_SLOW     750
 
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN)
 // used for internal hardware debugging only - will produce by default a 500Hz signal on the output pin
@@ -306,7 +298,10 @@ typedef struct {
   uint8_t       dbgLevel                              = W|I|SP;
   bool          useDebugColoring                      = true;
   int8_t        displaySerial                         = DISPLAY_SERIAL_PORT;         // Serial Port for USE_SERIAL_DISPLAY
-
+  uint16_t      ledRefresh[2]                         = { FASTLED_UPDATE_FAST, FASTLED_UPDATE_SLOW };
+  int8_t        spi3Mosi                              = 0;      // these 3 pins are only relevant on the SKR E3-DIP board and should be LOW
+  int8_t        spi3Sclk                              = 0;
+  int8_t        spi3Miso                              = 0;
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;
@@ -340,21 +335,11 @@ extern ClickEncoder             encoder;
 #endif
 
 #if defined(USE_FASTLED_BACKLIGHT)
-  #if !defined(USES_ADAFRUIT_NPX)
-    extern CLEDController*       cBackLight;
-    extern CRGB                  leds[];
-  #else
-    extern Adafruit_NeoPixel*    cBackLight;
-  #endif
+  extern Adafruit_NeoPixel*    cBackLight;
 #endif
 
 #if defined(USE_FASTLED_TOOLS)
-  #if !defined(USES_ADAFRUIT_NPX)
-    extern CLEDController*       cTools;
-    extern CRGB                  ledsTool[];
-  #else
-    extern Adafruit_NeoPixel*   cTools;
-  #endif
+  extern Adafruit_NeoPixel*   cTools;
 #endif
 
 #if defined(USE_MULTISERVO)
@@ -406,9 +391,9 @@ extern bool                     lidOpen;
 extern uint16_t                 mmsMin, mmsMax;
 extern uint16_t                 speedIncrement;
 extern volatile uint8_t         fastLedHue;
-extern volatile bool            fastLedStatus;
-extern volatile bool            fastLedRefresh;
+extern volatile uint8_t         fastLedStatus;
 extern volatile uint8_t         lastFastLedStatus;
+extern volatile uint32_t        lastFastLedUpdate;
 extern volatile bool            isIdle;
 extern bool                     tmcWarning;
 extern bool                     isTestrun;
@@ -470,7 +455,7 @@ extern void initUSB();
 extern void drawLogo();
 extern void drawStatus();
 extern void drawSelectingMessage(uint8_t tool);
-extern void drawPurgingMessage(uint16_t len, uint8_t tool);
+extern void drawPurgingMessage(double len, uint8_t tool);
 extern void drawUpload(uint32_t remain);
 extern void drawUserMessage(String message, bool smallFont = false, bool center = true, void (*drawCallbackFunc)() = nullptr);
 extern void drawSDStatus(int8_t stat);
@@ -584,9 +569,9 @@ extern void drawTestrunMessage(unsigned long loop, char *msg);
 extern bool getFiles(const char *rootFolder PROGMEM, const char *pattern PROGMEM, uint8_t maxFiles, bool cutExtension, char *files);
 extern void testRun(const char *fname);
 extern void moveFeeder(double distanceMM);
-extern void overrideStepX(pin_t pin);
-extern void overrideStepY(pin_t pin);
-extern void overrideStepZ(pin_t pin);
+extern void overrideStepX(pin_t pin, bool resetPin = false);
+extern void overrideStepY(pin_t pin, bool resetPin = false);
+extern void overrideStepZ(pin_t pin, bool resetPin = false);
 extern void endstopEventX();
 extern void endstopEventY();
 extern void endstopEventZ();
@@ -673,7 +658,7 @@ extern void playSequence();
 extern void setParserBusy();
 extern void setParserReady();
 extern void runHomeAfterFeed();
-extern void purgeFilament();
+extern void purgeFilament(double forceLen);
 
 extern void showLed(uint8_t mode, uint8_t count);
 extern void setBacklightIndex(int color);
@@ -701,6 +686,7 @@ extern uint8_t scanI2C2Devices(uint8_t *devices, uint8_t);
 extern bool initSD(bool showStatus = true);
 
 extern unsigned long translateSpeed(uint16_t speed, uint8_t axis, bool forceTranslation = false);
+extern unsigned long translateSpeed(double speed, uint8_t axis, bool forceTranslation = false);
 extern bool getEncoderButton(bool encoderOnly);
 extern void getEncoderButton(int16_t *turn, uint8_t *button, bool *isHeld, bool *isClicked);
 
@@ -721,18 +707,18 @@ extern bool unloadFromSplitter(char* errmsg, bool showMessage);
 
 extern void calcHwDebugCounter();
 
-extern void showToolLeds();
-extern void showBacklightLeds();
-#if defined(USES_ADAFRUIT_NPX)
-  #if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
-    extern uint32_t ColorRGB(uint8_t r, uint8_t g, uint8_t b);
-    extern void ColorToRGB(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b);
-    extern void nscale8(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t scale);
-    extern void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy);
-    extern void assHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb);
-  #endif
-#endif 
+extern void updateToolLeds();
+extern void updateBacklightLeds();
+#if defined(USE_FASTLED_TOOLS) || defined(USE_FASTLED_BACKLIGHT)
+  extern uint32_t ColorRGB(uint8_t r, uint8_t g, uint8_t b);
+  extern void ColorToRGB(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b);
+  extern void nscale8(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t scale);
+  extern void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy);
+  extern void assHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb);
+#endif
 extern void fastFlipDbg();
 extern uint32_t parseJson(String& data);
 extern void changeDebugPort(int param, char* errmsg, bool noMsg = false);
 
+extern void showFreeMemory();
+extern void getFreeMemory(char* buffer, size_t maxlen);

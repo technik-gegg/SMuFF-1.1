@@ -80,7 +80,11 @@ TMC2209Stepper            *drivers[NUM_STEPPERS+1];
 #endif
 
 #if defined(USE_MULTISERVO)
-Adafruit_PWMServoDriver   servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, I2CBusMS);
+  #if defined(USE_PCA9685_SW_I2C)
+    Adafruit_PWMServoDriver   servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS, I2CBusMS);
+  #else
+    Adafruit_PWMServoDriver   servoPwm = Adafruit_PWMServoDriver(I2C_SERVOCTL_ADDRESS);
+  #endif
 int8_t                    servoMapping[16]   = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // servo output mappings for the Wiper, Lid, Cutter, Spare1 and Spare2 servos
 int8_t                    outputMode[16]     = { 0,  0,  0,  0,  0,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // -1 = not used, 0 = PWM, 1 = OUTPUT
 uint8_t                   servoPosClosed[16] = {90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
@@ -109,7 +113,6 @@ volatile uint16_t         gpTimer20ms = 0;
 volatile uint16_t         gpTimer50ms = 0;
 volatile uint16_t         gpTimer100ms = 0;
 static volatile unsigned  tickCounter = 0;
-static volatile uint8_t   ledTickCounter = 0;
 volatile unsigned long    lastEncoderButtonTime = 0;
 volatile bool             sdRemoved = false;
 volatile bool             initDone = false;   // enables sending periodical status information to serial ports
@@ -157,15 +160,18 @@ void loopEx();
 //=====================================================================================================
 #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
 
-volatile uint32_t         *debugPin = &(digitalPinToPort(DEBUG_PIN)->BSRR);
-uint32_t                  pinMask_Debug = digitalPinToBitMask(DEBUG_PIN);
-bool                      debugToggle = false;
+volatile uint32_t*  debugPin = 0;
+uint32_t            pinMask_DebugSet;
+uint32_t            pinMask_DebugReset;
+volatile bool       debugToggle = false;
 
 void fastFlipDbg() {
   #if FASTFLIPDBG == 1
-  *debugPin = (debugToggle) ? pinMask_Debug << 16 : pinMask_Debug;
-  debugToggle = !debugToggle;
+    *debugPin = (debugToggle) ? pinMask_DebugSet : pinMask_DebugReset;
+  #else
+    digitalWrite(DEBUG_PIN, debugToggle);
   #endif
+  debugToggle = !debugToggle;
 }
 
 #define DELAY_LOOP(STPR)  for(int i=0; i < smuffConfig.stepDelay[STPR]; i++) asm("NOP");
@@ -187,39 +193,51 @@ uint32_t                  pinMask_Zr = digitalPinToBitMask(Z_STEP_PIN) << 16;
 // Override functions called by ZStepper library
 //=====================================================================================================
 
-void overrideStepX(pin_t pin) {
+void overrideStepX(pin_t pin, bool resetPin) {
   #if defined(X_STEP_PIN_NAME)
-    *stepper_reg_X = pinMask_Xs;
-    DELAY_LOOP(SELECTOR)
-    *stepper_reg_X = pinMask_Xr;
+    *stepper_reg_X = resetPin ? pinMask_Xs : pinMask_Xr;
+    if(resetPin && smuffConfig.stepDelay[SELECTOR] > 0)
+      DELAY_LOOP(SELECTOR)
   #else
-    STEP_HIGH_X
-    delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
-    STEP_LOW_X
+    if(!resetPin)
+      STEP_HIGH_X
+    else {
+      STEP_LOW_X
+      if(smuffConfig.stepDelay[SELECTOR] > 0)
+        delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
+    }
   #endif
 }
 
-void overrideStepY(pin_t pin) {
+void overrideStepY(pin_t pin, bool resetPin) {
   #if defined(Y_STEP_PIN_NAME)
-    *stepper_reg_Y = pinMask_Ys;
-    DELAY_LOOP(REVOLVER)
-    *stepper_reg_Y = pinMask_Yr;
+    *stepper_reg_Y = resetPin ? pinMask_Ys : pinMask_Yr;
+    if(resetPin && smuffConfig.stepDelay[REVOLVER] > 0)
+      DELAY_LOOP(REVOLVER)
   #else
-    STEP_HIGH_Y
-    delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
-    STEP_LOW_Y
+    if(!resetPin)
+      STEP_HIGH_Y
+    else {
+      STEP_LOW_Y
+      if(smuffConfig.stepDelay[REVOLVER] > 0)
+        delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
+    }
   #endif
 }
 
-void overrideStepZ(pin_t pin) {
+void overrideStepZ(pin_t pin, bool resetPin) {
   #if defined(Z_STEP_PIN_NAME)
-    *stepper_reg_Z = pinMask_Zs;
-    DELAY_LOOP(FEEDER)
-    *stepper_reg_Z = pinMask_Zr;
+    *stepper_reg_Z = resetPin ? pinMask_Zs : pinMask_Zr;
+    if(resetPin && smuffConfig.stepDelay[FEEDER] > 0)
+      DELAY_LOOP(FEEDER)
   #else
-    STEP_HIGH_Z
-    delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
-    STEP_LOW_Z
+    if(!resetPin)
+      STEP_HIGH_Z
+    else {
+      STEP_LOW_Z
+      if(smuffConfig.stepDelay[FEEDER] > 0)
+        delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
+    }
   #endif
 }
 
@@ -252,8 +270,21 @@ void HAL_SYSTICK_Callback(void) {
 /*
   Interrupt handler for Endstops
  */
-void showTriggerMessage(const char* axis, int state) {
-  __debugSInt(DEV, P_EstopTriggerMsg, axis, state);
+static int lastTriggerState[4] = { -1, -1, -1, -1 };
+static int triggerStateCount[4] = { 1, 1, 1, 1 };
+
+void showTriggerMessage(int axis, int state) {
+  String axisNames[] = { "X", "Y", "Z", "Z2" };
+
+  if(state == lastTriggerState[axis]) {
+    triggerStateCount[axis]++;
+    return;
+  }
+  else {
+    __debugSInt(DEV, P_EstopTriggerMsg, axisNames[axis].c_str(), state, triggerStateCount[axis]);
+    lastTriggerState[axis] = state;
+    triggerStateCount[axis] = 1;
+  }
 }
 
 void showTriggerMessageFeeder(int index) {
@@ -267,7 +298,7 @@ void isrEndstopX() {
   steppers[SELECTOR].adjustPositionOnEndstop(1);
   if(hit)
     endstopEventX();
-  showTriggerMessage("X", hit);
+  showTriggerMessage(0, hit);
 }
 
 void isrEndstopY() {
@@ -276,7 +307,7 @@ void isrEndstopY() {
   steppers[REVOLVER].adjustPositionOnEndstop(1);
   if(hit)
     endstopEventY();
-  showTriggerMessage("Y", hit);
+  showTriggerMessage(1, hit);
 }
 
 void isrEndstopZ() {
@@ -285,7 +316,7 @@ void isrEndstopZ() {
   steppers[FEEDER].adjustPositionOnEndstop(1);
   if(hit)
     endstopEventZ();
-  showTriggerMessage("Z", hit);
+  showTriggerMessage(2, hit);
 }
 
 void isrEndstopZ2() {
@@ -302,7 +333,7 @@ void isrEndstopZ2() {
   #endif
   if(hit)
     endstopEventZ2();
-  showTriggerMessage("Z2", hit);
+  showTriggerMessage(3, hit);
   showTriggerMessageFeeder(FEEDER);
 }
 
@@ -320,6 +351,7 @@ void isrStallDetectedZ() { steppers[FEEDER].stallDetected(); }
 void isrLedTimerHandler() {
 
   #if defined(USE_FASTLED_TOOLS)
+    static volatile uint32_t   ledTickCounter = 0;
     #if !defined(USE_MULTISERVO)
       if(!initDone || isUpload || !servoLid.isPulseComplete() || !servoCutter.isPulseComplete() || !servoWiper.isPulseComplete())
         return;
@@ -328,24 +360,15 @@ void isrLedTimerHandler() {
         return;
     #endif
 
-    ledTickCounter++;                         // increments every 10ms
-
-    if(ledTickCounter % 6 == 0) {             // every 60ms
-      fastLedHue++;                           // used in some color changing/fading effects
-      if(smuffConfig.useIdleAnimation) {
-        showToolLeds();
-      }
+    ledTickCounter++;                     // increments every 10ms
+    if(ledTickCounter % 10 == 0) {        // every 100ms
+      fastLedHue++;                       // used in some color changing/fading effects
+      setFastLEDStatus(fastLedStatus);
     }
-    if(ledTickCounter % 10 == 0) {            // every 100ms
-      if(fastLedStatus > FASTLED_STAT_NONE)
-        setFastLEDStatus();
-      else
-        setFastLEDTools();
-    }
-    if(ledTickCounter % 33 == 0) {            // every 330ms
-      if(!smuffConfig.useIdleAnimation) {
-        showToolLeds();
-      }
+    // update NeoPixels when the interval has been reached
+    if(micros()-lastFastLedUpdate >= ((fastLedStatus > FASTLED_STAT_NONE) ? smuffConfig.ledRefresh[0] : smuffConfig.ledRefresh[1])*1000) {
+      if (remainingSteppersFlag == 0)       // don't update as steppers are in motion
+          updateToolLeds();
     }
 
   #endif
@@ -394,6 +417,7 @@ void isrGPTimerHandler() {
     }
   }
   
+  /*
   #ifdef FLIPDBG
   if (initDone && ((tickCounter % flipDbgCnt) == 0)) {
     // flips the debug pin polarity which is supposed to generate 
@@ -409,6 +433,7 @@ void isrGPTimerHandler() {
     #endif
   }
   #endif
+  */
 }
 
 void isrSdCardDetected() {
@@ -423,7 +448,7 @@ void isrSdCardDetected() {
 void isrStepperTimerHandler() {
 
   // fastFlipDbg();         // for debugging only
-  // CRITICAL_SECTION {
+  CRITICAL_SECTION {
     stepperTimer.stop();
     timerVal_t tmp = stepperTimer.getOverflow();
 
@@ -441,12 +466,14 @@ void isrStepperTimerHandler() {
         continue;
       }
 
+      fastFlipDbg();
       if(steppers[i].handleISR()) {
         remainingSteppersFlag &= ~mask;     // mark current stepper as finished if handleISR returned true
         // __debugS(D, PSTR("[%s] done"), steppers[i].getDescriptor());
       }
+      fastFlipDbg();
     }
-  // }  
+  }  
   // fastFlipDbg();       // for debugging only
   startStepperInterval();
 }
@@ -589,7 +616,7 @@ void setup() {
   // ------------------------------------------------------------------------------------------------------
   #if defined(DISABLE_DEBUG_PORT)
     pin_DisconnectDebug(PA_15);   // disable Serial wire JTAG configuration (STM32F1 only)
-    __debugS(D, PSTR("\tdebug ports disabled"));
+    __debugS(D, PSTR("\tSWDIO debug ports disabled"));
   #endif
   #if defined(STM32_REMAP_SPI)
     afio_remap(AFIO_REMAP_SPI1); // remap SPI3 to SPI1 if a "normal" display is being used
@@ -707,7 +734,7 @@ void setup() {
   gpTimer20ms = gpTimer1ms*20;
   gpTimer50ms = gpTimer1ms*50;
   gpTimer100ms = gpTimer1ms*100;
-
+  
   sendStartResponse(0);                                 // send "start<CR><LF>" to USB serial interface
   if (CAN_USE_SERIAL1)
     sendStartResponse(1);                               // send "start<CR><LF>" to all serial interfaces allowed to use
@@ -715,7 +742,8 @@ void setup() {
     sendStartResponse(2);
   if (CAN_USE_SERIAL3 && smuffConfig.hasPanelDue != 3)
     sendStartResponse(3);
-
+  
+  setFastLEDToolIndex(toolSelected, smuffConfig.toolColor, true);
   pwrSaveTime = millis();                               // init value for LCD screen timeout
   initDone = true;                                      // mark init done; enable periodically sending status, if configured
   refreshStatus();
@@ -772,6 +800,7 @@ void monitorTMC(uint8_t axis) {
 
 static bool sdRemovalSet = false;
 static bool firstLoop = false;
+static bool wasIdle = false;
 
 void loop() {
 
@@ -804,7 +833,6 @@ void loop() {
         setPwrSave(0);
       }
     }
-    isIdle = false;
     sdRemovalSet = true;
     if((__systick % 500) == 0) {
       char tmp[50];
@@ -838,7 +866,11 @@ void loop() {
     }
   #endif
 
+  wasIdle = isIdle;
   isIdle = ((uint16_t)((millis() - lastEvent) / 1000) >= smuffConfig.powerSaveTimeout);
+  if(isIdle != wasIdle) {
+    __debugS(DEV4, PSTR("Idle switched from %d to %d"), wasIdle, isIdle);
+  }
 
   #if !defined(USE_SERIAL_DISPLAY)
   int16_t turn;
@@ -878,35 +910,31 @@ void loop() {
         return;
       }
       lastEvent = millis();
-      isIdle = false;
     }
     #endif
     
+    #if defined(USE_FASTLED_TOOLS)
     if(!isIdle) {
-      if(lastFastLedStatus != FASTLED_STAT_NONE) {
+      if(fastLedStatus != FASTLED_STAT_NONE) {
         setFastLEDStatus(FASTLED_STAT_NONE);
-        #if defined(USE_FASTLED_BACKLIGHT)
-        setBacklightIndex(smuffConfig.backlightColor);       // turn the backlight back on
-        #endif
+        __debugS(DEV3, PSTR("FastLED status: None"));
       }
     }
     else {
-      if(smuffConfig.useIdleAnimation && lastFastLedStatus != FASTLED_STAT_MARQUEE) {
+      // switch on idle animation only once
+      if(smuffConfig.useIdleAnimation && fastLedStatus != FASTLED_STAT_MARQUEE) {
         setFastLEDStatus(FASTLED_STAT_MARQUEE);
-        #if defined(USE_FASTLED_BACKLIGHT)
-        setBacklightIndex(0);                               // turn the backlight off
-        #endif
+        __debugS(DEV3, PSTR("FastLED status: Marquee"));
       }
     }
+    #endif
 
     #if !defined(USE_SERIAL_DISPLAY)
     if ((button == MainButton && isClicked) || (button == WheelButton && isHeld)) {
       showMenu = true;
       char title[] = {"Settings"};
-      terminalClear(true);
       showSettingsMenu(title);
       showMenu = false;
-      terminalClear();
       debounceButton();
     }
     else if (button == LeftButton) {
@@ -930,7 +958,6 @@ void loop() {
       resetAutoClose();
       displayingUserMessage = false;
       showMenu = true;
-      terminalClear(true);
       if (turn == -1) {
         showMainMenu();
       }
@@ -939,7 +966,6 @@ void loop() {
       }
       pwrSaveTime = millis();
       showMenu = false;
-      terminalClear();
     }
   }
 
@@ -1020,12 +1046,13 @@ void setPwrSave(int8_t state) {
     pwrSaveTime = millis();
     refreshStatus();
     #if defined(USE_FASTLED_BACKLIGHT)
-    setBacklightIndex(smuffConfig.backlightColor);    // turn back on backlight
+      setBacklightIndex(smuffConfig.backlightColor);    // turn back on backlight
     #endif
+    lastEvent = millis();
   }
   else {
     #if defined(USE_FASTLED_BACKLIGHT)
-    setBacklightIndex(0);                             // turn off backlight
+      setBacklightIndex(0);                             // turn off backlight
     #endif
   }
 }
@@ -1345,7 +1372,9 @@ void handleSerial(const char* in, size_t len, String& buffer, uint8_t port) {
         jsonData = "";
       }
       else {
-        // __debugS(DEV3, PSTR("[%d] sent [%s] [%s]"), port, buffer.c_str(), jsonData.c_str());
+        isIdle = false;
+        setFastLEDStatus(FASTLED_STAT_NONE);
+        __debugS(DEV4, PSTR("Serial-%d has sent \"%s\""), port, buffer.c_str());
         parseGcode(buffer, port);
       }
       isQuote = false;
@@ -1371,7 +1400,7 @@ size_t readSerialToBuffer(Stream* serial, char* buffer, size_t maxLen) {
   int avail = serial->available();
   if(avail != -1) {
     size_t len = avail;
-    if((size_t)avail > maxLen)
+    if(len > maxLen)
       len = maxLen;
     got = serial->readBytes(buffer, len);
   }
@@ -1388,7 +1417,7 @@ void serialEvent() {  // USB-Serial port
     else {
       if(smuffConfig.useDuet) {
         if(smuffConfig.traceUSBTraffic)
-          __debugS(I, PSTR("Recv(0): %s"), tmp);
+          __debugS(DEV4, PSTR("Recv(0): %s"), tmp);
       }
       handleSerial(tmp, got, serialBuffer0, 0);
     }

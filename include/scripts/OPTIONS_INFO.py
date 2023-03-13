@@ -68,8 +68,6 @@ for define in build_flags.get("CPPDEFINES"):
         display = "Standard \x1b[35mRepRap Full-Graphic-Display"
     if define == "USE_SERIAL_DISPLAY":
         display = "\x1b[35mSerial Display (SMuFF-TFT)"
-    if define == "USE_TERMINAL_MENUS":
-        useTerminal = "Enabled"
 
     if define == "USE_FASTLED_BACKLIGHT":
         backlight = "w. NeoPixels backlight"

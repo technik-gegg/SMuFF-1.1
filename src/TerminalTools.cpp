@@ -18,6 +18,7 @@
  */
 #include "SMuFF.h"
 
+/*
 void terminalDrawFrame(bool clear) {
   if(!smuffConfig.menuOnTerminal)
     return;
@@ -148,3 +149,4 @@ uint8_t terminalSendLines(uint8_t y, uint8_t x, const char* str, bool isCenter, 
   return y;
 #endif
 }
+*/
