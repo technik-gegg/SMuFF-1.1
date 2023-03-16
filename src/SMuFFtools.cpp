@@ -1640,8 +1640,11 @@ void prepSteppingRelMillimeter(int8_t index, double millimeter, bool ignoreEndst
 }
 
 void printPeriodicalState(int8_t serial) {
-  char tmp[256];
 
+  if(isListingFile) // avoid sending states while file listing is in progress 
+    return;
+
+  char tmp[256];
   const char *_triggered = "on";
   const char *_open = "off";
   int8_t tool = getToolSelected();
@@ -2311,6 +2314,8 @@ size_t fgets(uint8_t* buffer, size_t maxLen, char delimiter, _File* file) {
 }
 #endif
 
+bool isListingFile = false;
+
 void listTextFile(const char *filename PROGMEM, const char* filter, int8_t serial)
 {
   _File file;
@@ -2318,6 +2323,7 @@ void listTextFile(const char *filename PROGMEM, const char* filter, int8_t seria
   bool headerEnd = false;
 
   if(__fopen(file, filename, FILE_READ)) {
+    isListingFile = true;
     #if defined(USE_SDFAT)
       while(file.fgets((char*)line, ArraySize(line) - 1, (char*)"\n") > 0) {
     #else
@@ -2343,6 +2349,7 @@ void listTextFile(const char *filename PROGMEM, const char* filter, int8_t seria
           printResponse((const char*)line, serial);
     }
     file.close();
+    isListingFile = false;
   }
   else
   {
@@ -2726,7 +2733,7 @@ void __flushDebug__() {
 }
 
 void __debugS__(uint8_t level, bool isInt, const char *fmt, ...) {
-  if(debugSerial == nullptr || (smuffConfig.dbgLevel & level) == 0)
+  if(debugSerial == nullptr || (smuffConfig.dbgLevel & level) == 0 || isListingFile)
     return;
 
   bool useColoring = smuffConfig.useDebugColoring;
@@ -2760,6 +2767,7 @@ void __debugS__(uint8_t level, bool isInt, const char *fmt, ...) {
   }
 }
 
+/* Function obsolete since V3.16
 void __terminal(const char *fmt, ...)
 {
   if (terminalSerial == nullptr)
@@ -2771,6 +2779,7 @@ void __terminal(const char *fmt, ...)
   va_end(arguments);
   terminalSerial->print(_term);
 }
+*/
 
 void __log(const char *fmt, ...)
 {

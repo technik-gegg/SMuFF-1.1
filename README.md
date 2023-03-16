@@ -57,6 +57,10 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
+**3.17** - minor bug fixes
+
++ fixed bug in platformio.ini for SKR Mini environment.
+
 **3.16** - bug fixes / enhancements / cleanup
 
 + **changed the stepper motors timer prescaler from 24Mhz to 2MHz** (internally 4MHz). This means, you **must** adjust your stepper ticks, otherwise steppers are going to turn terribly slow! Had to do this in order to gain more granular control over the stepper motors at lower speeds.

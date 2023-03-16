@@ -414,6 +414,7 @@ extern volatile bool            sendingStatesToggle;
 extern uint32_t                 waitForDlgId;
 extern bool                     gotDlgId;
 extern uint8_t                  dlgButton;
+extern bool                     isListingFile;
 
 #ifdef HAS_TMC_SUPPORT
 extern TMC2209Stepper           *drivers[];
