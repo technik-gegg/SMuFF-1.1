@@ -192,7 +192,7 @@ const char P_DuetLSDisabled[] PROGMEM       = { "Duet3D LaserSensor\nnot enabled
 const char P_DuetLSData[] PROGMEM           = { "Position:%s%6smm\nQ/B/S:    %3d/%3d/%3d\nSwitch:           %3s\nError:      %4s\nVersion:          %3d" };
 const char P_PanelDuePort[] PROGMEM         = { "On Port:" };
 const char P_FreeMemory[] PROGMEM           = { "Estimated Free Memory: %ld Bytes\n" };
-const char P_EstopTriggerMsg[] PROGMEM      = { "%s has triggered, state: %d [%d time(s)]" };
+const char P_EstopTriggerMsg[] PROGMEM      = { "%s has triggered @ %s mm, state: %d [%d time(s)]" };
 
 const char P_SD_Reading[] PROGMEM           = { "Reading %s..." };
 const char P_SD_ReadingConfig[] PROGMEM     = { "Config" };

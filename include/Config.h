@@ -29,7 +29,7 @@ typedef uint32_t    pin_t;
 #define VERSION_STRING    "V3.17"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2023-03-16"
+#define VERSION_DATE      "2023-05-27"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -44,9 +44,6 @@ typedef uint32_t    pin_t;
 #define USERBEEP_FILE     "UBEEP.DAT"
 #define ENCBEEP_FILE      "EBEEP.DAT"
 #define ENCBEEPLEO_FILE   "EBEEP_LEONERD.DAT"
-#if USDB_VID==0x1EAF
-    #define USB_MANUFACTURER_STRING "LeafLabs Maple (SMuFF)"
-#endif
 
 #define MAX_MATERIAL_LEN        5                   // max. length of materials
 #define MAX_MATERIAL_NAME_LEN   10                  // max. length of material names

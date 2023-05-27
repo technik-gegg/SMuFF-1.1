@@ -185,12 +185,13 @@ void drawStatus() {
       display.drawGlyph(display.getDisplayWidth() - 18, 35, smuffConfig.feedLoadState[getToolSelected()] == SPL_LOADED_TO_NOZZLE ? 0x47 : 0x20);
     }
   }
-  drawFeed(false);
 
   // __debugS(DEV2, PSTR("drawStatus done"));
 }
 
+
 void drawFeed(bool updateBuffer) {
+  /*
   char tmp[20];
   sprintf_P(tmp, PSTR("%-4.1f "), steppers[FEEDER].getStepsTakenMM());
   display.setFont(SMALL_FONT);
@@ -204,7 +205,9 @@ void drawFeed(bool updateBuffer) {
   display.drawStr(x + 1, display.getDisplayHeight()-1, tmp);
   if(updateBuffer)
     display.sendBuffer();
+  */
 }
+
 
 void drawUpload(uint32_t remain) {
   char _sel[20];

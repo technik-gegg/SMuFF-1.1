@@ -348,12 +348,11 @@ extern int8_t                   servoMapping[];
 extern int8_t                   outputMode[];
 #endif
 extern uint8_t                  servoPosClosed[];
-extern double                    stepperPosClosed[];
+extern double                   stepperPosClosed[];
 
 
 extern const char               brand[];
 extern uint8_t                  swapTools[];
-extern volatile byte            nextStepperFlag;
 extern volatile byte            remainingSteppersFlag;
 extern volatile unsigned long   lastEncoderButtonTime;
 extern int8_t                   toolSelected;

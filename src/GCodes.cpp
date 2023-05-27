@@ -1796,7 +1796,7 @@ void xlateSpeed205(int8_t axis, double speed, int8_t mode, int8_t serial) {
     spd = translateSpeed((double)speed/60, axis, true);
   else
     spd = translateSpeed(speed, axis, true);
-  char tmp[50];
+  char tmp[128];
   snprintf_P(tmp, ArraySize(tmp)-1, P_XlateSpeedResponse, spd);
   printResponse(tmp, serial);
 
@@ -1809,8 +1809,10 @@ void xlateSpeed205(int8_t axis, double speed, int8_t mode, int8_t serial) {
     speedMMS = String(speed);
     speedMMM = String(speed*60);
   }
+  snprintf_P(tmp, ArraySize(tmp)-1, PSTR("On %c-Axis %s mm/s (%s mm/min) translates to %ld timer ticks.\n"), axis+'X', speedMMS.c_str(), speedMMM.c_str(), spd);
+  printResponse(tmp, serial);
     
-  __debugS(I, PSTR("[XlateSpeed]: On %c-Axis %s mm/s (%s mm/min) translates to %ld timer ticks."), axis+'X', speedMMS.c_str(), speedMMM.c_str(), spd);
+  // __debugS(I, PSTR("[XlateSpeed]: On %c-Axis %s mm/s (%s mm/min) translates to %ld timer ticks."), axis+'X', speedMMS.c_str(), speedMMM.c_str(), spd);
 }
 
 

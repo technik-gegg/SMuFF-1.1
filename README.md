@@ -57,9 +57,20 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
-**3.17** - minor bug fixes
+**3.17** - minor bug fixes / optimizations
 
 + fixed bug in platformio.ini for SKR Mini environment.
++ fixed bug in *NeoPixels on Tools*, if more than 5 tools are being used. Init of the NeoPixels happened before the Config was read and hence the count of tools/NeoPixels was incorrect.
++ optimized code for the steppers (*ZStepperLib*) yet again. The *isrStepperTimerHandler()* method now has an overall runtime of about **15uS** on a **STM32F1** MCU running at 72MHz.
++ changed some methods in timers.h/timers.cpp in order to shave off some microseconds in processing time.
++ fixed bug in synchronous movement of the steppers. Feeder stepper wasn't moving at the same pace as the DDE Feeder.
++ changed the USB signature to **STMicroelectronics SMuFF 3.x**. This way it's easier to distinguish which controller is for the SMuFF on the Raspberry Pi.
++ added meaningfull description headers to all methods in *ZStepperLib*, so it can be reused in other projects.
++ moved hardware Debug-Pin for E3-DIP controller from **Y-STOP** to **SWCLK** for a cleaner wave form. Since this is for my debugging only, you don't have to care much about this change.
++ removed TMC library and build flags from **E3-DIP** and **SKR MINI**, since those boards have no native TMC support (i.e. not being controlled through serial or SPI) and hence TMC drivers are running in "Standalone" a.k.a. "A4988" mode.
++ modified the **Acceleration Distance** behaviour. If this value is set to **0**, SMuFF will use 20% of the total distance for accel/decel, which results in a somewhat smoother acceleration/deceleration.
++ fixed bug stepper movement not stopping on endstop trigger. For some (still undiscovered) reason, the endstop ISR doesn't fire while steppers are moving.
++ changed/removed a couple of debug messages to make them a bit more meaningful.
 
 **3.16** - bug fixes / enhancements / cleanup
 

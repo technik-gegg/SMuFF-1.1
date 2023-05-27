@@ -92,17 +92,17 @@ void initFastLED() {
   Primarily used to attach an oscilloscope.
 */
 extern volatile uint32_t*  debugPin;
-extern uint32_t   pinMask_DebugSet;
-extern uint32_t   pinMask_DebugReset;
+extern          uint32_t   pinMask_Dset;
+extern          uint32_t   pinMask_Drst;
 
 void initHwDebug() {
 #if defined(__HW_DEBUG__) && defined(DEBUG_PIN) && DEBUG_PIN > 0
   pinMode(DEBUG_PIN, OUTPUT);
   digitalWrite(DEBUG_PIN, HIGH);
-#if defined(FASTFLIPDBG) && (defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX))
+#if (defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX))
   debugPin = &(digitalPinToPort(DEBUG_PIN)->BSRR);
-  pinMask_DebugSet = digitalPinToBitMask(DEBUG_PIN);
-  pinMask_DebugReset = digitalPinToBitMask(DEBUG_PIN) << 16;
+  pinMask_Dset = digitalPinToBitMask(DEBUG_PIN);
+  pinMask_Drst = digitalPinToBitMask(DEBUG_PIN) << 16;
 #endif
   calcHwDebugCounter();
   __debugS(D, PSTR("\tinitHwDebug: Pin initialized, frequency is %dHz"), smuffConfig.dbgFreq);
@@ -721,7 +721,7 @@ void setupTimers()
   // *****
   uint32_t stpPsc = STEPPER_PSC/2;  // double the frequency (i.e. half PSC), since two ticks will make one stepping pulse
   stepperTimer.setupTimer(ZTimer::_TIMER1, ZTimer::CH1, stpPsc, 0, isrStepperTimerHandler);  // prescaler set to STEPPER_PSC, timer will be calculated as needed
-  stepperTimer.setPreload(true);
+  stepperTimer.setPreload(false);
   __debugS(D, PSTR("\tsetupTimers: Stepper timer initialized. Freq: %d MHz, PSC: %s MHz"), (int)stepperTimer.getClockFrequency()/1000000, String((double)stepperTimer.getClockFrequency()/1000000/stpPsc).c_str());
 
   #if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
@@ -755,6 +755,8 @@ void setupTimers()
     timerVal_t servo_ticks = calcInterval(&servoTimer, SERVO_RESOLUTION);
     servoTimer.setNextInterruptInterval(servo_ticks);   // start servo timer
     __debugS(D, PSTR("\tsetupTimers: Servo timer ticks set to:\t%ld uS"), servo_ticks);
+  #else
+    __debugS(D, PSTR("\tsetupTimers: Servo timer ticks not set (using MULTISERVO option)"));
   #endif
 
   #if defined(USE_FASTLED_TOOLS)

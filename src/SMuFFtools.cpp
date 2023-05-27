@@ -296,15 +296,19 @@ void positionRevolver() {
 
 void changeFeederSpeed(uint16_t speed) {
   unsigned long _speed = translateSpeed(speed, FEEDER);
-  __debugS(DEV2, PSTR("Changing Feeder speed from %ld to %ld"), steppers[FEEDER].getMaxSpeed(), _speed);
-  steppers[FEEDER].setMaxSpeed(_speed);
+  if (_speed != steppers[FEEDER].getMaxSpeed()) {
+    __debugS(DEV2, PSTR("Changed Feeder speed from %ld to %ld"), steppers[FEEDER].getMaxSpeed(), _speed);
+    steppers[FEEDER].setMaxSpeed(_speed);
+  }
 }
 
 void changeDDEFeederSpeed(uint16_t speed) {
   #if defined(USE_DDE)
   unsigned long _speed = translateSpeed(speed, DDE_FEEDER);
-  __debugS(DEV2, PSTR("Changing DDE-Feeder speed from %ld to %ld"), steppers[DDE_FEEDER].getMaxSpeed(), _speed);
-  steppers[DDE_FEEDER].setMaxSpeed(_speed);
+  if (_speed != steppers[DDE_FEEDER].getMaxSpeed()) {
+    __debugS(DEV2, PSTR("Changed DDE-Feeder speed from %ld to %ld"), steppers[DDE_FEEDER].getMaxSpeed(), _speed);
+    steppers[DDE_FEEDER].setMaxSpeed(_speed);
+  }
   #endif
 }
 
@@ -611,9 +615,9 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
     // prepare 95% to feed full speed
     do {
       #if !defined(USE_DDE)
-        __debugS(D, PSTR("Feeding to nozzle (95%%)"));
+        __debugS(D, PSTR("Feeding to nozzle 95%% (%s mm)"), String(len).c_str());
       #else
-        __debugS(D, PSTR("Feeding to DDE (95%%)"));
+        __debugS(D, PSTR("Feeding to DDE 95%% (%s mm)"), String(len).c_str());
       #endif
       prepSteppingRelMillimeter(FEEDER, len - remains, true);
       runAndWait(FEEDER);
@@ -664,9 +668,9 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
       sendStates(true);
       // feed rest of it slowly
       do {
-        __debugS(D, PSTR("Feeding to nozzle (remaining 5%%)"));
+        __debugS(D, PSTR("Feeding to nozzle remaining 5%% (%s mm)"), String(len - remains).c_str());
         changeFeederSpeed(speed);
-        changeDDEFeederSpeed(speed*0.9);   // let the DDE extruder run slightly faster
+        changeDDEFeederSpeed(speed);
         #if !defined (USE_DDE)
           prepSteppingRelMillimeter(FEEDER, len - remains, true);
           runAndWait(FEEDER);
@@ -693,37 +697,38 @@ bool feedToNozzle(char* errmsg, bool showMessage) {
 
       // Purge DDE / feed to nozzle
       #if defined (USE_DDE)
-        len = smuffConfig.reinforceLength == 0 ? 5 : smuffConfig.reinforceLength; // feed another 5 mm with both extruders before the main extruder takes over
-        steppers[FEEDER].setIgnoreAbort(false);
-        prepSteppingRelMillimeter(FEEDER, len, true);
-        prepSteppingRelMillimeter(DDE_FEEDER, len, false);
-        remainingSteppersFlag = _BV(FEEDER) | _BV(DDE_FEEDER);
-        runAndWait(-1);
+        if(smuffConfig.reinforceLength > 0) {
+          len = smuffConfig.reinforceLength;
+          steppers[FEEDER].setIgnoreAbort(false);
+          prepSteppingRelMillimeter(FEEDER, len, true);
+          prepSteppingRelMillimeter(DDE_FEEDER, len, false);
+          __debugS(D, PSTR("Reinforce length set, feeding both extruders yet another %s mm"), String(len).c_str());
+          remainingSteppersFlag = _BV(FEEDER) | _BV(DDE_FEEDER);
+          runAndWait(-1);
+        }
         // reset max. speed on the DDE and acceleration on both, Feeder and DDE
+        changeDDEFeederSpeed(speed2);
         steppers[FEEDER].setAllowAccel(true);
         steppers[DDE_FEEDER].setAllowAccel(true);
         setServoLid(SERVO_OPEN);
         delay(750);  // wait for the servo to react
-
-        // purge Direct Drive Extruder if configured likewise
+        len = 0;
+        // purge Direct Drive Extruder, if configured
         if(smuffConfig.usePurge && smuffConfig.purgeLength > 0) {
           len = smuffConfig.purgeLength;
-          __debugS(D, PSTR("DDE purging (%s mm)"), String(len).c_str());
           changeDDEFeederSpeed(smuffConfig.purgeSpeed);
-          prepSteppingRelMillimeter(DDE_FEEDER, len, true);
-          runAndWait(DDE_FEEDER);
-          if(smuffConfig.wipeBeforeUnload) {
-            wipeNozzle();
-          }
+          __debugS(D, PSTR("DDE purging %s mm"), String(len).c_str());
         }
         else if(smuffConfig.useCutter && !smuffConfig.cutterOnTop) {
           len = smuffConfig.ddeDist;
-          __debugS(D, PSTR("DDE feeding to nozzle (%s mm)"), String(len).c_str());
+          __debugS(D, PSTR("DDE feeding to nozzle %s mm"), String(len).c_str());
+        }
+        if(len) {
           prepSteppingRelMillimeter(DDE_FEEDER, len, true);
           runAndWait(DDE_FEEDER);
-          if(smuffConfig.wipeBeforeUnload) {
-            wipeNozzle();
-          }
+        }
+        if(smuffConfig.wipeBeforeUnload) {
+          wipeNozzle();
         }
         steppers[DDE_FEEDER].setMaxSpeed(speed2);
         smuffConfig.feedLoadState[toolSelected] = smuffConfig.useSplitter ? SPL_LOADED_TO_NOZZLE : LOADED_TO_NOZZLE;
@@ -826,7 +831,7 @@ bool loadFilament(char* errmsg, bool showMessage) {
   #endif
 
   #if defined(USE_DDE)
-    __debugS(DEV2, PSTR("DDE endstop state after load: %d hit: %d"), steppers[DDE_FEEDER].getEndstopState(), steppers[DDE_FEEDER].getEndstopHit(1));
+    __debugS(DEV2, PSTR("DDE endstop state after load: %s hit: %s"), steppers[DDE_FEEDER].getEndstopState() ? P_High : P_Low, steppers[DDE_FEEDER].getEndstopHit(1) ? P_Yes : P_No);
   #endif
 
   steppers[FEEDER].setMaxSpeed(curSpeed);
@@ -927,15 +932,15 @@ bool unloadFromDDE() {
   
   bool stat = false;
   int8_t retries = FEED_ERROR_RETRIES;
-  double len = smuffConfig.ddeDist * 2;   // retract more than configured, endstop will terminate retraction
+  double len = smuffConfig.ddeDist * 1.2;   // retract more than configured, endstop will terminate retraction
 
   bool ddeEndstopState = steppers[DDE_FEEDER].getEndstopState();
   // don't feed DDE in reverse if Cutter is being used and not sitting on top
   if(!smuffConfig.useCutter || (smuffConfig.useCutter && !smuffConfig.cutterOnTop)) {
-    __debugS(DEV2, PSTR("DDE endstop state: %d hit: %d"), ddeEndstopState, steppers[DDE_FEEDER].getEndstopHit(1));
+    __debugS(DEV2, PSTR("DDE endstop state: %s hit: %s"), ddeEndstopState ? P_High : P_Low, steppers[DDE_FEEDER].getEndstopHit(1) ? P_Yes : P_No);
     if(!steppers[DDE_FEEDER].getEndstopHit(1)) {
       // no filament in DDE?
-      __debugS(DEV2, PSTR("DDE endstop NOT set, skipping unloading from DDE"));
+      __debugS(DEV2, PSTR("DDE endstop NOT hit, skipping unloading from DDE"));
       stat = true;
     }
     else {
@@ -948,11 +953,11 @@ bool unloadFromDDE() {
         setServoLid(SERVO_OPEN);                    // just in case
         // only on Direct Drive Extruder
         if(len > 0) {
-          __debugS(D, PSTR("Retracting from DDE (%s mm)"), String(len).c_str());
+          __debugS(D, PSTR("Retracting from DDE %s mm"), String(len).c_str());
           prepSteppingRelMillimeter(DDE_FEEDER, -len, false);
           runAndWait(DDE_FEEDER);
           double moved = steppers[DDE_FEEDER].getStepPositionMM();
-          __debugS(I, PSTR("DDE has retracted %s mm"), String(moved).c_str());
+          __debugS(I, PSTR("DDE has retracted %s mm"), String(fabs(moved)).c_str());
           // check if DDE Feeder endstop has triggered
           stat = steppers[DDE_FEEDER].getEndstopHit(1);
           if(!stat) {
@@ -961,7 +966,7 @@ bool unloadFromDDE() {
           }
         }
         else {
-          __debugS(I, PSTR("No 'DDEDist' configured, not from retracting DDE"));
+          __debugS(I, PSTR("No 'DDEDist' configured, not retracting from DDE"));
           retries = 0;
           break;
         }
@@ -998,7 +1003,10 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
 
   // Feeder endstop not triggered means: Filament not loaded!
   // In such case, avoid any retraction
-  if(steppers[FEEDER].getEndstopHit()) {
+  if(!steppers[FEEDER].getEndstopHit()) {
+    __debugS(W, PSTR("Feeder endstop was not triggered. Skipping unloading from nozzle."));
+  }
+  else {
 
     if (smuffConfig.prusaMMU2 && smuffConfig.enableChunks) {
       __debugS(I, PSTR("Unloading in %d chunks"), smuffConfig.feedChunks);
@@ -1026,12 +1034,12 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
       
         // prepare 110% to retract with full speed
         double len = (smuffConfig.useSplitter ? smuffConfig.splitterDist : smuffConfig.bowdenLength * 1.1);
-        __debugS(D, PSTR("Retracting from Feeder (%s mm)"), String(len).c_str());
+        __debugS(D, PSTR("Retracting from Feeder %s mm"), String(fabs(len)).c_str());
         steppers[FEEDER].setStepPositionMM(0);
         prepSteppingRelMillimeter(FEEDER, -len, smuffConfig.useSplitter ? true : false);
         runAndWait(FEEDER);
         double moved = steppers[FEEDER].getStepPositionMM();
-        __debugS(I, PSTR("Feeder has retracted %s mm"), String(moved).c_str());
+        __debugS(I, PSTR("Feeder has retracted %s mm"), String(fabs(moved)).c_str());
         
         // first check: If endstop not got hit, repeat retracting
         // bug fix
@@ -1070,16 +1078,15 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
       steppers[FEEDER].setEndstopState(endstopState);
     }
   }
-  else {
-    __debugS(W, PSTR("Feeder endstop was not triggered. Skipping unloading from nozzle."));
-  }
 
+  /*
   // do some calculations in order to give some hints
   double posEnd = posNow - steppers[FEEDER].getStepPositionMM();
   // calculate supposed length;
   double cutterLen = (smuffConfig.useCutter && smuffConfig.cutterOnTop) ? smuffConfig.cutterLength : 0.0;
   double dist = smuffConfig.bowdenLength + cutterLen - smuffConfig.unloadRetract;
-  __debugS(I, PSTR("Unload from Nozzle distance was %s mm"), String(dist).c_str());
+  __debugS(I, PSTR("Unload from Nozzle distance set to %s mm"), String(dist).c_str());
+  */
 
   if(smuffConfig.useSplitter) {
     smuffConfig.feedLoadState[toolSelected] = SPL_LOADED_TO_SPLITTER;
@@ -1116,7 +1123,7 @@ bool unloadFromSelector(char* errmsg) {
       prepSteppingRelMillimeter(FEEDER, -dist, true);
       runAndWait(FEEDER);
       double moved = steppers[FEEDER].getStepPositionMM();
-      __debugS(DEV2, PSTR("Feeder has retracted %s mm from Selector"), String(moved).c_str());
+      __debugS(DEV2, PSTR("Feeder has retracted %s mm from Selector"), String(fabs(moved)).c_str());
       // did the Feeder stall?
       stat = handleFeederStall(&speed, &retries);
       if(retries == 0)
@@ -1281,7 +1288,7 @@ bool unloadFilament(char* errmsg) {
   steppers[FEEDER].setAbort(false);
 
   #if defined(USE_DDE)
-    __debugS(DEV2, PSTR("DDE endstop state after unload: %d hit: %d"), steppers[DDE_FEEDER].getEndstopState(), steppers[DDE_FEEDER].getEndstopHit(1));
+    __debugS(DEV2, PSTR("DDE endstop state after unload: %s hit: %s"), steppers[DDE_FEEDER].getEndstopState() ? P_High : P_Low, steppers[DDE_FEEDER].getEndstopHit(1) ? P_Yes : P_No);
   #endif
 
   dataStore.stepperPos[FEEDER] = steppers[FEEDER].getStepPosition();
@@ -1624,7 +1631,7 @@ void prepSteppingAbsMillimeter(int8_t index, double millimeter, bool ignoreEndst
   uint16_t stepsPerMM = steppers[index].getStepsPerMM();
   long steps = (long)((double)millimeter * stepsPerMM);
   long pos = steppers[index].getStepPosition();
-  __debugS(DEV3, PSTR("prepSteppingAbsMillimeter: StepsMM=%ld MM=%s Dist=%s Steps=%ld Pos=%ld"), stepsPerMM, String((double)millimeter).c_str(), String((double)millimeter * stepsPerMM).c_str(), steps, pos);
+  __debugS(DEV3, PSTR("prepSteppingAbsMillimeter: StepsMM: %ld  MM: %s  Dist: %s  Steps: %ld  Pos: %ld"), stepsPerMM, String((double)millimeter).c_str(), String((double)millimeter * stepsPerMM).c_str(), steps, pos);
   setStepperSteps(index, steps - pos, ignoreEndstop);
 }
 
@@ -1635,7 +1642,7 @@ void prepSteppingRel(int8_t index, long steps, bool ignoreEndstop) {
 void prepSteppingRelMillimeter(int8_t index, double millimeter, bool ignoreEndstop) {
   uint16_t stepsPerMM = steppers[index].getStepsPerMM();
   long steps = (long)((double)millimeter * stepsPerMM);
-  __debugS(DEV3, PSTR("prepSteppingRelMillimeter: StepsMM=%ld MM=%s Dist=%s Steps=%ld"), stepsPerMM, String((double)millimeter).c_str(), String((double)millimeter * stepsPerMM).c_str(), steps);
+  __debugS(DEV3, PSTR("prepSteppingRelMillimeter: StepsMM: %ld  MM: %s  Dist: %s  Steps: %ld"), stepsPerMM, String((double)millimeter).c_str(), String((double)millimeter * stepsPerMM).c_str(), steps);
   setStepperSteps(index, steps, ignoreEndstop);
 }
 
@@ -2582,8 +2589,8 @@ unsigned long translateSpeed(double speed, uint8_t forAxis, bool forceTranslatio
       speed = minSpeed;
     }
   }
-  if(ticks < 5) {
-    ticks = 5;  // highest achievable speed in ticks
+  if(ticks < 2) {
+    ticks = 2;    // highest achievable speed in ticks
     maxSpeed = (double)(stepper_clock / ticks / stepsPerMM);
     if(speed > maxSpeed) {
       __debugS(I, PSTR("Speed requested: %3d mm/s  - Max. Speed: %3.1f mm/s"), speed, maxSpeed);

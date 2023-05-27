@@ -53,7 +53,8 @@ class ZTimer {
     ZTimer() { _timer = UNDEFINED; };
 
     void setupTimer(timerNum_t timer, timerChannel_t channel, uint32_t prescaler, timerVal_t compare = 1, void (* serviceFunPtr)() = nullptr);
-    void setNextInterruptInterval(timerVal_t interval, bool onChannel = false);
+    void setNextInterruptInterval(timerVal_t interval, bool onChannel);
+    void setNextInterruptInterval(timerVal_t interval);
     void setupOVHook(void (*function)(void));
     timerVal_t getCompare();
     timerVal_t getOverflow();
@@ -72,7 +73,7 @@ class ZTimer {
       _dutycycle  = dutycycle;
     };
     void setPreload(bool preload);
-    bool isValid();
+    inline bool isValid();
 
   private:
     timerNum_t      _timer;

@@ -18,7 +18,7 @@
  */
 #include "SMuFF.h"
 
-#define FASTFLIPDBG       0                               // for firmware debugging only
+#define FASTFLIPDBG       1                               // for firmware debugging only
 
 #if defined(__BRD_SKR_MINI)
 Stream                    *debugSerial = &Serial1;        // send debug output to...
@@ -94,8 +94,8 @@ uint8_t                   servoPosClosed[MAX_TOOLS];
 double                     stepperPosClosed[MAX_TOOLS];  // V6S only
 
 String                    serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3;
-volatile byte             nextStepperFlag = 0;
 volatile byte             remainingSteppersFlag = 0;
+volatile byte             startStepperIndex = 0;
 int8_t                    toolSelections[MAX_TOOLS];
 uint8_t                   remoteKey = REMOTE_NONE;
 volatile uint16_t         bracketCnt = 0;
@@ -134,6 +134,9 @@ volatile uint32_t         __systick = 0;        // for benchmarking only
 uint32_t                  waitForDlgId = 0;
 bool                      gotDlgId = false;
 uint8_t                   dlgButton;
+static int                lastTriggerState[4] = { -1, -1, -1, -1 };
+static int                triggerStateCount[4] = { 1, 1, 1, 1 };
+String                    axisNames[] = { "X", "Y", "Z", "Z2" };
 
 volatile IntervalHandler intervalHandlers[] = {
     {  10, 0, every10ms}, 
@@ -148,7 +151,7 @@ volatile IntervalHandler intervalHandlers[] = {
 };
 
 // forward declarations of some locally used functions
-void startStepperInterval();
+void startStepperInterval(timerVal_t duration=0);
 void fncKey1();
 void fncKey2();
 void fncKey3();
@@ -161,13 +164,13 @@ void loopEx();
 #if defined(__STM32F1XX) || defined(__STM32F4XX) || defined(__STM32G0XX)
 
 volatile uint32_t*  debugPin = 0;
-uint32_t            pinMask_DebugSet;
-uint32_t            pinMask_DebugReset;
+uint32_t            pinMask_Dset;
+uint32_t            pinMask_Drst;
 volatile bool       debugToggle = false;
 
 void fastFlipDbg() {
   #if FASTFLIPDBG == 1
-    *debugPin = (debugToggle) ? pinMask_DebugSet : pinMask_DebugReset;
+    *debugPin = (debugToggle) ? pinMask_Dset : pinMask_Drst;
   #else
     digitalWrite(DEBUG_PIN, debugToggle);
   #endif
@@ -180,12 +183,12 @@ volatile uint32_t        *stepper_reg_X = &(digitalPinToPort(X_STEP_PIN)->BSRR);
 volatile uint32_t        *stepper_reg_Y = &(digitalPinToPort(Y_STEP_PIN)->BSRR);
 volatile uint32_t        *stepper_reg_Z = &(digitalPinToPort(Z_STEP_PIN)->BSRR);
 // preset of set/reset values to make the interrupt routine faster
-uint32_t                  pinMask_Xs = digitalPinToBitMask(X_STEP_PIN);
-uint32_t                  pinMask_Ys = digitalPinToBitMask(Y_STEP_PIN);
-uint32_t                  pinMask_Zs = digitalPinToBitMask(Z_STEP_PIN);
-uint32_t                  pinMask_Xr = digitalPinToBitMask(X_STEP_PIN) << 16;
-uint32_t                  pinMask_Yr = digitalPinToBitMask(Y_STEP_PIN) << 16;
-uint32_t                  pinMask_Zr = digitalPinToBitMask(Z_STEP_PIN) << 16;
+uint32_t                  pinMask_Xset = digitalPinToBitMask(X_STEP_PIN);
+uint32_t                  pinMask_Yset = digitalPinToBitMask(Y_STEP_PIN);
+uint32_t                  pinMask_Zset = digitalPinToBitMask(Z_STEP_PIN);
+uint32_t                  pinMask_Xrst = digitalPinToBitMask(X_STEP_PIN) << 16;
+uint32_t                  pinMask_Yrst = digitalPinToBitMask(Y_STEP_PIN) << 16;
+uint32_t                  pinMask_Zrst = digitalPinToBitMask(Z_STEP_PIN) << 16;
 
 #endif
 
@@ -195,48 +198,60 @@ uint32_t                  pinMask_Zr = digitalPinToBitMask(Z_STEP_PIN) << 16;
 
 void overrideStepX(pin_t pin, bool resetPin) {
   #if defined(X_STEP_PIN_NAME)
-    *stepper_reg_X = resetPin ? pinMask_Xs : pinMask_Xr;
-    if(resetPin && smuffConfig.stepDelay[SELECTOR] > 0)
-      DELAY_LOOP(SELECTOR)
+    *stepper_reg_X = resetPin ? pinMask_Xset : pinMask_Xrst;
+    #if defined(USE_XSTEP_DELAY)
+      if(resetPin && smuffConfig.stepDelay[SELECTOR] > 0)
+        DELAY_LOOP(SELECTOR)
+    #endif
   #else
     if(!resetPin)
       STEP_HIGH_X
     else {
       STEP_LOW_X
-      if(smuffConfig.stepDelay[SELECTOR] > 0)
-        delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
+      #if defined(USE_XSTEP_DELAY)
+        if(smuffConfig.stepDelay[SELECTOR] > 0)
+          delayMicroseconds(smuffConfig.stepDelay[SELECTOR]);
+      #endif
     }
   #endif
 }
 
 void overrideStepY(pin_t pin, bool resetPin) {
   #if defined(Y_STEP_PIN_NAME)
-    *stepper_reg_Y = resetPin ? pinMask_Ys : pinMask_Yr;
-    if(resetPin && smuffConfig.stepDelay[REVOLVER] > 0)
-      DELAY_LOOP(REVOLVER)
+    *stepper_reg_Y = resetPin ? pinMask_Yset : pinMask_Yrst;
+    #if defined(USE_YSTEP_DELAY)
+      if(resetPin && smuffConfig.stepDelay[REVOLVER] > 0)
+        DELAY_LOOP(REVOLVER)
+    #endif
   #else
     if(!resetPin)
       STEP_HIGH_Y
     else {
       STEP_LOW_Y
-      if(smuffConfig.stepDelay[REVOLVER] > 0)
-        delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
+      #if defined(USE_YSTEP_DELAY)
+        if(smuffConfig.stepDelay[REVOLVER] > 0)
+          delayMicroseconds(smuffConfig.stepDelay[REVOLVER]);
+      #endif
     }
   #endif
 }
 
 void overrideStepZ(pin_t pin, bool resetPin) {
   #if defined(Z_STEP_PIN_NAME)
-    *stepper_reg_Z = resetPin ? pinMask_Zs : pinMask_Zr;
-    if(resetPin && smuffConfig.stepDelay[FEEDER] > 0)
-      DELAY_LOOP(FEEDER)
+    *stepper_reg_Z = resetPin ? pinMask_Zset : pinMask_Zrst;
+    #if defined(USE_ZSTEP_DELAY)
+      if(resetPin && smuffConfig.stepDelay[FEEDER] > 0)
+        DELAY_LOOP(FEEDER)
+    #endif
   #else
     if(!resetPin)
       STEP_HIGH_Z
     else {
       STEP_LOW_Z
-      if(smuffConfig.stepDelay[FEEDER] > 0)
-        delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
+      #if defined(USE_ZSTEP_DELAY)
+        if(smuffConfig.stepDelay[FEEDER] > 0)
+          delayMicroseconds(smuffConfig.stepDelay[FEEDER]);
+      #endif
     }
   #endif
 }
@@ -244,18 +259,22 @@ void overrideStepZ(pin_t pin, bool resetPin) {
 
 void endstopEventX() {
   // add your code here it you want to hook into the endstop event for the Selector
+  // must be enabled by defining USE_CUSTOM_ENDSTOP_EVENT_X
 }
 
 void endstopEventY() {
   // add your code here it you want to hook into the endstop event for the Revolver
+  // must be enabled by defining USE_CUSTOM_ENDSTOP_EVENT_Y
 }
 
 void endstopEventZ() {
   // add your code here it you want to hook into the 1st endstop event for the Feeder
+  // must be enabled by defining USE_CUSTOM_ENDSTOP_EVENT_Z
 }
 
 void endstopEventZ2() {
   // add your code here it you want to hook into the 2nd endstop event for the Feeder
+  // must be enabled by defining USE_CUSTOM_ENDSTOP_EVENT_Z2
 }
 
 
@@ -270,71 +289,67 @@ void HAL_SYSTICK_Callback(void) {
 /*
   Interrupt handler for Endstops
  */
-static int lastTriggerState[4] = { -1, -1, -1, -1 };
-static int triggerStateCount[4] = { 1, 1, 1, 1 };
 
-void showTriggerMessage(int axis, int state) {
-  String axisNames[] = { "X", "Y", "Z", "Z2" };
+void showTriggerMessage(int axis, bool state) {
 
   if(state == lastTriggerState[axis]) {
     triggerStateCount[axis]++;
     return;
   }
   else {
-    __debugSInt(DEV, P_EstopTriggerMsg, axisNames[axis].c_str(), state, triggerStateCount[axis]);
+    int index = (axis == FEEDER2) ? FEEDER : axis;
+    __debugSInt(DEV3, P_EstopTriggerMsg, axisNames[axis].c_str(), String(steppers[index].getStepPositionMM()).c_str(), state, triggerStateCount[axis]);
     lastTriggerState[axis] = state;
     triggerStateCount[axis] = 1;
   }
 }
 
-void showTriggerMessageFeeder(int index) {
-  double pos = steppers[index].getStepPosition() / steppers[index].getStepsPerMM();
-  __debugSInt(DEV3, PSTR("Z2 triggered @ %s mm"), String(pos).c_str());
-}
-
 void isrEndstopX() {
-  int hit = (int)digitalRead(steppers[SELECTOR].getEndstopPin(1))==steppers[SELECTOR].getEndstopState(1);
-  steppers[SELECTOR].setEndstopHit(hit, 1);
-  steppers[SELECTOR].adjustPositionOnEndstop(1);
-  if(hit)
-    endstopEventX();
-  showTriggerMessage(0, hit);
+  bool hit = steppers[SELECTOR].evalEndstopHit(1);
+  #if defined(USE_CUSTOM_ENDSTOP_EVENT_X)
+    if(hit)
+      endstopEventX();
+  #endif
+  if(smuffConfig.dbgLevel & DEV3 == DEV3)
+    showTriggerMessage(SELECTOR, hit);
 }
 
 void isrEndstopY() {
-  int hit = (int)digitalRead(steppers[REVOLVER].getEndstopPin(1))==steppers[REVOLVER].getEndstopState(1);
-  steppers[REVOLVER].setEndstopHit(hit, 1);
-  steppers[REVOLVER].adjustPositionOnEndstop(1);
-  if(hit)
-    endstopEventY();
-  showTriggerMessage(1, hit);
+  bool hit = steppers[REVOLVER].evalEndstopHit(1);
+  #if defined(USE_CUSTOM_ENDSTOP_EVENT_Y)
+    if(hit)
+      endstopEventY();
+  #endif
+  if(smuffConfig.dbgLevel & DEV3 == DEV3)
+    showTriggerMessage(REVOLVER, hit);
 }
 
 void isrEndstopZ() {
-  int hit = (int)digitalRead(steppers[FEEDER].getEndstopPin(1))==steppers[FEEDER].getEndstopState(1);
-  steppers[FEEDER].setEndstopHit(hit, 1);
-  steppers[FEEDER].adjustPositionOnEndstop(1);
-  if(hit)
-    endstopEventZ();
-  showTriggerMessage(2, hit);
+  bool hit = steppers[FEEDER].evalEndstopHit(1);
+  #if defined(USE_CUSTOM_ENDSTOP_EVENT_Z)
+    if(hit)
+      endstopEventZ();
+  #endif
+  if(smuffConfig.dbgLevel & DEV3 == DEV3)
+    showTriggerMessage(FEEDER, hit);
 }
 
 void isrEndstopZ2() {
-  int hit = 0;
-  if(steppers[FEEDER].getEndstopPin(2) > 0) {
-    hit = (int)digitalRead(steppers[FEEDER].getEndstopPin(2))==steppers[FEEDER].getEndstopState(2);
-    steppers[FEEDER].setEndstopHit(hit, 2);
-    steppers[FEEDER].adjustPositionOnEndstop(2);
-  }
-  #if defined(USE_DDE)
-    hit = (int)digitalRead(steppers[DDE_FEEDER].getEndstopPin(1))==steppers[DDE_FEEDER].getEndstopState(1);
-    steppers[DDE_FEEDER].setEndstopHit(hit, 1);
-    steppers[DDE_FEEDER].adjustPositionOnEndstop(1);
+  bool hit = false;
+  #if !defined(USE_DDE)
+    if(steppers[FEEDER].getEndstopPin(2) > 0) {
+      hit = steppers[FEEDER].evalEndstopHit(2);
+    }
+  #else
+    hit = steppers[DDE_FEEDER].evalEndstopHit(1);
   #endif
-  if(hit)
-    endstopEventZ2();
-  showTriggerMessage(3, hit);
-  showTriggerMessageFeeder(FEEDER);
+  #if defined(USE_CUSTOM_ENDSTOP_EVENT_Z2)
+    if(hit)
+      endstopEventZ2();
+  #endif
+  if(smuffConfig.dbgLevel & DEV3 == DEV3) {
+    showTriggerMessage(FEEDER2, hit);
+  }
 }
 
 /*
@@ -375,16 +390,14 @@ void isrLedTimerHandler() {
 }
 
 /*
-  Interrupt handler for the servo timer
+  Interrupt handler for the servo timer.
+  Available only, if MultiServo option isn't used
 */
+#if defined(USE_ZSERVO) && !defined(USE_MULTISERVO)
 void isrServoTimerHandler() {
-
-  #if defined(USE_ZSERVO)
-    // fastFlipDbg();
-    isrServoHandler();        // call servo handler
-    // fastFlipDbg();
-  #endif
+  isrServoHandler();        // call servo handler
 }
+#endif
 
 /*
   Interrupt handler for the general purpose timer
@@ -392,7 +405,6 @@ void isrServoTimerHandler() {
   every millisecond.
   Serves also as a handler/dispatcher for periodicals / encoder / fan / NeoPixels.
 */
-bool dbgPinState = false;
 void isrGPTimerHandler() {
 
   tickCounter++; // increment tick counter
@@ -425,8 +437,8 @@ void isrGPTimerHandler() {
     // frequency can be modified in smuffConfig.dbgFreq
     #if FASTFLIPDBG == 0
       #if defined(USE_MULTISERVO)
-        // dbgPinState = !dbgPinState;
-        // servoPwm.setPin(servoMapping[SERVO_SPARE2], dbgPinState);
+        // debugToggle = !debugToggle;
+        // servoPwm.setPin(servoMapping[SERVO_SPARE2], debugToggle);
       #else
         FLIPDBG
       #endif
@@ -447,121 +459,115 @@ void isrSdCardDetected() {
 
 void isrStepperTimerHandler() {
 
-  // fastFlipDbg();         // for debugging only
-  CRITICAL_SECTION {
-    stepperTimer.stop();
-    timerVal_t tmp = stepperTimer.getOverflow();
+  fastFlipDbg();
+  register timerVal_t duration;
+  register uint8_t i = startStepperIndex;     // startStepperIndex is either 0 if multiple steppers are in action or the according stepper
+  do {
+    if (!(_BV(i) & remainingSteppersFlag))    // current stepper doesn't need movement, continue with next one
+      continue;
 
-    register uint8_t mask;
-    for (uint8_t i=0; i < NUM_STEPPERS; i++) {
-      if (remainingSteppersFlag == 0)
-        break;
-      mask = _BV(i);
-      if (!(mask & remainingSteppersFlag))  // current stepper doesn't need movement, continue with next one
+    if (steppers[i].getInterruptFactor() > 0) {
+      if (!steppers[i].allowInterrupt())      // check whether a synced stepper needs movement too
         continue;
-
-      if (!(mask & nextStepperFlag)) {
-        // current stepper is not marked as the next one to move, adjust duration for next turn
-        steppers[i].subtractDuration(tmp);
-        continue;
-      }
-
-      fastFlipDbg();
-      if(steppers[i].handleISR()) {
-        remainingSteppersFlag &= ~mask;     // mark current stepper as finished if handleISR returned true
-        // __debugS(D, PSTR("[%s] done"), steppers[i].getDescriptor());
-      }
-      fastFlipDbg();
     }
-  }  
-  // fastFlipDbg();       // for debugging only
-  startStepperInterval();
+    else
+      duration = steppers[i].getDuration();   // get next interrupt interval
+
+    if (steppers[i].handleISR()) {            // current stepper has to move, call it's handler
+      remainingSteppersFlag &= ~_BV(i);       // mark current stepper as done, if handler returned true
+      if (remainingSteppersFlag == 0)         // leave, if no more steppers need movement
+        break;
+    }
+
+  } while(++i < NUM_STEPPERS);
+  startStepperInterval(duration);              // start next interval if needed
+  fastFlipDbg();
 }
 
-void startStepperInterval() {
-  timerVal_t minDuration = 0xFFFF;
-
-  if (remainingSteppersFlag == 0) { // no more stepper movements pending, stop timer
-    // stop stepper timer
-    stepperTimer.stop();
-    stepperTimer.setOverflow(0x10000);
+void startStepperInterval(timerVal_t duration) {
+  if (remainingSteppersFlag != 0) {                         // does any stepper still need to move?
+    stepperTimer.setNextInterruptInterval(duration);        // yes, set timer value for next interrupt
   }
   else {
-    for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
-      // find shortest duration (overflow value) of all steppers in action
-      if ((_BV(i) & remainingSteppersFlag)) {
-        if(steppers[i].getInterruptFactor() == 0)
-          steppers[i].isLTDuration(&minDuration);
-      }
-    }
-
-    nextStepperFlag = 0;
-    for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
-      // mark stepper with lowest duration to move next (pseudo sync)
-      if ((_BV(i) & remainingSteppersFlag) && (steppers[i].isDuration(minDuration) || steppers[i].checkInterrupt()))
-        nextStepperFlag |= _BV(i);
-    }
-    // stepper movements still pending, set new stepper timer overflow value
-    stepperTimer.setNextInterruptInterval(minDuration);
+    stepperTimer.stop();                                    // no more stepper movements pending, stop timer, done
   }
 }
 
 void calcSyncMovementFactor() {
 
-  if(!smuffConfig.allowSyncSteppers)
-    return;
-  
-  long maxTotal = 0;
-  uint8_t maxIdx = 0;
+  // if(!smuffConfig.allowSyncSteppers)                // obsolete: don't care, if sync movement is disabled
+  //   return;
 
-  // find largest pending movement (most total steps)
-  for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
+  long maxTotal = 0;
+  uint8_t maxTotalIndex = 0;
+
+  for (uint8_t i = 0; i < NUM_STEPPERS; i++) {      // find largest pending movement (most total steps)
     if (!(_BV(i) & remainingSteppersFlag))
       continue;
     long ts = steppers[i].getTotalSteps();
     if(ts > maxTotal) {
-      maxTotal = ts;
-      maxIdx  = i;
+      maxTotal = ts-1;
+      maxTotalIndex  = i;
     }
   }
-  __debugS(DEV2, PSTR("Stepper '%-8s' total steps: %ld"), steppers[maxIdx].getDescriptor(), maxTotal);
+  __debugS(DEV2, PSTR("Stepper '%-8s' total steps: %7ld"), steppers[maxTotalIndex].getDescriptor(), maxTotal);
 
   // find all smaller movements and set the factor proportionally, i.e.
   // slow down movement so all steppers start and stop in sync
   for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
     if (!(_BV(i) & remainingSteppersFlag))
       continue;
-    long ts = steppers[i].getTotalSteps();
-    if(i != maxIdx) {
-      steppers[i].setInterruptFactor(maxTotal/ts);
-      __debugS(DEV2, PSTR("Stepper '%-8s' total steps: %ld  interrupt factor: %d"), steppers[i].getDescriptor(), ts, steppers[i].getInterruptFactor());
-    }
+    if(i == maxTotalIndex)              // ignore the stepper that's setting the pace
+      continue;
+    long tSteps = steppers[i].getTotalSteps()-1;
+    // factor is now calculated differently to overcome issues with decimals
+    timerVal_t factor = (timerVal_t)round(((double)tSteps/(double)maxTotal)*10000);
+    steppers[i].setInterruptFactor(factor);
+    __debugS(DEV2, PSTR("Stepper '%-8s' total steps: %7ld  interrupt factor: %ld"), steppers[i].getDescriptor(), tSteps, steppers[i].getInterruptFactor());
   }
 }
 
+/** 
+ * Find the shortest duration (a.k.a. smallest overflow value)
+ */
+timerVal_t getDuration() {
+  timerVal_t minDuration = 0xFFFF;
+  
+  for (uint8_t i = 0; i < NUM_STEPPERS; i++) {
+    if (_BV(i) & remainingSteppersFlag) {             // only if the stepper is in action
+      steppers[i].isLTDuration(&minDuration);         // compare and assign minDuration, if it's less than the current minDuration
+    }
+  }
+  return minDuration; 
+}
+
 void runNoWait(int8_t index) {
-  if (index != -1)
+  if (index != -1) {
     remainingSteppersFlag |= _BV(index);
-  else 
-    calcSyncMovementFactor();     // calculate movement factor if more than one stepper has to move
-  startStepperInterval();
+    startStepperIndex = index;
+  }
+  else {
+    calcSyncMovementFactor();                           // calculate movement factor, if more than one stepper has to move
+    startStepperIndex = 0;
+  }
+  startStepperInterval(getDuration());
 }
 
 void runAndWait(int8_t index) {
-  static uint32_t lastFeedUpdate = 0;
   bool dualFeeder = false;
   #if defined(USE_DDE)
     if(!asyncDDE && (remainingSteppersFlag & _BV(FEEDER)) && (remainingSteppersFlag & _BV(DDE_FEEDER))) {
       dualFeeder = true;
       if(index != -1)
         __debugS(DEV2, PSTR("[runAndWait] Stepper: %-8s"), steppers[index].getDescriptor());
-      __debugS(DEV2, PSTR("[runAndWait] Remaining: %4lx  AsyncDDE: %s DualFeeder: %s"), remainingSteppersFlag, asyncDDE ? "Yes" : "No", dualFeeder ? "Yes" : "No");
+      __debugS(DEV2, PSTR("[runAndWait] remainingSteppersFlag: %4lx  AsyncDDE: %s  DualFeeder: %s"), remainingSteppersFlag, asyncDDE ? P_Yes : P_No, dualFeeder ? P_Yes : P_No);
     }
   #endif
   runNoWait(index);
   while (remainingSteppersFlag)
   {
-    checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
+    if(smuffConfig.prusaMMU2)
+      checkSerialPending(); // not a really nice solution but needed to check serials for "Abort" command in PMMU mode
     #if defined(USE_DDE)
       // stop internal feeder when the DDE feeder has stopped
       if(dualFeeder && ((remainingSteppersFlag & _BV(FEEDER)) && !(remainingSteppersFlag & _BV(DDE_FEEDER)))) {
@@ -624,7 +630,6 @@ void setup() {
   #endif
 
   initUSB();                // init the USB serial so it's being recognized by the Windows-PC
-  initFastLED();            // init FastLED if configured
   setupI2C();               // setup I2C/TWI devices
 
   #if defined(USE_I2C)
@@ -659,6 +664,7 @@ void setup() {
     #endif
   }
   __debugS(SP, after, "read Config");
+  initFastLED();                                      // init FastLED if configured
   setContrast(smuffConfig.lcdContrast);               // reset display contrast after reading config
   initHwDebug();                                      // init hardware debugging
 

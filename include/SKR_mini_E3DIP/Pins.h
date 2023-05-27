@@ -121,9 +121,11 @@
     #define DEBUG_PIN           PA0         // TH0 //-1
 #else
     #if defined(__STM32F1XX)
-    #define DEBUG_PIN_NAME      PC_0
+    // #define DEBUG_PIN_NAME      PC_0
+    #define DEBUG_PIN_NAME      PA_14
     #endif
-    #define DEBUG_PIN           PC0        // Y-STOP
+    // #define DEBUG_PIN           PC0        // Y-STOP
+    #define DEBUG_PIN           PA14       // SWCLK
 #endif
 
 #define USB_CONNECT_PIN     PC13

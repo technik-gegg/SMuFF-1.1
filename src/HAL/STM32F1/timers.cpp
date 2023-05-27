@@ -65,7 +65,7 @@ static struct {
       .serviceOVFunPtr = nullptr }
 };
 
-bool ZTimer::isValid() {
+inline bool ZTimer::isValid() {
    return _timer != UNDEFINED && timers[_timer].timer != nullptr;
 }
 
@@ -103,6 +103,22 @@ void ZTimer::setNextInterruptInterval(timerVal_t interval, bool onChannel) {
   if(interval != 0) {
     setOverflow(interval);
     start();
+  }
+}
+
+// Changed behaviour; Accessing timer methods stop(), setOverflow() and start() directly 
+// to avoid multiple isValid() checks.
+void ZTimer::setNextInterruptInterval(timerVal_t interval) {
+  if (!isValid())
+    return;
+
+  // stop();
+  timers[_timer].timer->pause();
+  if(interval != 0) {
+    // setOverflow(interval);
+    timers[_timer].timer->setOverflow(interval);
+    // start();
+    timers[_timer].timer->resume();
   }
 }
 
