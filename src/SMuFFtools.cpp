@@ -2424,8 +2424,8 @@ const char *loadMenu(const char *filename PROGMEM, int ordinals[], size_t maxLen
       }
       n++;
       if(n > ArraySize(_loadmenu)) {
-        break;
         __debugS(I, PSTR("Possible overflow in Menu '%s': %d bytes read, array size %d"), filename, n, ArraySize(_loadmenu));
+        break;
       }
     }
     file.close();

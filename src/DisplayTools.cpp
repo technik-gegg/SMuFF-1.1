@@ -185,6 +185,7 @@ void drawStatus() {
       display.drawGlyph(display.getDisplayWidth() - 18, 35, smuffConfig.feedLoadState[getToolSelected()] == SPL_LOADED_TO_NOZZLE ? 0x47 : 0x20);
     }
   }
+  display.setFont(SMALL_FONT);
 
   // __debugS(DEV2, PSTR("drawStatus done"));
 }

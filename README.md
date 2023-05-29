@@ -57,6 +57,10 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
+**3.18** - minor bug fix
+
++ fixed bug in displaying menu items
+
 **3.17** - minor bug fixes / optimizations
 
 + fixed bug in platformio.ini for SKR Mini environment.
