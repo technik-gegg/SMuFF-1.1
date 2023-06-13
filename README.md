@@ -57,6 +57,10 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
+**3.19** - bug fix
+
++ fixed bug in Selector homing. When homed, SMuFF wasn't able to select tools because the Selector endstop was still triggering.
+
 **3.18** - minor bug fix
 
 + fixed bug in displaying menu items

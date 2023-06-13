@@ -915,8 +915,13 @@ bool ZStepper::allowInterrupt() {
 bool ZStepper::evalEndstopHit(uint8_t index) {
   if(index == 1) {
     _endstopHit = (bool)digitalRead(_endstopPin) == _endstopState;
-    if(_endstopHit && !_movementDone)
+    if(_endstopHit && !_movementDone) {
+      if(_endstopType == MIN && _dir == CW) { 
+        // don't report endstop hit if stepper is supposed to move away from endstop
+        return false;
+      }
       adjustPositionOnEndstop();
+    }
     return _endstopHit;
   }
   else {
