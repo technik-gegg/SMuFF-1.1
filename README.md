@@ -57,6 +57,12 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
+**3.20** - small feature change
+
++ corrected the behaviour of the **USE_NUM_PIXELS** definition in *platformio.ini*. This defines how many **NeoPixel LEDs** one plans to use for one tool (which usually is: "1 LED per tool").
+This feature comes in handy when you're using a NeoPixel strip with a higher density. The "standard" NeoPixel strips come with a density of 60 LEDs/meter but they're also available in 30, 72, 96, 144, 240 or even 332 LEDs/m.
+It turned out, that on strips with **144 LEDs/m** the LED spacing is around 7mm (i.e. 1000/144 = 6.94), which corresponds to 3 LEDs for 21mm! Coincidentally, this is also the exact width of one Filament-Guide. Hence, using a 144 LEDs/m strip saves you from the tedious job of cutting a strip and re-soldering the LEDs in order to get them into the right position. Simply use a longer strip (3 LEDs * number_of_tools) and set **USE_NUM_PIXELS** to 3 before compiling the firmware.
+
 **3.19** - bug fix
 
 + fixed bug in Selector homing. When homed, SMuFF wasn't able to select tools because the Selector endstop was still triggering.

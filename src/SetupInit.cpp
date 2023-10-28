@@ -70,7 +70,7 @@ void initAdaNeoPx() {
   pinMode(NEOPIXEL_TOOL_PIN, OUTPUT);
   uint16_t pixelCount = smuffConfig.toolCount;
   #if defined(USE_NUM_PIXELS) && USE_NUM_PIXELS != 0
-    pixelCount = USE_NUM_PIXELS;
+    pixelCount = USE_NUM_PIXELS * smuffConfig.toolCount;
   #endif
   cTools = new Adafruit_NeoPixel(pixelCount, NEOPIXEL_TOOL_PIN, COLOR_ORDER_TOOL);
   cTools->setBrightness(BRIGHTNESS_TOOL);

@@ -242,6 +242,19 @@ typedef enum {
   }
 #endif
 
+uint8_t getNumPixels() {
+  #if defined(USE_NUM_PIXELS) && USE_NUM_PIXELS != 0
+    return USE_NUM_PIXELS;
+  #else
+    return 1;
+  #endif
+}
+
+int getPixelCount() {
+  return smuffConfig.toolCount * getNumPixels();
+}
+
+
 void updateToolLeds() {
 #if defined(USE_FASTLED_TOOLS)
   if(cTools == nullptr)
@@ -406,9 +419,10 @@ void setFastLEDToolsOk() {
 
 void setFastLEDToolsMarquee() {
 #if defined(USE_FASTLED_TOOLS)
-  int8_t pos = beatsin8(smuffConfig.animationBPM, 0, smuffConfig.toolCount-1);
-  uint32_t color = smuffConfig.materialColors[smuffConfig.toolCount - pos - 1];
-  fadeToBlackBy(cTools, smuffConfig.toolCount, FADE_SPEED_MARQUEE);
+  int pixelCount = getPixelCount();
+  int8_t pos = beatsin8(smuffConfig.animationBPM, 0, pixelCount-1);
+  uint32_t color = smuffConfig.materialColors[pixelCount - pos - 1];
+  fadeToBlackBy(cTools, pixelCount, FADE_SPEED_MARQUEE);
   if(cTools != nullptr) {
     if(color == 0)
       addHSV(cTools, pos, cTools->gamma32(cTools->ColorHSV((uint16_t)fastLedHue<<8, 255, 200)));
@@ -424,10 +438,21 @@ void setFastLEDTools(){
 
 void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag) {
 #if defined(USE_FASTLED_TOOLS)
-  fadeToBlackBy(cTools, smuffConfig.toolCount, FADE_SPEED);
+  int pixelCount = getPixelCount();
+  fadeToBlackBy(cTools, pixelCount, FADE_SPEED);
   if (index >= 0 && index < smuffConfig.toolCount) {
-    if(cTools != nullptr)
-      cTools->setPixelColor(smuffConfig.toolCount - index - 1, LEDColors[color]);
+    if(cTools != nullptr) {
+      int pixelNdx = smuffConfig.toolCount - index - 1;
+      uint8_t numPix = getNumPixels();
+      if(numPix == 1) {
+        cTools->setPixelColor(pixelNdx, LEDColors[color]);
+      }
+      else {
+        // if there are more than 1 pixel per tool, set all pixels to the same color
+        for(int i=0; i< getNumPixels(); i++)
+          cTools->setPixelColor(pixelNdx*numPix+i, LEDColors[color]);
+      }
+    }
   }
   if(setFlag)
       updateToolLeds();
@@ -489,7 +514,7 @@ void testFastLED(bool tools) {
 #if defined(NEOPIXEL_TOOL_PIN) && defined(USE_FASTLED_TOOLS)
   if(tools) {
     __debugS(D, PSTR("\ttesting Tools LEDs"));
-    for (uint8_t i = 0; i < smuffConfig.toolCount; i++)
+    for (uint8_t i = 0; i < getPixelCount(); i++)
     {
       if(cTools != nullptr) {
         cTools->setPixelColor(i, LEDColors[(uint8_t)random(1,7)]);
@@ -502,3 +527,4 @@ void testFastLED(bool tools) {
   }
 #endif
 }
+
