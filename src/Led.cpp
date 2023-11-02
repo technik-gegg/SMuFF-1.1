@@ -185,15 +185,19 @@ uint8_t           colorMap[8] PROGMEM = {0, 1, 2, 4, 6, 5, 3, 7};
 #endif
 
 typedef enum {
-  HUE_RED = 0,
+  HUE_WHITE = 0,
   HUE_ORANGE = 32,
   HUE_YELLOW = 64,
   HUE_GREEN = 96,
   HUE_AQUA = 128,
-  HUE_BLUE = 160,
-  HUE_PURPLE = 192,
-  HUE_PINK = 224
+  HUE_CYAN = 180,
+  HUE_BLUE = 230,
+  HUE_PURPLE = 285,
+  HUE_PINK = 300,
+  HUE_RED = 355
 } HSVHue;
+
+int16_t colorMapHSV[8] PROGMEM = {-1, HSVHue::HUE_RED, HSVHue::HUE_GREEN, HSVHue::HUE_BLUE, HSVHue::HUE_CYAN, HSVHue::HUE_PURPLE, HSVHue::HUE_YELLOW, HSVHue::HUE_WHITE};
 
 #if defined(USE_FASTLED_BACKLIGHT)
   Adafruit_NeoPixel* cBackLight;
@@ -225,6 +229,15 @@ typedef enum {
       instance->setPixelColor(i, ColorRGB(r, g, b));
     }
   }
+  
+  void nscale8pixel(Adafruit_NeoPixel* instance, uint16_t index, uint8_t scale) {
+    if(instance == nullptr)
+      return;
+    uint8_t r, g, b;
+    ColorToRGB(instance->getPixelColor(index), &r, &g, &b);
+    nscale8x3( &r, &g, &b, scale);
+    instance->setPixelColor(index, ColorRGB(r, g, b));
+  }
 
   void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy) {
     if(instance == nullptr)
@@ -243,15 +256,11 @@ typedef enum {
 #endif
 
 uint8_t getNumPixels() {
-  #if defined(USE_NUM_PIXELS) && USE_NUM_PIXELS != 0
-    return USE_NUM_PIXELS;
-  #else
-    return 1;
-  #endif
+  return smuffConfig.ledsPerTools;
 }
 
 int getPixelCount() {
-  return smuffConfig.toolCount * getNumPixels();
+  return smuffConfig.toolCount * smuffConfig.ledsPerTools;
 }
 
 
@@ -374,6 +383,9 @@ void setFastLEDStatus(uint8_t status) {
     case FASTLED_STAT_RAINBOW:
       setFastLEDToolsRainbow();
       break;
+    case FASTLED_STAT_CYLON:
+      setFastLEDToolsCylon();
+      break;
     case FASTLED_STAT_ERROR:
       setFastLEDToolsError();
       break;
@@ -386,10 +398,63 @@ void setFastLEDStatus(uint8_t status) {
   }
 }
 
+void setFastLEDToolsMarquee() {
+#if defined(USE_FASTLED_TOOLS)
+  if(cTools != nullptr) {
+    static uint16_t oldPos = 0;
+    uint16_t pixelCount = getPixelCount();
+    uint16_t pos = beatsin16(smuffConfig.animationBPM, 0, pixelCount-1);
+    uint32_t color = smuffConfig.materialColors[toolSelected];
+    fadeToBlackBy(cTools, pixelCount, smuffConfig.fadeSpeedMarquee);
+    if(color == 0) {
+      addHSV(cTools, pos, cTools->gamma32(cTools->ColorHSV((uint16_t)(fastLedHue << 8), 255, 200)));
+      color = cTools->getPixelColor(pos);
+    }
+    //__debugSInt(DEV3, "Pos: %d %d", pos, oldPos);
+    if(oldPos == pos)
+      cTools->setPixelColor(pos, color);
+    else {
+        if (pos < oldPos)
+          cTools->fill(color, pos, oldPos);
+        else
+          cTools->fill(color, oldPos, pos);
+    }
+    oldPos = pos;
+  }
+#endif
+}
+
 void setFastLEDToolsRainbow() {
 #if defined(USE_FASTLED_TOOLS)
   if(cTools != nullptr)
-    cTools->rainbow(fastLedHue);
+    cTools->rainbow((uint16_t)(fastLedHue << 8));
+#endif
+}
+
+void setFastLEDToolsCylon() {
+#if defined(USE_FASTLED_TOOLS)
+  if(cTools == nullptr)
+    return;
+
+  uint16_t pixelCount = getPixelCount();
+  uint8_t brightness = 200;
+  uint8_t saturation = 255;
+  uint16_t pos = beatsin16(smuffConfig.animationBPM, 0, pixelCount-1);
+  int16_t hue = (uint16_t)(fastLedHue << 8);
+
+  cTools->clear();
+  uint32_t color = cTools->gamma32(cTools->ColorHSV(hue, saturation, brightness));
+  cTools->setPixelColor(pos, color);
+
+  if(pos >= 1) {
+    cTools->setPixelColor(pos-1, color);
+    nscale8pixel(cTools, pos-1, 50);
+  }
+  if(pos <= pixelCount-1) {
+    cTools->setPixelColor(pos+1, color);
+    nscale8pixel(cTools, pos+1, 50);
+  }
+
 #endif
 }
 
@@ -417,21 +482,6 @@ void setFastLEDToolsOk() {
 #endif
 }
 
-void setFastLEDToolsMarquee() {
-#if defined(USE_FASTLED_TOOLS)
-  int pixelCount = getPixelCount();
-  int8_t pos = beatsin8(smuffConfig.animationBPM, 0, pixelCount-1);
-  uint32_t color = smuffConfig.materialColors[pixelCount - pos - 1];
-  fadeToBlackBy(cTools, pixelCount, FADE_SPEED_MARQUEE);
-  if(cTools != nullptr) {
-    if(color == 0)
-      addHSV(cTools, pos, cTools->gamma32(cTools->ColorHSV((uint16_t)fastLedHue<<8, 255, 200)));
-    else
-      cTools->setPixelColor(pos, color);  
-  }
-#endif
-}
-
 void setFastLEDTools(){
   setFastLEDToolIndex(lastFastLedIndex, lastFastLedColor, false);
 }
@@ -443,14 +493,14 @@ void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag) {
   if (index >= 0 && index < smuffConfig.toolCount) {
     if(cTools != nullptr) {
       int pixelNdx = smuffConfig.toolCount - index - 1;
-      uint8_t numPix = getNumPixels();
-      if(numPix == 1) {
+      uint8_t pixPerTool = smuffConfig.ledsPerTools;
+      if(pixPerTool == 1) {
         cTools->setPixelColor(pixelNdx, LEDColors[color]);
       }
       else {
         // if there are more than 1 pixel per tool, set all pixels to the same color
-        for(int i=0; i< getNumPixels(); i++)
-          cTools->setPixelColor(pixelNdx*numPix+i, LEDColors[color]);
+        for(int i=0; i< pixPerTool; i++)
+          cTools->setPixelColor(pixelNdx*pixPerTool+i, LEDColors[color]);
       }
     }
   }
@@ -519,7 +569,7 @@ void testFastLED(bool tools) {
       if(cTools != nullptr) {
         cTools->setPixelColor(i, LEDColors[(uint8_t)random(1,7)]);
         cTools->show();
-        delay(250);
+        delay(smuffConfig.ledsPerTools > 1 ? 75 : 250); // use a shorter delay if more than one pixel is used
         cTools->setPixelColor(i, LEDColors[0]);
       }
     }

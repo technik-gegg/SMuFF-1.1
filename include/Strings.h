@@ -62,6 +62,7 @@ const char P_OptBaudrates [] PROGMEM        = { "baudrates" };
 const char P_OptTmcModes [] PROGMEM         = { "tmc-modes" };
 const char P_OptMicrosteps [] PROGMEM       = { "microsteps" };
 const char P_OptMS3States [] PROGMEM        = { "ms3-states" };
+const char P_OptAnimType [] PROGMEM         = { "anim-type" };
 
 const char P_OkButtonOnly [] PROGMEM        = { " Ok " };
 const char P_CancelButtonOnly [] PROGMEM    = { " Cancel " };
@@ -145,6 +146,7 @@ const char P_InSteps[] PROGMEM              = { "in steps:" };
 const char P_InMilliAmpere[] PROGMEM        = { "in mA:" };
 const char P_InOhm[] PROGMEM                = { "in ohm:" };
 const char P_InBPM[] PROGMEM                = { "in BPM:" };
+const char P_LEDCount[] PROGMEM             = { "# of LED's:" };
 
 const char P_InValue[] PROGMEM              = { "as value:" };
 const char P_YesNo[] PROGMEM                = { "yes / no:" };

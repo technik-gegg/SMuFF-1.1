@@ -366,7 +366,7 @@ void isrStallDetectedZ() { steppers[FEEDER].stallDetected(); }
 void isrLedTimerHandler() {
 
   #if defined(USE_FASTLED_TOOLS)
-    static volatile uint32_t   ledTickCounter = 0;
+    static volatile uint8_t ledTickCounter = 0;
     #if !defined(USE_MULTISERVO)
       if(!initDone || isUpload || !servoLid.isPulseComplete() || !servoCutter.isPulseComplete() || !servoWiper.isPulseComplete())
         return;
@@ -376,14 +376,17 @@ void isrLedTimerHandler() {
     #endif
 
     ledTickCounter++;                     // increments every 10ms
-    if(ledTickCounter % 10 == 0) {        // every 100ms
+    if(ledTickCounter == 10) {            // every 100ms
+      ledTickCounter = 0;
       fastLedHue++;                       // used in some color changing/fading effects
       setFastLEDStatus(fastLedStatus);
     }
-    // update NeoPixels when the interval has been reached
-    if(micros()-lastFastLedUpdate >= ((fastLedStatus > FASTLED_STAT_NONE) ? smuffConfig.ledRefresh[0] : smuffConfig.ledRefresh[1])*1000) {
-      if (remainingSteppersFlag == 0)       // don't update as steppers are in motion
-          updateToolLeds();
+    else {
+      uint32_t updateTime = (uint32_t)(((fastLedStatus > FASTLED_STAT_NONE) ? smuffConfig.ledRefresh[0] : smuffConfig.ledRefresh[1])*1000);
+      // update NeoPixels when the interval has been reached and no steppers are in motion
+      if(remainingSteppersFlag == 0 && (micros()-lastFastLedUpdate >= updateTime)) {
+        updateToolLeds();
+      }
     }
 
   #endif
@@ -928,9 +931,9 @@ void loop() {
     }
     else {
       // switch on idle animation only once
-      if(smuffConfig.useIdleAnimation && fastLedStatus != FASTLED_STAT_MARQUEE) {
-        setFastLEDStatus(FASTLED_STAT_MARQUEE);
-        __debugS(DEV3, PSTR("FastLED status: Marquee"));
+      if(smuffConfig.useIdleAnimation && fastLedStatus != smuffConfig.animationType) {
+        setFastLEDStatus(smuffConfig.animationType);
+        __debugS(DEV3, PSTR("FastLED status: Animation"));
       }
     }
     #endif

@@ -49,5 +49,6 @@
  "DspSerial": -2,
  "DuetSerial": 1,
  "LedRefresh": [50, 750],
+ "LedsPerTool": 1,
  "Spi3Miso" : 1
  }

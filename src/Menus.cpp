@@ -29,6 +29,7 @@ char            duePort[10];
 char            duetPort[10];
 char            driverMode[10];
 char            ms3State[10];
+char            selAnimType[10];
 
 int             menuOrdinals[MAX_MENU_ORDINALS];
 
@@ -365,7 +366,9 @@ void setupDisplayMenu(char* menu, size_t maxBuffer) {
     translateColor(smuffConfig.toolColor, 1),
     smuffConfig.useIdleAnimation ? P_Yes : P_No,
     smuffConfig.animationBPM,
-    smuffConfig.statusBPM
+    translateAnimType(smuffConfig.animationType-1),
+    smuffConfig.statusBPM,
+    smuffConfig.ledsPerTools
   );
 }
 
@@ -587,6 +590,18 @@ const char* translateMS3State(uint8_t mode) {
   return ms3State;
 }
 
+const char* translateAnimType(uint8_t animType) {
+  char* animTypes[3];
+  char tmp[40];
+  sprintf_P(tmp, loadOptions(P_OptAnimType, ArraySize(tmp)));
+  splitStringLines(animTypes, (int)ArraySize(animTypes), tmp);
+  if(animType >= 0 && animType < (int)ArraySize(animTypes))
+    strcpy(selAnimType, animTypes[animType]);
+  else sprintf_P(selAnimType, P_Undefined);
+  return selAnimType;
+}
+
+
 void selectDuet3DPort(char* menuTitle) {
   int val = smuffConfig.duet3Dport;
   if(showInputDialog(menuTitle, P_PanelDuePort, &val, String(loadOptions(P_OptDuet3D, 300)), nullptr, true))
@@ -676,13 +691,20 @@ void positionServoCallback(int val) {
   setServoPos(SERVO_LID, val);
 }
 
+bool selectAnimationType(int animType, char* menuTitle) {
+  int val = animType-1;
+  char tmp[80];
+  sprintf_P(tmp, loadOptions(P_OptAnimType, ArraySize(tmp)));
+  if(showInputDialog(menuTitle, P_Value, &val, String(tmp))) {
+    smuffConfig.animationType = val+1;
+  }
+  return true;
+}
 
 void animationBpmCallback(int val) {
   #if defined(USE_FASTLED_TOOLS)
       for(int i=0; i< smuffConfig.toolCount*2; i++) {
-        fadeToBlackBy(cTools, smuffConfig.toolCount, 100);
-        int8_t pos = beatsin8(val, 0, smuffConfig.toolCount-1);
-        cTools->setPixelColor(pos, cTools->gamma32(cTools->ColorHSV(fastLedHue, 255, 200)));
+        setFastLEDToolsMarquee();
         delay(25);
       }
   #endif
@@ -1459,10 +1481,23 @@ void showDisplayMenu(char* menuTitle) {
             }
             break;
 
-        case 9: // Status BPM
+        case 9: // Animation Type
+            selectAnimationType(smuffConfig.animationType, title);
+            break;
+
+
+        case 10: // Status BPM
             iVal = smuffConfig.statusBPM;
             if(showInputDialog(title, P_InBPM, &iVal, 1, 255)) {
               smuffConfig.statusBPM = (uint8_t)iVal;
+            }
+            break;
+
+        case 11: // LED's per tool
+            iVal = smuffConfig.ledsPerTools;
+            if(showInputDialog(title, P_LEDCount, &iVal, 1, 7)) {
+              smuffConfig.ledsPerTools = (uint8_t)iVal;
+              initAdaNeoPx();
             }
             break;
       }

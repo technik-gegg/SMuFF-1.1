@@ -1557,8 +1557,10 @@ bool M205(const char *msg, String buf, int8_t serial, char* errmsg) {
       else if (strcmp(cmd, cutterOpen) == 0)          { smuffConfig.cutterOpen = (uint8_t)param; }
       else if (strcmp(cmd, cutterClose) == 0)         { smuffConfig.cutterClose = (uint8_t)param; }
       else if (strcmp(cmd, insertSpeed) == 0)         { smuffConfig.insertSpeed = (uint16_t)param; }
-      else if (strcmp(cmd, ledRefresh) == 0)          { if(index >=0 && index <= 1) setLedRefresh((uint16_t)param, index); else { rangeError(0, 1, errmsg); stat = false; }}
-      else if (strcmp(cmd, spi3Miso) == 0)            { if (param >=  0 && param <= 1) smuffConfig.insertSpeed = (int8_t)param; else { rangeError(0, 1, errmsg); stat = false; }}
+      else if (strcmp(cmd, ledRefresh) == 0)          { if (index >=0 && index <= 1) setLedRefresh((uint16_t)param, index); else { rangeError(0, 1, errmsg); stat = false; }}
+      else if (strcmp(cmd, ledsPerTool) == 0)         { if (param > 0 && param < 8) { smuffConfig.ledsPerTools = (uint8_t)param; initAdaNeoPx(); } else { rangeError(1, 7, errmsg); stat = false; }}
+      else if (strcmp(cmd, ledAnimation) == 0)        { if (param >= 1 && param <= 3) { smuffConfig.animationType = (uint8_t)param; } else { rangeError(1, 2, errmsg); stat = false; }}
+      else if (strcmp(cmd, spi3Miso) == 0)            { if (param >= 0 && param <= 1) smuffConfig.spi3Miso = (int8_t)param; else { rangeError(0, 1, errmsg); stat = false; }}
 
       else if (strcmp(cmd, dbgLvl) == 0)              { if (param >=  0 && param <= 255) smuffConfig.dbgLevel = (uint8_t)param; else { rangeError(0, 255, errmsg); stat = false; } }
       else if (strcmp(cmd, backlightColor) == 0)      { if (param >=  0 && param <=  15) { smuffConfig.backlightColor = (uint8_t)param; setBacklightIndex(smuffConfig.backlightColor); } else { rangeError(0, 15, errmsg); stat = false; } }

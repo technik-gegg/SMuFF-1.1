@@ -163,6 +163,8 @@ const char* userDlgStatus PROGMEM      = "Status";
 const char* userDlgOption PROGMEM      = "Option";
 const char* changeDebug PROGMEM        = "ChangeDbg";
 const char* ledRefresh PROGMEM         = "LedRefresh";
+const char* ledsPerTool PROGMEM        = "LedsPerTool";
+const char* ledAnimation PROGMEM       = "LedAnimation";
 const char* spi3Miso PROGMEM           = "Spi3Miso";
 
 

@@ -299,6 +299,9 @@ typedef struct {
   bool          useDebugColoring                      = true;
   int8_t        displaySerial                         = DISPLAY_SERIAL_PORT;         // Serial Port for USE_SERIAL_DISPLAY
   uint16_t      ledRefresh[2]                         = { FASTLED_UPDATE_FAST, FASTLED_UPDATE_SLOW };
+  uint8_t       ledsPerTools                          = 1;
+  uint8_t       fadeSpeedMarquee                      = FASTLED_UPDATE_FAST;
+  uint8_t       animationType                         = FASTLED_STAT_MARQUEE;
   int8_t        spi3Mosi                              = 0;      // these 3 pins are only relevant on the SKR E3-DIP board and should be LOW
   int8_t        spi3Sclk                              = 0;
   int8_t        spi3Miso                              = 0;
@@ -674,6 +677,7 @@ extern void setFastLEDStatus();
 extern void setFastLEDStatus(uint8_t status);
 extern void setFastLEDToolsMarquee();
 extern void setFastLEDToolsRainbow();
+extern void setFastLEDToolsCylon();
 extern void setFastLEDToolsError();
 extern void setFastLEDToolsWarning();
 extern void setFastLEDToolsOk();

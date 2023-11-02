@@ -232,6 +232,9 @@ bool readMainConfig()
       smuffConfig.duet3Dport =                  jsonDoc[duetSerialPort] | 1;
       smuffConfig.ledRefresh[0] =               jsonDoc[ledRefresh][0] | FASTLED_UPDATE_FAST;
       smuffConfig.ledRefresh[1] =               jsonDoc[ledRefresh][1] | FASTLED_UPDATE_SLOW;
+      smuffConfig.ledsPerTools =                jsonDoc[ledsPerTool] | 1;
+      smuffConfig.fadeSpeedMarquee =            (uint8_t)(((float)smuffConfig.ledsPerTools/2)*FASTLED_UPDATE_FAST);
+      smuffConfig.animationType =               jsonDoc[ledAnimation] | FASTLED_STAT_MARQUEE;
       smuffConfig.spi3Miso =                    jsonDoc[spi3Miso] | 1;
       
       if(smuffConfig.speedsInMMS) {
@@ -765,6 +768,8 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[duetSerialPort]       = smuffConfig.duet3Dport;
   jsonDoc[ledRefresh][0]        = smuffConfig.ledRefresh[0];
   jsonDoc[ledRefresh][1]        = smuffConfig.ledRefresh[1];
+  jsonDoc[ledsPerTool]          = smuffConfig.ledsPerTools;
+  jsonDoc[ledAnimation]         = smuffConfig.animationType;
   jsonDoc[spi3Miso]             = smuffConfig.spi3Miso;
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);

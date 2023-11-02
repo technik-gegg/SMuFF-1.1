@@ -26,10 +26,10 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.20"
+#define VERSION_STRING    "V3.21"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2023-10-28"
+#define VERSION_DATE      "2023-11-01"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -179,9 +179,10 @@ typedef uint32_t    pin_t;
 #define FASTLED_STAT_NONE       0
 #define FASTLED_STAT_MARQUEE    1
 #define FASTLED_STAT_RAINBOW    2
-#define FASTLED_STAT_ERROR      3
-#define FASTLED_STAT_WARNING    4
-#define FASTLED_STAT_OK         5
+#define FASTLED_STAT_CYLON      3
+#define FASTLED_STAT_ERROR      10
+#define FASTLED_STAT_WARNING    11
+#define FASTLED_STAT_OK         12
 
 #define TERM_LINE_WIDTH         25
 #define TERM_LINES              6
