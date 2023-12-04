@@ -18,10 +18,14 @@
  */
 #include "SMuFF.h"
 
-#define FADE_SPEED            100
+#define FADE_SPEED            75
 #define FADE_SPEED_MARQUEE    FASTLED_UPDATE_FAST
+#define FADE_COUNTER_MAX      21
+#define FADE_SCALE            255/FADE_COUNTER_MAX
 
-uint8_t           lastFastLedIndex = 255, lastFastLedColor = 0;
+uint16_t          lastFastLedIndex = 255;
+uint8_t           lastFastLedColor = 0;
+uint8_t           fadeCounter = 0;
 volatile uint8_t  lastFastLedStatus = 0;
 volatile uint8_t  fastLedStatus = 0;
 volatile uint8_t  fastLedHue = 0;
@@ -179,11 +183,6 @@ typedef enum {
   YellowGreen=0x9ACD32
 } HTMLColorCode;
 
-uint8_t           colorMap[8] PROGMEM = {0, 1, 2, 4, 6, 5, 3, 7};
-#if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
-  const CRGB LEDColors[8] PROGMEM = { Black, Red, Green, Blue, Cyan, Magenta, Yellow, White };
-#endif
-
 typedef enum {
   HUE_WHITE = 0,
   HUE_ORANGE = 32,
@@ -197,7 +196,11 @@ typedef enum {
   HUE_RED = 355
 } HSVHue;
 
-int16_t colorMapHSV[8] PROGMEM = {-1, HSVHue::HUE_RED, HSVHue::HUE_GREEN, HSVHue::HUE_BLUE, HSVHue::HUE_CYAN, HSVHue::HUE_PURPLE, HSVHue::HUE_YELLOW, HSVHue::HUE_WHITE};
+uint8_t colorMap[8] PROGMEM = {0, 1, 2, 4, 6, 5, 3, 7};
+#if defined(USE_FASTLED_BACKLIGHT) || defined(USE_FASTLED_TOOLS)
+  const CRGB LEDColors[8] PROGMEM = { Black, Red, Green, Blue, Cyan, Magenta, Yellow, White };
+#endif
+int16_t colorMapHSV[8] PROGMEM    = {-1, HSVHue::HUE_RED, HSVHue::HUE_GREEN, HSVHue::HUE_BLUE, HSVHue::HUE_CYAN, HSVHue::HUE_PURPLE, HSVHue::HUE_YELLOW, HSVHue::HUE_WHITE};
 
 #if defined(USE_FASTLED_BACKLIGHT)
   Adafruit_NeoPixel* cBackLight;
@@ -224,9 +227,24 @@ int16_t colorMapHSV[8] PROGMEM = {-1, HSVHue::HUE_RED, HSVHue::HUE_GREEN, HSVHue
       return;
     uint8_t r, g, b;
     for(uint16_t i = 0; i < num_leds; ++i) {
-      ColorToRGB(instance->getPixelColor(i), &r, &g, &b);
-      nscale8x3( &r, &g, &b, scale);
-      instance->setPixelColor(i, ColorRGB(r, g, b));
+      if(instance->getPixelColor(i) != 0) {
+        ColorToRGB(instance->getPixelColor(i), &r, &g, &b);
+        nscale8x3( &r, &g, &b, scale);
+        instance->setPixelColor(i, ColorRGB(r, g, b));
+      }
+    }
+  }
+
+  void nscale8(Adafruit_NeoPixel* instance, uint16_t start, uint16_t num_leds, uint8_t scale) {
+    if(instance == nullptr)
+      return;
+    uint8_t r, g, b;
+    for(uint16_t i = start; i < start+num_leds; ++i) {
+      if(instance->getPixelColor(i) != 0) {
+        ColorToRGB(instance->getPixelColor(i), &r, &g, &b);
+        nscale8x3( &r, &g, &b, scale);
+        instance->setPixelColor(i, ColorRGB(r, g, b));
+      }
     }
   }
   
@@ -234,15 +252,23 @@ int16_t colorMapHSV[8] PROGMEM = {-1, HSVHue::HUE_RED, HSVHue::HUE_GREEN, HSVHue
     if(instance == nullptr)
       return;
     uint8_t r, g, b;
-    ColorToRGB(instance->getPixelColor(index), &r, &g, &b);
-    nscale8x3( &r, &g, &b, scale);
-    instance->setPixelColor(index, ColorRGB(r, g, b));
+    if(instance->getPixelColor(index) != 0) {
+      ColorToRGB(instance->getPixelColor(index), &r, &g, &b);
+      nscale8x3( &r, &g, &b, scale);
+      instance->setPixelColor(index, ColorRGB(r, g, b));
+    }
   }
 
   void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t num_leds, uint8_t fadeBy) {
     if(instance == nullptr)
       return;
     nscale8(instance, num_leds, 255 - fadeBy);
+  }
+
+  void fadeToBlackBy(Adafruit_NeoPixel* instance, uint16_t start, uint16_t num_leds, uint8_t fadeBy) {
+    if(instance == nullptr)
+      return;
+    nscale8(instance, start, num_leds, 255 - fadeBy);
   }
 
   void addHSV(Adafruit_NeoPixel* instance, uint16_t index, uint32_t rgb) {
@@ -483,31 +509,44 @@ void setFastLEDToolsOk() {
 }
 
 void setFastLEDTools(){
+  fadeCounter = 0;
   setFastLEDToolIndex(lastFastLedIndex, lastFastLedColor, false);
 }
 
-void setFastLEDToolIndex(uint8_t index, uint8_t color, bool setFlag) {
+void setFastLEDToolIndex(uint8_t index, uint8_t colorNdx, bool setFlag) {
 #if defined(USE_FASTLED_TOOLS)
-  int pixelCount = getPixelCount();
-  fadeToBlackBy(cTools, pixelCount, FADE_SPEED);
-  if (index >= 0 && index < smuffConfig.toolCount) {
-    if(cTools != nullptr) {
-      int pixelNdx = smuffConfig.toolCount - index - 1;
-      uint8_t pixPerTool = smuffConfig.ledsPerTools;
-      if(pixPerTool == 1) {
-        cTools->setPixelColor(pixelNdx, LEDColors[color]);
-      }
-      else {
-        // if there are more than 1 pixel per tool, set all pixels to the same color
-        for(int i=0; i< pixPerTool; i++)
-          cTools->setPixelColor(pixelNdx*pixPerTool+i, LEDColors[color]);
-      }
+  if(index ==  lastFastLedIndex) {
+    if(++fadeCounter >= FADE_COUNTER_MAX) {
+      return;
     }
   }
-  if(setFlag)
+  else {
+    fadeCounter = 0;
+  }
+  if(cTools != nullptr) {
+    int pixelCount = getPixelCount();
+    uint32_t tcolor = smuffConfig.materialColors[index];
+    uint32_t pcolor = (tcolor == 0) ? LEDColors[colorNdx] : tcolor;
+    uint8_t pixPerTool = smuffConfig.ledsPerTools;
+    fadeToBlackBy(cTools, pixelCount, FADE_SPEED);
+    if (index >= 0 && index < smuffConfig.toolCount) {
+      int pixelNdx = smuffConfig.toolCount - index - 1;
+      if(pixPerTool == 1) {
+        cTools->setPixelColor(pixelNdx, pcolor);
+      }
+      else {
+        // if there is more than 1 pixel per tool, set all pixels to the same color
+        for(int i=0; i < pixPerTool; i++) {
+          uint16_t ndx = pixelNdx * pixPerTool + i;
+          cTools->setPixelColor(ndx, pcolor);
+        }
+      }
+    }
+    if(setFlag)
       updateToolLeds();
+  }
   lastFastLedIndex = index;
-  lastFastLedColor = color;
+  lastFastLedColor = colorNdx;
 #endif
 }
 

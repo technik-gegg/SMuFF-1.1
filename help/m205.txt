@@ -6,11 +6,11 @@ AccelDist           	S n      X | Y | Z
 AccelSpeed          	S n      X | Y | Z
 AnimBPM             	S n
 AutoWipe            	S 0|1
- -= B =-
+			-= B =-
 BackColor           	S n
 Baudrates           	S "..." I 0..3
 BowdenLen           	S n.n
- -= C =-
+			-= C =-
 ChangeDbg           	S 0..3
 Chunks              	S n
 Close               	S 0..180 I 0..11
@@ -20,37 +20,37 @@ CSMax               	S n      X | Y | Z
 CSMin               	S n      X | Y | Z
 CutterTop           	S 0|1
 CValue              	S "..."  I 0..11
- -= D =-
+			-= D =-
 DbgLevel            	S n
 DebugFreq           	S n
 Device              	S "..."
 DrvAddr             	S n      X | Y | Z
- -= E =-
+			-= E =-
 EmulPrusa           	S 0|1
 EncTicks            	S 0|1
 EStopTest           	S 0|1
 EStopTrg            	S 0|1    X | Y | Z
 ExtCtrl             	S 0|1
- -= F =-
+			-= F =-
 FanSpeed            	S n
- -= H =-
+			-= H =-
 HasPanelDue         	S 0|1
 HomeAfterFd         	S 0|1
- -= I =-
+			-= I =-
 IdleAnim            	S 0|1
 InsLen              	S n.n
 InsSpeed            	S n
 InvDir              	S 0|1    X | Y | Z
 InvDuet             	S 0|1
 InvRelay            	S 0|1
- -= L =-
+			-= L =-
 LBtnDown            	S "..."
 LBtnHold            	S "..."
 LCDCont             	S 60..255
 LedAnimation        	S 1..3
 LedRefresh          	S 1..2000 I 0..1
 LedsPerTool         	S 1..7
- -= M =-
+			-= M =-
 Material            	S "..."  I 0..11
 MaxSpeed            	S n      X | Y | Z
 MaxStall            	S n      X | Y | Z
@@ -58,23 +58,23 @@ MenuClose           	S n
 Mode                	S 0|1|2  X | Y | Z
 MS                  	S 0|2|4|8|16|32|64|128|256   X | Y | Z
 MS3                 	S 0|1|2
- -= O =-
+			-= O =-
 Offset              	S n.n    X | Y | Z
 Output              	S 0..15  I 0..11
- -= P =-
+			-= P =-
 PFactor             	S n      I 0..11
 Power               	S n      X | Y | Z
 PurgeDDE            	S n
 PurgeLen            	S n
 PurgeSpeed          	S n
 PwrSaveTime         	S n
- -= R =-
+			-= R =-
 RBtnDown            	S "..."
 RBtnHold            	S "..."
 ReinforceLen        	S n.n
 ResetBeforeFd       	S 0|1
 RSense              	S n.n    X | Y | Z
- -= S =-
+			-= S =-
 SelectorDist        	S n.n
 SendAction          	S 0|1
 SendStats           	S 0|1
@@ -93,14 +93,14 @@ StepsMM             	S n      X | Y | Z
 StepsRev            	S n
 StopOnStall         	S 0|1    X | Y | Z
 SyncSteppers        	S 0|1
- -= T =-
+			-= T =-
 TermMenu            	S 0|1
 TMode               	S 0|1    X | Y | Z
 TOff                	S n      X | Y | Z
 ToolColor           	S 0..15
 Tools               	S n
 TraceUSB            	S 0|1
- -= U =-
+			-= U =-
 UnldRetract         	S n
 UseChunks           	S 0|1
 UseCutter           	S 0|1
@@ -109,7 +109,7 @@ UseEStop2           	S 0|1
 UsePurge            	S 0|1
 UseServo            	S 0|1
 UseSplitter         	S 0|1
- -= W =-
+			-= W =-
 WipeSeq             	S "..."
- -= X =-
+			-= X =-
 XlateSpeed          	S n  X | Y | Z  [ M 0|1 ]    (M0: S=mm/s, M1: S=mm/m)

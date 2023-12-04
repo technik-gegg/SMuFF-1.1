@@ -66,3 +66,4 @@ Schematics/SMuFF-NeoPixel/SMuFF-NeoPixel-Board/*.csv
 
 include/SKR_mini_E3-2.0/Pins_X-Swap.h
 Schematics/SMuFF-Backbone/SMuFF-Backbone.zip
+SD-Card-Contents*.zip

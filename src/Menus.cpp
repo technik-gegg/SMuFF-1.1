@@ -1313,7 +1313,7 @@ void showFeederMenu(char* menuTitle) {
 
         case 14: // Reinforce length
             fVal = smuffConfig.reinforceLength;
-            if(showInputDialog(title, P_InMillimeter, &fVal, 0, 10))
+            if(showInputDialog(title, P_InMillimeter, &fVal, 0, 25))
               smuffConfig.reinforceLength = fVal;
             break;
 

@@ -30,7 +30,7 @@ SdFat SD;
 #endif
 
 const size_t capacity = 2000;
-const size_t scapacity = 1300;
+const size_t scapacity = 1400;
 static bool sdInit = false;
 
 bool initSD(bool showStatus) {
@@ -130,7 +130,6 @@ bool readMainConfig()
 {
   if(!initSD())
     return false;
-  //__debugS(D, PSTR("Trying to open config file '%s'"), CONFIG_FILE);
 
   _File cfg;
   if(!__fopen(cfg, CONFIG_FILE, FILE_READ)) {

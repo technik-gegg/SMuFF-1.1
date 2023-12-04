@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <stdint.h>
 #include <Arduino.h>
 #include "avr/dtostrf.h"
 #include "Config.h"

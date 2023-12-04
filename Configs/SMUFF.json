@@ -50,5 +50,6 @@
  "DuetSerial": 1,
  "LedRefresh": [50, 750],
  "LedsPerTool": 1,
+ "LedAnimation": 1,
  "Spi3Miso" : 1
  }

@@ -25,12 +25,21 @@
 // SELECTOR (X)
 #define STEP_HIGH_X         digitalWrite(X_STEP_PIN, HIGH);
 #define STEP_LOW_X          digitalWrite(X_STEP_PIN, LOW);
+#if defined(SWAP_X_STEPPER)
+#if defined(__STM32G0XX)
+#define X_STEP_PIN_NAME     PB_3
+#endif
+#define X_STEP_PIN          PB3
+#define X_DIR_PIN           PB4
+#define X_ENABLE_PIN        PD1
+#else
 #if defined(__STM32G0XX)
 #define X_STEP_PIN_NAME     PB_13
 #endif
 #define X_STEP_PIN          PB13
 #define X_DIR_PIN           PB12
 #define X_ENABLE_PIN        PB14
+#endif
 #if defined(SWAP_SELECTOR_ENDSTOP)
 #define X_END_PIN           PC1     // Y-STOP
 #else
@@ -80,9 +89,15 @@
 #define E_DIR_PIN           PB2
 #define E_ENABLE_PIN        PB11
 #else
+#if defined(SWAP_X_STEPPER) // flag swaps driver Y and E
+#define E_STEP_PIN          PB13
+#define E_DIR_PIN           PB12
+#define E_ENABLE_PIN        PB14
+#else
 #define E_STEP_PIN          PB3
 #define E_DIR_PIN           PB4
 #define E_ENABLE_PIN        PD1
+#endif
 #endif
 #define E_END_PIN           PC15    // E0-STOP
 

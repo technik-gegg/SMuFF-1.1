@@ -4,21 +4,20 @@
 
 Here's the official firmware package for the **S**mart **Mu**lti **F**ilament **F**eeder, as published on [Printables](https://www.printables.com/de/model/194737-smuff-v6-smart-multi-filament-feeder-with-bondtech) and [Thingiverse](https://www.thingiverse.com/thing:3431438). Read the full story on how it came to life on my official [SMuFF homepage](https://sites.google.com/view/the-smuff/).
 
-If you like this project and find it useful, you may consider donating.
-[![paypal](images/paypalme.png)](https://paypal.me/technikgegg)
+If you like this project and find it useful, you may consider [donating](https://sites.google.com/view/the-smuff/downloads/assembly-manual#h.m5ewgcp0jfk6).
 
 To use this firmware, you have to [compile it](https://sites.google.com/view/the-smuff/how-to/tutorials/compile-the-firmware?authuser=0) and flash it to one of these (already supported) controller boards:
 
 | Board |  |
 |------------|-----|
-| Bigtreetech [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)||
-| Bigtreetech [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)|**recommended**|
-| Bigtreetech [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4) | **recommended**|
 | Bigtreetech [SKR mini E3 V3.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-for-ender-3) |**recommended** |
+| Bigtreetech [SKR mini E3-DIP V1.1](https://www.biqu.equipment/products/bigtreetech-skr-e3-dip-v1-0-motherboard-for-ender-3)||
+| Bigtreetech [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4) ||
+| Bigtreetech [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)||
 
-The Bigtreetech SKR mini series boards are very small and yet  powerful because of the 32-Bit STM Micro Controller Unit.
+The Bigtreetech SKR mini series boards are very small and yet  powerful because of the 32-Bit STM Microcontroller Unit.
 
-Of course, this firmware can also be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, it's not recommended - you'll most probably run out of memory (Flash/RAM) very soon. I recommend using a 32 bit controller board instead.
+Of course, this firmware can also be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, I don't recommended it - you'll most probably run out of memory (Flash/RAM) very soon. I recommend using a 32 bit controller board instead.
 Make sure your board of choice has at least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are at least:
 
 + two stepper motor drivers (sockets)
@@ -57,8 +56,21 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
+**3.22** - reorganized Build Environments
+
++ reorganized Build Environments as announced in 3.21
+![New Build Environments](images/NewBuildEnvs.jpg)
++ added include of <stdint.h> to SMuFF.h, since latest builds seem to fail
+
 **3.21** - some changes based on the previous release
 
++ reworked the Build Environments in **platformio.ini**
+ Since the **SKR E3 V3.0** has become the most dominant contoller board and the others are getting more and more outdated, I've decided to get rid of some of the Build Environments for "older boards" and add all the possible permutations for the E3 V3.0 instead. The suffixes are meant to be self-explanatory but as a hint: **NPX** means NeoPixels (on tools), **MS** means Multiservo and **DDE** means Direct Drive Extruder.
+ Here's what the *PROJECT TASKS* treeview in VSCode now looks like:
+ ![New Build Environments](images/NewBuildEnvs.jpg)
+ Simply open the Build Enviroment that matches your setup and click on "Build".
+ Outdated Build Environments are still contained in the ini-file but need to be un-commented in order to make them show up in the *PROJECT TASKS* treeview.
++ the (FYSECT / BTT / MKS) **MiniPanel 12864 V2.1** display has become the default option now. It's the cheapest and easiest to source display, so I declared it the "standard".
 + while playing around with the new behaviour of **USE_NUM_PIXELS** introduced in the previous release, I figured, it's far easier to have the number of LEDs configurable at runtime and thus, I've moved it to the SMuFF configuration file. Hence, this definition is now gone from the platformio.ini!
 When you update to this version, please keep in mind to also copy the new **display.mnu** and **m205.txt** to your SMuFF's SD-Card, into the folders *menu* and *help* accordingly.
 + I also found an unpleasant but logical behavior in the *Marquee* animation when more than 7 LEDs are in use: It skips LEDs because on the beatsin() calculation and BPM settings, so I fixed that.

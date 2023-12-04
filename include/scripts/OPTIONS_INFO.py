@@ -30,6 +30,7 @@ splitterEnds = ""
 marlin = ""
 softreset = ""
 swapY = ""
+swapX = ""
 multiservo = ""
 hsServo = ""
 swapServos = ""
@@ -101,6 +102,8 @@ for define in build_flags.get("CPPDEFINES"):
         softreset = "Enabled"
     if define == "SWAP_Y_STEPPER":
         swapY = "Yes"
+    if define == "SWAP_X_STEPPER":
+        swapX = "Yes"
     if define == "MULTISERVO":
         multiservo = "Enabled"
     if define == "USE_HIGHSPEED_SERVO":
@@ -204,7 +207,9 @@ if marlin != "":
 if softreset != "":
     print("\x1b[34mSOFTRESET:\t\t\t", softreset)
 if swapY != "":
-    print("\x1b[34mSWAP Y/E STEPPER:\t", swapY)
+    print("\x1b[34mSWAP Y WITH E DRIVER:\t\t\x1b[31m", swapY)
+if swapX != "":
+    print("\x1b[34mSWAP X WITH E DRIVER:\t\t\x1b[31m", swapX)
 if swapServos != "":
     print("\x1b[35mSWAP WIPER/CUTTER SERVOS:\t", swapServos)
 print("\x1b[34mSERVO LIBRARY:\t\t\t", zServo)
