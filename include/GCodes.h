@@ -29,7 +29,11 @@ typedef struct {
 extern uint16_t currentLine;
 
 extern bool dummy(const char *msg, String buf, int8_t serial, char* errmsg);
+extern bool M0(const char *msg, String buf, int8_t serial, char* errmsg);
 extern bool M2(const char *msg, String buf, int8_t serial, char* errmsg);
+extern bool M3(const char *msg, String buf, int8_t serial, char* errmsg);
+extern bool M4(const char *msg, String buf, int8_t serial, char* errmsg);
+extern bool M5(const char *msg, String buf, int8_t serial, char* errmsg);
 extern bool M17(const char *msg, String buf, int8_t serial, char* errmsg);
 extern bool M18(const char *msg, String buf, int8_t serial, char* errmsg);
 extern bool M20(const char *msg, String buf, int8_t serial, char* errmsg);

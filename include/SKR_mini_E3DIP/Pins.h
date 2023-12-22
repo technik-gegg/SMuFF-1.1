@@ -72,10 +72,13 @@
 
 
 #if defined(RELAY_ON_PROBE)
-#define RELAY_PIN PC14   // PROBE (Relay for stepper motor switching)
-//#define RELAY_PIN PC0    // Y-STOP (alternative for Relay; if nothing else is connected to)
+    #if !defined(RELAY_ON_YSTOP)
+        #define RELAY_PIN PC14   // PROBE (Relay for stepper motor switching)
+    #else
+        #define RELAY_PIN PC0    // Y-STOP (alternative for Relay; if nothing else is connected to)
+    #endif
 #else
-#define RELAY_PIN PC12   // Z-MS3
+    #define RELAY_PIN PC12   // Z-MS3
 #endif
 
 

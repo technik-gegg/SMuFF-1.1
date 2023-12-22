@@ -166,6 +166,10 @@ const char* ledRefresh PROGMEM         = "LedRefresh";
 const char* ledsPerTool PROGMEM        = "LedsPerTool";
 const char* ledAnimation PROGMEM       = "LedAnimation";
 const char* spi3Miso PROGMEM           = "Spi3Miso";
+const char* spoolSpeed PROGMEM         = "SpoolSpeed";
+const char* spool PROGMEM              = "Spool";
+const char* autoRewind PROGMEM         = "AutoRewind";
+const char* dirCCW PROGMEM             = "CCW";
 
 
 

@@ -1,45 +1,48 @@
 Available M Commands
-  M2		  -	Reset the "Parser Busy" flag
-  M17		  -	Switch feeder stepper control (Relay)
-  M18,M84 -	Motors off
-  M20		  -	List SD-Card
-  M42		  -	Set pin state
-  M98		  -	Execute test run
-  M100	  -	Show memory info
-  M106	  -	Fan on
-  M107	  -	Fan off
-  M111	  -	Turn debugging on/off
-  M114	  -	Report current positions
-  M115	  -	Report version
-  M117	  -	Display message
-  M118	  -	Send message to serial port
-  M119	  -	Report endstop status
-  M122	  -	Report TMC driver status
-  M145	  -	Set Material color/purge factor
-  M150	  -	Set FastLED color
-  M155	  -	Turn Periodical Status on/off
-  M201	  -	Set max. acceleration
-  M202	  -	Set speed adjustment factor (for speeds in mm/s)
-  M203	  -	Set max. feedrate
-  M205	  -	Set advanced options
-  M206	  -	Set offsets
-  M250	  -	LCD contrast
-  M260	  -	Scan for I2C devices
-  M280	  -	Set Servo position
-  M300	  -	Play a tone or a tune
-  M350	  -	Set motor microstepping
-  M500	  -	Save settings
-  M503	  -	Report settings
-  M562	  -	Reset Feeder jam
-  M569	  -	Set TMC SpreadCycle on/off
-  M575	  -	Set serial port baudrate
-  M577	  -	Print or set Duet3D signal states
-  M700	  -	Load filament
-  M701	  -	Unload filament
-  M906	  -	Set TMC motor current
-  M914	  -	Set TMC stall sensitivity
-  M999	  -	Reset
-  M2000	  -	Text to decimal
-  M2001	  -	Decimal to text
+  M2			  -	Reset the "Parser Busy" flag
+  M3			  -	Spin a Spool-Motor Clockwise
+  M4			  -	Spin a Spool-Motor Counter Clockwise
+  M5			  -	Stop Spool-Motor
+  M17			  -	Switch feeder stepper control (Relay)
+  M18,M84	  -	Motors off
+  M20			  -	List SD-Card
+  M42			  -	Set pin state
+  M98			  -	Execute test run
+  M100		  -	Show memory info
+  M106		  -	Fan on
+  M107		  -	Fan off
+  M111		  -	Turn debugging on/off
+  M114		  -	Report current positions
+  M115		  -	Report version
+  M117		  -	Display message
+  M118		  -	Send message to serial port
+  M119		  -	Report endstop status
+  M122		  -	Report TMC driver status
+  M145		  -	Set Material color/purge factor
+  M150		  -	Set FastLED color
+  M155		  -	Turn Periodical Status on/off
+  M201		  -	Set max. acceleration
+  M202		  -	Set speed adjustment factor (for speeds in mm/s)
+  M203		  -	Set max. feedrate
+  M205		  -	Set advanced options
+  M206		  -	Set offsets
+  M250		  -	LCD contrast
+  M260		  -	Scan for I2C devices
+  M280		  -	Set Servo position
+  M300		  -	Play a tone or a tune
+  M350		  -	Set motor microstepping
+  M500		  -	Save settings
+  M503		  -	Report settings
+  M562		  -	Reset Feeder jam
+  M569		  -	Set TMC SpreadCycle on/off
+  M575		  -	Set serial port baudrate
+  M577		  -	Print or set Duet3D signal states
+  M700		  -	Load filament
+  M701		  -	Unload filament
+  M906		  -	Set TMC motor current
+  M914		  -	Set TMC stall sensitivity
+  M999		  -	Reset
+  M2000		  -	Text to decimal
+  M2001		  -	Decimal to text
 
   Use M[code]? for detailed information on parameters

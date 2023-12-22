@@ -26,3 +26,6 @@ Splitter Dist.	%s|24
 Use DDE	%s|26
 DDE Dist.	%s|27
 Purge DDE	%s|28
+-
+Spool Auto-Rewind	%s|30
+Spool Speed	%d|31

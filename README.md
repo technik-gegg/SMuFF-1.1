@@ -56,11 +56,17 @@ A special thanks to the folks who have created the following (Arduino) libraries
 
 ## Recent changes
 
+**3.23** - bugfix, Motorized Spool Rewinder option added
+
++ fixed the bug that caused some (newer) SKR E3 V3.0 boards not being recognized (enumerated) when connected via USB.
++ added **_SPM** build environments, which allow utilizing the [Motorized Spool Rewinder](https://sites.google.com/view/the-smuff/how-to/build/the-spool-rewinder). To use this option, you have to copy the *help* and *menus* folders to your SMuFFs SD-Card. Also, please notice the added content in **MATERIALS.json**.
++ added GCodes **M3**, **M4** and **M5** to allow controlling the spool motors of the *Motorized Spool Rewinder*.
+
 **3.22** - reorganized Build Environments
 
-+ reorganized Build Environments as announced in 3.21
-![New Build Environments](images/NewBuildEnvs.jpg)
-+ added include of <stdint.h> to SMuFF.h, since latest builds seem to fail
++ reorganized Build Environments as announced in 3.21.
+![New Build Environments](images/NewBuildEnvs.jpg).
++ added include of <stdint.h> to SMuFF.h, since latest builds seem to fail.
 
 **3.21** - some changes based on the previous release
 

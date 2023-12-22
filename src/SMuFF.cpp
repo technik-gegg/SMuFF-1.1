@@ -93,6 +93,23 @@ uint8_t                   servoPosClosed[MAX_TOOLS];
 #endif
 double                     stepperPosClosed[MAX_TOOLS];  // V6S only
 
+#if defined(USE_SPOOLMOTOR)
+  #if defined(USE_PCA9685_SW_I2C)
+    Adafruit_PWMServoDriver   motor1Pwm = Adafruit_PWMServoDriver(I2C_MOTORCTL1_ADDRESS, I2CBusMS);
+    Adafruit_PWMServoDriver   motor2Pwm = Adafruit_PWMServoDriver(I2C_MOTORCTL2_ADDRESS, I2CBusMS);
+    Adafruit_PWMServoDriver   motor3Pwm = Adafruit_PWMServoDriver(I2C_MOTORCTL3_ADDRESS, I2CBusMS);
+  #else
+    Adafruit_PWMServoDriver   motor1Pwm = Adafruit_PWMServoDriver(I2C_MOTORCTL1_ADDRESS);
+    Adafruit_PWMServoDriver   motor2Pwm = Adafruit_PWMServoDriver(I2C_MOTORCTL2_ADDRESS);
+    Adafruit_PWMServoDriver   motor3Pwm = Adafruit_PWMServoDriver(I2C_MOTORCTL3_ADDRESS);
+  #endif
+int8_t                    spoolMappings[MAX_TOOLS]      = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}; // tool to spool-motor mapping
+uint32_t                  spoolDuration[MAX_TOOLS]      = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0 };
+bool                      spoolDirectionCCW[MAX_TOOLS]  = {true, true, true, true, true, true, true, true, true,true, true, true};
+int8_t                    motorPins[][3] = {{ MA_PWM, MA_IN1, MA_IN2}, { MB_PWM, MB_IN1, MB_IN2 }, { MC_PWM, MC_IN1, MC_IN2 }, { MD_PWM, MD_IN1, MD_IN2 }, { ME_PWM, ME_IN1, ME_IN2 }};
+#endif
+uint8_t                   spoolMotorsFound = 0;
+
 String                    serialBuffer0, serialBuffer1, serialBuffer2, serialBuffer3;
 volatile byte             remainingSteppersFlag = 0;
 volatile byte             startStepperIndex = 0;
@@ -632,19 +649,24 @@ void setup() {
     __debugS(D, PSTR("\tSPI3 remapped to SPI1"));
   #endif
 
+  __debugS(D, PSTR("\tInitializing USB..."));
   initUSB();                // init the USB serial so it's being recognized by the Windows-PC
+  __debugS(D, PSTR("\tInitializing I2C..."));
   setupI2C();               // setup I2C/TWI devices
 
   #if defined(USE_I2C)
+    __debugS(D, PSTR("\tScanning for I2C Devices on bus 1..."));
     // don't scan I2C if no I2C devices are being used; Scan will take ages
     enumI2cDevices(1);
     __debugS(D, after, "enumerating I2C Devices on bus 1");
   #endif
   #if defined(USE_SPLITTER_ENDSTOPS)
+    __debugS(D, PSTR("\tScanning for I2C Devices on bus 2..."));
     enumI2cDevices(2);
     __debugS(D, after, "enumerating I2C Devices on bus 2");
   #endif
   #if defined(USE_MULTISERVO)
+    __debugS(D, PSTR("\tScanning for I2C Devices on bus 3..."));
     enumI2cDevices(3);
     __debugS(D, after, "enumerating I2C Devices on bus 3");
   #endif
@@ -685,6 +707,8 @@ void setup() {
   __debugS(SP, after, "setup Steppers");
   setupServos();                                      // setup all servos
   __debugS(SP, after, "setup Servos");
+  setupSpoolMotors();                                 // setup all spool-motors
+  __debugS(SP, after, "setup SpoolMotors");
   setupTimers();                                      // setup all timers
   __debugS(SP, after, "setup Timers");
   setupRelay();                                       // setup relay board
@@ -830,6 +854,17 @@ void loop() {
       intervalMask &= ~_BV(i);
     }
   }
+
+#if defined(USE_SPOOLMOTOR)
+  for(uint8_t i=0; i< MAX_TOOLS; i++) {
+    if(spoolDuration[i] > 0) {
+      if(millis() >= spoolDuration[i]) {
+        stopRewindingSpool(i);
+        spoolDuration[i] = 0;
+      }
+    }
+  }
+#endif
 
 #if defined(SD_DETECT_PIN)
   // message the user if the SD-Card gets removed

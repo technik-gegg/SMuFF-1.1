@@ -231,7 +231,9 @@ void setupOptionsMenu(char* menu, size_t maxBuffer) {
     P_No,
     #endif
     String(smuffConfig.ddeDist).c_str(),
-    smuffConfig.purgeDDE ? P_Yes : P_No
+    smuffConfig.purgeDDE ? P_Yes : P_No,
+    smuffConfig.autoRewind ? P_Yes : P_No,
+    smuffConfig.spoolRewindSpeed
   );
 }
 
@@ -1645,7 +1647,7 @@ void showOptionsMenu(char* menuTitle) {
   bool bVal;
   char *title;
   char _subtitle[80];
-  char _menu[400];
+  char _menu[500];
 
   while(!stopMenu) {
     setupOptionsMenu(_menu, ArraySize(_menu)-1);
@@ -1817,6 +1819,20 @@ void showOptionsMenu(char* menuTitle) {
             bVal = smuffConfig.purgeDDE;
             if(showInputDialog(title, P_YesNo, &bVal)) {
               smuffConfig.purgeDDE = bVal;
+            }
+            break;
+
+        case 30: // Auto Rewind
+            bVal = smuffConfig.autoRewind;
+            if(showInputDialog(title, P_YesNo, &bVal)) {
+              smuffConfig.autoRewind = bVal;
+            }
+            break;
+
+        case 31: // Spool Speed
+            iVal = smuffConfig.spoolRewindSpeed;
+            if(showInputDialog(title, P_Value, &iVal, 25, 255)) {
+              smuffConfig.spoolRewindSpeed = iVal;
             }
             break;
 

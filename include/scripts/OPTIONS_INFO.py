@@ -32,10 +32,12 @@ softreset = ""
 swapY = ""
 swapX = ""
 multiservo = ""
+spoolmotors = ""
 hsServo = ""
 swapServos = ""
 zServo = "Arduino"
 relayOnProbe = ""
+relayOnYStop = ""
 warning = ""
 usbId = "STMicroelectronics (VID/PID 0483:5740)"
 flashOfs = ""
@@ -106,6 +108,8 @@ for define in build_flags.get("CPPDEFINES"):
         swapX = "Yes"
     if define == "MULTISERVO":
         multiservo = "Enabled"
+    if define =="USE_SPOOLMOTOR":
+        spoolmotors = "Enabled"
     if define == "USE_HIGHSPEED_SERVO":
         hsServo = "Enabled"
     if define =="SWAP_SERVOS":
@@ -115,10 +119,15 @@ for define in build_flags.get("CPPDEFINES"):
     if define =="USE_MULTISERVO":
         zServo = "Adafruit Multiservo"
         relayOnProbe = "On TH0"
+    if define == "RELAY_ON_YSTOP":
+        relayOnYStop = "Yes"
     if define =="USE_MULTISERVO_RELAY":
         relayOnProbe = "On Adadfruit Multiservo"
     if define =="RELAY_ON_PROBE" and zServo != "Adafruit Multiservo":
-        relayOnProbe = "On PROBE"
+        if relayOnYStop == "Yes":
+            relayOnProbe = "On YSTOP"
+        else:
+            relayOnProbe = "On PROBE"
     if define == "WARNING_NOT_RELEASED":
         warning  = "*** THIS BOARD HAS NOT BEEN RELEASED YET ***"
     if define == "MIMIC_LIBMAPLE_USB_ID":
@@ -212,13 +221,15 @@ if swapX != "":
     print("\x1b[34mSWAP X WITH E DRIVER:\t\t\x1b[31m", swapX)
 if swapServos != "":
     print("\x1b[35mSWAP WIPER/CUTTER SERVOS:\t", swapServos)
-print("\x1b[34mSERVO LIBRARY:\t\t\t", zServo)
+print("\x1b[34mSERVO OPTION:\t\t\t", zServo)
 if multiservo != "":
     print("\x1b[34mMULTISERVO:\t\t\t", multiservo)
 if multiservo == "" and hsServo != "":
     print("\x1b[34mHIGHSPEED SERVO:\t\t", hsServo)
+if spoolmotors != "":
+    print("\x1b[34mSPOOL MOTORS:\t\t\t", spoolmotors)
 if relayOnProbe != "":
-    print("\x1b[35mRELAY:\t\t\t\t", relayOnProbe)
+    print("\x1b[35mRELAY CONTROL:\t\t\t", relayOnProbe)
 
 print("\x1b[36m============================================================================================================================================\x1b[0m\n\n")
 #time.sleep(2)

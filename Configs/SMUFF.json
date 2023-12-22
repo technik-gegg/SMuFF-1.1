@@ -51,5 +51,7 @@
  "LedRefresh": [50, 750],
  "LedsPerTool": 1,
  "LedAnimation": 1,
- "Spi3Miso" : 1
+ "Spi3Miso" : 1,
+ "SpoolSpeed" : 50,
+ "AutoRewind": true
  }

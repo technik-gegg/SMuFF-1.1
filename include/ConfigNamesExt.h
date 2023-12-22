@@ -160,3 +160,7 @@ extern char* ledRefresh;
 extern char* ledsPerTool;
 extern char* ledAnimation;
 extern char* spi3Miso;
+extern char* spoolSpeed;
+extern char* spool;
+extern char* autoRewind;
+extern char* dirCCW;

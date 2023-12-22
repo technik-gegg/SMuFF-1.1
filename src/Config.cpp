@@ -235,6 +235,8 @@ bool readMainConfig()
       smuffConfig.fadeSpeedMarquee =            (uint8_t)(((float)smuffConfig.ledsPerTools/2)*FASTLED_UPDATE_FAST);
       smuffConfig.animationType =               jsonDoc[ledAnimation] | FASTLED_STAT_MARQUEE;
       smuffConfig.spi3Miso =                    jsonDoc[spi3Miso] | 1;
+      smuffConfig.spoolRewindSpeed =            jsonDoc[spoolSpeed] | 75;
+      smuffConfig.autoRewind =                  jsonDoc[autoRewind];
       
       if(smuffConfig.speedsInMMS) {
         mmsMax = MAX_MMS;
@@ -635,6 +637,10 @@ bool readMaterials() {
       drawSDStatus(SD_READING_MATERIALS);
       // read materials
       char item[15];
+    #if defined(USE_SPOOLMOTOR)
+      for(uint i=0; i < smuffConfig.toolCount; i++)
+        spoolMappings[i] = -1;
+    #endif
       for(uint8_t i=0; i < smuffConfig.toolCount; i++) {
         memset(smuffConfig.materialNames[i], 0, MAX_MATERIAL_NAME_LEN);
         memset(smuffConfig.materials[i], 0, MAX_MATERIAL_LEN);
@@ -667,6 +673,16 @@ bool readMaterials() {
           __debugS(DEV3, PSTR("\treadMaterials: '%s' is '%s'"), item, mat);
           strncpy(smuffConfig.materials[i], mat, MAX_MATERIAL_LEN);
         }
+        #if defined(USE_SPOOLMOTOR)
+          int8_t spoolNdx = jsonDoc[item][spool] | -1;
+          if(spoolNdx != -1) {
+            __debugS(DEV3, PSTR("\treadMaterials: '%s' is on spool %d"), item, spoolNdx);
+            spoolMappings[i] = spoolNdx;
+          }
+          bool dirIsCCW = jsonDoc[item][dirCCW] | true;
+          __debugS(DEV3, PSTR("\treadMaterials: '%s' spool dir. is CCW: %s"), item, dirIsCCW ? P_Yes : P_No);
+          spoolDirectionCCW[i] = dirIsCCW;
+        #endif
       }
 
       __debugS(D, PSTR("\treadMaterials:\t\tDONE (%lu bytes)"), jsonDoc.memoryUsage());
@@ -770,6 +786,9 @@ bool writeMainConfig(Print* dumpTo, bool useWebInterface) {
   jsonDoc[ledsPerTool]          = smuffConfig.ledsPerTools;
   jsonDoc[ledAnimation]         = smuffConfig.animationType;
   jsonDoc[spi3Miso]             = smuffConfig.spi3Miso;
+  jsonDoc[spoolSpeed]           = smuffConfig.spoolRewindSpeed;
+  jsonDoc[autoRewind]           = smuffConfig.autoRewind;
+
 
   return dumpConfig(dumpTo, useWebInterface, CONFIG_FILE, jsonDoc);
 }
@@ -1017,6 +1036,10 @@ bool writeMaterials(Print* dumpTo, bool useWebInterface) {
     node[pfactor] = smuffConfig.purges[i];
     sprintf(tmp,"%06lX", smuffConfig.materialColors[i]);
     node[colorVal] = tmp;
+    #if defined(USE_SPOOLMOTOR)
+    node[spool] = spoolMappings[i];
+    node[dirCCW] = spoolDirectionCCW[i];
+    #endif
   }
   return dumpConfig(dumpTo, useWebInterface, MATERIALS_FILE, jsonDoc);
 }

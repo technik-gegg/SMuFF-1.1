@@ -15,6 +15,7 @@ sym-lib-table
 *.kicad_prl
 *.sch-bak
 *.dcm
+*.old
 Schematics/*.xml
 Schematics/*.csv
 Schematics/SMuFF-Relay-Board/Relay-Board-backups/

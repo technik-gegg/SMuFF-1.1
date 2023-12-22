@@ -1,0 +1,5 @@
+M4 Sn [ On ] [ Tn ]
+-------------------
+Sn	Motor number (0..11)
+On	Spinning speed (20..255)
+Tn	Spinning duration in milliseconds (100..65535)

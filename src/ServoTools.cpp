@@ -188,6 +188,8 @@ void setServoDelay(int8_t servoNum) {
         delay(300);
       #endif
     }
+  #else
+    delay(300);
   #endif
 }
 
@@ -216,6 +218,7 @@ bool setServoMS(int8_t servoNum, uint16_t microseconds) {
     //__debugS(D, PSTR("Servo mapping: %d -> %d (pulse len: %d ms)"), servoNum-10, index, microseconds);
     if(servoMapping[servoNum] != -1) {
       servoPwm.writeMicroseconds(servoMapping[servoNum], microseconds);
+      setServoDelay(servoNum);
       return true;
     }
   #else

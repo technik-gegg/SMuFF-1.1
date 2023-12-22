@@ -18,7 +18,7 @@
  */
 /*
    System Clock Configuration using external clock source since generic boards are preset
-   for internal clock only. New configuration:
+   for internal clock only. New configuration (taken from latest Marlin source):
    
         System Clock source            = PLL (HSE)
         SYSCLK(Hz)                     = 64000000
@@ -26,11 +26,11 @@
         AHB Prescaler                  = 1
         APB1 Prescaler                 = 1
         PLL_M                          = 1
-        PLL_N                          = 16
-        PLL_R                          = 2
+        PLL_N                          = 24
+        PLL_R                          = 3
         PLL_P                          = 2
-        PLL_Q                          = 2
-        USB(Hz)                        = 48000000 (HSI48M)
+        PLL_Q                          = 4
+        USB(Hz)                        = 48000000 (PLLQ)
 */
 
 #if defined(__STM32G0XX)
@@ -55,16 +55,15 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_HSI48;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV1;
-  RCC_OscInitStruct.PLL.PLLN = 16;
+  RCC_OscInitStruct.PLL.PLLN = 24;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
-  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV4;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV3;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -82,7 +81,7 @@ void SystemClock_Config(void)
   }
   /* Initializes the peripherals clocks  */
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
-  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();

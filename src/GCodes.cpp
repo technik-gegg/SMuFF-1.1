@@ -78,9 +78,10 @@ const char *B_Param = (char *)"B";
 const char *D_Param = (char *)"D";
 const char *H_Param = (char *)"H";
 const char *W_Param = (char *)"W";
+const char *O_Param = (char *)"O";
 
 GCodeFunctions gCodeFuncsM[] PROGMEM = {
-    {0, dummy}, // used in Prusa Emulation mode to switch to normal mode
+    {0, dummy}, // used in Prusa Emulation mode
     {1, dummy}, // used in Prusa Emulation mode to switch to stealth mode
     {80, dummy},
     {81, dummy},
@@ -92,6 +93,9 @@ GCodeFunctions gCodeFuncsM[] PROGMEM = {
     {221, dummy},
 
     {2,  M2},
+    {3,  M3},
+    {4,  M4},
+    {5,  M5},
     {17, M17},
     {18, M18},
     {20, M20},
@@ -176,6 +180,84 @@ bool M2(const char *msg, String buf, int8_t serial, char* errmsg)
   bool stat = true;
   printResponse(msg, serial);
   setParserReady();
+  return stat;
+}
+
+/*
+  Deviating from the GCode standard, this method winds the spool-motor clockwise
+*/
+bool M3(const char *msg, String buf, int8_t serial, char* errmsg)
+{
+  bool stat = false;
+  printResponse(msg, serial);
+  #if defined(USE_SPOOLMOTOR)
+    int8_t tool = getParam(buf, S_Param);
+    uint8_t speed = MOTOR_DEFAULT_SPEED;
+    uint16_t time = 0;
+    if(hasParam(buf, O_Param))
+      speed = getParam(buf, O_Param);
+    if(hasParam(buf, T_Param))
+      time = getParam(buf, T_Param);
+    if(tool != -1 && tool < MAX_TOOLS) {
+      windSpoolMotorCW(tool, speed, time);
+      stat = true;
+    }
+    else {
+      snprintf_P(errmsg, MAX_ERR_MSG, P_NoTool);
+    }
+  #else
+    snprintf_P(errmsg, MAX_ERR_MSG, P_UnknownCmd);
+  #endif
+  return stat;
+}
+
+/*
+  Deviating from the GCode standard, this method winds the spool-motor counter clockwise
+*/
+bool M4(const char *msg, String buf, int8_t serial, char* errmsg)
+{
+  bool stat = false;
+  printResponse(msg, serial);
+  #if defined(USE_SPOOLMOTOR)
+    int8_t tool = getParam(buf, S_Param);
+    uint8_t speed = MOTOR_DEFAULT_SPEED;
+    uint16_t time = 0;
+    if(hasParam(buf, O_Param))
+      speed = getParam(buf, O_Param);
+    if(hasParam(buf, T_Param))
+      time = getParam(buf, T_Param);
+    if(tool != -1 && tool < MAX_TOOLS) {
+      windSpoolMotorCCW(tool, speed, time);
+      stat = true;
+    }
+    else {
+      snprintf_P(errmsg, MAX_ERR_MSG, P_NoTool);
+    }
+  #else
+    snprintf_P(errmsg, MAX_ERR_MSG, P_UnknownCmd);
+  #endif
+  return stat;
+}
+
+/*
+  Deviating from the GCode standard, this method stops winding the spool-motor
+*/
+bool M5(const char *msg, String buf, int8_t serial, char* errmsg)
+{
+  bool stat = false;
+  printResponse(msg, serial);
+  #if defined(USE_SPOOLMOTOR)
+    int8_t tool = getParam(buf, S_Param);
+    if(tool != -1 && tool < MAX_TOOLS) {
+      stopWindingSpoolMotor(tool);
+      stat = true;
+    }
+    else {
+      snprintf_P(errmsg, MAX_ERR_MSG, P_NoTool);
+    }
+  #else
+    snprintf_P(errmsg, MAX_ERR_MSG, P_UnknownCmd);
+  #endif
   return stat;
 }
 
@@ -503,7 +585,7 @@ bool M115(const char *msg, String buf, int8_t serial, char* errmsg)
 {
   char tmp[200];
   char ver[8];
-  char options[80] = {0};
+  char options[200] = {0};
   sprintf(ver, VERSION_STRING);
 #if defined(DEBUG)
   strcat(ver, "D");
@@ -522,6 +604,9 @@ bool M115(const char *msg, String buf, int8_t serial, char* errmsg)
 #endif
 #if defined(USE_DDE)
   strcat(options, "DDE|");
+#endif
+#if defined(USE_SPOOLMOTOR)
+  strcat(options, "SPOOLMOTORS|");
 #endif
 #if defined(USE_TWI_DISPLAY)
   strcat(options, "TWI");
@@ -1613,6 +1698,12 @@ bool M205(const char *msg, String buf, int8_t serial, char* errmsg) {
       else if (strcmp(cmd, relay) == 0)               { /* ignore this */ }
       else if (strcmp(cmd, user1) == 0)               { /* ignore this */ }
       else if (strcmp(cmd, user2) == 0)               { /* ignore this */ }
+      #endif
+      #if defined(USE_SPOOLMOTOR)
+      else if (strcmp(cmd, autoRewind) == 0)          { smuffConfig.autoRewind = (param > 0); }
+      else if (strcmp(cmd, spool) == 0)               { if(index != -1) spoolMappings[index] = (int8_t) param; }
+      else if (strcmp(cmd, spoolSpeed) == 0)          { if(param > 0 && param < 256) { smuffConfig.spoolRewindSpeed = (uint8_t) param; } else { rangeError(1, 255, errmsg); stat = false; } }
+      else if (strcmp(cmd, dirCCW) == 0)              { if(index != -1) spoolDirectionCCW[index] = (param > 0); else { stat = false; materialError(errmsg); } }
       #endif
       else {
         snprintf_P(errmsg, MAX_ERR_MSG, P_UnknownParam, cmd);

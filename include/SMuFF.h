@@ -306,6 +306,9 @@ typedef struct {
   int8_t        spi3Mosi                              = 0;      // these 3 pins are only relevant on the SKR E3-DIP board and should be LOW
   int8_t        spi3Sclk                              = 0;
   int8_t        spi3Miso                              = 0;
+  uint8_t       spoolRewindSpeed                      = 50;
+  bool          autoRewind                            = true;
+  bool          spoolDirCCW                           = true;
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;
@@ -354,6 +357,16 @@ extern int8_t                   outputMode[];
 extern uint8_t                  servoPosClosed[];
 extern double                   stepperPosClosed[];
 
+
+#if defined(USE_SPOOLMOTOR)
+extern Adafruit_PWMServoDriver  motor1Pwm;
+extern Adafruit_PWMServoDriver  motor2Pwm;
+extern Adafruit_PWMServoDriver  motor3Pwm;
+extern int8_t                   spoolMappings[];
+extern uint32_t                 spoolDuration[];
+extern bool                     spoolDirectionCCW[];
+#endif
+extern uint8_t                  spoolMotorsFound;
 
 extern const char               brand[];
 extern uint8_t                  swapTools[];
@@ -442,6 +455,7 @@ extern void runTimers();
 extern void setupSteppers();
 extern void setupTMCDrivers();
 extern void setupServos();
+extern void setupSpoolMotors();
 extern void setupFan();
 extern void setupEStopMux();
 extern void setupRelay();
@@ -727,3 +741,9 @@ extern void changeDebugPort(int param, char* errmsg, bool noMsg = false);
 
 extern void showFreeMemory();
 extern void getFreeMemory(char* buffer, size_t maxlen);
+
+extern void startRewindingSpool(int8_t tool);
+extern void stopRewindingSpool(int8_t tool);
+extern void windSpoolMotorCW(int8_t tool, uint8_t speed, uint16_t duration);
+extern void windSpoolMotorCCW(int8_t tool, uint8_t speed, uint16_t duration);
+extern void stopWindingSpoolMotor(int8_t tool);

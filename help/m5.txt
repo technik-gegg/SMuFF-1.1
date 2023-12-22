@@ -1,0 +1,3 @@
+M5 Sn
+-----
+Sn	Motor number (0..11)

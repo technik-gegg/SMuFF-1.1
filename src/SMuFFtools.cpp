@@ -1037,7 +1037,20 @@ bool unloadFromNozzle(char* errmsg, bool showMessage) {
         __debugS(D, PSTR("Retracting from Feeder %s mm"), String(fabs(len)).c_str());
         steppers[FEEDER].setStepPositionMM(0);
         prepSteppingRelMillimeter(FEEDER, -len, smuffConfig.useSplitter ? true : false);
+        #if defined(USE_SPOOLMOTOR)
+          if(smuffConfig.autoRewind) {
+            __debugS(DEV3, PSTR("Auto-Rewinding spool: Speed=%d, Dir. CCW=%s"), smuffConfig.spoolRewindSpeed, smuffConfig.spoolDirCCW ? P_Yes : P_No);
+            startRewindingSpool(toolSelected);
+          }
+        #endif
         runAndWait(FEEDER);
+        #if defined(USE_SPOOLMOTOR)
+          if(smuffConfig.autoRewind) {
+            __debugS(DEV3, PSTR("Auto-Rewinding stopped"));
+            stopRewindingSpool(toolSelected);
+          }
+        #endif
+
         double moved = steppers[FEEDER].getStepPositionMM();
         __debugS(I, PSTR("Feeder has retracted %s mm"), String(fabs(moved)).c_str());
         
@@ -2687,6 +2700,18 @@ void enumI2cDevices(uint8_t bus) {
         case I2C_SPL_MUX_ADDRESS:
           name = PSTR("EStop MUX Splitter");
           estopmux = true;
+          break;
+        case I2C_MOTORCTL1_ADDRESS:
+          name = PSTR("1st Spool-Motor Controller");
+          spoolMotorsFound++;
+          break;
+        case I2C_MOTORCTL2_ADDRESS:
+          name = PSTR("2nd Spool-Motor Controller");
+          spoolMotorsFound++;
+          break;
+        case I2C_MOTORCTL3_ADDRESS:
+          name = PSTR("3rd Spool-Motor Controller");
+          spoolMotorsFound++;
           break;
         default:
           name = PSTR("n.a.");

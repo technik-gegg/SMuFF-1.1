@@ -24,7 +24,7 @@ void initUSB() {
   if (USB_CONNECT_PIN > 0) {
     pinMode(USB_CONNECT_PIN, OUTPUT);
     digitalWrite(USB_CONNECT_PIN, HIGH);  // USB clear connection
-    delay(100);                           // give OS time to re-enumerate
+    delay(400);                           // give OS time to re-enumerate
     digitalWrite(USB_CONNECT_PIN, LOW);   // USB reestablish connection
   }
 #endif
@@ -279,6 +279,31 @@ void setupServos() {
   setServoPos(SERVO_CUTTER, smuffConfig.cutterOpen);
   __debugS(D, PSTR("\tsetupServos: Multiservo initialized"));
 #endif
+}
+
+void setupSpoolMotors() {
+  #if defined(USE_SPOOLMOTOR)
+  double pwmFreq = 50.0;
+  if(spoolMotorsFound >= 1) {
+    motor1Pwm.begin();
+    motor1Pwm.setOscillatorFrequency(PCA9685_FREQ_MOTOR1);  // see platformio.ini
+    motor1Pwm.setPWMFreq(pwmFreq);
+    __debugS(DEV3, PSTR("\tsetupSpoolMotors: 1st motor oscilator freq.: %ld  PWM freq.: %s Hz"), PCA9685_FREQ, String((double)pwmFreq).c_str());
+  }
+  if(spoolMotorsFound >= 2) {
+    motor2Pwm.begin();
+    motor2Pwm.setOscillatorFrequency(PCA9685_FREQ_MOTOR2);  // see platformio.ini
+    motor2Pwm.setPWMFreq(pwmFreq);
+    __debugS(DEV3, PSTR("\tsetupSpoolMotors: 2nd motor oscilator freq.: %ld  PWM freq.: %s Hz"), PCA9685_FREQ, String((double)pwmFreq).c_str());
+  }
+  if(spoolMotorsFound >= 3) {
+    motor3Pwm.begin();
+    motor3Pwm.setOscillatorFrequency(PCA9685_FREQ_MOTOR3);  // see platformio.ini
+    motor3Pwm.setPWMFreq(pwmFreq);
+    __debugS(DEV3, PSTR("\tsetupSpoolMotors: 2nd motor oscilator freq.: %ld  PWM freq.: %s Hz"), PCA9685_FREQ, String((double)pwmFreq).c_str());
+  }
+  __debugS(D, PSTR("\tsetupSpoolMotors: %2d Spool-Motor%s initialized"), spoolMotorsFound, spoolMotorsFound > 1 ? "s" : "");
+  #endif
 }
 
 void setupFan() {
