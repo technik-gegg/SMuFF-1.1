@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -624,11 +624,11 @@ bool readMaterials() {
     return false;
   }
   else {
-    if(!checkFileSize(&cfg, scapacity, P_ConfigFail5)) {
+    if(!checkFileSize(&cfg, capacity, P_ConfigFail5)) {
       cfg.close();
       return false;
     }
-    DynamicJsonDocument jsonDoc(scapacity);       // use memory from heap to deserialize
+    DynamicJsonDocument jsonDoc(capacity);       // use memory from heap to deserialize
     DeserializationError error = deserializeJson(jsonDoc, cfg);
     cfg.close();
     if (error)
@@ -1023,7 +1023,7 @@ bool writeMaterials(Print* dumpTo, bool useWebInterface) {
     if(!initSD())
       return false;
   }
-  DynamicJsonDocument jsonDoc(scapacity); // use memory on heap to deserialize
+  DynamicJsonDocument jsonDoc(capacity); // use memory on heap to deserialize
   // create materials
   JsonObject jsonObj = jsonDoc.to<JsonObject>();
   char item[15];

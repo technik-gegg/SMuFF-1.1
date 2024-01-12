@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ uint8_t                   servoPosClosed[16] = {90, 90, 90, 90, 90, 90, 90, 90, 
 #else
 uint8_t                   servoPosClosed[MAX_TOOLS];
 #endif
-double                     stepperPosClosed[MAX_TOOLS];  // V6S only
+double                    stepperPosClosed[MAX_TOOLS];  // V6S only
 
 #if defined(USE_SPOOLMOTOR)
   #if defined(USE_PCA9685_SW_I2C)
@@ -626,6 +626,8 @@ void setup() {
   if (CAN_USE_SERIAL1) Serial1.begin(115200);
   if (CAN_USE_SERIAL2) Serial2.begin(115200);
   if (CAN_USE_SERIAL3) Serial3.begin(115200);
+  if (debugSerial == &Serial)
+    delay(1500);   // allow USB serial to settle before the first message is printed out
 
   __debugS(DEV3, PSTR("setup start"));
   removeFirmwareBin();            // deletes the firmware.bin file; prevents flashing the firmware on each boot

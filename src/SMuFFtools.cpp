@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2647,7 +2647,7 @@ uint8_t scanI2CLoop(SoftWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t
 #endif
 
 void enumI2cDevices(uint8_t bus) {
-  uint8_t devs[40]; // unlikey that there are more devices than that on the bus
+  uint8_t devs[127]; // unlikey that there are more devices than that on the bus
   const char *name;
   bool encoder = false, multiservo = false, estopmux = false, i2cdisplay = false;
   uint8_t deviceCnt = 0;
@@ -2713,6 +2713,9 @@ void enumI2cDevices(uint8_t bus) {
           name = PSTR("3rd Spool-Motor Controller");
           spoolMotorsFound++;
           break;
+        case I2C_SMUFF_WI_ADDRESS:
+          name = PSTR("SMuFF WebInterface Local");
+          break;
         default:
           name = PSTR("n.a.");
           break;
@@ -2742,6 +2745,11 @@ void enumI2cDevices(uint8_t bus) {
   #if defined(USE_MULTISERVO)
     if (!multiservo) {
       __debugS(I, PSTR("Adafruit Multiservo %s"), noDevFound);
+    }
+  #endif
+  #if defined(USE_SPOOLMOTOR)
+    if (spoolMotorsFound == 0) {
+      __debugS(I, PSTR("Spool-Motors %s"), noDevFound);
     }
   #endif
 }

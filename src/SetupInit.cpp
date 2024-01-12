@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -549,7 +549,7 @@ void setupSteppers(){
     steppers[i].setEnabled(true);
   }
 
-  __debugS(D, PSTR("\tsetupSteppers: init steppers DONE"));
+  __debugS(D, PSTR("\tsetupSteppers: Init steppers DONE"));
   for (uint8_t i = 0; i < MAX_TOOLS; i++) {
     swapTools[i] = i;
   }
@@ -617,7 +617,7 @@ TMC2209Stepper *initDriver(uint8_t axis, uint16_t rx_pin, uint16_t tx_pin)
   driver->pdn_disable(true);        // PDN disabled for UART operation
   driver->mstep_reg_select(1);      // set microstepping
   driver->microsteps(msteps);
-  __debugS(D, PSTR("\tinitDriver: Basic Init done for %c-Axis."), (axis==FEEDER2) ? 'E' : 'X' + axis);
+  __debugS(D, PSTR("\tinitDriver: Basic initialization for %c-Axis done."), (axis==FEEDER2) ? 'E' : 'X' + axis);
 
   // setup StallGuard only if TMode is set to true
   // otherwise put it in SpreadCycle mode
@@ -697,21 +697,28 @@ void setupTMCDrivers()
   drivers[FEEDER2] = initDriver(FEEDER2, E_SERIAL_TX_PIN, E_SERIAL_TX_PIN);
 #endif
 #endif
-  //__debugS(D, PSTR("setupTMCDrivers: initialized"));
+  __debugS(D, PSTR("\tsetupTMCDrivers: Initialized."));
+  const char* stallMsg = "\tStall detection for %c-Axis: Set on pin %4d.";
 
 #if defined(STALL_X_PIN)
-  if (STALL_X_PIN > 0)
+  if (STALL_X_PIN > 0) {
     pinMode(STALL_X_PIN, INPUT_PULLUP);
+    __debugS(DEV2, PSTR(stallMsg), 'X', STALL_X_PIN);
+  }
 #endif
 #if defined(STALL_Y_PIN)
-  if (STALL_Y_PIN > 0)
+  if (STALL_Y_PIN > 0) {
     pinMode(STALL_Y_PIN, INPUT_PULLUP);
+    __debugS(DEV2, PSTR(stallMsg), 'Y', STALL_Y_PIN);
+  }
 #endif
 #if defined(STALL_Z_PIN)
-  if (STALL_Z_PIN > 0)
+  if (STALL_Z_PIN > 0) {
     pinMode(STALL_Z_PIN, INPUT_PULLUP);
+    __debugS(DEV2, PSTR(stallMsg), 'Z', STALL_Z_PIN);
+  }
 #endif
-  //__debugS(D, PSTR("setupTMCDrivers: DONE"));
+  __debugS(D, PSTR("\tsetupTMCDrivers: DONE"));
 }
 
 #endif

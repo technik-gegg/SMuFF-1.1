@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #include "HAL/HAL.h"
 
 #include "Debug.h"
+
+#define __def2str(s) #s
 
 extern void defaultStepFunc(pin_t pin, bool resetPin = false);
 

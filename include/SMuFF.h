@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@
 #include "Config.h"
 #include "Strings.h"
 #include "GCodes.h"
+
+#define __def2str(s) #s
+#define __xdef2str(s) __def2str(s)
 
 #if !defined(USE_SERIAL_DISPLAY)
 #include <U8g2lib.h>

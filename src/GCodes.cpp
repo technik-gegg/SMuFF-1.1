@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1616,7 +1616,7 @@ bool M205(const char *msg, String buf, int8_t serial, char* errmsg) {
       else if (strcmp(cmd, externalControl) == 0)     { smuffConfig.extControlFeeder = (param > 0); }
       else if (strcmp(cmd, enableChunks) == 0)        { smuffConfig.enableChunks = (param > 0); }
       else if (strcmp(cmd, endstop2) == 0)            { smuffConfig.useEndstop2 = (param > 0); }
-      else if (strcmp(cmd, invertDir) == 0)           { if (axis != -1) smuffConfig.invertDir[axis] = (param > 0); else { axisError(errmsg); stat = false; }}
+      else if (strcmp(cmd, invertDir) == 0)           { if (axis != -1) { smuffConfig.invertDir[axis] = (param > 0); steppers[axis].setInvertDir(param > 0); } else { axisError(errmsg); stat = false; }}
       else if (strcmp(cmd, useSplitter) == 0)         { smuffConfig.useSplitter = (param > 0); }
       else if (strcmp(cmd, purgeDDE) == 0)            { smuffConfig.purgeDDE = (param > 0); }
       else if (strcmp(cmd, cutterTop) == 0)           { smuffConfig.cutterOnTop = (param > 0); }

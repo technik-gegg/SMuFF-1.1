@@ -15,7 +15,7 @@ To use this firmware, you have to [compile it](https://sites.google.com/view/the
 | Bigtreetech [SKR mini E3 V2.0](https://www.biqu.equipment/products/bigtreetech-skr-mini-e3-v2-0-32-bit-control-board-integrated-tmc2209-uart-for-ender-4) ||
 | Bigtreetech [SKR mini V1.1](https://www.biqu.equipment/collections/control-board/products/bigtreetech-skr-mini-v1-1-motherboard-32-bit-arm-equipped-with-tmc2208-v2-1-tmc2130-spi-driver-stepstick-for-3d-printer-desktop?variant=20361870377058)||
 
-The Bigtreetech SKR mini series boards are very small and yet  powerful because of the 32-Bit STM Microcontroller Unit.
+The Bigtreetech SKR mini series boards are very small and yet powerful because of the 32-Bit STM Microcontroller Unit.
 
 Of course, this firmware can also be configured to run on any other controller board, as long as it meets the specifications. Although you might be able to utilize older 8 bit boards, I don't recommended it - you'll most probably run out of memory (Flash/RAM) very soon. I recommend using a 32 bit controller board instead.
 Make sure your board of choice has at least **256K** of Flash memory, **48K** of (S)RAM and all other components needed, which are at least:
@@ -51,10 +51,25 @@ A special thanks to the folks who have created the following (Arduino) libraries
 + [Bill Greinman](https://github.com/greiman/SdFat) for the SD-Card library
 + [Oliver Kraus](https://github.com/olikraus/U8G2_Arduino.git) for the U8G2 display library
 + [teemuatlut](https://github.com/teemuatlut/TMCStepper) for the TMC-Stepper library
++ [Tom Schimansky](https://github.com/TomSchimansky/CustomTkinter) for the Custom Tkinter Python package
++ [Akash Bora](https://github.com/Akascape) for the CTkMessagebox and CTkToolTip packages
 
 ---
 
 ## Recent changes
+
+**3.24** - added new "Firmware-Build Configurator"
+
++ made the build configuration easier by adding a custom dialog (Python/Ctk). Now, the *PROJECT TASKS* treeview only contains the basic build environments for each supported controller. Everything else can now be configured right after clicking on the **Build** task using this dialog:
+![Firmware Build Configurator](images/Build-Configurator.jpg)
+This is by far more convenient than parsing through the *platformio.ini* or trying to find the build environment you want.
+Tooltips will show up when hovering over the checkboxes, which briefly explain why you would use this option.
+After the build you'll find a **readme-build.txt** file in the output folder, listing the options that have been set for this particular build.
+To define a set of **personalized default settings** depending on the controller used, one can list them under the *config_defaults* section in *platformio.ini*.
+*Please be aware that for using this feature, PlatformIO needs to install some Python packages once. This happens automatically at your very first build.*
++ updated SdFat library reference to 2.2.0
++ added the option to use the "old" clock settings (those recommended by STM) for the SKR E3 V3.0 board instead of the new ones introduced in version 3.23.
++ added a couple more debug messages while the firmware is being initialized.
 
 **3.23** - bugfix, Motorized Spool Rewinder option added
 

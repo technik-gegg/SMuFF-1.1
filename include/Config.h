@@ -1,6 +1,6 @@
 /**
  * SMuFF Firmware
- * Copyright (C) 2019-2022 Technik Gegg
+ * Copyright (C) 2019-2024 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,10 +26,10 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.23"
+#define VERSION_STRING    "V3.24"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2023-12-22"
+#define VERSION_DATE      "2024-01-10"
 #define DEBUG_FILE        "/debug.txt"
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
@@ -74,6 +74,7 @@ typedef uint32_t    pin_t;
 #define I2C_MOTORCTL1_ADDRESS   0x41        // default address for 1st motor controller
 #define I2C_MOTORCTL2_ADDRESS   0x42        // default address for 2nd motor controller
 #define I2C_MOTORCTL3_ADDRESS   0x43        // default address for 3rd motor controller
+#define I2C_SMUFF_WI_ADDRESS    0x45        // ESP8266 on Backbone-Board
 #define I2C_EEPROM_ADDRESS      0x50        // default address for EEPROM on E3 2.0, 3.0
 #define I2C_SERVOBCAST_ADDRESS  0x70        // default address for Multiservo controller (Broadcast Address)
 #define I2C_PORTEX_ADDRESS      0x3F        // default address for Port extender (obsolete)
