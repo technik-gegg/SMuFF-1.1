@@ -10,17 +10,22 @@ if env.IsIntegrationDump():
 import os
 from pprint import pprint
 try:
-    import customtkinter
-except ImportError:
-    env.Execute("$PYTHONEXE -m pip install customtkinter")
-try:
-    from CTkMessagebox import CTkMessagebox
-except ImportError:
-    env.Execute("$PYTHONEXE -m pip install CTkMessagebox")
-try:
-    from CTkToolTip import *
-except ImportError:
-    env.Execute("$PYTHONEXE -m pip install CTkToolTip")
+    try:
+        import customtkinter
+    except ImportError:
+        print("Importing additional Python libraries...")
+        env.Execute("$PYTHONEXE -m pip install customtkinter")
+    try:
+        from CTkMessagebox import CTkMessagebox
+    except ImportError:
+        env.Execute("$PYTHONEXE -m pip install CTkMessagebox")
+    try:
+        from CTkToolTip import *
+    except ImportError:
+        env.Execute("$PYTHONEXE -m pip install CTkToolTip")
+except:
+    print("Can't install additional Python libraries. Please check your setup/environment.")
+    Return()
 
 build_flags     = env.ParseFlags(env["BUILD_FLAGS"])
 project_dir     = env["PROJECT_DIR"]
@@ -72,7 +77,7 @@ col_tooltip = "#ffffff"
 dlg_font    = "{0}/assets/OpenSans-Regular.ttf"
 dlg_ffamily = "Open Sans"
 dlg_width   = 685
-dlg_height  = 570 if show_HWDBG else 535
+dlg_height  = 605 if show_HWDBG else 570
 
 txt_TITLE   = "SMuFF Firmware-Build Configurator"
 txt_ICON    = "{0}/assets/fwbc.ico"
@@ -83,6 +88,7 @@ txt_MS      = "Use Multiservo Board"
 txt_MSRLY   = "Relay-Signal on Multiservo Board"
 txt_MSTWI   = "Use SW I2C for Multiservo"
 txt_SPMTWI  = "Use SW I2C for Spool-Rewinder"
+txt_SPMFW   = "Use FeatherWing DC-Motor controller"
 txt_SPM     = "Use Spool-Rewinder"
 txt_SWD     = "Disable Debug Port (E3 DIP/2.0)"
 txt_DBG     = "Enable Debug Messages"
@@ -121,6 +127,7 @@ txt_TTDDE   = "Check this option only if you're not using the SMuFF as your prim
 txt_TTNPX   = "Check this option if you'd like some fancy bling-bling on your SMuFF."
 txt_TTMS    = "Check this option if you're controlling the servos using an Adafruit Multiservo board."
 txt_TTSPM   = "Check this option if you're using the Motorized Spool-Rewinder."
+txt_TTSPMFW = "Check this option if you're using the FeatherWing instead of the Waveshare DC-Motor controller."
 txt_TTUSBID = "This is what Windows/Linux will show when connected to the SMuFF over USB."
 
 dsp_last_ndx = -1
@@ -134,6 +141,7 @@ ms_option       = "USE_MULTISERVO"
 msrly_option    = "USE_MULTISERVO_RELAY"
 mstwi_option    = "USE_PCA9685_SW_I2C"
 spm_option      = "USE_SPOOLMOTOR"
+spmfw_option    = "USE_SPOOLMOTOR_FEATHERWING"
 swd_option      = "DISABLE_DEBUG_PORT"
 dbg_option      = "DEBUG"
 hwdbg_option    = "__HW_DEBUG__"
@@ -176,7 +184,7 @@ def change_define(flag, option, optstr=None):
     except ValueError:
         #print("{0}'Value error' in change_define: \"{1}\" not found.{2}".format(col_red, option, col_black))
         pass
-    #pprint(defines)
+    pprint(defines)
 
 def run_build():
     global display
@@ -272,8 +280,16 @@ def set_MSTWI_text():
 
 def set_SPM():
     change_define(chk_SPM.get(), spm_option, txt_SPM)
+    if chk_SPM.get():
+        change_define(chk_SPMFW.get(), spmfw_option)
+    else:
+        change_define(False, spmfw_option)
     if not (isE3_12 or isMINI):
         chk_SPMTWI.configure(state='normal' if chk_SPM.get() else 'disabled')
+        chk_SPMFW.configure(state='normal' if chk_SPM.get() else 'disabled')
+
+def set_SPMFW():
+    change_define(chk_SPMFW.get(), spmfw_option, txt_SPMFW)
 
 def set_SPMTWI():
     change_define(chk_SPMTWI.get(), mstwi_option, txt_SPMTWI)
@@ -390,6 +406,7 @@ chk_MSRLY   = customtkinter.CTkCheckBox(master=frame1, text=txt_MSRLY,  command=
 chk_MSTWI   = customtkinter.CTkCheckBox(master=frame1, text=txt_MSTWI,  command=set_MSTWI,   font=fnt_text, state="disabled")
 chk_SPM     = customtkinter.CTkCheckBox(master=frame1, text=txt_SPM,    command=set_SPM,     font=fnt_text)
 chk_SPMTWI  = customtkinter.CTkCheckBox(master=frame1, text=txt_SPMTWI, command=set_SPMTWI,  font=fnt_text, state="disabled")
+chk_SPMFW   = customtkinter.CTkCheckBox(master=frame1, text=txt_SPMFW,  command=set_SPMFW,   font=fnt_text, state="disabled")
 
 chk_SWD     = customtkinter.CTkCheckBox(master=frame2, text=txt_SWD,    command = set_SWD,   font=fnt_text)
 chk_DBG     = customtkinter.CTkCheckBox(master=frame2, text=txt_DBG,    command = set_DBG,   font=fnt_text)
@@ -415,6 +432,7 @@ tt_RLY_P    = CTkToolTip(chk_RLY_P, message=txt_TTRLY_P,    font=fnt_tooltip, bg
 tt_RLY_Y    = CTkToolTip(chk_RLY_Y, message=txt_TTRLY_Y,    font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
 tt_SWP_SE   = CTkToolTip(chk_SWP_SE,message=txt_TTSWP_SE,   font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
 tt_SPMTWI   = CTkToolTip(chk_SPMTWI,message=txt_TTSPMTWI,   font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
+tt_SPMFW    = CTkToolTip(chk_SPMFW, message=txt_TTSPMFW,    font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
 tt_MSTWI    = CTkToolTip(chk_MSTWI, message=txt_TTSPMTWI,   font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
 tt_SWTWI    = CTkToolTip(chk_SWTWI, message=txt_TTSWTWI,    font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
 tt_MSRLY    = CTkToolTip(chk_MSRLY, message=txt_TTMSRLY,    font=fnt_tooltip, bg_color=col_tooltip_bg, text_color=col_tooltip, follow=False, alpha=0.9, corner_radius=4, border_width=1)
@@ -446,6 +464,7 @@ chk_MSTWI.grid  (row=8, column=0, padx=(40, 10), pady=(0, 8),  sticky="we")
 chk_MSRLY.grid  (row=9, column=0, padx=(40, 10), pady=(0, 8),  sticky="we")
 chk_SPM.grid    (row=10,column=0, padx=(10, 10), pady=(0, 8),  sticky="we")
 chk_SPMTWI.grid (row=11,column=0, padx=(40, 10), pady=(0, 8),  sticky="we")
+chk_SPMFW.grid  (row=12,column=0, padx=(40, 10), pady=(0, 8),  sticky="we")
 
 # Controls in Frame 2
 lbl_OTH.grid    (row=0,  column=0, padx=(0, 0),   pady=(3, 6),  sticky="we")
@@ -529,6 +548,10 @@ def parse_build():
             change_define(True, spm_option, txt_SPM)
             if not (isE3_12 or isMINI):
                 chk_SPMTWI.configure(state='normal' if chk_SPM.get() else 'disabled')
+                chk_SPMFW.configure(state='normal' if chk_SPM.get() else 'disabled')
+
+        if define == spmfw_option:
+            chk_SPMFW.select()
 
         if define == zs_option:
             chk_MS.deselect()

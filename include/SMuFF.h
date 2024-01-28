@@ -312,6 +312,7 @@ typedef struct {
   uint8_t       spoolRewindSpeed                      = 50;
   bool          autoRewind                            = true;
   bool          spoolDirCCW                           = true;
+  uint16_t      i2cScanDelay                          = 10;
 } SMuFFConfig;
 
 extern SMuFFConfig              smuffConfig;
@@ -750,3 +751,5 @@ extern void stopRewindingSpool(int8_t tool);
 extern void windSpoolMotorCW(int8_t tool, uint8_t speed, uint16_t duration);
 extern void windSpoolMotorCCW(int8_t tool, uint8_t speed, uint16_t duration);
 extern void stopWindingSpoolMotor(int8_t tool);
+extern void testSpoolMotors();
+

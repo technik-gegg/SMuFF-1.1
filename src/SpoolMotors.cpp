@@ -22,6 +22,9 @@
 
 extern int8_t motorPins[][3];
 
+void testSpoolMotors() {
+}
+
 void setOutputs(Adafruit_PWMServoDriver* instance, uint8_t motor, uint8_t direction, uint8_t speed) {
     uint16_t pulse = speed * (4095/255);
     __debugS(DEV3, PSTR("Setting Motor Output; Motor: M%c Speed=%d, Pulse=%d"), 'A'+motor, speed, pulse);

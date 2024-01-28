@@ -26,11 +26,14 @@ typedef uint8_t     pin_t;
 typedef uint32_t    pin_t;
 #endif
 
-#define VERSION_STRING    "V3.24"
+#define VERSION_STRING    "V3.25"
 #define PMMU_VERSION      106               // Version number for Prusa MMU2 Emulation mode
 #define PMMU_BUILD        372               // Build number for Prusa MMU2 Emulation mode
-#define VERSION_DATE      "2024-01-10"
+#define VERSION_DATE      "2024-01-20"
 #define DEBUG_FILE        "/debug.txt"
+#define DEBUG_USB         "/dbg2usb.txt"    // send debug messages to USB port (Serial 0)
+#define DEBUG_EXP         "/dbg2exp.txt"    // send debug messages to EXP port (Serial 1)
+#define DEBUG_OTH         "/dbg2oth.txt"    // send debug messages to other port (Serial 3)
 #define CONFIG_FILE       "/SMUFF.json"
 #define STEPPERS_FILE     "/STEPPERS.json"
 #define MATERIALS_FILE    "/MATERIALS.json"
@@ -71,9 +74,15 @@ typedef uint32_t    pin_t;
 #define I2C_DISPLAY_ADDRESS     0x3C        // default address for the OLED (alternative 0x3D)
 #define I2C_ENCODER_ADDRESS     0x3D        // default address for the LeoNerd Encoder
 #define I2C_SERVOCTL_ADDRESS    0x40        // default address for Multiservo controller
-#define I2C_MOTORCTL1_ADDRESS   0x41        // default address for 1st motor controller
+#if !defined(USE_SPOOLMOTOR_FEATHERWING)
+#define I2C_MOTORCTL1_ADDRESS   0x41        // default address for 1st motor controller (Waveshare)
 #define I2C_MOTORCTL2_ADDRESS   0x42        // default address for 2nd motor controller
 #define I2C_MOTORCTL3_ADDRESS   0x43        // default address for 3rd motor controller
+#else
+#define I2C_MOTORCTL1_ADDRESS   0x61        // default address for 1st motor controller (FeatherWing)
+#define I2C_MOTORCTL2_ADDRESS   0x62        // default address for 2nd motor controller
+#define I2C_MOTORCTL3_ADDRESS   0x63        // default address for 3rd motor controller
+#endif
 #define I2C_SMUFF_WI_ADDRESS    0x45        // ESP8266 on Backbone-Board
 #define I2C_EEPROM_ADDRESS      0x50        // default address for EEPROM on E3 2.0, 3.0
 #define I2C_SERVOBCAST_ADDRESS  0x70        // default address for Multiservo controller (Broadcast Address)
@@ -104,6 +113,7 @@ typedef uint32_t    pin_t;
                                             // could be 5 on a custom PCB
 #define MOTOR_DEFAULT_SPEED 25
 
+#if !defined(USE_SPOOLMOTOR_FEATHERWING)
 #define MA_PWM              0               // output assignment on PCA9685 (Iduino ME704 Shield)
 #define MA_IN1              1
 #define MA_IN2              2
@@ -119,6 +129,20 @@ typedef uint32_t    pin_t;
 #define ME_PWM              12              // not on ME704! but possible on a custom made PCB
 #define ME_IN1              13
 #define ME_IN2              14
+#else
+#define MA_PWM              2               // output assignment on PCA9685 (FeatherWing Motor Shield)
+#define MA_IN1              3
+#define MA_IN2              4
+#define MB_PWM              5
+#define MB_IN1              6
+#define MB_IN2              7
+#define MC_PWM              8
+#define MC_IN1              9
+#define MC_IN2              10
+#define MD_PWM              11
+#define MD_IN1              12
+#define MD_IN2              13
+#endif
 // IN1  IN2   PWM   Mode
 //------------------------
 //  L    H    SPD   CW

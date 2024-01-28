@@ -57,9 +57,9 @@ uint8_t u8x8_byte_smuff_i2c(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U
     case U8X8_MSG_BYTE_INIT:
       if (u8x8->bus_clock == 0)
         u8x8->bus_clock = u8x8->display_info->i2c_bus_clock_100kHz * 100000UL;
-      __debugS(DEV, PSTR("\tBegin I2C called, clock: %ld"), u8x8->bus_clock);
+      //__debugS(DEV, PSTR("\tBegin I2C called, clock: %ld"), u8x8->bus_clock);
       I2CBus.begin();
-      __debugS(DEV, PSTR("\tBegin I2C done"));
+      //__debugS(DEV, PSTR("\tBegin I2C done"));
       break;
 
     case U8X8_MSG_BYTE_SET_DC:

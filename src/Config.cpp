@@ -353,12 +353,29 @@ bool readDebugLevel() {
   bool stat = false;
   if(!initSD(false))
     return stat;
-  _File cfg;
+  char tmp[MAX_ERR_MSG];
+  _File cfg, dbg;
+  bool routeDbg = false;
+  // check whether to send debug messages to another port than Serial 2
+  if(__fopen(dbg, DEBUG_USB, FILE_READ)) {
+    changeDebugPort(0, tmp, false);   // Serial 0 = USB
+    dbg.close();
+    routeDbg = true;
+  }
+  else if(__fopen(dbg, DEBUG_EXP, FILE_READ)) {
+    changeDebugPort(1, tmp, false);   // Serial 1
+    dbg.close();
+    routeDbg = true;
+  }
+  else if(__fopen(dbg, DEBUG_OTH, FILE_READ)) {
+    changeDebugPort(3, tmp, false);   // Serial 3
+    dbg.close();
+    routeDbg = true;
+  }
   if(!__fopen(cfg, DEBUG_FILE, FILE_READ)) {
     return stat;
   }
   else {
-    char tmp[MAX_ERR_MSG];
     cfg.read(tmp, ArraySize(tmp));
     cfg.close();
     int dbgLevel = atoi(tmp);
@@ -367,7 +384,7 @@ bool readDebugLevel() {
       stat = true;
     }
     char* pos = strchr(tmp,';');
-    if(pos != nullptr) {
+    if(pos != nullptr && !routeDbg) {
         int port = atoi(pos+1);
         if(port >= 0 && port <=3) {
           changeDebugPort(port, tmp, false);

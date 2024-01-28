@@ -2615,7 +2615,8 @@ unsigned long translateSpeed(double speed, uint8_t forAxis, bool forceTranslatio
 
 uint8_t scanI2CLoop(TwoWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t index) {
   uint8_t cnt = 0;
-  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++) {
+  // restricted scanning on the I2C bus to valid slave addresses only (0-7, 120-127 are reserved)
+  for (uint8_t address = 8; address < 120 && cnt <= maxDevices; address++) {
     bus->beginTransmission(address);
     uint8_t stat = bus->endTransmission();
     if (stat == I2C_OK)
@@ -2624,7 +2625,15 @@ uint8_t scanI2CLoop(TwoWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t 
       cnt++;
       // __debugS(DEV3, PSTR("\t\tDevice found on HW I2C (bus %d) at address 0x%02]"), index, address);
     }
-    delay(3);
+    else {
+      if(stat == I2C_ERROR) {
+        __debugS(DEV, PSTR("\t\tDevice returned I2C_ERROR (bus %d) at address 0x%02]"), index, address);
+      }
+      else {
+        continue;
+      }
+    }
+    delay(smuffConfig.i2cScanDelay);
   }
   return cnt;
 }
@@ -2632,7 +2641,8 @@ uint8_t scanI2CLoop(TwoWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t 
 #if defined(USE_MULTISERVO) || defined(USE_SW_TWI)
 uint8_t scanI2CLoop(SoftWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t index) {
   uint8_t cnt = 0;
-  for (uint8_t address = 1; address < 127 && cnt <= maxDevices; address++) {
+  // restricted scanning on the I2C bus to valid slave addresses only (0-7, 120-127 are reserved)
+  for (uint8_t address = 8; address < 120 && cnt <= maxDevices; address++) {
     bus->beginTransmission(address);
     uint8_t stat = bus->endTransmission();
     if (stat == I2C_OK) {
@@ -2640,7 +2650,7 @@ uint8_t scanI2CLoop(SoftWire* bus, uint8_t *devices, uint8_t maxDevices, uint8_t
       cnt++;
       // __debugS(DEV3, PSTR("\t\tDevice found on SW I2C (bus %d) at address 0x%02]"), index, address);
     }
-    delay(3);
+    delay(smuffConfig.i2cScanDelay);
   }
   return cnt;
 }

@@ -51,12 +51,24 @@ A special thanks to the folks who have created the following (Arduino) libraries
 + [Bill Greinman](https://github.com/greiman/SdFat) for the SD-Card library
 + [Oliver Kraus](https://github.com/olikraus/U8G2_Arduino.git) for the U8G2 display library
 + [teemuatlut](https://github.com/teemuatlut/TMCStepper) for the TMC-Stepper library
++ [the creators of the](https://github.com/technik-gegg/SoftWireSTM32/) SoftWireSTM32 library
 + [Tom Schimansky](https://github.com/TomSchimansky/CustomTkinter) for the Custom Tkinter Python package
 + [Akash Bora](https://github.com/Akascape) for the CTkMessagebox and CTkToolTip packages
 
 ---
 
 ## Recent changes
+
+**3.25** - minor fixes/changes
+
++ restricted scanning of the I2C bus to valid slave addresses (0-7 and 120-127 are reserved addresses). Although this didn't cause any error yet, it could have caused some unwanted effects in the future.
++ added a new option to route debug messages to other than the default Serial 2 (a.k.a. TFT-Header): Create a file in the root folder of the SD-Card named:
+  + **dbg2usb.txt** for Serial 0 (a.k.a. USB)
+  + **dbg2exp.txt** for Serial 1
+  + **dbg2oth.txt** for Serial 3
+
+   **Keep in mind:** These files need no content. Not every port (except USB) is available on every board, it depends on board and configuration. To reset sending debug messages to default Serial 2, delete or rename the file.
++ added the **Adafruit Stepper + DC Motor FeatherWing** board as a 2nd option for the Spool-Rewinder controller. To use it, you have to define **USE_SPOOLMOTOR_FEATHERWING** in addition to **USE_SPOOLMOTOR** in the *config_defaults* and/or tick the according option in the *Firmware Build Configurator*.
 
 **3.24** - added new "Firmware-Build Configurator"
 
