@@ -7,25 +7,37 @@ if env.IsIntegrationDump():
     # stop the current script execution
     Return()
 
-import os
+import os, traceback
 from pprint import pprint
+try:
+    # dummy import, just checking the Python environment
+    import tkinter
+except ImportError:
+    print("\n\n{0}Tkinter package not found. Please follow the instructions here: {1}".format("\x1b[31m", "\x1b[0m"))
+    print("{0}https://sites.google.com/view/the-smuff/how-to/compile-the-firmware#h.f9tt9ww98lzj{1}".format("\x1b[34m", "\x1b[0m"))
+    print("\n{0}Build was cancelled due to an insufficient Python environment!{1}\n".format("\x1b[31m", "\x1b[0m"))
+    env.Exit(-1)
+
 try:
     try:
         import customtkinter
     except ImportError:
-        print("Importing additional Python libraries...")
+        print("Installing additional Python package CustomTkinter...")
         env.Execute("$PYTHONEXE -m pip install customtkinter")
     try:
         from CTkMessagebox import CTkMessagebox
     except ImportError:
+        print("Installing additional Python package CTkMessagebox...")
         env.Execute("$PYTHONEXE -m pip install CTkMessagebox")
     try:
         from CTkToolTip import *
     except ImportError:
+        print("Installing additional Python package CustomTkToolTip...")
         env.Execute("$PYTHONEXE -m pip install CTkToolTip")
 except:
-    print("Can't install additional Python libraries. Please check your setup/environment.")
-    Return()
+    traceback.print_exc()
+    print("{0}Can't install additional Python packages. Please check your setup/environment.{1}".format("\x1b[31m", "\x1b[0m"))
+    env.Exit(-1)
 
 build_flags     = env.ParseFlags(env["BUILD_FLAGS"])
 project_dir     = env["PROJECT_DIR"]
@@ -184,7 +196,7 @@ def change_define(flag, option, optstr=None):
     except ValueError:
         #print("{0}'Value error' in change_define: \"{1}\" not found.{2}".format(col_red, option, col_black))
         pass
-    pprint(defines)
+    #pprint(defines)
 
 def run_build():
     global display
