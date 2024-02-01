@@ -478,7 +478,6 @@ void isrSdCardDetected() {
 //=====================================================================================================
 
 void isrStepperTimerHandler() {
-
   // fastFlipDbg();                              // for debugging only
   timerVal_t duration;
   uint8_t i = startStepperIndex;              // startStepperIndex is either 0 if multiple steppers are in action or the according stepper
