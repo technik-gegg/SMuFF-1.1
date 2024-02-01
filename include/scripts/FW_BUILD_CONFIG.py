@@ -3,7 +3,7 @@
 # -----------------------------------------------------------
 Import("env")
 
-if env.IsIntegrationDump():
+if env.IsIntegrationDump() or env.IsCleanTarget():
     # stop the current script execution
     Return()
 
