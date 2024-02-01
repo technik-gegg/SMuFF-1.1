@@ -1,8 +1,8 @@
 # -----------------------------------------------------------
 # Script for relocating firmware behind (SKR) bootloader 
 # -----------------------------------------------------------
-import os
 Import("env")
+from pprint import pprint
 
 flash_ofs = "0x7000"    # default location is on top of bootloader 
 
@@ -17,8 +17,12 @@ env['CPPDEFINES'].append(("VECT_TAB_OFFSET", flash_ofs))
 
 envlnkf = env['LINKFLAGS'].copy()
 for lflag in envlnkf:
-    if lflag.startswith("-Wl,--defsym=LD_FLASH_OFFSET"):
-        env['LINKFLAGS'].remove(lflag)
+    if type(lflag) != tuple:
+        if lflag.startswith("-Wl") and lflag.find("LD_FLASH_OFFSET") > -1:
+            #pprint("Removing: " + lflag)
+            env['LINKFLAGS'].remove(lflag)
+    #else:
+    #    pprint(lflag)
 
 # Relocate firmware from 0x08000000 to 0x08000000+LD_FLASH_OFFSET
 env['LINKFLAGS'].append("-Wl,--defsym=LD_FLASH_OFFSET="+flash_ofs)

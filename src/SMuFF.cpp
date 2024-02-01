@@ -479,9 +479,9 @@ void isrSdCardDetected() {
 
 void isrStepperTimerHandler() {
 
-  fastFlipDbg();
-  register timerVal_t duration;
-  register uint8_t i = startStepperIndex;     // startStepperIndex is either 0 if multiple steppers are in action or the according stepper
+  // fastFlipDbg();                              // for debugging only
+  timerVal_t duration;
+  uint8_t i = startStepperIndex;              // startStepperIndex is either 0 if multiple steppers are in action or the according stepper
   do {
     if (!(_BV(i) & remainingSteppersFlag))    // current stepper doesn't need movement, continue with next one
       continue;
@@ -501,7 +501,7 @@ void isrStepperTimerHandler() {
 
   } while(++i < NUM_STEPPERS);
   startStepperInterval(duration);              // start next interval if needed
-  fastFlipDbg();
+  // fastFlipDbg();                              // for debugging only
 }
 
 void startStepperInterval(timerVal_t duration) {
