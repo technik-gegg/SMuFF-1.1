@@ -204,7 +204,10 @@ def run_build():
 
     for option in defines:
         if option == ms_option:
-            env_defines.remove(zs_option)
+            try:
+                env_defines.remove(zs_option)
+            except ValueError:
+                pass
         env_append(CPPDEFINES=option)
     #print(env_dump())
     #print("************")
